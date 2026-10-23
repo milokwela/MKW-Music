@@ -10,13 +10,29 @@
 <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
 <style>
 :root{
-  --primary:#ffd27a; --on-primary:#3b2400;
-  --primary-container:#7a3b1f; --on-primary-container:#ffe9c7;
-  --accent:#ff6b6b; --mint:#7fe3c4;
-  --surface:#0f1a2e; --surface-low:#16233b; --surface-container:#1c2d4a;
-  --surface-high:#243a5e; --on-surface:#f1f4fb; --on-surface-variant:#b9c4da;
-  --outline:#6f7f9e; --error:#ffb4ab; --error-container:#5c1d1d;
+  --primary:#ffb3a7; --on-primary:#5c1100;
+  --primary-container:#8a2a1e; --on-primary-container:#ffdad3;
+  --secondary:#a8d5a2; --secondary-container:#1f4a2a; --on-secondary-container:#c4f0bb;
+  --tertiary:#ffd977; --accent:#ff6b6b; --mint:#8fe3c0;
+  --surface:#11140f; --surface-low:#191d16; --surface-container:#1e241b;
+  --surface-high:#2a3327; --on-surface:#eef2e8; --on-surface-variant:#c3cbb9;
+  --outline:#8a9583; --error:#ffb4ab; --error-container:#5c1d1d;
+  --shape-lg:28px; --shape-xl:32px;
 }
+body{background:linear-gradient(-45deg,#11140f,#1d1412,#0f2016,#241410)!important;background-size:400% 400%}
+header::before{
+  content:"";position:absolute;left:0;right:0;top:0;height:14px;
+  background:radial-gradient(circle at 10px 6px,#ff6b6b 4px,transparent 5px) repeat-x;
+  background-size:44px 14px;opacity:.9;pointer-events:none;
+}
+header{position:relative;overflow:hidden}
+.msg.user{background:linear-gradient(135deg,#8a2a1e,#2c5a34)!important;color:var(--on-primary-container)}
+.msg.ai{border-radius:28px 28px 28px 10px}
+.msg.user{border-radius:28px 28px 10px 28px}
+.logo{border-radius:20px!important;background:linear-gradient(135deg,#ff6b6b,#ffd977,#8fe3c0)!important;animation:glow 3s ease-in-out infinite}
+#send{background:linear-gradient(135deg,#ffd977,#ff6b6b)!important}
+.btn{background:linear-gradient(135deg,#ffd977,#ff6b6b)!important}
+.sheet{border-radius:var(--shape-xl)!important}
 *{box-sizing:border-box;margin:0;padding:0}
 body{
   font-family:Roboto,system-ui,sans-serif;color:var(--on-surface);
@@ -177,6 +193,10 @@ textarea::placeholder{color:var(--outline)}
       <input id="m" type="text" placeholder="meta-llama/llama-3.3-70b-instruct:free">
     </div>
     <p>Бесплатные модели в конце названия имеют «:free». Список на openrouter.ai/models (фильтр «Free»). Модели меняются, если одна перестала отвечать, возьми другую из списка.</p>
+    <div class="field">
+      <label for="u">Адрес API</label>
+      <input id="u" type="text" placeholder="https://api.groq.com/openai/v1/chat/completions">
+    </div>
     <div class="actions">
       <button class="btn danger" id="clearBtn">Очистить чат</button>
       <button class="btn text" id="cancelBtn">Отмена</button>
@@ -188,7 +208,8 @@ textarea::placeholder{color:var(--outline)}
 <script>
 const SYSTEM = 'Ты MILOK — дружелюбный ИИ-ассистент. Отвечай на языке пользователя, понятно и по делу.';
 const DEFAULT_MODEL = 'meta-llama/llama-3.3-70b-instruct:free';
-const KEY_STORE = 'milok_key', MODEL_STORE = 'milok_model';
+const DEFAULT_URL = 'https://openrouter.ai/api/v1/chat/completions';
+const KEY_STORE = 'milok_key', MODEL_STORE = 'milok_model', URL_STORE = 'milok_url';
 
 const store = {
   get(k, d){ try { return localStorage.getItem(k) ?? d; } catch { return d; } },
@@ -197,6 +218,7 @@ const store = {
 
 let apiKey = store.get(KEY_STORE, '');
 let model = store.get(MODEL_STORE, DEFAULT_MODEL);
+let apiUrl = store.get(URL_STORE, DEFAULT_URL);
 let history = [];
 let pendingImage = null;
 
@@ -369,7 +391,7 @@ async function send(){
       { role: 'system', content: SYSTEM },
       ...history.map((m, i) => i === history.length - 1 ? m : stripOldImages(m))
     ];
-    const r = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    const r = await fetch(apiUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -400,6 +422,7 @@ $('#send').onclick = send;
 function openSettings(){
   $('#k').value = apiKey;
   $('#m').value = model;
+  $('#u').value = apiUrl;
   $('#settings').classList.add('open');
 }
 $('#settingsBtn').onclick = openSettings;
@@ -407,6 +430,8 @@ $('#cancelBtn').onclick = () => $('#settings').classList.remove('open');
 $('#saveBtn').onclick = () => {
   apiKey = $('#k').value.trim();
   model = $('#m').value.trim() || DEFAULT_MODEL;
+  apiUrl = $('#u').value.trim() || DEFAULT_URL;
+  store.set(URL_STORE, apiUrl);
   store.set(KEY_STORE, apiKey);
   store.set(MODEL_STORE, model);
   updateLabel();
