@@ -203,19 +203,19 @@ textarea::placeholder{color:var(--outline)}
 <div id="settings">
   <div class="sheet">
     <h2>Настройки</h2>
-    <p>Ключ хранится только в этом браузере и никуда не отправляется, кроме openrouter.ai. Ключ получают на openrouter.ai в разделе «Ключи API».</p>
+    <p>Ключ хранится только в этом браузере и отправляется только на указанный ниже адрес API.</p>
     <div class="field">
-      <label for="k">API-ключ OpenRouter</label>
-      <input id="k" type="password" placeholder="sk-or-v1-..." autocomplete="off">
+      <label for="k">API-ключ</label>
+      <input id="k" type="password" placeholder="sk-star-..." autocomplete="off">
     </div>
     <div class="field">
       <label for="m">Модель</label>
-      <input id="m" type="text" placeholder="meta-llama/llama-3.3-70b-instruct:free">
+      <input id="m" type="text" placeholder="gemini-2.0-flash">
     </div>
-    <p>Бесплатные модели в конце названия имеют «:free». Список на openrouter.ai/models (фильтр «Free»). Модели меняются, если одна перестала отвечать, возьми другую из списка.</p>
+    <p>Название модели смотри на сайте ai.starimg.ru в разделе «Доступные модели» и впиши его точно так же.</p>
     <div class="field">
       <label for="u">Адрес API</label>
-      <input id="u" type="text" placeholder="https://api.groq.com/openai/v1/chat/completions">
+      <input id="u" type="text" placeholder="https://ai.starimg.ru/v1/chat/completions">
     </div>
     <div class="actions">
       <button class="btn danger" id="clearBtn">Очистить чат</button>
@@ -227,9 +227,9 @@ textarea::placeholder{color:var(--outline)}
 
 <script>
 const SYSTEM = 'Ты MILOK — дружелюбный ИИ-ассистент. Отвечай на языке пользователя, понятно и по делу.';
-const DEFAULT_MODEL = 'deepseek-chat';
-const DEFAULT_URL = 'https://api.deepseek.com/chat/completions';
-const KEY_STORE = 'milok_key', MODEL_STORE = 'milok_model', URL_STORE = 'milok_url';
+const DEFAULT_MODEL = 'gemini-2.0-flash';
+const DEFAULT_URL = 'https://ai.starimg.ru/v1/chat/completions';
+const KEY_STORE = 'milok_key2', MODEL_STORE = 'milok_model2', URL_STORE = 'milok_url2';
 
 const store = {
   get(k, d){ try { return localStorage.getItem(k) ?? d; } catch { return d; } },
@@ -371,10 +371,10 @@ function stripOldImages(m){
 
 function explainError(e, status){
   if (e instanceof TypeError || /Failed to fetch|NetworkError|Load failed/i.test(e.message)){
-    return 'Не удалось связаться с openrouter.ai. Открой страницу в Chrome или по ссылке GitHub Pages (в режиме просмотра приложения запросы блокируются) и проверь интернет.';
+    return 'Не удалось связаться с сервером API. Открой страницу в Chrome или по ссылке GitHub Pages (в режиме просмотра запросы блокируются), проверь интернет и адрес API в настройках.';
   }
   if (status === 401) return 'Ключ не принят. Проверь его в настройках.';
-  if (status === 402) return 'На аккаунте OpenRouter нет средств для этой модели. Выбери модель с «:free».';
+  if (status === 402) return 'Не хватает токенов или средств на ключе, либо модель недоступна. Проверь баланс и название модели.';
   if (status === 429) return 'Слишком много запросов или лимит бесплатной модели исчерпан. Подожди или выбери другую модель.';
   return e.message;
 }
@@ -469,7 +469,7 @@ $('#settings').onclick = e => {
 
 addMsg('ai', apiKey
   ? 'С Новым годом! Я MILOK. Напиши вопрос или прикрепи картинку.'
-  : 'С Новым годом! Я MILOK. Чтобы начать, открой настройки (значок справа вверху) и вставь ключ OpenRouter.');
+  : 'С Новым годом! Я MILOK. Чтобы начать, открой настройки (значок справа вверху) и вставь API-ключ, адрес и название модели.');
 </script>
 </body>
 </html>
