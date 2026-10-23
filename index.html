@@ -227,9 +227,14 @@ textarea::placeholder{color:var(--outline)}
 
 <script>
 const SYSTEM = 'Ты MILOK — дружелюбный ИИ-ассистент. Отвечай на языке пользователя, понятно и по делу.';
-const DEFAULT_MODEL = 'gemini-2.0-flash';
+const DEFAULT_MODEL = 'gemini-3.6-flash';
+function normUrl(u){
+  u = (u || '').trim().replace(/\/+$/, '');
+  if (!/\/chat\/completions$/.test(u)) u += '/chat/completions';
+  return u;
+}
 const DEFAULT_URL = 'https://ai.starimg.ru/v1/chat/completions';
-const KEY_STORE = 'milok_key2', MODEL_STORE = 'milok_model2', URL_STORE = 'milok_url2';
+const KEY_STORE = 'milok_key2', MODEL_STORE = 'milok_model3', URL_STORE = 'milok_url3';
 
 const store = {
   get(k, d){ try { return localStorage.getItem(k) ?? d; } catch { return d; } },
@@ -371,7 +376,7 @@ function stripOldImages(m){
 
 function explainError(e, status){
   if (e instanceof TypeError || /Failed to fetch|NetworkError|Load failed/i.test(e.message)){
-    return 'Не удалось связаться с сервером API. Открой страницу в Chrome или по ссылке GitHub Pages (в режиме просмотра запросы блокируются), проверь интернет и адрес API в настройках.';
+    return 'Не удалось связаться с сервером API. Открой страницу в Chrome или по ссылке GitHub Pages (в режиме просмотра запросы блокируются), проверь интернет и адрес API в настройках. Запрос шёл на: ' + normUrl(apiUrl);
   }
   if (status === 401) return 'Ключ не принят. Проверь его в настройках.';
   if (status === 402) return 'Не хватает токенов или средств на ключе, либо модель недоступна. Проверь баланс и название модели.';
@@ -411,12 +416,11 @@ async function send(){
       { role: 'system', content: SYSTEM },
       ...history.map((m, i) => i === history.length - 1 ? m : stripOldImages(m))
     ];
-    const r = await fetch(apiUrl, {
+    const r = await fetch(normUrl(apiUrl), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + apiKey,
-        'X-Title': 'MILOK'
+        'Authorization': 'Bearer ' + apiKey
       },
       body: JSON.stringify({ model, messages })
     });
