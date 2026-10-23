@@ -219,6 +219,7 @@ textarea::placeholder{color:var(--outline)}
     </div>
     <div class="actions">
       <button class="btn danger" id="clearBtn">Очистить чат</button>
+      <button class="btn text" id="diagBtn">Проверить связь</button>
       <button class="btn text" id="cancelBtn">Отмена</button>
       <button class="btn" id="saveBtn">Сохранить</button>
     </div>
@@ -460,6 +461,38 @@ $('#saveBtn').onclick = () => {
   store.set(MODEL_STORE, model);
   updateLabel();
   $('#settings').classList.remove('open');
+};
+$('#diagBtn').onclick = async () => {
+  $('#settings').classList.remove('open');
+  const base = normUrl($('#u').value || apiUrl).replace(/\/chat\/completions$/, '');
+  const key = ($('#k').value || apiKey).trim();
+  const out = addMsg('ai', 'Проверяю связь с ' + base);
+  const t = out.querySelector('div');
+  const lines = ['Проверяю связь с ' + base];
+  const say = x => { lines.push(x); t.textContent = lines.join('\n'); chat.scrollTop = chat.scrollHeight; };
+  try {
+    await fetch(base + '/models', { mode: 'no-cors' });
+    say('1. Сервер доступен: да');
+  } catch (e) {
+    say('1. Сервер доступен: НЕТ (' + e.message + ')');
+    say('С этой сети сервер не открывается. Попробуй другую сеть или VPN.');
+    return;
+  }
+  try {
+    const r = await fetch(base + '/models', { headers: { 'Authorization': 'Bearer ' + key } });
+    say('2. Запрос с ключом: HTTP ' + r.status);
+    try {
+      const d = await r.json();
+      const ids = (d.data || []).map(m => m.id).slice(0, 12).join(', ');
+      if (ids) say('Модели: ' + ids);
+      else if (d.error) say('Ответ: ' + (d.error.message || JSON.stringify(d.error)));
+    } catch {}
+  } catch (e) {
+    say('2. Запрос с ключом: ЗАБЛОКИРОВАН браузером (CORS)');
+    say('Сервер доступен, но не разрешает запросы с сайтов. Нужен прокси.');
+    return;
+  }
+  say('Связь есть. Если чат не работает, смотри статус выше.');
 };
 $('#clearBtn').onclick = () => {
   history = [];
