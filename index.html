@@ -1,433 +1,430 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<meta name="theme-color" content="#09090b">
-<title>Polaria beta 1.3</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;900&display=swap">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f1a2e">
+<title>MILOK</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
 <style>
-:root{--bg:#09090b;--pk:#ff4fa3;--pk2:#ff9ccc;--s1:#17141a;--s2:#251c29;--pc:#5a1840;--opc:#ffd9ea;--t:#f6eef2;--t2:#b9a9b3;font-family:Roboto,system-ui,sans-serif}
-*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-*:not(input){-webkit-user-select:none;user-select:none}
-html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--t);overscroll-behavior:none;touch-action:manipulation}
-button,input{font-family:inherit}
-#root{position:fixed;inset:0;overflow:hidden}
-#c{position:absolute;inset:0;width:100%;height:100%;touch-action:none}
-.ov{position:absolute;inset:0;z-index:5;display:flex;overflow:auto;touch-action:pan-y;padding:max(14px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) 14px max(16px,env(safe-area-inset-left));background:#09090b}
-.ov::before,.ov::after{content:"";position:fixed;z-index:-1;width:130vmax;height:130vmax;pointer-events:none;will-change:transform;animation:drift 16s ease-in-out infinite alternate}
-.ov::before{left:-60vmax;top:-85vmax;background:radial-gradient(circle,#ff4fa34d 0,#ff4fa314 38%,transparent 62%)}
-.ov::after{right:-65vmax;bottom:-95vmax;background:radial-gradient(circle,#c2185b55 0,#c2185b18 38%,transparent 62%);animation-duration:22s}
-@keyframes drift{to{transform:translate(14vmax,10vmax)}}
-.ov.dim{background:#09090bdd}.ov.dim::before,.ov.dim::after{display:none}
-.hide{display:none!important}
-.card{margin:auto;width:100%;max-width:400px;display:flex;flex-direction:column;gap:12px}
-h1{margin:0;font-size:clamp(46px,15vw,72px);font-weight:900;letter-spacing:.12em;text-indent:.12em;text-align:center;line-height:1;color:#fff;text-shadow:0 0 12px #ff4fa3,0 0 40px #ff4fa388}
-h2{margin:0;font-size:26px;text-align:center}
-.beta{align-self:center;margin-top:-6px;padding:3px 12px;border-radius:12px;background:#fff;color:#09090b;font-weight:700;font-size:12px}
-.sf{background:linear-gradient(160deg,#1c1422,#0f0b13);border:1px solid #ff4fa330;border-radius:28px;padding:14px;display:flex;flex-direction:column;gap:10px}
-.lbl{font-size:13px;color:var(--t2);font-weight:500}
-canvas.hero{width:100%;height:auto;display:block}
-input[type=text]{flex:1;min-width:0;height:56px;border:0;border-bottom:2px solid var(--pk);border-radius:16px 16px 0 0;background:var(--s2);color:var(--t);font-size:18px;font-weight:500;padding:0 16px;outline:0;-webkit-user-select:text;user-select:text}
-.btn{height:56px;border:0;border-radius:28px;font-size:17px;font-weight:700;cursor:pointer;transition:transform .1s;width:100%}
-.btn:active{transform:scale(.95)}
-.fill{background:linear-gradient(90deg,#ff4fa3,#ff9ccc);color:#2b0518;box-shadow:0 6px 24px #ff4fa355}
-.tonal{background:var(--pc);color:var(--opc)}
-.row{display:flex;gap:10px;align-items:center;justify-content:space-between}
-.skins{display:flex;gap:10px;overflow-x:auto;padding:4px 2px;touch-action:pan-x}
-.sk{width:46px;height:46px;border-radius:50%;flex:none;border:3px solid transparent;display:grid;place-items:center;font-weight:700;color:#fff;font-size:20px}
-.sk.on{border-color:#fff;box-shadow:inset 0 0 0 3px var(--s1),0 0 14px #ff4fa388}
-.sw12{display:grid;grid-template-columns:repeat(6,1fr);gap:8px}
-.sw1{aspect-ratio:1;border-radius:50%;border:2px solid #ffffff26}.sw1.on{border-color:#fff;box-shadow:0 0 12px #ff4fa3}
-.rng{-webkit-appearance:none;appearance:none;width:100%;height:16px;border-radius:8px;background:var(--s2);outline:0;margin:6px 0}
-.rng::-webkit-slider-thumb{-webkit-appearance:none;width:28px;height:28px;border-radius:50%;background:#fff;border:4px solid var(--pk);box-shadow:0 0 10px #ff4fa3}
-.rng::-moz-range-thumb{width:22px;height:22px;border-radius:50%;background:#fff;border:4px solid var(--pk)}
-#hue{background:linear-gradient(90deg,hsl(0,90%,55%),hsl(60,90%,55%),hsl(120,90%,55%),hsl(180,90%,55%),hsl(240,90%,55%),hsl(300,90%,55%),hsl(360,90%,55%))}
-.stat{font-size:13px;color:var(--t2)}
-.top div{display:flex;justify-content:space-between;font-size:15px;padding:3px 0}
-.sw{-webkit-appearance:none;appearance:none;width:52px;height:32px;border-radius:16px;background:var(--s2);border:2px solid #9e8791;position:relative;transition:.2s;flex:none;margin:0}
-.sw::after{content:"";position:absolute;top:6px;left:6px;width:16px;height:16px;border-radius:50%;background:#9e8791;transition:.2s}
-.sw:checked{background:var(--pk);border-color:var(--pk)}
-.sw:checked::after{top:2px;left:22px;width:24px;height:24px;background:#2b0518}
-.seg{display:flex;gap:6px}
-.ch{flex:1;min-height:40px;border-radius:12px;border:1px solid #9e8791;background:none;color:var(--t);font-weight:500;font-size:14px;padding:4px}
-.ch.on{background:var(--pk);border-color:var(--pk);color:#2b0518;font-weight:700}
-input[type=range]:not(.rng){width:100%;accent-color:var(--pk)}
-#game{position:absolute;inset:0;pointer-events:none;z-index:2}
-.chip{position:absolute;background:#17141ae6;border:1px solid #ffffff18;border-radius:18px;padding:8px 14px;font-weight:700;font-size:15px}
-#hud{top:max(12px,env(safe-area-inset-top));left:max(12px,env(safe-area-inset-left));color:var(--pk2);font-size:20px}
-#quit{top:max(12px,env(safe-area-inset-top));left:50%;transform:translateX(-50%);pointer-events:auto;color:var(--t)}
-#lb{top:max(12px,env(safe-area-inset-top));right:max(12px,env(safe-area-inset-right));font-size:12px;font-weight:500;min-width:116px;padding:8px 12px;line-height:1.5}#lb b{color:var(--pk2)}
-#boost{position:absolute;border-radius:50%;border:0;background:radial-gradient(circle at 35% 30%,#fff,#ff9ccc 45%,#ff4fa3);color:#2b0518;pointer-events:auto;display:grid;place-items:center;transform:translate(-50%,-50%);box-shadow:0 0 22px #ff4fa388;touch-action:none}
-#boost.on{transform:translate(-50%,-50%) scale(.9);box-shadow:0 0 40px 6px #fff}
-#boost svg{width:46%;height:46%}
-#stick{position:absolute;width:120px;height:120px;border-radius:50%;border:2px solid #ffffff44;background:#ff4fa31a;margin:-60px 0 0 -60px}
-#knob{position:absolute;left:36px;top:36px;width:48px;height:48px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff,#ff4fa3)}
-#hint{position:absolute;bottom:26%;width:100%;text-align:center;color:var(--t2);font-size:15px;transition:opacity .6s;text-shadow:0 2px 8px #000}
-#game[data-dev=pc] #boost,#game[data-dev=pc] #stick{display:none}
-#game.edit #hud,#game.edit #lb,#game.edit #quit,#game.edit #hint{display:none}
-#editbar{position:absolute;top:14px;left:50%;transform:translateX(-50%);z-index:6;display:flex;gap:12px;align-items:center;background:#17141af2;padding:8px 8px 8px 18px;border-radius:30px;font-weight:500;white-space:nowrap}
-#editbar .btn{width:auto;height:40px;padding:0 20px}
-#toast{position:absolute;z-index:9;left:50%;bottom:24px;transform:translateX(-50%);background:#fff;color:#09090b;padding:10px 18px;border-radius:20px;font-weight:700;font-size:14px;transition:opacity .3s;pointer-events:none;max-width:90%;text-align:center}
-@media (orientation:landscape) and (max-height:520px){
- .card{max-width:760px;display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:start}
- .card>h1,.card>.beta,.card>.btn.fill,.card>.seg[data-k=mode]{grid-column:auto}
- h1{font-size:44px}.btn{height:46px}
+:root{
+  --primary:#ffd27a; --on-primary:#3b2400;
+  --primary-container:#7a3b1f; --on-primary-container:#ffe9c7;
+  --accent:#ff6b6b; --mint:#7fe3c4;
+  --surface:#0f1a2e; --surface-low:#16233b; --surface-container:#1c2d4a;
+  --surface-high:#243a5e; --on-surface:#f1f4fb; --on-surface-variant:#b9c4da;
+  --outline:#6f7f9e; --error:#ffb4ab; --error-container:#5c1d1d;
 }
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  font-family:Roboto,system-ui,sans-serif;color:var(--on-surface);
+  height:100vh;height:100dvh;display:flex;flex-direction:column;overflow:hidden;
+  background:linear-gradient(-45deg,#0f1a2e,#1b2b4f,#2a1f3d,#0f2a2a);
+  background-size:400% 400%;animation:bgshift 18s ease infinite;
+}
+@keyframes bgshift{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
+#snow{position:fixed;inset:0;pointer-events:none;z-index:0}
+.material-icons-round{font-family:'Material Icons Round';font-size:24px;line-height:1;user-select:none}
+.ui{position:relative;z-index:1;display:flex;flex-direction:column;height:100%;min-height:0}
+
+/* top app bar */
+header{
+  display:flex;align-items:center;gap:12px;padding:14px 16px;
+  padding-top:max(14px,env(safe-area-inset-top));
+  background:rgba(22,35,59,.78);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+  border-bottom:1px solid rgba(255,255,255,.06);
+}
+.logo{
+  width:44px;height:44px;border-radius:16px;position:relative;display:grid;place-items:center;
+  background:linear-gradient(135deg,var(--accent),var(--primary));color:#2a1400;
+  box-shadow:0 0 18px rgba(255,210,122,.45);animation:glow 2.4s ease-in-out infinite;
+}
+@keyframes glow{0%,100%{box-shadow:0 0 12px rgba(255,210,122,.35)}50%{box-shadow:0 0 26px rgba(255,107,107,.55)}}
+header h1{font-size:22px;font-weight:700;flex:1;letter-spacing:.5px}
+header h1 span{background:linear-gradient(90deg,var(--primary),var(--accent),var(--mint));-webkit-background-clip:text;background-clip:text;color:transparent;background-size:200% auto;animation:shine 4s linear infinite}
+@keyframes shine{to{background-position:200% center}}
+header small{display:block;font-size:12px;color:var(--on-surface-variant);font-weight:400;letter-spacing:0}
+
+.icon-btn{
+  width:44px;height:44px;border-radius:50%;border:none;background:transparent;
+  color:var(--on-surface-variant);cursor:pointer;display:grid;place-items:center;flex-shrink:0;
+  transition:background .2s,transform .15s;
+}
+.icon-btn:active{background:var(--surface-high);transform:scale(.94)}
+
+/* chat */
+#chat{
+  flex:1;min-height:0;overflow-y:auto;padding:16px 14px;display:flex;flex-direction:column;gap:12px;
+  scroll-behavior:smooth;
+}
+.msg{
+  max-width:86%;padding:12px 16px;border-radius:22px;line-height:1.5;
+  white-space:pre-wrap;word-wrap:break-word;animation:pop .3s cubic-bezier(.2,.8,.2,1);font-size:15px;
+  box-shadow:0 2px 10px rgba(0,0,0,.25);
+}
+.msg.user{align-self:flex-end;background:linear-gradient(135deg,var(--primary-container),#5a2a4a);color:var(--on-primary-container);border-bottom-right-radius:8px}
+.msg.ai{align-self:flex-start;background:var(--surface-high);border-bottom-left-radius:8px;border:1px solid rgba(255,255,255,.05)}
+.msg.error{align-self:flex-start;background:var(--error-container);color:var(--error);border-bottom-left-radius:8px}
+.msg.typing div{display:flex;gap:5px;padding:4px 0}
+.msg.typing i{width:7px;height:7px;border-radius:50%;background:var(--primary);animation:dot 1.2s infinite ease-in-out}
+.msg.typing i:nth-child(2){animation-delay:.2s}.msg.typing i:nth-child(3){animation-delay:.4s}
+@keyframes dot{0%,80%,100%{opacity:.25;transform:translateY(0)}40%{opacity:1;transform:translateY(-4px)}}
+.msg img{display:block;max-width:100%;max-height:280px;border-radius:16px;margin-bottom:8px;object-fit:cover}
+@keyframes pop{from{opacity:0;transform:translateY(8px) scale(.97)}to{opacity:1;transform:none}}
+
+.empty{margin:auto;text-align:center;color:var(--on-surface-variant);padding:24px;animation:float 3s ease-in-out infinite}
+.empty .material-icons-round{font-size:60px;color:var(--primary);margin-bottom:10px;filter:drop-shadow(0 0 12px rgba(255,210,122,.5))}
+.empty h2{font-size:22px;font-weight:700;color:var(--on-surface);margin-bottom:6px}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+
+/* input bar */
+#bar{
+  background:rgba(22,35,59,.85);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+  padding:10px 12px;padding-bottom:max(12px,env(safe-area-inset-bottom));
+  display:flex;flex-direction:column;gap:8px;border-top:1px solid rgba(255,255,255,.06);
+}
+#preview{display:none;align-items:center;gap:10px;padding:0 6px}
+#preview img{height:56px;width:56px;border-radius:14px;object-fit:cover}
+#preview span{font-size:13px;color:var(--on-surface-variant);flex:1}
+.row{
+  display:flex;align-items:flex-end;gap:4px;background:var(--surface-high);
+  border-radius:30px;padding:6px;border:1px solid rgba(255,255,255,.06);
+  transition:box-shadow .2s;
+}
+.row:focus-within{box-shadow:0 0 0 2px rgba(255,210,122,.35)}
+textarea{
+  flex:1;background:transparent;border:none;outline:none;color:inherit;font:inherit;
+  font-size:15px;resize:none;max-height:140px;padding:11px 8px;line-height:1.4;
+}
+textarea::placeholder{color:var(--outline)}
+#send{background:linear-gradient(135deg,var(--primary),var(--accent));color:var(--on-primary);box-shadow:0 4px 14px rgba(255,107,107,.35)}
+#send:disabled{opacity:.35;box-shadow:none}
+
+/* settings */
+#settings{
+  position:fixed;inset:0;background:rgba(5,10,20,.6);backdrop-filter:blur(4px);display:none;
+  align-items:center;justify-content:center;padding:20px;z-index:10;
+}
+#settings.open{display:flex}
+.sheet{
+  background:var(--surface-container);border-radius:28px;padding:24px;width:100%;
+  max-width:420px;display:flex;flex-direction:column;gap:16px;animation:pop .3s ease;
+  border:1px solid rgba(255,255,255,.08);box-shadow:0 20px 60px rgba(0,0,0,.5);
+}
+.sheet h2{font-size:22px;font-weight:700}
+.sheet p{font-size:13px;color:var(--on-surface-variant);line-height:1.5}
+.field{display:flex;flex-direction:column;gap:6px}
+.field label{font-size:12px;color:var(--primary);letter-spacing:.3px}
+.field input{
+  background:var(--surface-high);border:1px solid var(--outline);border-radius:14px;
+  padding:14px;color:inherit;font:inherit;font-size:14px;outline:none;
+}
+.field input:focus{border-color:var(--primary)}
+.actions{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap}
+.btn{
+  padding:10px 20px;border-radius:20px;border:none;background:linear-gradient(135deg,var(--primary),var(--accent));
+  color:var(--on-primary);font:inherit;font-weight:700;cursor:pointer;font-size:14px;
+}
+.btn.text{background:transparent;color:var(--primary)}
+.btn.danger{background:transparent;color:var(--error);margin-right:auto}
 </style>
 </head>
 <body>
-<div id="root">
-<canvas id="c"></canvas>
-<div id="game" class="hide">
-  <div class="chip" id="hud">10</div>
-  <button class="chip" id="quit">Меню</button>
-  <div class="chip" id="lb"></div>
-  <div id="hint">Води пальцем — змейка едет к стрелке<br>Кнопка ⚡ — ускорение</div>
-  <div id="stick" class="hide"><div id="knob"></div></div>
-  <button id="boost" aria-label="Ускорение"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M13 2 4 14h6l-1 8 9-12h-6z"/></svg></button>
+<canvas id="snow"></canvas>
+
+<div class="ui">
+  <header>
+    <div class="logo"><span class="material-icons-round">auto_awesome</span></div>
+    <h1><span>MILOK</span><small id="modelLabel"></small></h1>
+    <button class="icon-btn" id="settingsBtn" aria-label="Настройки"><span class="material-icons-round">tune</span></button>
+  </header>
+
+  <main id="chat">
+    <div class="empty" id="emptyState">
+      <span class="material-icons-round">ac_unit</span>
+      <h2>С Новым годом!</h2>
+      <p>Задай вопрос или прикрепи картинку</p>
+    </div>
+  </main>
+
+  <footer id="bar">
+    <div id="preview">
+      <img id="previewImg" alt="">
+      <span>Картинка прикреплена</span>
+      <button class="icon-btn" id="removeImg" aria-label="Убрать картинку"><span class="material-icons-round">close</span></button>
+    </div>
+    <div class="row">
+      <button class="icon-btn" id="attach" aria-label="Прикрепить фото"><span class="material-icons-round">add_photo_alternate</span></button>
+      <input type="file" id="file" accept="image/*" hidden>
+      <textarea id="input" rows="1" placeholder="Сообщение"></textarea>
+      <button class="icon-btn" id="send" aria-label="Отправить"><span class="material-icons-round">send</span></button>
+    </div>
+  </footer>
 </div>
-<div id="editbar" class="hide"><span>Перетащи кнопку куда удобно</span><button class="btn fill" id="editdone">Готово</button></div>
 
-<div class="ov" id="welcome"><div class="card">
-  <h1>POLARIA</h1><span class="beta">beta 1.3</span>
-  <canvas id="pv0" class="hero" width="320" height="130"></canvas>
-  <div class="sf"><span class="lbl">Выбери свой ник</span><div class="row"><input type="text" id="nm" maxlength="12" placeholder="Например, Полина" autocomplete="off" enterkeyhint="go"><button class="btn tonal" id="dice" style="width:56px;flex:none;padding:0;font-size:24px">🎲</button></div><span class="stat">Не пишется? Нажми 🎲 — придумаем ник сами</span></div>
-  <button class="btn fill" id="go1">Продолжить</button>
-</div></div>
-
-<div class="ov hide" id="menu"><div class="card">
-  <h1>POLARIA</h1><span class="beta">beta 1.3</span>
-  <div class="sf"><canvas id="pv" class="hero" width="320" height="100"></canvas>
-    <div class="row"><button class="btn tonal" id="nick" style="height:44px;width:auto;padding:0 18px">Ник</button><span class="stat" id="dv"></span></div></div>
-  <div class="sf"><span class="lbl">Скин</span><div class="skins" id="skins"></div></div>
-  <div class="sf hide" id="cust"><div class="seg" id="slot"><button class="ch" data-s="c1">Цвет 1</button><button class="ch" data-s="c2">Цвет 2</button></div>
-    <div class="sw12" id="sw12"></div><span class="lbl">Оттенок</span><input type="range" class="rng" id="hue" min="0" max="360" value="330"><span class="lbl">Яркость</span><input type="range" class="rng" id="lit" min="12" max="92" value="55"></div>
-  <div class="seg" data-k="mode"><button class="ch" data-v="ai">Против ИИ</button><button class="ch" data-v="net">Онлайн</button></div>
-  <button class="btn fill" id="play">Играть</button>
-  <button class="btn tonal" id="opt">Настройки</button>
-  <div class="sf"><div class="row"><span class="lbl">Онлайн-рейтинг</span><span class="stat" id="st">...</span></div><div class="top" id="top"></div></div>
-</div></div>
-
-<div class="ov hide" id="set"><div class="card">
-  <h2>Настройки</h2>
-  <div class="sf">
-    <span class="lbl">Управление</span>
-    <div class="seg" data-k="ctl"><button class="ch" data-v="arrow">Стрелка (как в оригинале)</button><button class="ch" data-v="joy">Джойстик</button></div>
-    <span class="lbl">Устройство</span>
-    <div class="seg" data-k="dev"><button class="ch" data-v="auto" id="devauto">Авто</button><button class="ch" data-v="phone">Телефон</button><button class="ch" data-v="pc">ПК</button></div>
-    <span class="lbl">Экран (горизонтально — как YouTube; поверни телефон)</span>
-    <div class="seg" data-k="scr"><button class="ch" data-v="auto">Авто</button><button class="ch" data-v="land">Горизонтально</button></div>
-    <span class="lbl">Размер кнопки ускорения</span>
-    <input type="range" data-k="bs" min="64" max="150" step="2">
-    <button class="btn tonal" id="edit">Переместить кнопку ускорения</button>
+<div id="settings">
+  <div class="sheet">
+    <h2>Настройки</h2>
+    <p>Ключ хранится только в этом браузере и никуда не отправляется, кроме openrouter.ai. Ключ получают на openrouter.ai в разделе «Ключи API».</p>
+    <div class="field">
+      <label for="k">API-ключ OpenRouter</label>
+      <input id="k" type="password" placeholder="sk-or-v1-..." autocomplete="off">
+    </div>
+    <div class="field">
+      <label for="m">Модель</label>
+      <input id="m" type="text" placeholder="meta-llama/llama-3.3-70b-instruct:free">
+    </div>
+    <p>Бесплатные модели в конце названия имеют «:free». Список на openrouter.ai/models (фильтр «Free»). Модели меняются, если одна перестала отвечать, возьми другую из списка.</p>
+    <div class="actions">
+      <button class="btn danger" id="clearBtn">Очистить чат</button>
+      <button class="btn text" id="cancelBtn">Отмена</button>
+      <button class="btn" id="saveBtn">Сохранить</button>
+    </div>
   </div>
-  <div class="sf">
-    <span class="lbl">Графика (Авто сама упрощается, если лагает)</span>
-    <div class="seg" data-k="q"><button class="ch" data-v="auto">Авто</button><button class="ch" data-v="high">Высок.</button><button class="ch" data-v="mid">Средн.</button><button class="ch" data-v="low">Низк.</button></div>
-    <div class="row"><span>Свечение змеек</span><input type="checkbox" class="sw" data-k="glow"></div>
-    <div class="row"><span>Вибрация</span><input type="checkbox" class="sw" data-k="vib"></div>
-    <span class="lbl">Ботов на арене</span>
-    <div class="seg" data-k="bots"><button class="ch" data-v="8">8</button><button class="ch" data-v="15">15</button><button class="ch" data-v="25">25</button></div>
-    <span class="lbl">Чувствительность поворота</span>
-    <input type="range" data-k="sens" min="0.6" max="1.8" step="0.1">
-  </div>
-  <button class="btn fill" id="done">Готово</button>
-</div></div>
-
-<div class="ov dim hide" id="over"><div class="card">
-  <h2>Игра окончена</h2>
-  <div class="sf" style="align-items:center;text-align:center"><span class="lbl">Твоя длина</span><b id="os" style="font-size:60px;color:var(--pk2)">0</b><span class="stat">Рекорд: <b id="ob">0</b></span></div>
-  <button class="btn fill" id="again">Ещё раз</button>
-  <button class="btn tonal" id="tomenu">В меню</button>
-</div></div>
-<div id="toast" style="opacity:0"></div>
 </div>
 
 <script>
-/* Firebase: вставь конфиг (см. README.md). Нужен databaseURL. */
-const FB=null; // {apiKey:"",authDomain:"",databaseURL:"",projectId:"",appId:""}
+const SYSTEM = 'Ты MILOK — дружелюбный ИИ-ассистент. Отвечай на языке пользователя, понятно и по делу.';
+const DEFAULT_MODEL = 'meta-llama/llama-3.3-70b-instruct:free';
+const KEY_STORE = 'milok_key', MODEL_STORE = 'milok_model';
 
-const $=i=>document.getElementById(i);
-const cv=$('c'),g=cv.getContext('2d',{alpha:false}),pv=$('pv'),pg=pv.getContext('2d'),pv0=$('pv0'),pg0=pv0.getContext('2d');
-const R=2600;
-/* Палитра: розовый, белый, чёрный, малиновый, серый */
-const PRE=[['#ff4fa3','#ffffff'],['#ff9ccc','#ff4fa3'],['#e91e63','#ad1457'],['#ffffff','#bdbdbd'],['#ff4fa3','#1b1b20'],['#9e9e9e','#ff4fa3'],['#c2185b','#ffffff'],['#3a3a44','#ff4fa3']];
-const FP=['#ff4fa3','#ff9ccc','#ffffff','#e91e63','#ffd1e6','#c2185b'];
-const SW=['#ff4fa3','#ff9ccc','#ffd1e6','#ffffff','#e91e63','#c2185b','#880e4f','#bdbdbd','#8a8a92','#4a4a52','#1b1b20','#000000'];
-const NM=['Алиса','Мия','Зефир','Кира','Нова','Люси','Рэй','Соня','Мишка','Вега','Лео','Эмми','Тоша','Пикси','Юки','Лана'];
-let sv={};try{sv=JSON.parse(localStorage.getItem('polaria'))||{}}catch(e){}
-const cfg=Object.assign({name:'',skin:0,c1:'#ff4fa3',c2:'#ffffff',glow:1,vib:1,bots:15,sens:1,best:0,dev:'auto',scr:'auto',ctl:'arrow',q:'auto',bs:96,bx:.86,by:.74,mode:'ai'},sv);
-const coarse=matchMedia('(pointer:coarse)').matches||navigator.maxTouchPoints>1;
-const dev=()=>cfg.dev==='auto'?(coarse?'phone':'pc'):cfg.dev;
-let W,H,DPR,ql=1,vg,wg,gridPat,z=1,T=0,S=[],F=[],PT=[],P,cam={x:0,y:0},running=0,edit=0,last=0,lbT=0,fps=60,lowT=0,inp={boost:0},tp=null,stk=null,keys={};
-const rnd=n=>Math.random()*n|0,clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
-const myC=()=>cfg.skin>=8?[cfg.c1,cfg.c2]:PRE[cfg.skin];
-function save(){try{localStorage.setItem('polaria',JSON.stringify(cfg))}catch(e){}cloud()}
-function toast(m){const t=$('toast');t.textContent=m;t.style.opacity=1;clearTimeout(toast.h);toast.h=setTimeout(()=>t.style.opacity=0,2600)}
+const store = {
+  get(k, d){ try { return localStorage.getItem(k) ?? d; } catch { return d; } },
+  set(k, v){ try { localStorage.setItem(k, v); } catch {} }
+};
 
-/* ===== СПРАЙТЫ (быстрая отрисовка) ===== */
-const SP={},cnv=n=>{const c=document.createElement('canvas');c.width=c.height=n;return c},spr=(k,f)=>SP[k]||(SP[k]=f());
-const ball=c=>spr('b'+c,()=>{const k=cnv(64),x=k.getContext('2d');x.fillStyle=c;x.beginPath();x.arc(32,32,31,0,6.283);x.fill();
-  const q=x.createRadialGradient(23,21,1,32,32,31);q.addColorStop(0,'rgba(255,255,255,.65)');q.addColorStop(.4,'rgba(255,255,255,0)');q.addColorStop(.78,'rgba(0,0,0,0)');q.addColorStop(1,'rgba(0,0,0,.45)');x.fillStyle=q;x.fill();return k});
-const glow=(c,core)=>spr('g'+c+core,()=>{const k=cnv(64),x=k.getContext('2d');x.fillStyle=c;x.fillRect(0,0,64,64);
-  if(core){x.fillStyle='rgba(255,255,255,.8)';x.beginPath();x.arc(32,32,6,0,6.283);x.fill()}
-  x.globalCompositeOperation='destination-in';const q=x.createRadialGradient(32,32,0,32,32,32);
-  if(core){q.addColorStop(0,'#000');q.addColorStop(.36,'#000');q.addColorStop(.46,'rgba(0,0,0,.5)');q.addColorStop(.75,'rgba(0,0,0,.14)');q.addColorStop(1,'rgba(0,0,0,0)')}
-  else{q.addColorStop(0,'rgba(0,0,0,.75)');q.addColorStop(1,'rgba(0,0,0,0)')}
-  x.fillStyle=q;x.fillRect(0,0,64,64);return k});
-const gem=c=>spr('s'+c,()=>{const k=cnv(64),x=k.getContext('2d');x.drawImage(glow(c,0),0,0);x.fillStyle=c;x.beginPath();
-  for(let i=0;i<8;i++){const a=i*Math.PI/4-Math.PI/2,r=i%2?6:15;x.lineTo(32+Math.cos(a)*r,32+Math.sin(a)*r)}x.closePath();x.fill();
-  x.fillStyle='rgba(255,255,255,.85)';x.beginPath();x.arc(32,32,3.5,0,6.283);x.fill();return k});
+let apiKey = store.get(KEY_STORE, '');
+let model = store.get(MODEL_STORE, DEFAULT_MODEL);
+let history = [];
+let pendingImage = null;
 
-/* ===== ЭКРАН / КАЧЕСТВО ===== */
-function setQ(){ql=cfg.q==='auto'?(coarse?1:2):{high:2,mid:1,low:0}[cfg.q]}
-function layout(){
-  W=innerWidth;H=innerHeight;DPR=Math.min(devicePixelRatio||1,[1,1.5,2][ql]);
-  cv.width=W*DPR|0;cv.height=H*DPR|0;
-  vg=g.createRadialGradient(W/2,H/2,Math.min(W,H)*.35,W/2,H/2,Math.max(W,H)*.75);vg.addColorStop(0,'#0000');vg.addColorStop(1,'#000000b0');
-  wg=g.createRadialGradient(0,0,0,0,0,R);wg.addColorStop(0,'#2a1230');wg.addColorStop(1,'#10081a');
-  const t=cnv(100),x=t.getContext('2d');x.fillStyle='rgba(255,255,255,.13)';x.beginPath();x.arc(50,50,2.2,0,6.283);x.fill();x.fillStyle='rgba(255,79,163,.16)';x.beginPath();x.arc(0,0,2.2,0,6.283);x.arc(100,100,2.2,0,6.283);x.fill();
-  gridPat=g.createPattern(t,'repeat');place()}
-function place(){const b=$('boost');b.style.width=b.style.height=cfg.bs+'px';b.style.left=cfg.bx*100+'%';b.style.top=cfg.by*100+'%';$('game').dataset.dev=edit?'phone':dev()}
-addEventListener('resize',layout);addEventListener('orientationchange',()=>setTimeout(layout,250));
+const $ = s => document.querySelector(s);
+const chat = $('#chat');
 
-/* ===== ОБЪЕКТЫ ===== */
-function rndPt(){const a=Math.random()*6.283,d=Math.sqrt(Math.random())*(R-80);return[Math.cos(a)*d,Math.sin(a)*d]}
-function mkFood(x,y,v,c){
-  if(!v){const q=rnd(100);v=q<68?1:q<92?2:4}
-  c=c||FP[rnd(FP.length)];const r=v==1?3+Math.random():v==2?5:v==4?7.5:4+Math.min(7,v*.5);
-  F.push({x,y,v,r,ph:Math.random()*6.28,s:v>=2?gem(c):glow(c,1),d:v>=2?r*6:r*5.6})}
-function mk(name,c,bot){
-  const p=rndPt(),a=Math.random()*6.283,s={name,c,bot,x:p[0],y:p[1],a,ta:a,sc:bot?Math.random()*60:0,seg:[],boost:0,bo:0,t:0,alive:1,r:9,inv:2};
-  for(let i=0;i<12;i++)s.seg.push({x:s.x-Math.cos(a)*i*5,y:s.y-Math.sin(a)*i*5});return s}
-const mkBot=()=>mk(NM[rnd(NM.length)],PRE[rnd(PRE.length)],1);
-function burst(x,y,c,n,sp){for(let i=0;i<n&&PT.length<120;i++){const a=Math.random()*6.28,v=Math.random()*sp;PT.push({x,y,vx:Math.cos(a)*v,vy:Math.sin(a)*v,l:.4+Math.random()*.5,s:glow(c,1)})}}
-function kill(s){
-  s.alive=0;const sg=s.seg,c=s.c,k=Math.max(1,Math.ceil(sg.length/40)),v=Math.max(1.5,s.sc*.7/(sg.length/k));
-  for(let i=0;i<sg.length;i+=k)mkFood(sg[i].x+Math.random()*8-4,sg[i].y+Math.random()*8-4,v,c[(i/k|0)%c.length]);
-  burst(s.x||sg[0].x,s.y||sg[0].y,c[0],24,240);
-  if(s===P){if(cfg.vib&&navigator.vibrate)navigator.vibrate(120);if(me)me.remove();setTimeout(over,900)}
-  else if(!s.remote)setTimeout(()=>{const i=S.indexOf(s);if(i>=0)S[i]=mkBot()},2500)}
-function hit(b,px,py){
-  for(const o of S){if(o===b||!o.alive)continue;const sg=o.seg;if(!sg.length)continue;const m=o.r+b.r+16,dx=sg[0].x-px,dy=sg[0].y-py,len=sg.length*o.r*(o.remote?1.3:.6)+m;
-    if(dx*dx+dy*dy>len*len)continue;
-    for(let i=0;i<sg.length;i+=2){const ex=sg[i].x-px,ey=sg[i].y-py;if(ex*ex+ey*ey<m*m)return 1}}return 0}
+function updateLabel(){ $('#modelLabel').textContent = model; }
+updateLabel();
 
-/* ===== ИИ ===== */
-function ai(b,dt){
-  b.t-=dt;if(b.t>0)return;b.t=.14+Math.random()*.2;
-  let tx=null,ty,bo=0;
-  for(const o of S){if(o===b||!o.alive)continue;const dx=o.x-b.x,dy=o.y-b.y,d=dx*dx+dy*dy;
-    if(d<420*420&&o.sc<b.sc*.7&&b.sc>25){tx=o.x+Math.cos(o.a)*140;ty=o.y+Math.sin(o.a)*140;bo=d<260*260;break}}
-  if(tx===null){let bd=500*500;for(const f of F){const dx=f.x-b.x,dy=f.y-b.y,d=dx*dx+dy*dy-f.v*900;if(d<bd){bd=d;tx=f.x;ty=f.y}}}
-  let a=tx===null?b.a+(Math.random()-.5):Math.atan2(ty-b.y,tx-b.x),dg=0;const L=70+b.r*3;
-  for(const off of[0,.8,-.8,1.6,-1.6,2.4]){const aa=a+off,px=b.x+Math.cos(aa)*L,py=b.y+Math.sin(aa)*L;
-    if(px*px+py*py<(R-90)*(R-90)&&!hit(b,px,py)){a=aa;break}if(off===0)dg=1}
-  b.ta=a;b.boost=bo||(dg&&Math.random()<.5)?1:0}
+/* ---------- snow ---------- */
+(function snow(){
+  const c = document.getElementById('snow'), x = c.getContext('2d');
+  let w, h, flakes = [];
+  function resize(){
+    w = c.width = innerWidth * devicePixelRatio;
+    h = c.height = innerHeight * devicePixelRatio;
+    flakes = Array.from({length: Math.min(90, Math.floor(innerWidth / 8))}, () => spawn(true));
+  }
+  function spawn(init){
+    return {
+      x: Math.random() * w,
+      y: init ? Math.random() * h : -10,
+      r: (Math.random() * 2.2 + 0.8) * devicePixelRatio,
+      s: (Math.random() * 0.6 + 0.3) * devicePixelRatio,
+      d: Math.random() * Math.PI * 2,
+      a: Math.random() * 0.5 + 0.4
+    };
+  }
+  function frame(){
+    x.clearRect(0, 0, w, h);
+    for (const f of flakes){
+      f.d += 0.01;
+      f.y += f.s;
+      f.x += Math.sin(f.d) * 0.4 * devicePixelRatio;
+      if (f.y > h + 10) Object.assign(f, spawn(false));
+      x.globalAlpha = f.a;
+      x.fillStyle = '#ffffff';
+      x.beginPath();
+      x.arc(f.x, f.y, f.r, 0, Math.PI * 2);
+      x.fill();
+    }
+    requestAnimationFrame(frame);
+  }
+  addEventListener('resize', resize);
+  resize();
+  frame();
+})();
 
-/* ===== ОБНОВЛЕНИЕ ===== */
-let nf=700;
-function update(dt){
-  if(P.alive){const t=(keys.ArrowRight||keys.KeyD?1:0)-(keys.ArrowLeft||keys.KeyA?1:0);if(t)P.ta=P.a+t*.9;
-    inp.boost=inp.boost||keys.Space||keys.ShiftLeft||keys.ArrowUp||keys.KeyW?1:0}
-  for(const s of S){if(!s.alive)continue;
-    if(s.remote){const tg=s.tg||[],n=tg.length>>1;
-      for(let i=0;i<n;i++){const q=s.seg[i];if(!q)s.seg[i]={x:tg[2*i],y:tg[2*i+1]};else{q.x+=(tg[2*i]-q.x)*Math.min(1,dt*10);q.y+=(tg[2*i+1]-q.y)*Math.min(1,dt*10)}}
-      s.seg.length=n;if(n){s.x=s.seg[0].x;s.y=s.seg[0].y}s.r=8+Math.min(14,Math.sqrt(s.sc)*.45);continue}
-    if(s.bot)ai(s,dt);else s.boost=inp.boost||(keys.Space||keys.ShiftLeft||keys.ArrowUp||keys.KeyW?1:0);
-    s.inv=Math.max(0,s.inv-dt);s.r=8+Math.min(14,Math.sqrt(s.sc)*.45);
-    const tr=(s===P?cfg.sens:1)*Math.max(2.2,4.8-s.r*.12);
-    let d=s.ta-s.a;d=Math.atan2(Math.sin(d),Math.cos(d));const m=tr*dt;s.a+=Math.abs(d)<m?d:Math.sign(d)*m;
-    const bo=s.bo=s.boost&&s.sc>3?1:0;if(bo)s.sc-=7*dt;
-    const v=(bo?290:160)*dt;s.x+=Math.cos(s.a)*v;s.y+=Math.sin(s.a)*v;
-    const sg=s.seg,sp=s.r*.6;sg[0].x=s.x;sg[0].y=s.y;
-    for(let i=1;i<sg.length;i++){const p=sg[i-1],q=sg[i],dx=q.x-p.x,dy=q.y-p.y,l=Math.hypot(dx,dy);if(l>sp){q.x=p.x+dx/l*sp;q.y=p.y+dy/l*sp}}
-    const want=Math.min(260,12+Math.floor(s.sc*.4));
-    while(sg.length<want){const t=sg[sg.length-1];sg.push({x:t.x,y:t.y})}
-    while(sg.length>want&&sg.length>12)sg.pop();
-    for(let i=F.length-1;i>=0;i--){const f=F[i],dx=f.x-s.x,dy=f.y-s.y,m=s.r+f.r+10;
-      if(dx*dx+dy*dy<m*m){s.sc+=f.v;if(s===P){burst(f.x,f.y,'#ff9ccc',3,80);if(cfg.vib&&navigator.vibrate&&Math.random()<.15)navigator.vibrate(4)}F[i]=F[F.length-1];F.pop()}}}
-  if(F.length>nf*2.2)F.splice(0,250);
-  for(let k=0;F.length<nf&&k<8;k++){const p=rndPt();mkFood(p[0],p[1])}
-  for(const a of S){if(!a.alive||a.inv>0||a.remote)continue;
-    let dead=a.x*a.x+a.y*a.y>R*R;
-    if(!dead)for(const b of S){if(b===a||!b.alive)continue;const sg=b.seg;if(!sg.length)continue;const lim=(a.r+b.r)*.8,dx=sg[0].x-a.x,dy=sg[0].y-a.y,len=sg.length*b.r*(b.remote?1.3:.6)+lim;
-      if(dx*dx+dy*dy>len*len)continue;
-      for(let i=b.remote?0:1;i<sg.length;i++){const ex=sg[i].x-a.x,ey=sg[i].y-a.y;if(ex*ex+ey*ey<lim*lim){dead=1;break}}
-      if(dead)break}
-    if(dead)kill(a)}
-  for(let i=PT.length-1;i>=0;i--){const p=PT[i];p.x+=p.vx*dt;p.y+=p.vy*dt;p.vx*=.95;p.vy*=.95;if((p.l-=dt)<=0){PT[i]=PT[PT.length-1];PT.pop()}}
-  if(me&&P.alive){sendT-=dt;if(sendT<=0){sendT=.12;const gg=[];for(let i=0;i<P.seg.length&&gg.length<200;i+=2)gg.push(Math.round(P.seg[i].x),Math.round(P.seg[i].y));
-    me.set({n:P.name,c:P.c,s:Math.floor(P.sc),a:+P.a.toFixed(2),b:P.bo,g:gg})}}
-  lbT-=dt;if(lbT<=0){lbT=.4;$('hud').textContent=Math.floor(P.sc)+10;
-    const al=S.filter(s=>s.alive).sort((a,b)=>b.sc-a.sc),ix=al.indexOf(P);
-    $('lb').innerHTML=al.slice(0,5).map((s,i)=>(s===P?'<b>':'<span>')+(i+1)+'. '+String(s.name).replace(/[<>&]/g,'')+' '+(Math.floor(s.sc)+10)+(s===P?'</b>':'</span>')).join('<br>')+(ix>4?'<br><b>'+(ix+1)+'. Ты</b>':'')}}
+/* ---------- chat ---------- */
+function addMsg(role, text, img){
+  const empty = $('#emptyState');
+  if (empty) empty.remove();
+  const d = document.createElement('div');
+  d.className = 'msg ' + role;
+  if (img){
+    const i = document.createElement('img');
+    i.src = img; i.alt = '';
+    d.appendChild(i);
+  }
+  const t = document.createElement('div');
+  t.textContent = text;
+  d.appendChild(t);
+  chat.appendChild(d);
+  chat.scrollTop = chat.scrollHeight;
+  return d;
+}
 
-/* ===== ОТРИСОВКА ===== */
-function drawSnake(g,s,gm){
-  const sg=s.seg,c=s.c,r=s.r,n=sg.length;if(!n)return;
-  if(gm){const h=sg[0],L=n*r*(s.remote?1.3:.6)+r*4;if(Math.abs(h.x-cam.x)>gm.vw+L||Math.abs(h.y-cam.y)>gm.vh+L)return}
-  const al=s.inv>0&&((T*8|0)%2)?.45:1,bo=s.bo,bl=[ball(c[0]),ball(c[1]||c[0])];
-  if(bo||(cfg.glow&&(ql>=2||!gm))){const hs=glow(bo?'#ffffff':c[0],0),st=bo?2:3,d=r*(bo?4.8:4);
-    g.globalCompositeOperation='lighter';g.globalAlpha=al*(bo?.6+.2*Math.sin(T*20):.32);
-    for(let i=0;i<n;i+=st){const p=sg[i];if(gm&&(Math.abs(p.x-cam.x)>gm.vw||Math.abs(p.y-cam.y)>gm.vh))continue;g.drawImage(hs,p.x-d,p.y-d,d*2,d*2)}
-    g.globalCompositeOperation='source-over'}
-  g.globalAlpha=al;
-  for(let i=n-1;i>=0;i--){const p=sg[i];if(gm&&(Math.abs(p.x-cam.x)>gm.vw||Math.abs(p.y-cam.y)>gm.vh))continue;
-    const q=r*(.62+.38*Math.min(1,(n-i)/10))*(i?1:1.08);g.drawImage(bl[(i/3|0)%2],p.x-q,p.y-q,q*2,q*2)}
-  const h=sg[0];
-  for(let k=-1;k<2;k+=2){const ex=h.x+Math.cos(s.a+k*.75)*r*.62,ey=h.y+Math.sin(s.a+k*.75)*r*.62;
-    g.fillStyle='#fff';g.beginPath();g.arc(ex,ey,r*.36,0,6.283);g.fill();
-    g.fillStyle='#09090b';g.beginPath();g.arc(ex+Math.cos(s.a)*r*.12,ey+Math.sin(s.a)*r*.12,r*.19,0,6.283);g.fill()}
-  if(gm&&s.name){g.globalAlpha=.85;g.fillStyle='#fff';g.font='500 '+(13/z)+'px Roboto,sans-serif';g.textAlign='center';g.fillText(s.name,h.x,h.y-r-8/z)}
-  g.globalAlpha=1}
+function setTyping(el){
+  el.classList.add('typing');
+  el.querySelector('div').innerHTML = '<i></i><i></i><i></i>';
+}
 
-function draw(){
-  g.setTransform(DPR,0,0,DPR,0,0);g.fillStyle='#060408';g.fillRect(0,0,W,H);
-  g.translate(W/2,H/2);g.scale(z,z);g.translate(-cam.x,-cam.y);
-  const vw=W/2/z+40,vh=H/2/z+40;
-  g.fillStyle=ql?wg:'#150b1a';g.beginPath();g.arc(0,0,R,0,6.283);g.fill();
-  g.globalAlpha=ql>1?.55+.25*Math.sin(T*1.5):.6;g.fillStyle=gridPat;g.fill();
-  g.strokeStyle='#ff4fa3';g.globalAlpha=.22;g.lineWidth=70;g.beginPath();g.arc(0,0,R+35,0,6.283);g.stroke();
-  g.globalAlpha=.95;g.lineWidth=14;g.beginPath();g.arc(0,0,R+7,0,6.283);g.stroke();g.globalAlpha=1;
-  for(const f of F){if(Math.abs(f.x-cam.x)>vw||Math.abs(f.y-cam.y)>vh)continue;
-    const d=f.d*(1+.15*Math.sin(T*3+f.ph));g.drawImage(f.s,f.x-d/2,f.y-d/2+Math.sin(T*2+f.ph)*1.5,d,d)}
-  for(const p of PT){g.globalAlpha=Math.min(1,p.l*2);g.drawImage(p.s,p.x-9,p.y-9,18,18)}
-  g.globalAlpha=1;
-  const gm={vw,vh};
-  for(const s of S)if(s.alive&&s!==P)drawSnake(g,s,gm);
-  if(P.alive)drawSnake(g,P,gm);
-  g.setTransform(DPR,0,0,DPR,0,0);
-  if(ql>=2){g.fillStyle=vg;g.fillRect(0,0,W,H)}
-  if(P.alive&&(cfg.ctl==='arrow'||dev()==='pc')){ /* стрелка направления */
-    const hx=W/2+(P.x-cam.x)*z,hy=H/2+(P.y-cam.y)*z,d=P.r*z+44+Math.sin(T*6)*3,a=P.ta;
-    g.save();g.translate(hx+Math.cos(a)*d,hy+Math.sin(a)*d);g.rotate(a);
-    g.beginPath();g.moveTo(16,0);g.lineTo(-9,-13);g.lineTo(-3,0);g.lineTo(-9,13);g.closePath();
-    g.fillStyle='rgba(255,79,163,.35)';g.save();g.scale(1.5,1.5);g.fill();g.restore();g.fillStyle='#fff';g.fill();g.restore();
-    if(tp){g.strokeStyle='rgba(255,255,255,.4)';g.lineWidth=3;g.beginPath();g.arc(tp.x,tp.y,22,0,6.283);g.stroke()}}}
+function compress(file){
+  return new Promise((res, rej) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      const k = Math.min(1, 1024 / Math.max(img.width, img.height));
+      const c = document.createElement('canvas');
+      c.width = Math.round(img.width * k);
+      c.height = Math.round(img.height * k);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(url);
+      res(c.toDataURL('image/jpeg', 0.85));
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); rej(new Error('не удалось открыть картинку')); };
+    img.src = url;
+  });
+}
 
-function drawPreview(){
-  const a=!$('menu').classList.contains('hide')?[pv,pg]:!$('welcome').classList.contains('hide')?[pv0,pg0]:null;if(!a)return;
-  const[c,x]=a,w=c.width,h=c.height,sg=[];x.clearRect(0,0,w,h);
-  for(let i=0;i<9;i++){const px=(i*47+T*14*(1+i%3))%w,py=h*(.15+.7*((i*37%10)/10))+Math.sin(T*1.4+i)*8,d=(i%3?18:30)*(1+.12*Math.sin(T*3+i));x.drawImage(i%3?glow(FP[i%FP.length],1):gem(FP[i%FP.length]),px-d/2,py-d/2,d,d)}
-  for(let i=0;i<32;i++)sg.push({x:w-50-i*8,y:h/2+Math.sin(T*3.3-i*.28)*h*.22});
-  drawSnake(x,{seg:sg,c:myC(),r:13,a:Math.cos(T*3.3)*.3,inv:0,bo:0,name:''},0)}
+$('#attach').onclick = () => $('#file').click();
+$('#file').onchange = async e => {
+  const f = e.target.files[0];
+  e.target.value = '';
+  if (!f) return;
+  try {
+    pendingImage = await compress(f);
+    $('#previewImg').src = pendingImage;
+    $('#preview').style.display = 'flex';
+  } catch (err) {
+    const m = addMsg('error', 'Ошибка: ' + err.message);
+    m.className = 'msg error';
+  }
+};
+$('#removeImg').onclick = () => {
+  pendingImage = null;
+  $('#preview').style.display = 'none';
+};
 
-function loop(t){
-  requestAnimationFrame(loop);const raw=Math.min(.1,(t-last)/1000||.016);last=t;const dt=Math.min(raw,.034);T+=dt;
-  if(running){
-    fps+=(1/raw-fps)*.06;
-    if(cfg.q==='auto'&&ql>0&&T>3){if(fps<38){if((lowT+=raw)>2.5){ql--;lowT=0;fps=55;layout();toast('Графика упрощена для плавности')}}else lowT=0}
-    update(dt);cam.x+=(P.x-cam.x)*Math.min(1,dt*9);cam.y+=(P.y-cam.y)*Math.min(1,dt*9);
-    const m=Math.min(W,H),tz=(m<700?m/500:m/760)/(1+(P.r-8)*.045);z+=(tz-z)*Math.min(1,dt*2);draw()}
-  else if(edit){g.setTransform(DPR,0,0,DPR,0,0);g.fillStyle='#120a15';g.fillRect(0,0,W,H)}
-  else drawPreview()}
+const input = $('#input');
+function autosize(){
+  input.style.height = 'auto';
+  input.style.height = input.scrollHeight + 'px';
+}
+input.addEventListener('input', autosize);
+input.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey){
+    e.preventDefault();
+    send();
+  }
+});
 
-/* ===== УПРАВЛЕНИЕ ===== */
-function steer(x,y){if(P&&P.alive&&(x||y))P.ta=Math.atan2(y,x)}
-cv.addEventListener('pointerdown',e=>{if(!running)return;const x=e.clientX,y=e.clientY;
-  if(e.pointerType==='mouse'){inp.boost=1;steer(x-W/2,y-H/2)}
-  else if(!tp&&!stk){
-    if(cfg.ctl==='arrow'){tp={id:e.pointerId,x,y};steer(x-W/2,y-H/2)}
-    else{stk={id:e.pointerId,ox:x,oy:y};const s=$('stick');s.style.left=x+'px';s.style.top=y+'px';s.classList.remove('hide')}
-    $('hint').style.opacity=0}});
-cv.addEventListener('pointermove',e=>{if(!running)return;const x=e.clientX,y=e.clientY;
-  if(e.pointerType==='mouse')steer(x-W/2,y-H/2);
-  else if(tp&&tp.id===e.pointerId){tp.x=x;tp.y=y;steer(x-W/2,y-H/2)}
-  else if(stk&&stk.id===e.pointerId){const dx=x-stk.ox,dy=y-stk.oy,d=Math.hypot(dx,dy);if(d>8)steer(dx,dy);const k=d>50?50/d:1;$('knob').style.transform='translate('+dx*k+'px,'+dy*k+'px)'}});
-const up=e=>{if(e.pointerType==='mouse')inp.boost=0;
-  else{if(tp&&tp.id===e.pointerId)tp=null;if(stk&&stk.id===e.pointerId){stk=null;$('knob').style.transform='';$('stick').classList.add('hide')}}};
-cv.addEventListener('pointerup',up);cv.addEventListener('pointercancel',up);
-const bb=$('boost');let drag=0;
-bb.addEventListener('pointerdown',e=>{bb.setPointerCapture(e.pointerId);if(edit){drag=1;return}inp.boost=1;bb.classList.add('on');if(cfg.vib&&navigator.vibrate)navigator.vibrate(8)});
-bb.addEventListener('pointermove',e=>{if(drag){cfg.bx=clamp(e.clientX/W,.08,.92);cfg.by=clamp(e.clientY/H,.12,.92);place()}});
-['pointerup','pointercancel'].forEach(n=>bb.addEventListener(n,()=>{drag=0;inp.boost=0;bb.classList.remove('on')}));
-addEventListener('keydown',e=>{if(!running)return;keys[e.code]=1;if(/Arrow|Space/.test(e.code))e.preventDefault()});
-addEventListener('keyup',e=>{keys[e.code]=0;if(!(keys.Space||keys.ShiftLeft||keys.ArrowUp||keys.KeyW))inp.boost=0});
-addEventListener('contextmenu',e=>e.preventDefault());
+function setBusy(b){ $('#send').disabled = b; }
 
-/* ===== ЭКРАНЫ ===== */
-const show=(id,on)=>$(id).classList.toggle('hide',!on);
-function start(){
-  if(cfg.mode==='net'&&!rdb){toast('Онлайн не настроен — смотри README');return}
-  if(cfg.scr==='land'&&dev()==='phone'){
-    try{document.documentElement.requestFullscreen().then(()=>screen.orientation.lock('landscape')).catch(()=>{})}catch(e){}
-    if(innerHeight>innerWidth)toast('Поверни телефон горизонтально ↻')}
-  leaveNet();setQ();layout();nf=[500,650,800][ql];fps=60;lowT=0;T=0;
-  S=[];F=[];PT=[];for(let i=0;i<nf;i++){const p=rndPt();mkFood(p[0],p[1])}
-  P=mk(cfg.name,myC(),0);S.push(P);for(let i=0;i<(cfg.mode==='net'?6:Math.min(cfg.bots,ql?99:10));i++)S.push(mkBot());
-  if(cfg.mode==='net')joinNet();
-  cam.x=P.x;cam.y=P.y;inp.boost=0;lbT=0;edit=0;tp=stk=null;keys={};
-  show('menu',0);show('over',0);show('game',1);$('hint').style.opacity=1;setTimeout(()=>$('hint').style.opacity=0,5000);running=1}
-function toMenu(){running=0;leaveNet();show('game',0);show('over',0);show('menu',1);loadTop()}
-function over(){if(!running)return;const sc=Math.floor(P.sc)+10;if(sc>cfg.best)cfg.best=sc;save();
-  $('os').textContent=sc;$('ob').textContent=cfg.best;show('over',1)}
-$('play').onclick=start;$('again').onclick=start;$('tomenu').onclick=toMenu;$('quit').onclick=toMenu;
-$('opt').onclick=()=>{show('menu',0);show('set',1)};
-$('done').onclick=()=>{show('set',0);show('menu',1);save()};
-$('edit').onclick=()=>{edit=1;show('set',0);show('game',1);$('game').classList.add('edit');show('editbar',1);place()};
-$('editdone').onclick=()=>{edit=0;$('game').classList.remove('edit');show('game',0);show('editbar',0);show('set',1);save();place()};
-const rnick=()=>NM[rnd(NM.length)]+(rnd(90)+10);
-$('dice').onclick=()=>{$('nm').value=rnick()};
-$('go1').onclick=()=>{let v=$('nm').value.trim().slice(0,12);if(!v){v=rnick();$('nm').value=v;toast('Ник: '+v+' (сменить можно в меню)')}cfg.name=v;save();ui();flow()};
-$('nm').addEventListener('keydown',e=>{if(e.key==='Enter')$('go1').click()});
-$('nm').addEventListener('pointerup',()=>$('nm').focus());
-$('nick').onclick=()=>{$('nm').value=cfg.name;show('menu',0);show('welcome',1)};
-function flow(){show('welcome',!cfg.name);show('menu',!!cfg.name)}
+function stripOldImages(m){
+  if (!Array.isArray(m.content)) return m;
+  const text = m.content.filter(p => p.type === 'text').map(p => p.text).join('\n');
+  return { role: m.role, content: text + ' [изображение]' };
+}
 
-/* выбор своих цветов */
-let slot='c1';
-function pk(){
-  const sw=$('sw12');sw.innerHTML='';
-  SW.forEach(c=>{const d=document.createElement('div');d.className='sw1'+(cfg[slot]===c?' on':'');d.style.background=c;d.onclick=()=>{cfg[slot]=c;cfg.skin=8;ui();save()};sw.appendChild(d)});
-  const h=$('hue').value;$('lit').style.background='linear-gradient(90deg,hsl('+h+',90%,12%),hsl('+h+',90%,52%),hsl('+h+',90%,92%))'}
-['hue','lit'].forEach(id=>{$(id).oninput=()=>{cfg[slot]='hsl('+$('hue').value+',90%,'+$('lit').value+'%)';cfg.skin=8;pk();skinsUI()};$(id).onchange=save});
-$('slot').querySelectorAll('.ch').forEach(b=>b.onclick=()=>{slot=b.dataset.s;ui()});
+function explainError(e, status){
+  if (e instanceof TypeError || /Failed to fetch|NetworkError|Load failed/i.test(e.message)){
+    return 'Не удалось связаться с openrouter.ai. Открой страницу в Chrome или по ссылке GitHub Pages (в режиме просмотра приложения запросы блокируются) и проверь интернет.';
+  }
+  if (status === 401) return 'Ключ не принят. Проверь его в настройках.';
+  if (status === 402) return 'На аккаунте OpenRouter нет средств для этой модели. Выбери модель с «:free».';
+  if (status === 429) return 'Слишком много запросов или лимит бесплатной модели исчерпан. Подожди или выбери другую модель.';
+  return e.message;
+}
 
-function skinsUI(){
-  $('skins').innerHTML='';
-  PRE.concat([null]).forEach((c,i)=>{const d=document.createElement('div');d.className='sk'+(i===cfg.skin?' on':'');
-    d.style.background=c?'linear-gradient(135deg,'+c[0]+','+c[1]+')':'linear-gradient(135deg,'+cfg.c1+','+cfg.c2+')';if(!c)d.textContent='+';
-    d.onclick=()=>{cfg.skin=i;ui();save()};$('skins').appendChild(d)})}
-function ui(){
-  setQ();skinsUI();show('cust',cfg.skin>=8);
-  $('slot').querySelectorAll('.ch').forEach(b=>b.classList.toggle('on',b.dataset.s===slot));pk();
-  document.querySelectorAll('[data-k]').forEach(el=>{const k=el.dataset.k;
-    if(el.type==='checkbox')el.checked=!!cfg[k];else if(el.type==='range')el.value=cfg[k];
-    else el.querySelectorAll('.ch').forEach(b=>b.classList.toggle('on',b.dataset.v==cfg[k]))});
-  $('devauto').textContent='Авто ('+(coarse?'телефон':'ПК')+')';$('dv').textContent='Управление: '+(dev()==='phone'?'телефон':'ПК');
-  $('nick').textContent='Ник: '+(cfg.name||'—');layout()}
-document.querySelectorAll('[data-k]').forEach(el=>{const k=el.dataset.k;
-  if(el.type==='checkbox')el.onchange=()=>{cfg[k]=+el.checked};
-  else if(el.type==='range')el.oninput=()=>{cfg[k]=+el.value;place()};
-  else el.querySelectorAll('.ch').forEach(b=>b.onclick=()=>{const v=b.dataset.v;cfg[k]=isNaN(v)?v:+v;ui();save()})});
+async function send(){
+  const text = input.value.trim();
+  if (!text && !pendingImage) return;
+  if (!apiKey){
+    openSettings();
+    return;
+  }
 
-/* ===== FIREBASE: профиль, рейтинг, онлайн-арена ===== */
-let rdb=null,uid=null,me=null,netRef=null,rem={},sendT=0;
-const lib=u=>new Promise(r=>{const s=document.createElement('script');s.src=u;s.onload=s.onerror=r;document.head.appendChild(s)});
-async function initFB(){
-  if(!FB){$('st').textContent='офлайн';return}
-  $('st').textContent='подключение...';
-  try{for(const f of['app','auth','database'])await lib('https://www.gstatic.com/firebasejs/10.12.2/firebase-'+f+'-compat.js');
-    firebase.initializeApp(FB);uid=(await firebase.auth().signInAnonymously()).user.uid;rdb=firebase.database();
-    const d=(await rdb.ref('players/'+uid).get()).val();if(d)Object.assign(cfg,d);
-    $('st').textContent='онлайн';ui();flow();loadTop()}
-  catch(e){rdb=null;$('st').textContent='ошибка Firebase'}}
-function cloud(){if(rdb&&uid)rdb.ref('players/'+uid).set(cfg).catch(()=>{})}
-async function loadTop(){if(!rdb)return;
-  try{const q=await rdb.ref('players').orderByChild('best').limitToLast(5).get(),a=[];q.forEach(c=>{a.unshift(c.val())});
-    $('top').innerHTML=a.map((d,i)=>'<div><span>'+(i+1)+'. '+String(d.name||'Игрок').replace(/[<>&]/g,'')+'</span><b>'+(d.best|0)+'</b></div>').join('')}catch(e){}}
-function joinNet(){
-  netRef=rdb.ref('rooms/main/p');me=netRef.child(uid);me.onDisconnect().remove();
-  netRef.on('value',snap=>{const v=snap.val()||{};
-    for(const k in v){if(k===uid)continue;const d=v[k];let r=rem[k];
-      if(!r){r=rem[k]={remote:1,alive:1,seg:[],r:9,sc:0,a:0,inv:0,bo:0,boost:0};S.push(r)}
-      r.name=d.n||'Игрок';r.c=d.c||PRE[0];r.sc=d.s||0;r.a=d.a||0;r.bo=d.b||0;r.tg=d.g||[]}
-    for(const k in rem)if(!v[k]){const r=rem[k];delete rem[k];if(r.alive&&r.seg.length)kill(r);const i=S.indexOf(r);if(i>=0)S.splice(i,1)}})}
-function leaveNet(){if(netRef){netRef.off();netRef=null}if(me){me.remove();me=null}for(const k in rem){const i=S.indexOf(rem[k]);if(i>=0)S.splice(i,1)}rem={}}
+  const img = pendingImage;
+  const content = img
+    ? [{ type: 'text', text: text || 'Опиши, что на картинке' },
+       { type: 'image_url', image_url: { url: img } }]
+    : text;
 
-$('nm').value=cfg.name;ui();flow();initFB();requestAnimationFrame(loop);
+  addMsg('user', text || '', img);
+  history.push({ role: 'user', content });
+
+  input.value = '';
+  autosize();
+  pendingImage = null;
+  $('#preview').style.display = 'none';
+  setBusy(true);
+
+  const holder = addMsg('ai', '');
+  setTyping(holder);
+
+  let status = 0;
+  try {
+    const messages = [
+      { role: 'system', content: SYSTEM },
+      ...history.map((m, i) => i === history.length - 1 ? m : stripOldImages(m))
+    ];
+    const r = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + apiKey,
+        'X-Title': 'MILOK'
+      },
+      body: JSON.stringify({ model, messages })
+    });
+    status = r.status;
+    const data = await r.json();
+    if (!r.ok) throw new Error(data?.error?.message || ('HTTP ' + r.status));
+    const reply = data.choices?.[0]?.message?.content || '(пустой ответ)';
+    history.push({ role: 'assistant', content: reply });
+    holder.classList.remove('typing');
+    holder.querySelector('div').textContent = reply;
+  } catch (e) {
+    history.pop();
+    holder.className = 'msg error';
+    holder.querySelector('div').textContent = 'Ошибка: ' + explainError(e, status);
+  } finally {
+    setBusy(false);
+    chat.scrollTop = chat.scrollHeight;
+  }
+}
+$('#send').onclick = send;
+
+/* ---------- settings ---------- */
+function openSettings(){
+  $('#k').value = apiKey;
+  $('#m').value = model;
+  $('#settings').classList.add('open');
+}
+$('#settingsBtn').onclick = openSettings;
+$('#cancelBtn').onclick = () => $('#settings').classList.remove('open');
+$('#saveBtn').onclick = () => {
+  apiKey = $('#k').value.trim();
+  model = $('#m').value.trim() || DEFAULT_MODEL;
+  store.set(KEY_STORE, apiKey);
+  store.set(MODEL_STORE, model);
+  updateLabel();
+  $('#settings').classList.remove('open');
+};
+$('#clearBtn').onclick = () => {
+  history = [];
+  chat.innerHTML = '';
+  $('#settings').classList.remove('open');
+  addMsg('ai', 'Чат очищен. Задай новый вопрос!');
+};
+$('#settings').onclick = e => {
+  if (e.target.id === 'settings') $('#settings').classList.remove('open');
+};
+
+addMsg('ai', apiKey
+  ? 'С Новым годом! Я MILOK. Напиши вопрос или прикрепи картинку.'
+  : 'С Новым годом! Я MILOK. Чтобы начать, открой настройки (значок справа вверху) и вставь ключ OpenRouter.');
 </script>
 </body>
 </html>
