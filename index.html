@@ -33,6 +33,26 @@ header{position:relative;overflow:hidden}
 #send{background:linear-gradient(135deg,#ffd977,#ff6b6b)!important}
 .btn{background:linear-gradient(135deg,#ffd977,#ff6b6b)!important}
 .sheet{border-radius:var(--shape-xl)!important}
+.btn.text{background:transparent!important;color:var(--tertiary)!important}
+.btn.danger{background:transparent!important;color:var(--error)!important}
+:root{
+  --primary:#ffffff; --on-primary:#000000;
+  --primary-container:#2b2b2b; --on-primary-container:#ffffff;
+  --secondary:#d9d9d9; --tertiary:#ffffff;
+  --surface:#000000; --surface-low:#0d0d0d; --surface-container:#141414;
+  --surface-high:#1f1f1f; --on-surface:#ffffff; --on-surface-variant:#bdbdbd;
+  --outline:#6b6b6b;
+}
+body{background:linear-gradient(-45deg,#000000,#101010,#1a1a1a,#050505)!important;background-size:400% 400%}
+header{background:rgba(13,13,13,.85)!important;border-bottom:1px solid rgba(255,255,255,.1)!important}
+header::before{background:radial-gradient(circle at 10px 6px,#ffffff 4px,transparent 5px) repeat-x!important}
+.logo{background:linear-gradient(135deg,#ffffff,#bdbdbd)!important;color:#000!important;box-shadow:0 0 18px rgba(255,255,255,.35)!important}
+.msg.user{background:linear-gradient(135deg,#ffffff,#cfcfcf)!important;color:#000!important}
+.msg.ai{background:#1f1f1f!important;border:1px solid rgba(255,255,255,.08)!important}
+.msg.error{background:#2a0000!important;color:#ffb4b4!important}
+#send,.btn{background:#ffffff!important;color:#000!important;box-shadow:none!important}
+#bar{background:rgba(13,13,13,.9)!important;border-top:1px solid rgba(255,255,255,.1)!important}
+.row{background:#1f1f1f!important}
 *{box-sizing:border-box;margin:0;padding:0}
 body{
   font-family:Roboto,system-ui,sans-serif;color:var(--on-surface);
@@ -159,7 +179,7 @@ textarea::placeholder{color:var(--outline)}
 
   <main id="chat">
     <div class="empty" id="emptyState">
-      <span class="material-icons-round">ac_unit</span>
+      <span style="font-size:64px;line-height:1;display:block;margin-bottom:10px">⛄</span>
       <h2>С Новым годом!</h2>
       <p>Задай вопрос или прикрепи картинку</p>
     </div>
@@ -207,8 +227,8 @@ textarea::placeholder{color:var(--outline)}
 
 <script>
 const SYSTEM = 'Ты MILOK — дружелюбный ИИ-ассистент. Отвечай на языке пользователя, понятно и по делу.';
-const DEFAULT_MODEL = 'meta-llama/llama-3.3-70b-instruct:free';
-const DEFAULT_URL = 'https://openrouter.ai/api/v1/chat/completions';
+const DEFAULT_MODEL = 'deepseek-chat';
+const DEFAULT_URL = 'https://api.deepseek.com/chat/completions';
 const KEY_STORE = 'milok_key', MODEL_STORE = 'milok_model', URL_STORE = 'milok_url';
 
 const store = {
