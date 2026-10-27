@@ -76,6 +76,11 @@ function fallbackToPreview() {
   }
 }
 
+// Заранее поднимаем YouTube-плеер, чтобы первый трек стартовал быстрее.
+export function warmUp() {
+  if (youtubeEnabled()) ensureYT().catch(() => {});
+}
+
 // ---------- запуск трека ----------
 function stopAll() {
   clearTimeout(watchdog);
@@ -101,8 +106,8 @@ async function startCurrent() {
   emit('track');
   setSession(track);
 
-  let vid = null;
-  if (youtubeEnabled()) vid = await findYouTubeId(track);
+  let vid = track.ytId || null;
+  if (!vid && youtubeEnabled()) vid = await findYouTubeId(track);
   if (id !== loadId) return;
 
   if (vid) {
@@ -112,7 +117,7 @@ async function startCurrent() {
       st.mode = 'yt';
       p.loadVideoById(vid);
       // Если за 7 секунд не заиграло (часто на телефоне без касания), падаем на превью.
-      watchdog = setTimeout(() => { if (id === loadId && st.mode === 'yt' && !st.playing) fallbackToPreview(); }, 7000);
+      watchdog = setTimeout(() => { if (id === loadId && st.mode === 'yt' && !st.playing) fallbackToPreview(); }, 5000);
       logPlay(track);
       emit('state');
       return;

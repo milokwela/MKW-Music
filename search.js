@@ -1,12 +1,16 @@
-// Экран поиска.
+// Экран поиска: iTunes, поиск по YouTube и рекомендации.
 import { searchTracks } from './catalog.js';
+import { searchYouTube, youtubeEnabled } from './youtube.js';
 import { $, h, trackRow, emptyState, toast } from './ui.js';
 import { openTrackMenu } from './menu.js';
 import * as player from './player.js';
-import { debounce } from './utils.js';
+import * as store from './store.js';
+import { debounce, shuffled } from './utils.js';
 
 let currentUser = null;
 let results = [];
+let recs = [];
+let recsLoaded = false;
 let controller = null;
 let seq = 0;
 
@@ -22,13 +26,50 @@ function clearHistory() {
   try { localStorage.removeItem(histKey()); } catch { /* ignore */ }
 }
 
+const inputEmpty = () => !$('#search-input').value.trim();
+
 function renderHistory() {
   const box = $('#search-history');
   const list = getHistory();
-  if (!list.length || $('#search-input').value.trim()) { box.replaceChildren(); return; }
+  if (!list.length || !inputEmpty()) { box.replaceChildren(); return; }
   box.replaceChildren(
-    ...list.map((term) => h('button', { class: 'chip', type: 'button', onclick: () => { $('#search-input').value = term; run(term); } }, term)),
-    h('button', { class: 'chip', type: 'button', 'aria-label': 'Очистить историю', onclick: () => { clearHistory(); renderHistory(); } }, 'Очистить'));
+    ...list.map((term) => h('button', { class: 'chip', type: 'button', onclick: () => { $('#search-input').value = term; $('#search-clear').hidden = false; run(term); } }, term)),
+    h('button', { class: 'chip', type: 'button', onclick: () => { clearHistory(); renderHistory(); } }, 'Очистить'));
+}
+
+function renderRecs() {
+  const box = $('#search-recs');
+  if (!recs.length || !inputEmpty()) { box.replaceChildren(); return; }
+  box.replaceChildren(
+    h('div', { class: 'section-title', text: 'Для вас' }),
+    h('div', { class: 'list' }, recs.map((t, i) => trackRow(t, {
+      onPlay: () => player.playTracks(recs, i),
+      onMore: () => openTrackMenu(t),
+      current: player.queue.current?.id === t.id,
+    }))));
+}
+
+// Рекомендации: берём исполнителей из лайков и истории и ищем их другие треки.
+async function loadRecs() {
+  if (recsLoaded) return;
+  const seen = [...store.state.likes, ...store.state.history];
+  if (!seen.length) return;
+  recsLoaded = true;
+  const artists = shuffled([...new Set(seen.map((t) => t.artist).filter(Boolean))]).slice(0, 3);
+  const batches = await Promise.allSettled(artists.map((a) => searchTracks(a)));
+  const known = new Set(seen.map((t) => t.id));
+  const pool = [];
+  const ids = new Set();
+  for (const b of batches) {
+    if (b.status !== 'fulfilled') continue;
+    for (const t of b.value) {
+      if (known.has(t.id) || ids.has(t.id)) continue;
+      ids.add(t.id);
+      pool.push(t);
+    }
+  }
+  recs = shuffled(pool).slice(0, 15);
+  renderRecs();
 }
 
 function renderResults() {
@@ -40,6 +81,30 @@ function renderResults() {
   })));
 }
 
+function renderMore(term) {
+  const box = $('#search-more');
+  if (!term || !youtubeEnabled()) { box.replaceChildren(); return; }
+  const btn = h('button', { class: 'btn tonal', type: 'button' }, 'Не нашли? Искать на YouTube');
+  btn.addEventListener('click', async () => {
+    btn.disabled = true;
+    btn.textContent = 'Ищу на YouTube…';
+    try {
+      const found = await searchYouTube(term);
+      const have = new Set(results.map((t) => t.id));
+      results = [...results, ...found.filter((t) => !have.has(t.id))];
+      renderResults();
+      box.replaceChildren();
+      if (!found.length) toast('На YouTube тоже пусто');
+    } catch (e) {
+      console.error(e);
+      btn.disabled = false;
+      btn.textContent = 'Не получилось. Попробовать снова';
+      toast(String(e.message || e).includes('Лимит') ? e.message : 'YouTube не ответил');
+    }
+  });
+  box.replaceChildren(btn);
+}
+
 async function run(term) {
   const q = term.trim();
   const status = $('#search-status');
@@ -47,13 +112,17 @@ async function run(term) {
     results = [];
     renderResults();
     status.replaceChildren();
+    renderMore('');
     renderHistory();
+    renderRecs();
     return;
   }
   if (controller) controller.abort();
   controller = new AbortController();
   const mine = ++seq;
   $('#search-history').replaceChildren();
+  $('#search-recs').replaceChildren();
+  renderMore('');
   status.textContent = 'Ищу…';
   try {
     const found = await searchTracks(q, controller.signal);
@@ -61,14 +130,16 @@ async function run(term) {
     results = found;
     renderResults();
     status.replaceChildren();
-    if (!found.length) status.replaceChildren(emptyState('search', 'Ничего не нашлось. Попробуйте по-другому'));
+    if (!found.length) status.replaceChildren(emptyState('search', 'В каталоге ничего нет'));
     else pushHistory(q);
+    renderMore(q);
   } catch (e) {
     if (e.name === 'AbortError' || mine !== seq) return;
     console.error(e);
     results = [];
     renderResults();
-    status.textContent = 'Не получилось найти. Проверьте интернет и попробуйте ещё раз';
+    status.textContent = 'Каталог не ответил. Проверьте интернет';
+    renderMore(q);
   }
 }
 
@@ -79,19 +150,21 @@ export function initSearch() {
   input.addEventListener('input', () => { clear.hidden = !input.value; live(); });
   $('#search-form').addEventListener('submit', (e) => { e.preventDefault(); live.cancel(); run(input.value); input.blur(); });
   clear.addEventListener('click', () => { input.value = ''; clear.hidden = true; live.cancel(); run(''); input.focus(); });
+  store.onStore((what) => { if (what === 'likes' || what === 'history') loadRecs(); });
 }
 
 export function setSearchUser(nick) {
   currentUser = nick;
   results = [];
+  recs = [];
+  recsLoaded = false;
   seq += 1;
   if (controller) controller.abort();
   renderResults();
+  renderMore('');
   $('#search-input').value = '';
   $('#search-clear').hidden = true;
   $('#search-status').replaceChildren();
+  $('#search-recs').replaceChildren();
   renderHistory();
 }
-
-export function showSearchTip() { renderHistory(); }
-export { toast };

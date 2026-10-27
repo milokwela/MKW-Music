@@ -69,3 +69,41 @@ export function loadYouTubeApi() {
   });
   return apiPromise;
 }
+
+function decodeHtml(s) {
+  const t = document.createElement('textarea');
+  t.innerHTML = s;
+  return t.value;
+}
+
+// Поиск прямо по YouTube (для того, чего нет в iTunes). Один запрос = 100 единиц дневной квоты.
+export async function searchYouTube(term) {
+  if (!YOUTUBE_API_KEY) throw new Error('Нет ключа YouTube');
+  if (quotaOut) throw new Error('Лимит YouTube на сегодня закончился');
+  const ckey = `mkw.ytsearch.${term.toLowerCase()}`;
+  try {
+    const c = sessionStorage.getItem(ckey);
+    if (c) return JSON.parse(c);
+  } catch { /* ignore */ }
+  const url = 'https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&videoCategoryId=10'
+    + `&videoEmbeddable=true&maxResults=15&q=${encodeURIComponent(term)}&key=${YOUTUBE_API_KEY}`;
+  const res = await fetch(url);
+  if (!res.ok) {
+    if (res.status === 403 || res.status === 429) quotaOut = true;
+    throw new Error(`YouTube ${res.status}`);
+  }
+  const data = await res.json();
+  const out = (data.items || []).filter((i) => i.id && i.id.videoId).map((i) => ({
+    id: `yt_${i.id.videoId}`,
+    ytId: i.id.videoId,
+    title: decodeHtml(i.snippet.title),
+    artist: decodeHtml(i.snippet.channelTitle).replace(/ - Topic$/, ''),
+    album: '',
+    artwork: i.snippet.thumbnails?.medium?.url || '',
+    previewUrl: '',
+    duration: 0,
+    genre: '',
+  }));
+  try { sessionStorage.setItem(ckey, JSON.stringify(out)); } catch { /* ignore */ }
+  return out;
+}

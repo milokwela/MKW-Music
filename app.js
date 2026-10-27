@@ -97,6 +97,7 @@ function onUser(user) {
     setSearchUser(user.nick);
     resetLibrary();
     showView('search');
+    player.warmUp();
   } else {
     player.stop();
     stopStore();
