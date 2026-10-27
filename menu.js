@@ -5,7 +5,10 @@ import * as player from './player.js';
 
 function fail(e) {
   console.error(e);
-  toast('Не получилось сохранить. Проверьте интернет и правила Firestore');
+  const code = e && e.code ? ` (${e.code})` : '';
+  toast(code.includes('permission-denied')
+    ? 'Нет доступа к базе: опубликуйте правила Firestore (permission-denied)'
+    : `Не получилось сохранить${code}`);
 }
 
 export async function likeToggle(track) {
