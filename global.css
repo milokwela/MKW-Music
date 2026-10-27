@@ -1,0 +1,98 @@
+*,
+*::before,
+*::after { box-sizing: border-box; }
+
+html, body { margin: 0; height: 100%; }
+
+body {
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--on-bg);
+  font-size: 16px;
+  line-height: 1.4;
+  -webkit-tap-highlight-color: transparent;
+  overflow-x: hidden;
+}
+
+button, input { font: inherit; color: inherit; }
+button { cursor: pointer; border: 0; background: none; padding: 0; }
+[hidden] { display: none !important; }
+
+.icon { width: 24px; height: 24px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.icon.filled { fill: currentColor; stroke: none; }
+
+/* ---------- Каркас приложения ---------- */
+#app { max-width: 720px; margin: 0 auto; min-height: 100%; position: relative; }
+.view { padding: 12px 16px calc(var(--nav-h) + 24px); }
+body.has-mini .view { padding-bottom: calc(var(--nav-h) + var(--mini-h) + 24px); }
+.view-title { font-size: 28px; font-weight: 500; margin: 12px 0 16px; }
+.section-title { font-size: 14px; font-weight: 500; color: var(--on-surface-var); margin: 20px 0 8px; letter-spacing: 0.3px; }
+
+/* ---------- Нижняя навигация ---------- */
+#bottom-nav {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 20;
+  height: var(--nav-h); display: flex; justify-content: center;
+  background: var(--surface); padding-bottom: env(safe-area-inset-bottom);
+}
+#bottom-nav .nav-inner { display: flex; width: 100%; max-width: 720px; }
+.nav-btn { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font-size: 12px; color: var(--on-surface-var); }
+.nav-btn .pill { width: 64px; height: 32px; border-radius: 16px; display: flex; align-items: center; justify-content: center; transition: background 0.2s; }
+.nav-btn.active { color: var(--on-bg); font-weight: 500; }
+.nav-btn.active .pill { background: var(--primary-container); color: var(--on-primary-container); }
+
+/* ---------- Кнопки и поля ---------- */
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; padding: 0 24px; border-radius: 24px; background: var(--primary); color: var(--on-primary); font-weight: 500; }
+.btn:disabled { opacity: 0.5; cursor: default; }
+.btn.tonal { background: var(--primary-container); color: var(--on-primary-container); }
+.btn.text { background: none; color: var(--primary); padding: 0 12px; }
+.btn.danger { color: var(--error); }
+.btn.block { width: 100%; }
+.icon-btn { width: 44px; height: 44px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; color: var(--on-surface-var); flex: none; }
+.icon-btn:hover { background: var(--surface-high); }
+.icon-btn.on { color: var(--primary); }
+
+.field { display: block; margin-bottom: 14px; }
+.field span { display: block; font-size: 13px; color: var(--on-surface-var); margin: 0 0 4px 16px; }
+.field input { width: 100%; height: 52px; border-radius: var(--radius-s); border: 1px solid var(--outline); background: transparent; padding: 0 16px; outline: none; }
+.field input:focus { border-color: var(--primary); box-shadow: 0 0 0 1px var(--primary); }
+
+.chip { display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 14px; border-radius: 10px; border: 1px solid var(--outline); font-size: 14px; color: var(--on-surface-var); }
+.chip.active { background: var(--primary-container); color: var(--on-primary-container); border-color: transparent; }
+
+/* ---------- Список треков ---------- */
+.list { display: flex; flex-direction: column; }
+.track-row { display: flex; align-items: center; gap: 12px; padding: 6px 4px; border-radius: var(--radius-s); }
+.track-row.current { background: var(--primary-container); color: var(--on-primary-container); }
+.track-row .main { flex: 1; min-width: 0; display: flex; align-items: center; gap: 12px; text-align: left; padding: 2px; border-radius: var(--radius-s); }
+.track-art { width: 52px; height: 52px; border-radius: 10px; background: var(--surface-high); object-fit: cover; flex: none; display: flex; align-items: center; justify-content: center; color: var(--on-surface-var); overflow: hidden; }
+.track-art img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.track-info { min-width: 0; flex: 1; }
+.track-title, .track-sub { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.track-title { font-weight: 500; }
+.track-sub { font-size: 13px; color: var(--on-surface-var); }
+.track-row.current .track-sub { color: inherit; opacity: 0.8; }
+.track-row.unavailable { opacity: 0.5; }
+
+.empty { text-align: center; color: var(--on-surface-var); padding: 48px 24px; }
+.empty .icon { width: 48px; height: 48px; margin-bottom: 8px; opacity: 0.6; }
+
+/* ---------- Нижние шторки ---------- */
+#sheet-overlay { position: fixed; inset: 0; background: var(--scrim); z-index: 50; opacity: 0; pointer-events: none; transition: opacity 0.2s; }
+#sheet-overlay.open { opacity: 1; pointer-events: auto; }
+#sheet { position: fixed; left: 0; right: 0; bottom: 0; z-index: 51; max-width: 720px; margin: 0 auto; max-height: 85vh; overflow-y: auto; background: var(--surface); border-radius: var(--radius-l) var(--radius-l) 0 0; padding: 8px 16px calc(16px + env(safe-area-inset-bottom)); transform: translateY(105%); transition: transform 0.25s ease; }
+#sheet.open { transform: translateY(0); }
+.sheet-handle { width: 32px; height: 4px; border-radius: 2px; background: var(--outline); opacity: 0.5; margin: 4px auto 12px; }
+.sheet-title { font-size: 18px; font-weight: 500; margin: 0 0 8px; padding: 0 8px; }
+.sheet-item { display: flex; align-items: center; gap: 16px; width: 100%; min-height: 52px; padding: 0 8px; border-radius: var(--radius-s); text-align: left; }
+.sheet-item:hover { background: var(--surface-high); }
+.sheet-item.danger { color: var(--error); }
+.sheet-item .icon { color: var(--on-surface-var); }
+.sheet-item.danger .icon { color: var(--error); }
+.sheet-note { font-size: 13px; color: var(--on-surface-var); padding: 4px 8px 8px; }
+
+/* ---------- Уведомление ---------- */
+#toast { position: fixed; left: 50%; bottom: calc(var(--nav-h) + 16px); transform: translate(-50%, 20px); background: var(--on-bg); color: var(--bg); padding: 12px 20px; border-radius: var(--radius-s); font-size: 14px; opacity: 0; pointer-events: none; transition: opacity 0.2s, transform 0.2s; z-index: 80; max-width: 90vw; text-align: center; }
+body.has-mini #toast { bottom: calc(var(--nav-h) + var(--mini-h) + 16px); }
+#toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }

@@ -1,0 +1,8 @@
+.search-form { position: relative; margin-bottom: 8px; }
+.search-form input { width: 100%; height: 56px; border-radius: 28px; border: 0; background: var(--surface); padding: 0 52px 0 52px; outline: none; font-size: 16px; }
+.search-form input:focus { box-shadow: 0 0 0 2px var(--primary); }
+.search-form .lead { position: absolute; left: 16px; top: 16px; color: var(--on-surface-var); pointer-events: none; }
+.search-form .icon-btn { position: absolute; right: 6px; top: 6px; }
+.search-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+.search-status { color: var(--on-surface-var); text-align: center; padding: 24px 0; }
+.search-head { display: flex; align-items: center; justify-content: space-between; }
