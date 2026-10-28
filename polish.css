@@ -59,7 +59,7 @@ body.is-playing .track-row.current .eq i { animation: eq .9s ease-in-out infinit
 .sk-line.w35 { width: 35%; }
 
 /* Навигация и мини-плеер */
-#bottom-nav { background: color-mix(in srgb, var(--surface) 80%, transparent); -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px); }
+#bottom-nav { background: color-mix(in srgb, var(--surface) 78%, transparent); -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px); }
 .nav-btn.active .icon { animation: pop .4s; }
 #mini-player { background: linear-gradient(120deg, var(--primary-container), color-mix(in srgb, var(--primary-container) 60%, var(--surface))); animation: miniIn .45s cubic-bezier(.2, .9, .3, 1.15) both; }
 #mini-progress { border-radius: 0 2px 2px 0; box-shadow: 0 0 8px var(--primary); transition: width .5s linear; }

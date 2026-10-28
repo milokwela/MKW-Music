@@ -5,6 +5,7 @@ import { ACCENTS, getTheme, getAccent, setTheme, setAccent } from './theme.js';
 import { CHANGELOG, VERSION, STAGE, KNOWN_ISSUES } from './changelog.js';
 import { plural } from './utils.js';
 import { youtubeEnabled, autoYouTube, setAutoYouTube } from './youtube.js';
+import { liveBg, setLiveBg } from './viz.js';
 import { logOut } from './auth.js';
 
 const ACHIEVEMENTS = [
@@ -61,6 +62,7 @@ function themeCard(mode, label) {
 function syncControls() {
   $$('.theme-card').forEach((c) => c.classList.toggle('active', c.dataset.mode === getTheme()));
   if (refs.autoyt) refs.autoyt.classList.toggle('active', autoYouTube());
+  if (refs.livebg) refs.livebg.classList.toggle('active', liveBg());
   $$('.accent-dot').forEach((c) => c.classList.toggle('active', c.dataset.id === getAccent()));
 }
 
@@ -80,6 +82,7 @@ export function buildProfile(nick) {
   refs.top = h('div', { class: 'top-list' });
   refs.ach = h('div', { class: 'ach-grid' });
   refs.yt = h('p', { class: 'profile-note' });
+  refs.livebg = h('button', { class: 'chip', type: 'button', onclick: () => { setLiveBg(!liveBg()); syncControls(); } }, 'Живой фон плеера');
   refs.autoyt = h('button', { class: 'chip', type: 'button', onclick: () => { setAutoYouTube(!autoYouTube()); syncControls(); } }, 'Искать и на YouTube сразу');
 
   root.replaceChildren(
@@ -111,7 +114,7 @@ export function buildProfile(nick) {
 
     h('div', { class: 'section-title', text: 'Звук' }),
     refs.yt,
-    h('div', { class: 'lib-actions' }, refs.autoyt),
+    h('div', { class: 'lib-actions' }, refs.autoyt, refs.livebg),
     h('p', { class: 'profile-note', text: 'Быстрее старт и больше исполнителей, но тратит дневной лимит YouTube (около 100 поисков на всех).' }),
 
     h('div', { class: 'section-title' , text: 'О приложении' }),

@@ -1,6 +1,7 @@
 // Интерфейс плеера: мини-плеер, большой плеер, очередь, таймер сна.
 import { $, h, icon, setIcon, artEl, trackRow, openSheet, closeSheet, sheetItem, highlightCurrent, toast, emptyState } from './ui.js';
 import { openArtistFor } from './artist.js';
+import { renderCarousel, initCarousel } from './carousel.js';
 import * as player from './player.js';
 import * as store from './store.js';
 import { likeToggle, openTrackMenu } from './menu.js';
@@ -19,15 +20,17 @@ function initDrag() {
   const full = $('#full-player');
   const mini = $('#mini-player');
   const H = () => window.innerHeight;
-  let sy = 0, dy = 0, t0 = 0, mode = null, on = false;
+  let sx0 = 0, sy = 0, dy = 0, t0 = 0, mode = null, on = false;
   const start = (m) => (e) => {
     if (m === 'close' && e.target.closest('button, input, .fp-seek') && !e.target.closest('.fp-top')) return;
+    if (m === 'close' && e.target.closest('#fp-art') && !e.target.closest('.fp-top')) { /* вертикаль разрешена, горизонталь отменит move */ }
     if (m === 'close' && full.querySelector('.fp-inner').scrollTop > 0) return;
-    const pt = e.touches[0]; sy = pt.clientY; dy = 0; t0 = Date.now(); mode = m; on = true;
+    const pt = e.touches[0]; sy = pt.clientY; sx0 = pt.clientX; dy = 0; t0 = Date.now(); mode = m; on = true;
   };
   const move = (e) => {
     if (!on) return;
     dy = e.touches[0].clientY - sy;
+    if (mode === 'close' && !full.classList.contains('dragging') && Math.abs(e.touches[0].clientX - sx0) > Math.abs(dy)) { on = false; return; }
     if (mode === 'open') {
       if (dy > 0) dy = 0;
       if (dy < -8) { full.classList.add('dragging'); if (e.cancelable) e.preventDefault(); }
@@ -84,7 +87,7 @@ function renderTrack() {
   $('#fp-title').textContent = t.title;
   $('#fp-artist').textContent = t.artist;
   $('#full-player').classList.toggle('wave-mode', Boolean(t.wave));
-  $('#fp-art').replaceChildren(t.artwork ? h('img', { src: t.artwork.replace(/\/\d+x\d+(bb)?\./, '/600x600bb.'), alt: '' }) : icon('music'));
+  renderCarousel();
   $('#fp-dur').textContent = formatTime(st.duration);
   $('#fp-bg').style.backgroundImage = t.artwork ? `url("${t.artwork}")` : 'none';
   document.title = `${t.title} · MKW`;
@@ -166,6 +169,7 @@ function openSleep() {
 }
 
 export function initPlayerUI() {
+  initCarousel();
   initDock();
   initDrag();
   $('#mini-open').addEventListener('click', openFull);
@@ -184,9 +188,11 @@ export function initPlayerUI() {
   $('#fp-more').addEventListener('click', () => { if (queue.current) openTrackMenu(queue.current); });
 
   const seek = $('#fp-seek');
+  let lastSeek = 0;
   seek.addEventListener('input', () => {
     seeking = true;
     $('#fp-cur').textContent = formatTime((seek.value / 1000) * st.duration);
+    if (st.duration && Date.now() - lastSeek > 250) { lastSeek = Date.now(); player.seek((seek.value / 1000) * st.duration); }
   });
   seek.addEventListener('change', () => {
     player.seek((seek.value / 1000) * st.duration);
@@ -195,7 +201,7 @@ export function initPlayerUI() {
 
   player.onPlayer((ev) => {
     if (ev === 'track') renderTrack();
-    else if (ev === 'state' || ev === 'queue' || ev === 'sleep') renderState();
+    else if (ev === 'state' || ev === 'queue' || ev === 'sleep') { renderState(); if (ev === 'queue' && queue.current) renderCarousel(); }
     else if (ev === 'time') renderTime();
     else if (ev === 'error') { toast(st.message); renderState(); }
     else if (ev === 'end') toast('Это последний трек в очереди');

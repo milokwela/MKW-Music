@@ -3,6 +3,11 @@
 import { queue, st, onPlayer } from './player.js';
 import { $ } from './ui.js';
 
+export const liveBg = () => { try { return localStorage.getItem('mkw.livebg') !== '0'; } catch { return true; } };
+export function setLiveBg(on) {
+  try { localStorage.setItem('mkw.livebg', on ? '1' : '0'); } catch { /* ignore */ }
+  document.documentElement.classList.toggle('no-live', !on);
+}
 let raf = 0;
 let t0 = 0;
 let bpm = 100;
@@ -53,7 +58,7 @@ async function syncTrack() {
 function frame(now) {
   raf = requestAnimationFrame(frame);
   const full = $('#full-player');
-  if (!full.classList.contains('open') && !full.classList.contains('dragging')) return;
+  if (!liveBg() || (!full.classList.contains('open') && !full.classList.contains('dragging'))) return;
   const el = $('#fp-glow');
   const t = (now - t0) / 1000;
   let beat = 0;
@@ -74,6 +79,7 @@ function frame(now) {
 }
 
 export function initViz() {
+  document.documentElement.classList.toggle('no-live', !liveBg());
   if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
   t0 = performance.now();
   onPlayer((what) => { if (what === 'track') syncTrack(); });
