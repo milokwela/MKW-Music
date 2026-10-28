@@ -44,3 +44,13 @@
 .queue-row { display: flex; align-items: center; gap: 4px; }
 .queue-row .track-row { flex: 1; min-width: 0; }
 @media (max-height: 640px) { #fp-art { max-width: 220px; margin-bottom: 12px; } }
+
+/* ---------- Живой фон ---------- */
+#fp-glow { position: absolute; inset: 0; overflow: hidden; pointer-events: none; --beat: 0; --glow: var(--primary); }
+#fp-glow i { position: absolute; border-radius: 50%; background: var(--glow); filter: blur(60px); opacity: calc(.28 + var(--beat) * .35); transition: background 1s; will-change: transform; }
+#fp-glow i:nth-child(1) { width: 70vmax; height: 70vmax; left: -20vmax; top: -15vmax; transform: translate(var(--dx1, 0), var(--dy1, 0)) scale(calc(1 + var(--beat) * .18)); }
+#fp-glow i:nth-child(2) { width: 60vmax; height: 60vmax; right: -25vmax; top: 25%; transform: translate(var(--dx2, 0), var(--dy2, 0)) scale(calc(1 + var(--beat) * .25)); filter: blur(70px) hue-rotate(35deg); }
+#fp-glow i:nth-child(3) { width: 55vmax; height: 55vmax; left: 10%; bottom: -25vmax; transform: translate(var(--dx3, 0), var(--dy3, 0)) scale(calc(1 + var(--beat) * .3)); filter: blur(70px) hue-rotate(-30deg); }
+.fp-inner { position: relative; z-index: 1; }
+#fp-art { transform: scale(calc(1 + var(--beat, 0) * .025)); }
+@media (prefers-reduced-motion: reduce) { #fp-glow i { transition: none; } }

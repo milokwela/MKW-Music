@@ -8,13 +8,13 @@
 <link rel="icon" type="image/png" href="favicon.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="stylesheet" href="variables.css">
-<link rel="stylesheet" href="global.css">
-<link rel="stylesheet" href="auth.css">
-<link rel="stylesheet" href="search.css">
-<link rel="stylesheet" href="library.css">
-<link rel="stylesheet" href="player.css">
-<link rel="stylesheet" href="polish.css">
+<link rel="stylesheet" href="variables.css?v=0.4.1">
+<link rel="stylesheet" href="global.css?v=0.4.1">
+<link rel="stylesheet" href="auth.css?v=0.4.1">
+<link rel="stylesheet" href="search.css?v=0.4.1">
+<link rel="stylesheet" href="library.css?v=0.4.1">
+<link rel="stylesheet" href="player.css?v=0.4.1">
+<link rel="stylesheet" href="polish.css?v=0.4.1">
 </head>
 <body>
 
@@ -45,6 +45,7 @@
   <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6"/></symbol>
   <symbol id="i-edit" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z"/></symbol>
   <symbol id="i-chevron-down" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></symbol>
+  <symbol id="i-dislike" viewBox="0 0 24 24"><path d="M10 15H5.5a2 2 0 0 1-2-2.3l1-6A2 2 0 0 1 6.5 5H17v10l-4 6a2 2 0 0 1-3-2.2z"/><path d="M17 5h3v10h-3"/></symbol>
   <symbol id="i-back" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></symbol>
   <symbol id="i-next-up" viewBox="0 0 24 24"><path d="M4 7h10M4 12h10M4 17h6M18 8v8M15 13l3 3 3-3"/></symbol>
 </svg>
@@ -126,6 +127,7 @@
 <!-- Большой плеер -->
 <section id="full-player" aria-label="Плеер">
   <div id="fp-bg" aria-hidden="true"></div>
+  <div id="fp-glow" aria-hidden="true"><i></i><i></i><i></i></div>
   <div class="fp-inner">
     <div class="fp-top">
       <button class="icon-btn" id="fp-close" type="button" aria-label="Свернуть"><svg class="icon"><use href="#i-chevron-down"/></svg></button>
@@ -149,6 +151,7 @@
       <button class="icon-btn" id="fp-repeat" type="button" aria-label="Повтор"><svg class="icon"><use href="#i-repeat"/></svg></button>
     </div>
     <div class="fp-extra">
+      <button class="icon-btn" id="fp-dislike" type="button" aria-label="Не нравится" hidden><svg class="icon"><use href="#i-dislike"/></svg></button>
       <button class="icon-btn" id="fp-queue" type="button" aria-label="Очередь"><svg class="icon"><use href="#i-queue"/></svg></button>
       <button class="icon-btn" id="fp-sleep" type="button" aria-label="Таймер сна"><svg class="icon"><use href="#i-timer"/></svg></button>
     </div>
@@ -163,6 +166,6 @@
 <audio id="preview-player" preload="none"></audio>
 <div id="yt-holder" style="position:fixed;width:1px;height:1px;left:-10px;top:-10px;overflow:hidden;opacity:0;pointer-events:none"><div id="yt-target"></div></div>
 
-<script type="module" src="app.js"></script>
+<script type="module" src="app.js?v=0.4.1"></script>
 </body>
 </html>

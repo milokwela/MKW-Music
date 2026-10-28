@@ -77,7 +77,7 @@ function renderPlaylistPage(box) {
       h('h2', { text: pl.name }),
       h('button', { class: 'icon-btn', type: 'button', 'aria-label': 'Ещё', onclick: more }, icon('more'))),
     h('div', { class: 'section-title', text: tracksWord(pl.tracks.length) }),
-    pl.tracks.length ? [playButtons(pl.tracks), rows(pl.tracks, { playlistId: pl.pid })] : emptyState('music', 'Пусто. Добавляйте треки через ⋮ → «В плейлист»'));
+    ...(pl.tracks.length ? [playButtons(pl.tracks), rows(pl.tracks, { playlistId: pl.pid })] : [emptyState('music', 'Пусто. Добавляйте треки через ⋮ → «В плейлист»')]));
 }
 
 let lastKey = '';

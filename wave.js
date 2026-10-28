@@ -66,7 +66,7 @@ async function refill(n = 8) {
     const have = new Set(player.queue.items.map((t) => t.id));
     const seen = new Set();
     pool = pool.filter((t) => {
-      if (!t.id || have.has(t.id) || played.has(t.id) || seen.has(t.id) || (score[norm(t.artist)] ?? 0) <= -2) return false;
+      if (!t.id || dislikedSet().has(t.id) || have.has(t.id) || played.has(t.id) || seen.has(t.id) || (score[norm(t.artist)] ?? 0) <= -2) return false;
       seen.add(t.id);
       return true;
     });
@@ -80,6 +80,21 @@ async function refill(n = 8) {
   } finally {
     filling = false;
   }
+}
+
+const DKEY = 'mkw.dislikes';
+function dislikedSet() { try { return new Set(JSON.parse(localStorage.getItem(DKEY) || '[]')); } catch { return new Set(); } }
+export function dislike() {
+  const t = player.queue.current;
+  if (!t) return;
+  const s = dislikedSet();
+  s.add(t.id);
+  try { localStorage.setItem(DKEY, JSON.stringify([...s].slice(-400))); } catch { /* ignore */ }
+  const a = norm(t.artist);
+  score[a] = (score[a] || 0) - 3;
+  persist();
+  toast('Больше такое не поставлю');
+  player.next();
 }
 
 function remaining() { return player.queue.items.length - player.queue.index - 1; }
@@ -105,6 +120,8 @@ function setActive(on) {
   const sub = $('#wave-sub');
   if (sub) sub.textContent = on ? 'Играет. Нажмите, чтобы выключить' : 'Музыка под ваш вкус, подстраивается на лету';
   if (on) { player.queue.setShuffle(false); }
+  const d = $('#fp-dislike');
+  if (d) d.hidden = !on;
 }
 
 export async function startWave() {
@@ -143,6 +160,13 @@ async function seedQueue() {
 export function initWave() {
   const b = $('#wave-btn');
   if (b) b.addEventListener('click', startWave);
+  const d = $('#fp-dislike');
+  if (d) d.addEventListener('click', dislike);
+  store.onStore((what) => {
+    if (what !== 'likes' || !active) return;
+    const cur = player.queue.current;
+    if (cur && cur.wave && store.isLiked(cur.id)) { const a = norm(cur.artist); score[a] = (score[a] || 0) + 2; persist(); }
+  });
   player.onPlayer((what) => {
     if (what === 'skip' || what === 'done') react(what);
     if (what === 'queue' && active) {
