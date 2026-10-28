@@ -5,6 +5,7 @@ import { initSearch, setSearchUser } from './search.js';
 import { initLibrary, render as renderLibrary, resetLibrary } from './library.js';
 import { initPlayerUI, resetPlayerUI, closeFull } from './playerui.js';
 import { buildProfile, updateProfile, resetProfile } from './profile.js';
+import { initWave } from './wave.js';
 import { initTheme } from './theme.js';
 import * as player from './player.js';
 import { $, $$ } from './ui.js';
@@ -97,6 +98,7 @@ function boot() {
   initSearch();
   initLibrary();
   initPlayerUI();
+  initWave();
   initListenFlush();
   onStore((what) => { if (!$('#view-profile').hidden && (what === 'profile' || what === 'likes' || what === 'playlists' || what === 'history')) updateProfile(); });
   watchAuth(onUser);

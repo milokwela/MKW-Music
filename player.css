@@ -1,5 +1,5 @@
 /* ---------- Мини-плеер ---------- */
-#mini-player { position: fixed; left: 8px; right: 8px; bottom: calc(var(--nav-h) + 8px + env(safe-area-inset-bottom)); z-index: 25; max-width: 704px; margin: 0 auto; height: var(--mini-h); background: var(--primary-container); color: var(--on-primary-container); border-radius: var(--radius-m); box-shadow: var(--shadow); display: flex; align-items: center; gap: 4px; padding: 0 4px 0 8px; overflow: hidden; }
+#mini-player { position: relative; width: calc(100% - 16px); max-width: 704px; margin: 0 auto 8px; touch-action: none; height: var(--mini-h); background: var(--primary-container); color: var(--on-primary-container); border-radius: var(--radius-m); box-shadow: var(--shadow); display: flex; align-items: center; gap: 4px; padding: 0 4px 0 8px; overflow: hidden; }
 #mini-open { flex: 1; min-width: 0; display: flex; align-items: center; gap: 12px; text-align: left; height: 100%; }
 #mini-art { width: 44px; height: 44px; border-radius: 10px; overflow: hidden; background: var(--surface-high); flex: none; }
 #mini-art img { width: 100%; height: 100%; object-fit: cover; display: block; }
@@ -7,7 +7,15 @@
 #mini-progress { position: absolute; left: 0; bottom: 0; height: 3px; width: 0; background: var(--primary); }
 
 /* ---------- Большой плеер ---------- */
-#full-player { position: fixed; inset: 0; z-index: 40; background: var(--bg); display: flex; flex-direction: column; transform: translateY(100%); transition: transform 0.3s ease; visibility: hidden; }
+#full-player { position: fixed; inset: 0; z-index: 40; background: var(--bg); display: flex; flex-direction: column; transform: translateY(100%); transition: transform 0.32s cubic-bezier(.2,.8,.2,1); visibility: hidden; touch-action: pan-x; }
+#full-player.dragging { transition: none; visibility: visible; }
+.fp-grab { width: 40px; height: 5px; border-radius: 3px; background: var(--outline, #8884); margin: 8px auto 0; flex: none; }
+.wave-btn { width: 100%; display: flex; align-items: center; gap: 14px; padding: 14px 16px; margin-bottom: 14px; border-radius: 22px; text-align: left; color: var(--on-primary-container); background: linear-gradient(120deg, var(--primary-container), color-mix(in srgb, var(--primary) 35%, var(--surface))); }
+.wave-btn .wave-ico { width: 44px; height: 44px; border-radius: 50%; background: var(--primary); color: var(--on-primary, #fff); display: flex; align-items: center; justify-content: center; flex: none; }
+.wave-btn.on .wave-ico { animation: wavePulse 1.6s ease-in-out infinite; }
+.wave-btn .wave-txt { display: flex; flex-direction: column; min-width: 0; } .wave-btn small { opacity: .75; font-size: 12px; }
+.wave-badge { align-self: center; font-size: 12px; padding: 4px 12px; border-radius: 12px; background: var(--primary-container); color: var(--on-primary-container); margin-top: 4px; }
+@keyframes wavePulse { 0%,100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--primary) 50%, transparent); } 50% { box-shadow: 0 0 0 12px transparent; } }
 #full-player.open { transform: translateY(0); visibility: visible; }
 .fp-inner { width: 100%; max-width: 480px; margin: 0 auto; flex: 1; display: flex; flex-direction: column; padding: 8px 24px calc(16px + env(safe-area-inset-bottom)); overflow-y: auto; }
 .fp-top { display: flex; align-items: center; justify-content: space-between; }

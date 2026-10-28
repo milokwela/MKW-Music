@@ -10,8 +10,64 @@ const { queue, st } = player;
 let seeking = false;
 let lastTrackId = null;
 
-function openFull() { $('#full-player').classList.add('open'); }
-function closeFull() { $('#full-player').classList.remove('open'); }
+function openFull() { const f = $('#full-player'); f.style.transform = ''; f.classList.remove('dragging'); f.classList.add('open'); }
+function closeFull() { const f = $('#full-player'); f.style.transform = ''; f.classList.remove('dragging'); f.classList.remove('open'); }
+
+// Жест: тянем мини-плеер вверх — шторка открывается; тянем большой вниз — закрывается.
+function initDrag() {
+  const full = $('#full-player');
+  const mini = $('#mini-player');
+  const H = () => window.innerHeight;
+  let sy = 0, dy = 0, t0 = 0, mode = null, on = false;
+  const start = (m) => (e) => {
+    if (m === 'close' && e.target.closest('button, input, .fp-seek') && !e.target.closest('.fp-top')) return;
+    if (m === 'close' && full.querySelector('.fp-inner').scrollTop > 0) return;
+    const pt = e.touches[0]; sy = pt.clientY; dy = 0; t0 = Date.now(); mode = m; on = true;
+  };
+  const move = (e) => {
+    if (!on) return;
+    dy = e.touches[0].clientY - sy;
+    if (mode === 'open') {
+      if (dy > 0) dy = 0;
+      if (dy < -8) { full.classList.add('dragging'); if (e.cancelable) e.preventDefault(); }
+      if (full.classList.contains('dragging')) full.style.transform = `translateY(${Math.max(0, H() + dy)}px)`;
+    } else {
+      if (dy < 0) dy = 0;
+      if (dy > 8) { full.classList.add('dragging'); if (e.cancelable) e.preventDefault(); }
+      if (full.classList.contains('dragging')) full.style.transform = `translateY(${dy}px)`;
+    }
+  };
+  const end = () => {
+    if (!on) return; on = false;
+    const dragging = full.classList.contains('dragging');
+    const v = Math.abs(dy) / Math.max(1, Date.now() - t0);
+    if (!dragging) return;
+    const far = Math.abs(dy) > H() * 0.25 || v > 0.6;
+    full.classList.remove('dragging');
+    full.style.transform = '';
+    if (mode === 'open') { if (far) full.classList.add('open'); else full.classList.remove('open'); }
+    else if (far) full.classList.remove('open');
+    swallow = true; setTimeout(() => { swallow = false; }, 350);
+  };
+  let swallow = false;
+  mini.addEventListener('touchstart', start('open'), { passive: true });
+  full.addEventListener('touchstart', start('close'), { passive: true });
+  for (const el of [mini, full]) {
+    el.addEventListener('touchmove', move, { passive: false });
+    el.addEventListener('touchend', end);
+    el.addEventListener('touchcancel', end);
+  }
+  mini.addEventListener('click', (e) => { if (swallow) { e.stopPropagation(); e.preventDefault(); } }, true);
+}
+
+// Высота дока (мини-плеер + меню) → CSS-переменная, чтобы контент и тосты не прятались под ним.
+function initDock() {
+  const dock = document.getElementById('dock');
+  const set = () => document.documentElement.style.setProperty('--dock-h', `${dock.offsetHeight}px`);
+  set();
+  if (window.ResizeObserver) new ResizeObserver(set).observe(dock);
+  window.addEventListener('resize', set);
+}
 export function isFullOpen() { return $('#full-player').classList.contains('open'); }
 export { closeFull };
 
@@ -54,7 +110,7 @@ function renderState() {
   setIcon($('#mini-toggle svg'), playIcon);
   setIcon($('#fp-toggle svg'), playIcon);
   const badge = $('#fp-badge');
-  badge.textContent = st.mode === 'yt' ? 'YouTube' : st.mode === 'preview' ? 'Фрагмент 30 сек' : st.loading ? 'Загрузка…' : '';
+  badge.textContent = queue.current?.wave ? 'Моя волна' : st.mode === 'yt' ? 'YouTube' : st.mode === 'preview' ? 'Фрагмент 30 сек' : st.loading ? 'Загрузка…' : '';
   badge.classList.toggle('yt', st.mode === 'yt');
   $('#fp-note').textContent = st.message || (st.mode === 'preview' && !youtubeEnabled() ? 'Полные треки появятся после подключения YouTube-ключа' : '');
   $('#fp-shuffle').classList.toggle('on', queue.shuffle);
@@ -107,6 +163,8 @@ function openSleep() {
 }
 
 export function initPlayerUI() {
+  initDock();
+  initDrag();
   $('#mini-open').addEventListener('click', openFull);
   $('#mini-toggle').addEventListener('click', player.toggle);
   $('#mini-next').addEventListener('click', player.next);

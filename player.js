@@ -25,6 +25,32 @@ let sleepTimer = null;
 let watchdog = null;
 let userPaused = false; // пауза нажата пользователем, а не системой
 
+// Тихая дорожка: пока играет YouTube, держим страницу «живой» и системный плеер активным,
+// чтобы после выключения экрана можно было возобновить воспроизведение.
+function silentWavUrl() {
+  const rate = 8000;
+  const n = rate;
+  const buf = new ArrayBuffer(44 + n);
+  const v = new DataView(buf);
+  const w = (o, s) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
+  w(0, 'RIFF'); v.setUint32(4, 36 + n, true); w(8, 'WAVE'); w(12, 'fmt ');
+  v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+  v.setUint32(24, rate, true); v.setUint32(28, rate, true); v.setUint16(32, 1, true); v.setUint16(34, 8, true);
+  w(36, 'data'); v.setUint32(40, n, true);
+  new Uint8Array(buf, 44).fill(128);
+  return URL.createObjectURL(new Blob([buf], { type: 'audio/wav' }));
+}
+let keep = null;
+function keepOn() {
+  try {
+    if (!keep) { keep = new Audio(silentWavUrl()); keep.loop = true; keep.volume = 0.02; }
+    keep.play().catch(() => {});
+  } catch { /* ignore */ }
+}
+function keepOff() {
+  try { if (keep) keep.pause(); } catch { /* ignore */ }
+}
+
 export function onPlayer(fn) { subs.add(fn); return () => subs.delete(fn); }
 function emit(ev) { subs.forEach((fn) => { try { fn(ev); } catch (e) { console.error(e); } }); }
 
@@ -55,9 +81,9 @@ function onYtState(e) {
     st.playing = false;
     // Телефон/YouTube поставили на паузу в фоне, а пользователь паузу не нажимал: пробуем продолжить.
     if (document.hidden && !userPaused) {
-      setTimeout(() => {
-        if (st.mode === 'yt' && !userPaused && yt) { try { yt.playVideo(); } catch { /* ignore */ } }
-      }, 250);
+      [250, 1200, 3500].forEach((ms) => setTimeout(() => {
+        if (st.mode === 'yt' && !userPaused && !st.playing && yt) { try { yt.playVideo(); } catch { /* ignore */ } }
+      }, ms));
     }
   }
   else if (s === 3) { st.loading = true; }
@@ -111,6 +137,7 @@ async function startCurrent() {
   const id = ++loadId;
   userPaused = false;
   stopAll();
+  if (track && youtubeEnabled()) keepOn(); else keepOff();
   if (!track) {
     st.mode = null; st.loading = false; st.time = 0; st.duration = 0;
     emit('track');
@@ -126,7 +153,7 @@ async function startCurrent() {
 
   // Если id видео уже известен, запускаем без единого ожидания: iPhone пускает звук только сразу после нажатия.
   let vid = track.ytId || peekYouTubeId(track);
-  if (!vid && youtubeEnabled()) vid = await findYouTubeId(track);
+  if (!vid && youtubeEnabled() && !track.noYt) vid = await findYouTubeId(track);
   if (id !== loadId) return;
 
   if (vid) {
@@ -191,9 +218,11 @@ function unavailable(id) {
 function handleEnded() {
   st.playing = false;
   if (queue.repeat === 'one') { restart(); return; }
+  st.last = { track: queue.current, time: st.time, duration: st.duration };
+  emit('done');
   const t = queue.next(true);
   if (t) startCurrent();
-  else { st.time = 0; emit('state'); }
+  else { st.time = 0; keepOff(); emit('state'); }
 }
 
 function restart() {
@@ -239,7 +268,7 @@ export function toggle() {
   if (!queue.current) return;
   if (!st.mode) { if (!st.loading) startCurrent(); return; }
   if (st.mode === 'yt' && yt) {
-    if (st.playing) { userPaused = true; yt.pauseVideo(); } else { userPaused = false; yt.playVideo(); }
+    if (st.playing) { userPaused = true; keepOff(); yt.pauseVideo(); } else { userPaused = false; keepOn(); yt.playVideo(); }
   } else if (audio.paused) {
     userPaused = false;
     audio.play().catch(() => {});
@@ -251,13 +280,15 @@ export function toggle() {
 
 export function pause() {
   userPaused = true;
+  keepOff();
   if (st.mode === 'yt' && yt) { try { yt.pauseVideo(); } catch { /* ignore */ } }
   else if (st.mode === 'preview') audio.pause();
 }
 
 export function next() {
+  st.last = { track: queue.current, time: st.time, duration: st.duration };
   const t = queue.next(false);
-  if (t) startCurrent();
+  if (t) { emit('skip'); startCurrent(); }
   else emit('end');
 }
 
@@ -307,6 +338,7 @@ export function removeFromQueue(i) {
 }
 
 export function stop() {
+  keepOff();
   queue.clear();
   setSleep(0);
   startCurrent();

@@ -77,6 +77,7 @@
   <main>
     <section class="view" id="view-search">
       <div class="hello"><p class="hello-sub" id="search-hello"></p><h1 class="view-title">Что послушаем?</h1></div>
+      <button class="wave-btn" id="wave-btn" type="button"><span class="wave-ico"><svg class="icon"><use href="#i-play"/></svg></span><span class="wave-txt"><b>Моя волна</b><small id="wave-sub">Музыка под ваш вкус, подстраивается на лету</small></span></button>
       <form class="search-form" id="search-form" role="search">
         <svg class="icon lead"><use href="#i-search"/></svg>
         <input id="search-input" type="search" placeholder="Трек или исполнитель" autocomplete="off" enterkeyhint="search">
@@ -102,6 +103,7 @@
     <section class="view" id="view-profile" hidden></section>
   </main>
 
+  <div id="dock">
   <!-- Мини-плеер -->
   <div id="mini-player" hidden>
     <button id="mini-open" type="button" aria-label="Открыть плеер">
@@ -118,6 +120,7 @@
     <button class="nav-btn" data-view="library" type="button"><span class="pill"><svg class="icon"><use href="#i-library"/></svg></span>Библиотека</button>
     <button class="nav-btn" data-view="profile" type="button"><span class="pill"><svg class="icon"><use href="#i-user"/></svg></span>Профиль</button>
   </div></nav>
+  </div>
 </div>
 
 <!-- Большой плеер -->
