@@ -6,6 +6,7 @@ import { openTrackMenu } from './menu.js';
 import * as player from './player.js';
 import * as store from './store.js';
 import { debounce, shuffled } from './utils.js';
+import { isArtistBlocked } from './taste.js';
 
 let currentUser = null;
 let results = [];
@@ -56,7 +57,7 @@ async function loadRecs() {
   const seen = [...store.state.likes, ...store.state.history];
   if (!seen.length) return;
   recsLoaded = true;
-  const artists = shuffled([...new Set(seen.map((t) => t.artist).filter(Boolean))]).slice(0, 3);
+  const artists = shuffled([...new Set(seen.map((t) => t.artist).filter((a) => a && !isArtistBlocked(a)))]).slice(0, 3);
   const batches = await Promise.allSettled(artists.map((a) => searchTracks(a)));
   const known = new Set(seen.map((t) => t.id));
   const pool = [];
@@ -64,7 +65,7 @@ async function loadRecs() {
   for (const b of batches) {
     if (b.status !== 'fulfilled') continue;
     for (const t of b.value) {
-      if (known.has(t.id) || ids.has(t.id)) continue;
+      if (known.has(t.id) || ids.has(t.id) || isArtistBlocked(t.artist)) continue;
       ids.add(t.id);
       pool.push(t);
     }

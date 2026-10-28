@@ -1,5 +1,6 @@
 // Интерфейс плеера: мини-плеер, большой плеер, очередь, таймер сна.
 import { $, h, icon, setIcon, artEl, trackRow, openSheet, closeSheet, sheetItem, highlightCurrent, toast, emptyState } from './ui.js';
+import { openArtistFor } from './artist.js';
 import * as player from './player.js';
 import * as store from './store.js';
 import { likeToggle, openTrackMenu } from './menu.js';
@@ -82,6 +83,7 @@ function renderTrack() {
   $('#mini-art').replaceChildren(artEl(t));
   $('#fp-title').textContent = t.title;
   $('#fp-artist').textContent = t.artist;
+  $('#full-player').classList.toggle('wave-mode', Boolean(t.wave));
   $('#fp-art').replaceChildren(t.artwork ? h('img', { src: t.artwork.replace(/\/\d+x\d+(bb)?\./, '/600x600bb.'), alt: '' }) : icon('music'));
   $('#fp-dur').textContent = formatTime(st.duration);
   $('#fp-bg').style.backgroundImage = t.artwork ? `url("${t.artwork}")` : 'none';
@@ -124,6 +126,7 @@ function renderTime() {
   const d = st.duration > 0 ? st.duration : 0;
   const pct = d ? Math.min(100, (st.time / d) * 100) : 0;
   $('#mini-progress').style.width = `${pct}%`;
+  $('#full-player').style.setProperty('--prog', `${pct}%`);
   if (!seeking) {
     $('#fp-seek').value = d ? Math.round((st.time / d) * 1000) : 0;
     $('#fp-cur').textContent = formatTime(st.time);
@@ -177,6 +180,7 @@ export function initPlayerUI() {
   $('#fp-queue').addEventListener('click', openQueue);
   $('#fp-sleep').addEventListener('click', openSleep);
   $('#fp-like').addEventListener('click', () => { if (queue.current) likeToggle(queue.current); });
+  $('#fp-artist').addEventListener('click', () => { if (queue.current) openArtistFor(queue.current.artist); });
   $('#fp-more').addEventListener('click', () => { if (queue.current) openTrackMenu(queue.current); });
 
   const seek = $('#fp-seek');

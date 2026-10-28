@@ -5,6 +5,7 @@ import * as player from './player.js';
 import * as store from './store.js';
 import { $, toast } from './ui.js';
 import { shuffled } from './utils.js';
+import { norm, isArtistBlocked, blockedArtists, dislikedTracks, dislikeTrack } from './taste.js';
 
 const SKEY = 'mkw.wave';
 let active = false;
@@ -13,7 +14,6 @@ let score = {};          // исполнитель → вес (растёт от
 let played = new Set();  // id, уже игравшие в этой волне
 let streak = 0;          // подряд пропусков
 
-const norm = (s) => String(s || '').trim().toLowerCase();
 
 function seedScores() {
   score = {};
@@ -33,7 +33,8 @@ function persist() {
 }
 
 function pickArtist(exclude = new Set()) {
-  const entries = Object.entries(score).filter(([a, w]) => w > -2 && !exclude.has(a));
+  const bl = blockedArtists();
+  const entries = Object.entries(score).filter(([a, w]) => w > -2 && !exclude.has(a) && !bl.has(a));
   if (!entries.length) return null;
   // взвешенный случайный выбор; чуть исследуем новое (вес +1)
   const weights = entries.map(([, w]) => Math.max(0.2, w + 1));
@@ -66,7 +67,7 @@ async function refill(n = 8) {
     const have = new Set(player.queue.items.map((t) => t.id));
     const seen = new Set();
     pool = pool.filter((t) => {
-      if (!t.id || dislikedSet().has(t.id) || have.has(t.id) || played.has(t.id) || seen.has(t.id) || (score[norm(t.artist)] ?? 0) <= -2) return false;
+      if (!t.id || dislikedSet().has(t.id) || have.has(t.id) || played.has(t.id) || seen.has(t.id) || (score[norm(t.artist)] ?? 0) <= -2 || isArtistBlocked(t.artist)) return false;
       seen.add(t.id);
       return true;
     });
@@ -82,14 +83,11 @@ async function refill(n = 8) {
   }
 }
 
-const DKEY = 'mkw.dislikes';
-function dislikedSet() { try { return new Set(JSON.parse(localStorage.getItem(DKEY) || '[]')); } catch { return new Set(); } }
+function dislikedSet() { return dislikedTracks(); }
 export function dislike() {
   const t = player.queue.current;
   if (!t) return;
-  const s = dislikedSet();
-  s.add(t.id);
-  try { localStorage.setItem(DKEY, JSON.stringify([...s].slice(-400))); } catch { /* ignore */ }
+  dislikeTrack(t.id);
   const a = norm(t.artist);
   score[a] = (score[a] || 0) - 3;
   persist();

@@ -54,3 +54,56 @@
 .fp-inner { position: relative; z-index: 1; }
 #fp-art { transform: scale(calc(1 + var(--beat, 0) * .025)); }
 @media (prefers-reduced-motion: reduce) { #fp-glow i { transition: none; } }
+
+/* ---------- Исполнитель ---------- */
+#artist-page { position: fixed; inset: 0; z-index: 45; background: var(--bg); overflow-y: auto; transform: translateX(100%); visibility: hidden; transition: transform .3s cubic-bezier(.2,.8,.2,1), visibility 0s .3s; }
+#artist-page.open { transform: none; visibility: visible; transition-delay: 0s; }
+.artist-inner { max-width: 760px; margin: 0 auto; padding: 8px 16px calc(var(--dock-h, 68px) + 24px); }
+.artist-name { font-size: clamp(32px, 9vw, 56px); font-weight: 800; line-height: 1.05; margin: 8px 0 4px; letter-spacing: -.5px; word-break: break-word; }
+.artist-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 16px; }
+.artist-actions .btn { display: inline-flex; align-items: center; gap: 4px; }
+#fp-artist { text-align: left; cursor: pointer; display: block; max-width: 100%; text-decoration: underline; text-decoration-color: transparent; transition: text-decoration-color .2s, color .2s; }
+#fp-artist:hover, #fp-artist:active { color: var(--primary); text-decoration-color: currentColor; }
+
+/* ---------- «Моя волна» на весь экран ---------- */
+.fp-wave-title { display: none; }
+#fp-dislike { flex: none; }
+#full-player.wave-mode { background: #050308; color: #fff; --on-bg: #fff; --on-surface-var: rgba(255,255,255,.72); }
+#full-player.wave-mode #fp-bg { opacity: 0; }
+#full-player.wave-mode #fp-glow { inset: -10%; }
+#full-player.wave-mode #fp-glow i { opacity: calc(.78 + var(--beat) * .22); filter: blur(46px) saturate(1.8); mix-blend-mode: screen; }
+#full-player.wave-mode #fp-glow i:nth-child(1) { filter: blur(46px) saturate(1.8) hue-rotate(-25deg); }
+#full-player.wave-mode #fp-glow i:nth-child(2) { filter: blur(46px) saturate(1.8) hue-rotate(40deg); }
+#full-player.wave-mode #fp-glow i:nth-child(3) { filter: blur(50px) saturate(1.8) hue-rotate(95deg); }
+#full-player.wave-mode .fp-inner { align-items: center; text-align: center; justify-content: center; gap: 4px; max-width: 520px; }
+#full-player.wave-mode .fp-top { width: 100%; }
+#full-player.wave-mode .fp-badge { display: none; }
+#full-player.wave-mode .fp-wave-title { display: block; font-size: clamp(48px, 15vw, 96px); font-weight: 900; line-height: .95; letter-spacing: -2px; margin: auto 0 4px; text-shadow: 0 6px 40px rgba(0,0,0,.35); transform: scale(calc(1 + var(--beat, 0) * .03)); }
+#full-player.wave-mode #fp-art { width: 112px; height: 112px; max-width: none; margin: 18px 0 18px; border-radius: 18px; flex: none; }
+#full-player.wave-mode .fp-meta { width: 100%; gap: 10px; }
+#full-player.wave-mode .fp-meta .txt { position: relative; flex: 1; min-width: 0; height: 64px; border-radius: 32px; background: rgba(255,255,255,.16); backdrop-filter: blur(12px); overflow: hidden; display: flex; flex-direction: column; justify-content: center; padding: 0 20px; text-align: center; }
+#full-player.wave-mode .fp-meta .txt::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: var(--prog, 0%); background: rgba(255,255,255,.18); transition: width .5s linear; }
+#full-player.wave-mode #fp-title, #full-player.wave-mode #fp-artist { position: relative; font-size: 15px; font-weight: 700; text-align: center; margin: 0 auto; }
+#full-player.wave-mode #fp-artist { font-size: 13px; font-weight: 500; }
+#full-player.wave-mode .fp-meta .icon-btn { width: 52px; height: 52px; border-radius: 50%; background: rgba(255,255,255,.16); backdrop-filter: blur(12px); color: #fff; }
+#full-player.wave-mode .fp-meta .icon-btn.on { background: #fff; color: #e0245e; }
+#full-player.wave-mode .fp-seek, #full-player.wave-mode .fp-extra, #full-player.wave-mode #fp-shuffle, #full-player.wave-mode #fp-repeat { display: none; }
+#full-player.wave-mode .fp-controls { justify-content: center; gap: 28px; margin: 20px 0 auto; }
+#full-player.wave-mode .fp-play { width: 84px; height: 84px; background: #fff; color: #111; box-shadow: 0 8px 32px rgba(0,0,0,.35); transform: scale(calc(1 + var(--beat, 0) * .05)); }
+#full-player.wave-mode .icon-btn { color: #fff; }
+
+/* ---------- Компьютер и широкие экраны ---------- */
+@media (min-width: 900px) {
+  #app { max-width: 1000px; }
+  .list { display: grid; grid-template-columns: 1fr 1fr; column-gap: 24px; }
+  .list .track-row { min-width: 0; }
+  #full-player:not(.wave-mode) .fp-inner { max-width: 1000px; display: grid; grid-template-columns: minmax(300px, 440px) 1fr; column-gap: 56px; grid-template-rows: auto 1fr auto auto auto auto; align-content: center; padding: 16px 48px 32px; }
+  #full-player:not(.wave-mode) .fp-top { grid-column: 1 / -1; }
+  #full-player:not(.wave-mode) #fp-art { grid-column: 1; grid-row: 2 / 7; max-width: 440px; width: 100%; align-self: center; margin: 0; }
+  #full-player:not(.wave-mode) .fp-meta, #full-player:not(.wave-mode) .fp-seek, #full-player:not(.wave-mode) .fp-controls, #full-player:not(.wave-mode) .fp-extra, #full-player:not(.wave-mode) .fp-note { grid-column: 2; }
+  #full-player:not(.wave-mode) .fp-meta { align-self: end; }
+  #full-player:not(.wave-mode) #fp-title { font-size: 32px; }
+  .artist-inner { padding-top: 24px; }
+}
+@media (hover: hover) { .nav-btn:focus:not(:focus-visible) { outline: none; } }
+.nav-btn:focus:not(:focus-visible) { outline: none; }
