@@ -1,7 +1,7 @@
 // Движок плеера: очередь, YouTube (полные треки) и превью iTunes (30 сек) как запасной вариант.
 import { Queue } from './queue.js';
-import { findYouTubeId, loadYouTubeApi, youtubeEnabled } from './youtube.js';
-import { logPlay } from './store.js';
+import { findYouTubeId, peekYouTubeId, loadYouTubeApi, youtubeEnabled } from './youtube.js';
+import { logPlay, addListened } from './store.js';
 import { artUrl } from './utils.js';
 
 export const queue = new Queue();
@@ -23,6 +23,7 @@ let loadId = 0;
 let failChain = 0;
 let sleepTimer = null;
 let watchdog = null;
+let userPaused = false; // пауза нажата пользователем, а не системой
 
 export function onPlayer(fn) { subs.add(fn); return () => subs.delete(fn); }
 function emit(ev) { subs.forEach((fn) => { try { fn(ev); } catch (e) { console.error(e); } }); }
@@ -49,8 +50,16 @@ async function ensureYT() {
 function onYtState(e) {
   if (st.mode !== 'yt') return;
   const s = e.data;
-  if (s === 1) { st.playing = true; st.loading = false; clearTimeout(watchdog); failChain = 0; }
-  else if (s === 2) { st.playing = false; }
+  if (s === 1) { st.playing = true; st.loading = false; st.message = ''; clearTimeout(watchdog); failChain = 0; }
+  else if (s === 2) {
+    st.playing = false;
+    // Телефон/YouTube поставили на паузу в фоне, а пользователь паузу не нажимал: пробуем продолжить.
+    if (document.hidden && !userPaused) {
+      setTimeout(() => {
+        if (st.mode === 'yt' && !userPaused && yt) { try { yt.playVideo(); } catch { /* ignore */ } }
+      }, 250);
+    }
+  }
   else if (s === 3) { st.loading = true; }
   else if (s === 0) { handleEnded(); return; }
   emit('state');
@@ -81,6 +90,14 @@ export function warmUp() {
   if (youtubeEnabled()) ensureYT().catch(() => {});
 }
 
+// Пока играет текущий трек, заранее ищем видео для следующего.
+function prefetchNext() {
+  if (!youtubeEnabled()) return;
+  const nxt = queue.items[queue.index + 1];
+  if (nxt && !nxt.ytId && !peekYouTubeId(nxt)) findYouTube(nxt);
+}
+function findYouTube(t) { findYouTubeId(t).catch(() => {}); }
+
 // ---------- запуск трека ----------
 function stopAll() {
   clearTimeout(watchdog);
@@ -92,6 +109,7 @@ function stopAll() {
 async function startCurrent() {
   const track = queue.current;
   const id = ++loadId;
+  userPaused = false;
   stopAll();
   if (!track) {
     st.mode = null; st.loading = false; st.time = 0; st.duration = 0;
@@ -106,19 +124,28 @@ async function startCurrent() {
   emit('track');
   setSession(track);
 
-  let vid = track.ytId || null;
+  // Если id видео уже известен, запускаем без единого ожидания: iPhone пускает звук только сразу после нажатия.
+  let vid = track.ytId || peekYouTubeId(track);
   if (!vid && youtubeEnabled()) vid = await findYouTubeId(track);
   if (id !== loadId) return;
 
   if (vid) {
     try {
-      const p = await ensureYT();
+      const p = yt || await ensureYT();
       if (id !== loadId) return;
       st.mode = 'yt';
       p.loadVideoById(vid);
       // Если за 7 секунд не заиграло (часто на телефоне без касания), падаем на превью.
-      watchdog = setTimeout(() => { if (id === loadId && st.mode === 'yt' && !st.playing) fallbackToPreview(); }, 5000);
+      // Не заиграло само (iPhone просит нажать): не прыгаем на фрагмент, а просим нажать ▶.
+      watchdog = setTimeout(() => {
+        if (id !== loadId || st.mode !== 'yt' || st.playing) return;
+        st.loading = false;
+        st.message = 'Нажмите ▶, чтобы включить полный трек';
+        emit('state');
+        watchdog = setTimeout(() => { if (id === loadId && st.mode === 'yt' && !st.playing) fallbackToPreview(); }, 25000);
+      }, 3500);
       logPlay(track);
+      prefetchNext();
       emit('state');
       return;
     } catch (e) {
@@ -135,7 +162,7 @@ function startPreview(track, id) {
   st.mode = 'preview';
   st.loading = true;
   audio.src = track.previewUrl;
-  audio.play().then(() => { logPlay(track); }).catch((e) => {
+  audio.play().then(() => { logPlay(track); prefetchNext(); }).catch((e) => {
     if (id !== loadId) return;
     st.loading = false;
     st.playing = false;
@@ -194,6 +221,7 @@ audio.addEventListener('loadedmetadata', () => {
 // Обновление времени.
 setInterval(() => {
   if (!st.mode || !st.playing) return;
+  addListened(0.5);
   if (st.mode === 'yt' && yt && yt.getCurrentTime) {
     try {
       st.time = yt.getCurrentTime() || 0;
@@ -211,15 +239,18 @@ export function toggle() {
   if (!queue.current) return;
   if (!st.mode) { if (!st.loading) startCurrent(); return; }
   if (st.mode === 'yt' && yt) {
-    if (st.playing) yt.pauseVideo(); else yt.playVideo();
+    if (st.playing) { userPaused = true; yt.pauseVideo(); } else { userPaused = false; yt.playVideo(); }
   } else if (audio.paused) {
+    userPaused = false;
     audio.play().catch(() => {});
   } else {
+    userPaused = true;
     audio.pause();
   }
 }
 
 export function pause() {
+  userPaused = true;
   if (st.mode === 'yt' && yt) { try { yt.pauseVideo(); } catch { /* ignore */ } }
   else if (st.mode === 'preview') audio.pause();
 }

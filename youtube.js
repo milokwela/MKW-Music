@@ -107,3 +107,32 @@ export async function searchYouTube(term) {
   try { sessionStorage.setItem(ckey, JSON.stringify(out)); } catch { /* ignore */ }
   return out;
 }
+
+// Id видео из памяти (мгновенно, без сети). Нужен, чтобы запустить трек сразу по нажатию.
+export function peekYouTubeId(track) {
+  return loadMemo()[track.id] || null;
+}
+
+// Заранее подтягиваем из общего кэша id видео для показанных треков (дешёвое чтение, без квоты YouTube).
+export async function prefetchYouTubeIds(tracks) {
+  if (!YOUTUBE_API_KEY) return;
+  const m = loadMemo();
+  let changed = false;
+  const todo = tracks.filter((t) => !t.ytId && !m[t.id] && /^\d+$/.test(t.id)).slice(0, 15);
+  await Promise.allSettled(todo.map(async (t) => {
+    try {
+      const snap = await getDoc(doc(db, 'trackCache', t.id));
+      const id = snap.exists() ? snap.data().youtubeId : null;
+      if (id) { m[t.id] = id; changed = true; }
+    } catch { /* ignore */ }
+  }));
+  if (changed) saveMemo();
+}
+
+// Настройка: при отправке поиска сразу искать и на YouTube (быстрый старт, но тратит дневной лимит).
+export function autoYouTube() {
+  try { return localStorage.getItem('mkw.autoyt') !== '0'; } catch { return true; }
+}
+export function setAutoYouTube(on) {
+  try { localStorage.setItem('mkw.autoyt', on ? '1' : '0'); } catch { /* ignore */ }
+}

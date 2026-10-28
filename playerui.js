@@ -28,6 +28,7 @@ function renderTrack() {
   $('#fp-artist').textContent = t.artist;
   $('#fp-art').replaceChildren(t.artwork ? h('img', { src: t.artwork.replace(/\/\d+x\d+(bb)?\./, '/600x600bb.'), alt: '' }) : icon('music'));
   $('#fp-dur').textContent = formatTime(st.duration);
+  $('#fp-bg').style.backgroundImage = t.artwork ? `url("${t.artwork}")` : 'none';
   document.title = `${t.title} · MKW`;
   highlightCurrent(t.id);
   lastTrackId = t.id;
@@ -35,15 +36,20 @@ function renderTrack() {
   renderState();
 }
 
+let wasLiked = false;
 function renderLike() {
   const t = queue.current;
   const liked = t ? store.isLiked(t.id) : false;
   const btn = $('#fp-like');
+  if (liked && !wasLiked) { btn.classList.remove('pop'); void btn.offsetWidth; btn.classList.add('pop'); }
+  wasLiked = liked;
   btn.classList.toggle('on', liked);
   setIcon(btn.querySelector('svg'), liked ? 'heart-fill' : 'heart');
 }
 
 function renderState() {
+  document.body.classList.toggle('is-playing', st.playing);
+  $('#full-player').classList.toggle('playing', st.playing);
   const playIcon = st.playing ? 'pause' : 'play';
   setIcon($('#mini-toggle svg'), playIcon);
   setIcon($('#fp-toggle svg'), playIcon);

@@ -15,7 +15,7 @@ export const APP_VERSION = '0.1.0';
 //        http://localhost:8000/*
 //      API restrictions = только YouTube Data API v3
 //   5. Вставить ключ между кавычками ниже.
-export const YOUTUBE_API_KEY = 'AIzaSyCJUuwIoMgDlo03wRN_04iv29a5sjJ5Rms';
+export const YOUTUBE_API_KEY = '';
 
 // Регионы каталога iTunes: пробуем по очереди, пока не найдутся результаты.
 export const ITUNES_COUNTRIES = ['RU', 'US'];

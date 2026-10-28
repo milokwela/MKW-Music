@@ -2,14 +2,14 @@
 // users/{uid}/likes/{trackId}, users/{uid}/playlists/{id}, users/{uid}/history/{auto}
 import { db } from './firebase.js';
 import {
-  collection, doc, setDoc, deleteDoc, addDoc, updateDoc, onSnapshot, query, orderBy, limit,
+  collection, doc, setDoc, deleteDoc, addDoc, updateDoc, onSnapshot, query, orderBy, limit, increment,
 } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 import { pickTrack } from './utils.js';
 
 const MAX_PLAYLIST = 300;
 const HISTORY_LIMIT = 50;
 
-export const state = { uid: null, likes: [], playlists: [], history: [] };
+export const state = { uid: null, likes: [], playlists: [], history: [], profile: {} };
 const listeners = new Set();
 let unsubs = [];
 
@@ -29,6 +29,7 @@ export function startStore(uid) {
     watch(query(base('likes'), orderBy('likedAt', 'desc')), 'likes', (d) => ({ ...d.data(), id: d.id })),
     watch(query(base('playlists'), orderBy('createdAt', 'asc')), 'playlists', (d) => ({ ...d.data(), pid: d.id })),
     watch(query(base('history'), orderBy('playedAt', 'desc'), limit(HISTORY_LIMIT)), 'history', (d) => ({ ...d.data(), hid: d.id })),
+    onSnapshot(doc(db, 'users', uid), (snap) => { state.profile = snap.exists() ? snap.data() : {}; emit('profile'); }, (err) => console.error('Firestore profile', err)),
   ];
 }
 
@@ -39,6 +40,8 @@ export function stopStore() {
   state.likes = [];
   state.playlists = [];
   state.history = [];
+  state.profile = {};
+  pendingSec = 0;
 }
 
 const need = () => { if (!state.uid) throw new Error('Не выполнен вход'); return state.uid; };
@@ -91,6 +94,21 @@ export async function removeFromPlaylist(pid, trackId) {
   await updateDoc(doc(db, 'users', need(), 'playlists', pid), { tracks: pl.tracks.filter((x) => x.id !== trackId) });
 }
 
+// ---- статистика прослушивания ----
+let pendingSec = 0;
+export function addListened(sec) { pendingSec += sec; }
+export function listenedTotal() { return (Number(state.profile.listenedSec) || 0) + pendingSec; }
+export async function flushListened() {
+  if (!state.uid || pendingSec < 1) return;
+  const n = Math.floor(pendingSec);
+  pendingSec -= n;
+  try {
+    await setDoc(doc(db, 'users', state.uid), { listenedSec: increment(n) }, { merge: true });
+  } catch (e) {
+    pendingSec += n;
+  }
+}
+
 // ---- история ----
 let lastLogged = { id: '', at: 0 };
 export async function logPlay(track) {
@@ -101,5 +119,6 @@ export async function logPlay(track) {
   lastLogged = { id: t.id, at: now };
   try {
     await addDoc(collection(db, 'users', state.uid, 'history'), { ...t, playedAt: now });
+    setDoc(doc(db, 'users', state.uid), { plays: increment(1) }, { merge: true }).catch(() => {});
   } catch (e) { console.warn('История не записана', e); }
 }

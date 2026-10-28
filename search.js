@@ -1,7 +1,7 @@
 // Экран поиска: iTunes, поиск по YouTube и рекомендации.
 import { searchTracks } from './catalog.js';
-import { searchYouTube, youtubeEnabled } from './youtube.js';
-import { $, h, trackRow, emptyState, toast } from './ui.js';
+import { searchYouTube, youtubeEnabled, prefetchYouTubeIds, autoYouTube } from './youtube.js';
+import { $, h, trackRow, emptyState, toast, skeleton, animateIn } from './ui.js';
 import { openTrackMenu } from './menu.js';
 import * as player from './player.js';
 import * as store from './store.js';
@@ -33,13 +33,14 @@ function renderHistory() {
   const list = getHistory();
   if (!list.length || !inputEmpty()) { box.replaceChildren(); return; }
   box.replaceChildren(
-    ...list.map((term) => h('button', { class: 'chip', type: 'button', onclick: () => { $('#search-input').value = term; $('#search-clear').hidden = false; run(term); } }, term)),
+    ...list.map((term) => h('button', { class: 'chip', type: 'button', onclick: () => { $('#search-input').value = term; $('#search-clear').hidden = false; run(term, true); } }, term)),
     h('button', { class: 'chip', type: 'button', onclick: () => { clearHistory(); renderHistory(); } }, 'Очистить'));
 }
 
 function renderRecs() {
   const box = $('#search-recs');
   if (!recs.length || !inputEmpty()) { box.replaceChildren(); return; }
+  animateIn(box);
   box.replaceChildren(
     h('div', { class: 'section-title', text: 'Для вас' }),
     h('div', { class: 'list' }, recs.map((t, i) => trackRow(t, {
@@ -70,6 +71,7 @@ async function loadRecs() {
   }
   recs = shuffled(pool).slice(0, 15);
   renderRecs();
+  prefetchYouTubeIds(recs);
 }
 
 function renderResults() {
@@ -79,6 +81,7 @@ function renderResults() {
     onMore: () => openTrackMenu(t),
     current: player.queue.current?.id === t.id,
   })));
+  if (results.length) { animateIn(box); prefetchYouTubeIds(results); }
 }
 
 function renderMore(term) {
@@ -105,7 +108,7 @@ function renderMore(term) {
   box.replaceChildren(btn);
 }
 
-async function run(term) {
+async function run(term, explicit = false) {
   const q = term.trim();
   const status = $('#search-status');
   if (!q) {
@@ -123,24 +126,41 @@ async function run(term) {
   $('#search-history').replaceChildren();
   $('#search-recs').replaceChildren();
   renderMore('');
-  status.textContent = 'Ищу…';
+  status.replaceChildren(skeleton(6));
+
+  // При явном поиске (Enter) сразу ищем и на YouTube: у этих треков видео уже известно, они стартуют мгновенно.
+  const wantYt = explicit && youtubeEnabled() && autoYouTube();
+  const ytPromise = wantYt ? searchYouTube(q).catch(() => []) : Promise.resolve([]);
+
+  let found = [];
+  let failed = false;
   try {
-    const found = await searchTracks(q, controller.signal);
-    if (mine !== seq) return;
-    results = found;
-    renderResults();
-    status.replaceChildren();
-    if (!found.length) status.replaceChildren(emptyState('search', 'В каталоге ничего нет'));
-    else pushHistory(q);
-    renderMore(q);
+    found = await searchTracks(q, controller.signal);
   } catch (e) {
     if (e.name === 'AbortError' || mine !== seq) return;
     console.error(e);
-    results = [];
-    renderResults();
-    status.textContent = 'Каталог не ответил. Проверьте интернет';
-    renderMore(q);
+    failed = true;
   }
+  if (mine !== seq) return;
+  results = found;
+  renderResults();
+  status.replaceChildren();
+
+  if (wantYt) {
+    const ytFound = await ytPromise;
+    if (mine !== seq) return;
+    const have = new Set(results.map((t) => t.id));
+    results = [...results, ...ytFound.filter((t) => !have.has(t.id))];
+    renderResults();
+  }
+
+  if (!results.length) {
+    if (failed) status.textContent = 'Каталог не ответил. Проверьте интернет';
+    else status.replaceChildren(emptyState('search', 'Ничего не нашлось'));
+  } else {
+    pushHistory(q);
+  }
+  renderMore(wantYt ? '' : q);
 }
 
 export function initSearch() {
@@ -148,13 +168,14 @@ export function initSearch() {
   const clear = $('#search-clear');
   const live = debounce(() => run(input.value), 450);
   input.addEventListener('input', () => { clear.hidden = !input.value; live(); });
-  $('#search-form').addEventListener('submit', (e) => { e.preventDefault(); live.cancel(); run(input.value); input.blur(); });
+  $('#search-form').addEventListener('submit', (e) => { e.preventDefault(); live.cancel(); run(input.value, true); input.blur(); });
   clear.addEventListener('click', () => { input.value = ''; clear.hidden = true; live.cancel(); run(''); input.focus(); });
   store.onStore((what) => { if (what === 'likes' || what === 'history') loadRecs(); });
 }
 
 export function setSearchUser(nick) {
   currentUser = nick;
+  $('#search-hello').textContent = `Привет, ${nick}`;
   results = [];
   recs = [];
   recsLoaded = false;

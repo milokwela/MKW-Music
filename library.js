@@ -1,5 +1,5 @@
 // Экран «Библиотека»: лайки, плейлисты, история.
-import { $, $$, h, icon, trackRow, emptyState, askText, toast, openSheet, closeSheet, sheetItem } from './ui.js';
+import { $, $$, h, icon, trackRow, emptyState, askText, toast, openSheet, closeSheet, sheetItem, animateIn } from './ui.js';
 import * as store from './store.js';
 import * as player from './player.js';
 import { openTrackMenu } from './menu.js';
@@ -80,13 +80,16 @@ function renderPlaylistPage(box) {
     pl.tracks.length ? [playButtons(pl.tracks), rows(pl.tracks, { playlistId: pl.pid })] : emptyState('music', 'Пусто. Добавляйте треки через ⋮ → «В плейлист»'));
 }
 
+let lastKey = '';
 export function render() {
   const box = $('#lib-content');
+  const key = `${tab}:${openPid || ''}`;
   $$('#lib-tabs .chip').forEach((c) => c.classList.toggle('active', c.dataset.tab === tab));
   if (tab === 'likes') renderLikes(box);
   else if (tab === 'history') renderHistory(box);
   else if (openPid) renderPlaylistPage(box);
   else renderPlaylists(box);
+  if (key !== lastKey) { lastKey = key; animateIn(box); }
 }
 
 export function initLibrary() {

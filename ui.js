@@ -100,12 +100,33 @@ export function artEl(track, extraClass = '') {
   return box;
 }
 
+function withEq(art) {
+  art.appendChild(h('span', { class: 'eq', 'aria-hidden': 'true' }, h('i'), h('i'), h('i')));
+  return art;
+}
+
+// Скелетон (мерцающие заглушки) на время загрузки.
+export function skeleton(n = 6) {
+  return h('div', { class: 'list skeleton' }, Array.from({ length: n }, () => h('div', { class: 'track-row' },
+    h('div', { class: 'main' }, h('div', { class: 'track-art sk' }),
+      h('div', { class: 'track-info' }, h('div', { class: 'sk-line w60' }), h('div', { class: 'sk-line w35' }))))));
+}
+
+// Плавное появление дочерних элементов по очереди.
+export function animateIn(el) {
+  if (!el) return;
+  el.classList.remove('enter');
+  void el.offsetWidth;
+  el.classList.add('enter');
+  setTimeout(() => el.classList.remove('enter'), 1000);
+}
+
 // opts: { onPlay, onMore, current, sub }
 export function trackRow(track, opts = {}) {
   const unavailable = !track.previewUrl && !opts.allowNoPreview;
   const row = h('div', { class: 'track-row', 'data-tid': track.id },
     h('button', { class: 'main', type: 'button', onclick: opts.onPlay },
-      artEl(track),
+      withEq(artEl(track)),
       h('div', { class: 'track-info' },
         h('div', { class: 'track-title', text: track.title }),
         h('div', { class: 'track-sub', text: opts.sub ?? track.artist }))),
