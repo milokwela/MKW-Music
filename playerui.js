@@ -115,7 +115,7 @@ function renderState() {
   setIcon($('#mini-toggle svg'), playIcon);
   setIcon($('#fp-toggle svg'), playIcon);
   const badge = $('#fp-badge');
-  badge.textContent = queue.current?.wave ? 'Моя волна' : st.mode === 'yt' ? 'YouTube' : st.mode === 'preview' ? 'Фрагмент 30 сек' : st.loading ? 'Загрузка…' : '';
+  badge.textContent = queue.current?.wave ? 'MKW Волна' : st.mode === 'yt' ? 'YouTube' : st.mode === 'preview' ? 'Фрагмент 30 сек' : st.loading ? 'Загрузка…' : '';
   badge.classList.toggle('yt', st.mode === 'yt');
   $('#fp-note').textContent = st.message || (st.mode === 'preview' && !youtubeEnabled() ? 'Полные треки появятся после подключения YouTube-ключа' : '');
   $('#fp-shuffle').classList.toggle('on', queue.shuffle);
@@ -130,6 +130,7 @@ function renderTime() {
   const pct = d ? Math.min(100, (st.time / d) * 100) : 0;
   $('#mini-progress').style.width = `${pct}%`;
   $('#full-player').style.setProperty('--prog', `${pct}%`);
+  if (!seeking) $('#fp-seek').style.setProperty('--val', `${pct}%`);
   if (!seeking) {
     $('#fp-seek').value = d ? Math.round((st.time / d) * 1000) : 0;
     $('#fp-cur').textContent = formatTime(st.time);
@@ -192,6 +193,7 @@ export function initPlayerUI() {
   seek.addEventListener('input', () => {
     seeking = true;
     $('#fp-cur').textContent = formatTime((seek.value / 1000) * st.duration);
+    seek.style.setProperty('--val', `${seek.value / 10}%`);
     if (st.duration && Date.now() - lastSeek > 250) { lastSeek = Date.now(); player.seek((seek.value / 1000) * st.duration); }
   });
   seek.addEventListener('change', () => {

@@ -6,6 +6,7 @@ import { initLibrary, render as renderLibrary, resetLibrary } from './library.js
 import { initPlayerUI, resetPlayerUI, closeFull } from './playerui.js';
 import { buildProfile, updateProfile, resetProfile } from './profile.js';
 import { initArtist } from './artist.js';
+import { initLiquidNav } from './liquid.js';
 import { initViz } from './viz.js';
 import { initWave } from './wave.js';
 import { initTheme } from './theme.js';
@@ -97,6 +98,7 @@ function boot() {
   initTheme();
   initAuthForm();
   initNav();
+  initLiquidNav();
   initSearch();
   initLibrary();
   initPlayerUI();

@@ -1,4 +1,4 @@
-// «Моя волна»: бесконечная очередь, которая подстраивается под вкус и реакцию (пропуски / дослушивания).
+// MKW Волна: бесконечная очередь, которая подстраивается под вкус и реакцию (пропуски / дослушивания).
 import { searchTracks } from './catalog.js';
 import { peekYouTubeId, prefetchYouTubeIds } from './youtube.js';
 import * as player from './player.js';
@@ -75,7 +75,7 @@ async function refill(n = 8) {
     // сначала треки, для которых видео уже известно (быстро и без траты лимита YouTube), и лайкнутые
     const cached = pool.filter((t) => peekYouTubeId(t));
     const fresh = pool.filter((t) => !peekYouTubeId(t));
-    const pick = [...shuffled(cached), ...shuffled(fresh).slice(0, 3)].slice(0, n);
+    const pick = [...shuffled(cached), ...shuffled(fresh).slice(0, cached.length < 4 ? 2 : 0)].slice(0, n);
     pick.sort((a, b) => (liked.has(b.id) ? 1 : 0) - (liked.has(a.id) ? 1 : 0) || Math.random() - 0.5);
     for (const t of pick) player.addToQueue({ ...t, wave: true });
   } finally {
@@ -148,7 +148,7 @@ async function seedQueue() {
     pool.push(...shuffled(await searchTracks(a).catch(() => [])).slice(0, 6));
   }
   await prefetchYouTubeIds(pool);
-  pool = [...shuffled(pool.filter((t) => peekYouTubeId(t))), ...shuffled(pool.filter((t) => !peekYouTubeId(t))).slice(0, 3)];
+  pool = [...shuffled(pool.filter((t) => peekYouTubeId(t))), ...shuffled(pool.filter((t) => !peekYouTubeId(t))).slice(0, 2)];
   const start = [...liked, ...pool.filter((t) => !liked.some((l) => l.id === t.id)).map((t) => ({ ...t, wave: true }))].slice(0, 8);
   if (!start.length) { setActive(false); toast('Не получилось подобрать. Проверьте интернет'); return; }
   player.playTracks(start, 0);

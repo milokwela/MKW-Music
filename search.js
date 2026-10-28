@@ -28,6 +28,7 @@ function clearHistory() {
 }
 
 const inputEmpty = () => !$('#search-input').value.trim();
+const syncWave = () => { const b = $('#wave-btn'); if (b) b.hidden = !inputEmpty(); };
 
 function renderHistory() {
   const box = $('#search-history');
@@ -111,6 +112,7 @@ function renderMore(term) {
 
 async function run(term, explicit = false) {
   const q = term.trim();
+  syncWave();
   const status = $('#search-status');
   if (!q) {
     results = [];
@@ -168,7 +170,7 @@ export function initSearch() {
   const input = $('#search-input');
   const clear = $('#search-clear');
   const live = debounce(() => run(input.value), 450);
-  input.addEventListener('input', () => { clear.hidden = !input.value; live(); });
+  input.addEventListener('input', () => { clear.hidden = !input.value; syncWave(); live(); });
   $('#search-form').addEventListener('submit', (e) => { e.preventDefault(); live.cancel(); run(input.value, true); input.blur(); });
   clear.addEventListener('click', () => { input.value = ''; clear.hidden = true; live.cancel(); run(''); input.focus(); });
   store.onStore((what) => { if (what === 'likes' || what === 'history') loadRecs(); });

@@ -24,7 +24,7 @@ function saveMemo() {
 
 // Возвращает id видео (11 символов) или null.
 export async function findYouTubeId(track) {
-  if (!YOUTUBE_API_KEY || quotaOut) return null;
+  if (!YOUTUBE_API_KEY) return null;
   const m = loadMemo();
   if (m[track.id]) return m[track.id];
 
@@ -34,6 +34,7 @@ export async function findYouTubeId(track) {
     if (id) { m[track.id] = id; saveMemo(); return id; }
   } catch { /* кэш недоступен, идём в API */ }
 
+  if (quotaOut) return null;   // лимит кончился: играем только то, что уже в общем кэше
   const q = `${track.artist} - ${track.title}`;
   const url = 'https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&videoCategoryId=10'
     + `&videoEmbeddable=true&maxResults=1&q=${encodeURIComponent(q)}&key=${YOUTUBE_API_KEY}`;
@@ -131,8 +132,8 @@ export async function prefetchYouTubeIds(tracks) {
 
 // Настройка: при отправке поиска сразу искать и на YouTube (быстрый старт, но тратит дневной лимит).
 export function autoYouTube() {
-  try { return localStorage.getItem('mkw.autoyt') !== '0'; } catch { return true; }
+  try { return localStorage.getItem('mkw.autoyt2') === '1'; } catch { return false; }
 }
 export function setAutoYouTube(on) {
-  try { localStorage.setItem('mkw.autoyt', on ? '1' : '0'); } catch { /* ignore */ }
+  try { localStorage.setItem('mkw.autoyt2', on ? '1' : '0'); } catch { /* ignore */ }
 }

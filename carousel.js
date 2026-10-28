@@ -17,8 +17,10 @@ export function renderCarousel() {
   const q = player.queue;
   const items = q.items, i = q.index;
   const wrap = q.repeat === 'all' && items.length > 1;
-  const prev = items[i - 1] || (wrap ? items[items.length - 1] : null);
-  const next = items[i + 1] || (wrap ? items[0] : null);
+  const wave = Boolean(q.current && q.current.wave);
+  const prev = wave ? null : items[i - 1] || (wrap ? items[items.length - 1] : null);
+  const next = wave ? null : items[i + 1] || (wrap ? items[0] : null);
+  art._off = wave;
   art._p = Boolean(prev);
   art._n = Boolean(next);
   busy = false;
@@ -33,7 +35,7 @@ function setX(px) {
 export function initCarousel() {
   const art = $('#fp-art');
   art.addEventListener('pointerdown', (e) => {
-    if (busy || (e.pointerType === 'mouse' && e.button !== 0)) return;
+    if (art._off || busy || (e.pointerType === 'mouse' && e.button !== 0)) return;
     down = true; lock = null; moved = false; sx = e.clientX; sy = e.clientY; dx = 0; t0 = Date.now(); pid = e.pointerId;
   });
   art.addEventListener('pointermove', (e) => {
