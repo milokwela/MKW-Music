@@ -1,8 +1,16 @@
 // История версий. Новые записи добавляйте сверху.
-export const VERSION = '0.7.0';
+export const VERSION = '0.7.1';
 export const STAGE = 'beta';
 
 export const CHANGELOG = [
+  {
+    version: '0.7.1',
+    date: '28 октября 2026',
+    new: [],
+    fixed: [
+      'Исправлено зависание при запуске (пустой экран) после обновления 0.7.0',
+    ],
+  },
   {
     version: '0.7.0',
     date: '28 октября 2026',

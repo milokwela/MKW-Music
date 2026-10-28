@@ -21,7 +21,7 @@ export function initLiquidNav() {
     const g = geom(activeIndex());
     lens.style.width = `${g.w}px`;
     setX(g.x);
-    btns().forEach((b) => b.classList.remove('hot'));
+    btns().forEach((b) => { if (b.classList.contains('hot')) b.classList.remove('hot'); });
   };
   const nearest = (px) => {
     let best = 0, bd = 1e9;
@@ -67,7 +67,8 @@ export function initLiquidNav() {
   nav.addEventListener('pointercancel', (e) => { end(e); rest(); });
   nav.addEventListener('click', (e) => { if (justDragged) { e.stopPropagation(); e.preventDefault(); } }, true);
 
-  new MutationObserver(() => { if (!drag) rest(); }).observe(nav, { attributes: true, subtree: true, attributeFilter: ['class'] });
+  let last = -1;
+  new MutationObserver(() => { const i = activeIndex(); if (!drag && i !== last) { last = i; rest(); } }).observe(nav, { attributes: true, subtree: true, attributeFilter: ['class'] });
   const app = $('#app');
   if (app) new MutationObserver(() => setTimeout(rest, 30)).observe(app, { attributes: true, attributeFilter: ['hidden'] });
   window.addEventListener('resize', rest);
