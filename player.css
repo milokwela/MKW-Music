@@ -168,3 +168,5 @@
 .search-form { transition: box-shadow .25s, transform .25s; }
 .search-form:focus-within { transform: translateY(-1px); box-shadow: 0 8px 28px color-mix(in srgb, var(--primary) 28%, transparent); }
 @media (prefers-reduced-motion: reduce) { .wave-bg i, .wave-eq u, .nav-lens { animation: none; transition: none; } }
+.fp-badge:empty { display: none; }
+#full-player.wave-mode #fp-seek { --sa: #fff; --sb: rgba(255,255,255,.28); }
