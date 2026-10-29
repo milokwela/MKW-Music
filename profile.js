@@ -1,12 +1,12 @@
 // Экран «Профиль»: статистика, достижения, топ исполнителей, тема, версии.
-import { $, $$, h, icon } from './ui.js';
+import { $, $$, h, icon, openSheet, closeSheet, toast } from './ui.js';
 import * as store from './store.js';
 import { ACCENTS, getTheme, getAccent, setTheme, setAccent } from './theme.js';
 import { CHANGELOG, VERSION, STAGE, KNOWN_ISSUES } from './changelog.js';
 import { plural } from './utils.js';
 import { youtubeEnabled, autoYouTube, setAutoYouTube } from './youtube.js';
 import { liveBg, setLiveBg } from './viz.js';
-import { logOut } from './auth.js';
+import { logOut, changePassword, authErrorText } from './auth.js';
 
 const ACHIEVEMENTS = [
   { id: 'like1', icon: 'heart', title: 'Первый лайк', hint: 'Лайкните любой трек', ok: (s) => s.likes >= 1 },
@@ -125,6 +125,8 @@ export function buildProfile(nick) {
       h('div', { class: 'cl-h warn', text: 'Известные проблемы' }),
       h('ul', {}, KNOWN_ISSUES.map((t) => h('li', { text: t })))),
 
+    h('div', { class: 'section-title', text: 'Безопасность' }),
+    h('div', { class: 'lib-actions' }, h('button', { class: 'chip', type: 'button', onclick: openPasswordSheet }, 'Сменить пароль')),
     h('button', { class: 'btn tonal logout', type: 'button', onclick: () => logOut() }, icon('logout'), 'Выйти'),
     h('p', { class: 'profile-note center', text: `MKW ${VERSION} ${STAGE}` }));
 
@@ -187,3 +189,22 @@ export function resetProfile() {
 }
 
 setInterval(() => { if (built && !$('#view-profile').hidden) updateProfile(); }, 10000);
+
+function openPasswordSheet() {
+  const cur = h('input', { type: 'password', placeholder: 'Текущий пароль (можно пусто)', autocomplete: 'current-password', class: 'sheet-input' });
+  const nxt = h('input', { type: 'password', placeholder: 'Новый пароль (от 6 символов)', autocomplete: 'new-password', class: 'sheet-input' });
+  const err = h('div', { class: 'sheet-note' });
+  const btn = h('button', { class: 'btn', type: 'button' }, 'Сохранить');
+  btn.addEventListener('click', async () => {
+    err.textContent = '';
+    btn.disabled = true;
+    try {
+      await changePassword(cur.value, nxt.value);
+      closeSheet();
+      toast('Пароль изменён');
+    } catch (e) {
+      err.textContent = e.userText || authErrorText(e);
+    } finally { btn.disabled = false; }
+  });
+  openSheet('Смена пароля', h('div', { class: 'pw-form' }, cur, nxt, err, btn));
+}

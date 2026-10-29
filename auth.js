@@ -1,6 +1,7 @@
 import { auth, db } from './firebase.js';
 import {
   onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut,
+  updatePassword, reauthenticateWithCredential, EmailAuthProvider,
 } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
 import { doc, setDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 import { normalizeNick, isValidNick, nickToEmail, emailToNick } from './utils.js';
@@ -14,6 +15,7 @@ const ERRORS = {
   'auth/weak-password': 'Пароль слишком простой, нужно от 6 символов',
   'auth/too-many-requests': 'Слишком много попыток, подождите пару минут',
   'auth/network-request-failed': 'Нет интернета',
+  'auth/requires-recent-login': 'Для смены нужен текущий пароль. Если не помните, выйдите и войдите заново',
   'auth/operation-not-allowed': 'Вход по паролю выключен в Firebase (Authentication → Sign-in method → Email/Password)',
 };
 
@@ -50,4 +52,13 @@ export function logOut() {
 // Колбэк получает { uid, nick } или null.
 export function watchAuth(cb) {
   return onAuthStateChanged(auth, (u) => cb(u ? { uid: u.uid, nick: emailToNick(u.email) } : null));
+}
+
+// Смена пароля. Если текущий пароль указан, подтверждаем им; если нет, пробуем без него (работает, пока вход свежий).
+export async function changePassword(current, next) {
+  const user = auth.currentUser;
+  if (!user) throw Object.assign(new Error('nouser'), { userText: 'Сначала войдите' });
+  if (String(next).length < 6) throw Object.assign(new Error('pass'), { userText: 'Новый пароль: минимум 6 символов' });
+  if (current) await reauthenticateWithCredential(user, EmailAuthProvider.credential(user.email, current));
+  await updatePassword(user, next);
 }

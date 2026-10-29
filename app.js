@@ -7,6 +7,7 @@ import { initPlayerUI, resetPlayerUI, closeFull } from './playerui.js';
 import { buildProfile, updateProfile, resetProfile } from './profile.js';
 import { initArtist } from './artist.js';
 import { initLiquidNav } from './glassnav.js';
+import { initRowLens } from './rowlens.js';
 import { initViz } from './viz.js';
 import { initWave } from './wave.js';
 import { initTheme } from './theme.js';
@@ -105,6 +106,7 @@ function boot() {
   initWave();
   initViz();
   initArtist();
+  initRowLens();
   initListenFlush();
   onStore((what) => { if (!$('#view-profile').hidden && (what === 'profile' || what === 'likes' || what === 'playlists' || what === 'history')) updateProfile(); });
   watchAuth(onUser);

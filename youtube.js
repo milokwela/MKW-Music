@@ -132,8 +132,8 @@ export async function prefetchYouTubeIds(tracks) {
 
 // Настройка: при отправке поиска сразу искать и на YouTube (быстрый старт, но тратит дневной лимит).
 export function autoYouTube() {
-  try { return localStorage.getItem('mkw.autoyt2') === '1'; } catch { return false; }
+  try { return localStorage.getItem('mkw.autoyt3') !== '0'; } catch { return true; }
 }
 export function setAutoYouTube(on) {
-  try { localStorage.setItem('mkw.autoyt2', on ? '1' : '0'); } catch { /* ignore */ }
+  try { localStorage.setItem('mkw.autoyt3', on ? '1' : '0'); } catch { /* ignore */ }
 }

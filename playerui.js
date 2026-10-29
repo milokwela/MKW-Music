@@ -115,7 +115,7 @@ function renderState() {
   setIcon($('#mini-toggle svg'), playIcon);
   setIcon($('#fp-toggle svg'), playIcon);
   const badge = $('#fp-badge');
-  badge.textContent = queue.current?.wave ? 'MKW Волна' : st.mode === 'yt' ? 'YouTube' : st.mode === 'preview' ? 'Фрагмент 30 сек' : st.loading ? 'Загрузка…' : '';
+  badge.textContent = queue.current?.wave ? 'MKW Волна' : st.mode === 'yt' ? 'YouTube' : st.mode === 'preview' ? (queue.current?.auId ? 'Audius' : 'Фрагмент 30 сек') : st.loading ? 'Загрузка…' : '';
   badge.classList.toggle('yt', st.mode === 'yt');
   $('#fp-note').textContent = st.message || (st.mode === 'preview' && !youtubeEnabled() ? 'Полные треки появятся после подключения YouTube-ключа' : '');
   $('#fp-shuffle').classList.toggle('on', queue.shuffle);

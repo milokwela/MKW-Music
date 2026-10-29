@@ -75,6 +75,8 @@ export function pickTrack(t) {
     duration: Number(t?.duration) || 0,
     genre: String(t?.genre ?? ''),
     ytId: String(t?.ytId ?? ''),
+    auId: String(t?.auId ?? ''),
+    noYt: Boolean(t?.noYt),
   };
 }
 

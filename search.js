@@ -7,6 +7,8 @@ import * as player from './player.js';
 import * as store from './store.js';
 import { debounce, shuffled } from './utils.js';
 import { isArtistBlocked } from './taste.js';
+import { searchAudius, audiusEnabled } from './audius.js';
+import { looksLikeUrl, resolveLink } from './links.js';
 
 let currentUser = null;
 let results = [];
@@ -126,6 +128,16 @@ async function run(term, explicit = false) {
   if (controller) controller.abort();
   controller = new AbortController();
   const mine = ++seq;
+  if (looksLikeUrl(q)) {
+    if (!explicit) return;
+    status.replaceChildren(skeleton(3));
+    const r = await resolveLink(q);
+    if (mine !== seq) return;
+    status.replaceChildren();
+    if (r.track) { results = [r.track]; renderResults(); renderMore(''); toast('Трек найден по ссылке'); return; }
+    if (r.query) { $('#search-input').value = r.query; return run(r.query, true); }
+    results = []; renderResults(); status.textContent = r.error; return;
+  }
   $('#search-history').replaceChildren();
   $('#search-recs').replaceChildren();
   renderMore('');
@@ -135,6 +147,7 @@ async function run(term, explicit = false) {
   const wantYt = explicit && youtubeEnabled() && autoYouTube();
   const ytPromise = wantYt ? searchYouTube(q).catch(() => []) : Promise.resolve([]);
 
+  const auPromise = audiusEnabled() ? searchAudius(q, controller.signal).catch(() => []) : Promise.resolve([]);
   let found = [];
   let failed = false;
   try {
@@ -148,6 +161,12 @@ async function run(term, explicit = false) {
   results = found;
   renderResults();
   status.replaceChildren();
+
+  {
+    const au = await auPromise;
+    if (mine !== seq) return;
+    if (au.length) { const have = new Set(results.map((t) => t.id)); results = [...results, ...au.filter((t) => !have.has(t.id))]; renderResults(); }
+  }
 
   if (wantYt) {
     const ytFound = await ytPromise;

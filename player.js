@@ -1,4 +1,5 @@
 // Движок плеера: очередь, YouTube (полные треки) и превью iTunes (30 сек) как запасной вариант.
+import { audiusStreamUrl } from './audius.js';
 import { Queue } from './queue.js';
 import { findYouTubeId, peekYouTubeId, loadYouTubeApi, youtubeEnabled } from './youtube.js';
 import { logPlay, addListened } from './store.js';
@@ -137,7 +138,7 @@ async function startCurrent() {
   const id = ++loadId;
   userPaused = false;
   stopAll();
-  if (track && youtubeEnabled()) keepOn(); else keepOff();
+  if (track && youtubeEnabled() && !track.auId) keepOn(); else keepOff();
   if (!track) {
     st.mode = null; st.loading = false; st.time = 0; st.duration = 0;
     emit('track');
@@ -150,6 +151,8 @@ async function startCurrent() {
   st.message = '';
   emit('track');
   setSession(track);
+
+  if (track.auId) { startPreview(track, id); return; }
 
   // Если id видео уже известен, запускаем без единого ожидания: iPhone пускает звук только сразу после нажатия.
   let vid = track.ytId || peekYouTubeId(track);
@@ -188,7 +191,7 @@ function startPreview(track, id) {
   if (id !== loadId) return;
   st.mode = 'preview';
   st.loading = true;
-  audio.src = track.previewUrl;
+  audio.src = track.auId ? audiusStreamUrl(track.auId) : track.previewUrl;
   audio.play().then(() => { logPlay(track); prefetchNext(); }).catch((e) => {
     if (id !== loadId) return;
     st.loading = false;
