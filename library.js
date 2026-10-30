@@ -1,9 +1,9 @@
 // Экран «Библиотека»: лайки, плейлисты, история.
-import { $, $$, h, icon, trackRow, emptyState, askText, toast, openSheet, closeSheet, sheetItem, animateIn } from './ui.js?v=0.10.0';
-import * as store from './store.js?v=0.10.0';
-import * as player from './player.js?v=0.10.0';
-import { openTrackMenu } from './menu.js?v=0.10.0';
-import { tracksWord, timeAgo, artUrl } from './utils.js?v=0.10.0';
+import { $, $$, h, icon, trackRow, emptyState, askText, toast, openSheet, closeSheet, sheetItem, animateIn } from './ui.js?v=0.10.1';
+import * as store from './store.js?v=0.10.1';
+import * as player from './player.js?v=0.10.1';
+import { openTrackMenu } from './menu.js?v=0.10.1';
+import { tracksWord, timeAgo, artUrl } from './utils.js?v=0.10.1';
 
 let tab = 'likes';
 let openPid = null;
@@ -96,7 +96,33 @@ export function render() {
   if (key !== lastKey) { lastKey = key; animateIn(box); }
 }
 
+function initSegDrag() {
+  const seg = $('#lib-tabs');
+  const tabs = ['likes', 'playlists', 'history'];
+  let drag = false, moved = false, sx = 0, pid = 0, just = false;
+  const idx = (e) => { const r = seg.getBoundingClientRect(); return Math.min(2, Math.max(0, (e.clientX - r.left) / r.width * 3 - 0.5)); };
+  seg.addEventListener('pointerdown', (e) => { drag = true; moved = false; sx = e.clientX; pid = e.pointerId; });
+  seg.addEventListener('pointermove', (e) => {
+    if (!drag) return;
+    if (!moved && Math.abs(e.clientX - sx) > 6) { moved = true; seg.classList.add('drag'); try { seg.setPointerCapture(pid); } catch { /* ignore */ } }
+    if (moved) seg.style.setProperty('--i', String(idx(e)));
+  });
+  const end = (e) => {
+    if (!drag) return;
+    drag = false; seg.classList.remove('drag');
+    if (!moved) return;
+    const i = Math.round(idx(e));
+    tab = tabs[i]; openPid = null; render();
+    just = true; setTimeout(() => { just = false; }, 300);
+    if (navigator.vibrate) navigator.vibrate(8);
+  };
+  seg.addEventListener('pointerup', end);
+  seg.addEventListener('pointercancel', (e) => { end(e); render(); });
+  seg.addEventListener('click', (e) => { if (just) { e.stopPropagation(); e.preventDefault(); } }, true);
+}
+
 export function initLibrary() {
+  initSegDrag();
   $('#lib-tabs').addEventListener('click', (e) => {
     const b = e.target.closest('[data-tab]');
     if (!b) return;

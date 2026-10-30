@@ -1,15 +1,15 @@
 // Экран «Профиль»: статистика, достижения, топ исполнителей, тема, версии.
-import { $, $$, h, icon, openSheet, closeSheet, toast } from './ui.js?v=0.10.0';
-import * as store from './store.js?v=0.10.0';
-import { ACCENTS, getTheme, getAccent, setTheme, setAccent } from './theme.js?v=0.10.0';
-import { CHANGELOG, VERSION, STAGE, KNOWN_ISSUES } from './changelog.js?v=0.10.0';
-import { plural } from './utils.js?v=0.10.0';
-import { youtubeEnabled, youtubeQuotaOut } from './youtube.js?v=0.10.0';
-import { audiusEnabled } from './audius.js?v=0.10.0';
-import { SOURCE_MODES, getSourceMode, setSourceMode } from './sources.js?v=0.10.0';
-import { gesturesOn, setGestures } from './gestures.js?v=0.10.0';
-import { liveBg, setLiveBg } from './viz.js?v=0.10.0';
-import { logOut, changePassword, authErrorText } from './auth.js?v=0.10.0';
+import { $, $$, h, icon, openSheet, closeSheet, toast } from './ui.js?v=0.10.1';
+import * as store from './store.js?v=0.10.1';
+import { ACCENTS, getTheme, getAccent, setTheme, setAccent } from './theme.js?v=0.10.1';
+import { CHANGELOG, VERSION, STAGE, KNOWN_ISSUES } from './changelog.js?v=0.10.1';
+import { plural } from './utils.js?v=0.10.1';
+import { youtubeEnabled, youtubeQuotaOut } from './youtube.js?v=0.10.1';
+import { audiusEnabled } from './audius.js?v=0.10.1';
+import { SOURCE_MODES, getSourceMode, setSourceMode } from './sources.js?v=0.10.1';
+import { gesturesOn, setGestures } from './gestures.js?v=0.10.1';
+import { liveBg, setLiveBg } from './viz.js?v=0.10.1';
+import { logOut, changePassword, authErrorText } from './auth.js?v=0.10.1';
 
 const ACHIEVEMENTS = [
   { id: 'like1', icon: 'heart', title: 'Первый лайк', hint: 'Лайкните любой трек', ok: (s) => s.likes >= 1 },

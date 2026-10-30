@@ -1,9 +1,9 @@
 // Управление жестами через камеру (MediaPipe GestureRecognizer, модель грузится с CDN).
 // ✌️ Victory — следующий, 👍 — лайк, 👎 — дизлайк, ✋ — пауза/пуск.
-import { h, toast } from './ui.js?v=0.10.0';
-import * as player from './player.js?v=0.10.0';
-import * as store from './store.js?v=0.10.0';
-import { dislike } from './wave.js?v=0.10.0';
+import { h, toast, openSheet, closeSheet } from './ui.js?v=0.10.1';
+import * as player from './player.js?v=0.10.1';
+import * as store from './store.js?v=0.10.1';
+import { dislike } from './wave.js?v=0.10.1';
 
 const KEY = 'mkw.gestures';
 const LIB = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14';
@@ -38,7 +38,6 @@ function loop() {
       const now = Date.now();
       if (useful !== cand) { cand = useful; since = now; }
       else if (useful && now - since >= HOLD_MS) { act(useful); since = now + COOLDOWN_MS; }
-      if (badge) badge.classList.toggle('seen', Boolean(useful));
     }
   } catch (e) { console.error(e); }
   timer = setTimeout(loop, STEP_MS);
@@ -53,7 +52,7 @@ async function start() {
   stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: 320, height: 240 }, audio: false });
   video = h('video', { class: 'gest-video', playsinline: '', muted: '', autoplay: '' });
   video.srcObject = stream;
-  badge = h('div', { class: 'gest-badge' }, video, h('span', { text: '✌️' }));
+  badge = h('div', { class: 'gest-badge' }, video);
   document.body.appendChild(badge);
   await video.play();
   running = true;
@@ -71,8 +70,29 @@ function stop() {
   rec = null;
 }
 
+const CKEY = 'mkw.gestures.consent';
+const hasConsent = () => { try { return localStorage.getItem(CKEY) === '1'; } catch { return false; } };
+
+function askConsent() {
+  return new Promise((resolve) => {
+    let ok = false;
+    const chk = h('input', { type: 'checkbox', id: 'gest-ok' });
+    const go = h('button', { class: 'btn', type: 'button', disabled: '' }, 'Включить жесты');
+    chk.addEventListener('change', () => { if (chk.checked) go.removeAttribute('disabled'); else go.setAttribute('disabled', ''); });
+    go.addEventListener('click', () => { ok = true; try { localStorage.setItem(CKEY, '1'); } catch { /* ignore */ } closeSheet(); resolve(true); });
+    const no = h('button', { class: 'btn tonal', type: 'button' }, 'Отмена');
+    no.addEventListener('click', () => { closeSheet(); });
+    openSheet('Управление жестами', h('div', { class: 'pw-form' },
+      h('p', { class: 'profile-note', text: 'Для жестов включается фронтальная камера. Картинка никуда не передаётся и не сохраняется: распознавание идёт прямо на вашем устройстве.' }),
+      h('label', { class: 'consent' }, chk, h('span', { text: 'Я согласен: MKW не собирает мои данные с камеры и никуда их не передаёт' })),
+      go, no));
+    const t = setInterval(() => { if (!document.querySelector('#gest-ok')) { clearInterval(t); if (!ok) resolve(false); } }, 300);
+  });
+}
+
 export async function setGestures(v) {
   if (v === on) return;
+  if (v && !hasConsent() && !(await askConsent())) return;
   if (!v) { on = false; stop(); try { localStorage.setItem(KEY, '0'); } catch { /* ignore */ } return; }
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { toast('Браузер не даёт доступ к камере'); return; }
   toast('Включаю камеру и загружаю модель…');
