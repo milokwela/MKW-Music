@@ -40,6 +40,12 @@ export async function resolveLink(raw) {
       const o = await json(`https://soundcloud.com/oembed?format=json&url=${encodeURIComponent(raw.trim())}`);
       return { query: String(o.title || '').replace(/\s+by\s+/i, ' ') };
     }
+    if (host.endsWith('tiktok.com')) {
+      const o = await json(`https://www.tiktok.com/oembed?url=${encodeURIComponent(raw.trim())}`);
+      const t = String(o.title || '').replace(/#\S+/g, '').trim();
+      if (t) return { query: t.slice(0, 80) };
+      return { error: 'В описании видео нет названия песни. Введите название' };
+    }
     if (host === 'music.apple.com') {
       const tid = u.searchParams.get('i') || u.pathname.split('/').pop();
       if (/^\d+$/.test(tid)) {
@@ -54,5 +60,5 @@ export async function resolveLink(raw) {
   } catch (e) {
     return { error: 'Не получилось открыть ссылку. Проверьте её или введите название' };
   }
-  return { error: 'Такую ссылку пока не умею. Работают YouTube, Spotify, SoundCloud, Apple Music' };
+  return { error: 'Такую ссылку пока не умею. Работают YouTube, Spotify, SoundCloud, Apple Music, TikTok (по описанию)' };
 }

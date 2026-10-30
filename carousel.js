@@ -17,7 +17,7 @@ export function renderCarousel() {
   const q = player.queue;
   const items = q.items, i = q.index;
   const wrap = q.repeat === 'all' && items.length > 1;
-  const wave = Boolean(q.current && q.current.wave);
+  const wave = Boolean(q.current && q.current.wave) || window.matchMedia('(min-width: 900px)').matches;
   const prev = wave ? null : items[i - 1] || (wrap ? items[items.length - 1] : null);
   const next = wave ? null : items[i + 1] || (wrap ? items[0] : null);
   art._off = wave;

@@ -8,17 +8,26 @@
 <link rel="icon" type="image/png" href="favicon.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="stylesheet" href="variables.css?v=0.8.0">
-<link rel="stylesheet" href="global.css?v=0.8.0">
-<link rel="stylesheet" href="auth.css?v=0.8.0">
-<link rel="stylesheet" href="search.css?v=0.8.0">
-<link rel="stylesheet" href="library.css?v=0.8.0">
-<link rel="stylesheet" href="player.css?v=0.8.0">
-<link rel="stylesheet" href="polish.css?v=0.8.0">
+<link rel="stylesheet" href="variables.css?v=0.9.1">
+<link rel="stylesheet" href="global.css?v=0.9.1">
+<link rel="stylesheet" href="auth.css?v=0.9.1">
+<link rel="stylesheet" href="search.css?v=0.9.1">
+<link rel="stylesheet" href="library.css?v=0.9.1">
+<link rel="stylesheet" href="player.css?v=0.9.1">
+<link rel="stylesheet" href="polish.css?v=0.9.1">
 </head>
 <body>
+<div id="splash" aria-hidden="true">
+  <div class="sp-stars"></div>
+  <div class="sp-spark"></div>
+  <div class="sp-burst"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+  <img class="sp-cat" src="cat.jpg" alt="">
+  <div class="sp-name">MKW</div>
+  <div class="sp-by">by MiloKwel</div>
+</div>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-mic" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></symbol>
   <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M16.5 16.5L21 21"/></symbol>
   <symbol id="i-library" viewBox="0 0 24 24"><path d="M4 4v16M9 4v16M14.500 5.200l4.200 14.600"/></symbol>
   <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.400 3.600-7 8-7s8 2.600 8 7"/></symbol>
@@ -54,7 +63,7 @@
 <section id="auth-screen" hidden>
   <div class="blobs" aria-hidden="true"><i></i><i></i><i></i></div>
   <div class="auth-card">
-    <img class="auth-logo" src="logo.png" alt="">
+    <img class="auth-logo" src="cat.jpg" alt="">
     <h1 class="auth-title">MKW</h1>
     <p class="auth-sub">Музыка для своих</p>
     <div class="seg" id="auth-tabs">
@@ -77,15 +86,18 @@
 <div id="app" hidden>
   <main>
     <section class="view" id="view-search">
-      <div class="hello"><p class="hello-sub" id="search-hello"></p><h1 class="view-title">Что послушаем?</h1></div>
+      <div class="hello">
+        <div class="hello-sky" aria-hidden="true"><svg class="moon" viewBox="0 0 64 64"><path d="M44 8a26 26 0 1 0 12 40A22 22 0 0 1 44 8z" fill="currentColor"/></svg><i></i><i></i><i></i><i></i><i></i></div>
+        <p class="hello-sub" id="search-hello"></p><h1 class="view-title">Что послушаем?</h1></div>
       <form class="search-form" id="search-form" role="search">
         <svg class="icon lead"><use href="#i-search"/></svg>
         <input id="search-input" type="search" placeholder="Трек или исполнитель" autocomplete="off" enterkeyhint="search">
         <button class="icon-btn" id="search-clear" type="button" aria-label="Очистить" hidden><svg class="icon"><use href="#i-close"/></svg></button>
+        <button class="icon-btn" id="mic-btn" type="button" aria-label="Распознать песню"><svg class="icon"><use href="#i-mic"/></svg></button>
       </form>
       <div class="search-chips" id="search-history"></div>
       <button class="wave-btn" id="wave-btn" type="button">
-        <span class="wave-bg" aria-hidden="true"><i></i><i></i><i></i></span>
+        <span class="wave-bg" aria-hidden="true"><i></i><i></i><i></i><s style="left:8%;top:22%"></s><s style="left:20%;top:70%"></s><s style="left:33%;top:30%"></s><s style="left:46%;top:76%"></s><s style="left:58%;top:18%"></s><s style="left:68%;top:62%"></s><s style="left:79%;top:28%"></s><s style="left:90%;top:70%"></s><s style="left:14%;top:46%"></s><s style="left:52%;top:46%"></s><s style="left:84%;top:48%"></s></span>
         <span class="wave-ico"><svg class="icon"><use href="#i-play"/></svg></span>
         <span class="wave-txt"><b>MKW Волна</b><small id="wave-sub">Музыка под ваш вкус, подстраивается на лету</small></span>
         <span class="wave-eq" aria-hidden="true"><u></u><u></u><u></u><u></u><u></u></span>
@@ -179,6 +191,6 @@
 <audio id="preview-player" preload="none"></audio>
 <div id="yt-holder" style="position:fixed;width:1px;height:1px;left:-10px;top:-10px;overflow:hidden;opacity:0;pointer-events:none"><div id="yt-target"></div></div>
 
-<script type="module" src="app.js?v=0.8.0"></script>
+<script type="module" src="app.js?v=0.9.1"></script>
 </body>
 </html>

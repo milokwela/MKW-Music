@@ -95,7 +95,19 @@ function onUser(user) {
   }
 }
 
+function runSplash() {
+  const sp = document.getElementById('splash');
+  if (!sp) return;
+  let seen = false;
+  try { seen = sessionStorage.getItem('mkw.splash') === '1'; sessionStorage.setItem('mkw.splash', '1'); } catch { /* ignore */ }
+  if (seen || window.matchMedia('(prefers-reduced-motion: reduce)').matches) { sp.remove(); return; }
+  sp.classList.add('go');
+  setTimeout(() => sp.classList.add('out'), 2000);
+  setTimeout(() => sp.remove(), 2600);
+}
+
 function boot() {
+  runSplash();
   initTheme();
   initAuthForm();
   initNav();

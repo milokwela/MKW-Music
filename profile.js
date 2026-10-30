@@ -61,8 +61,8 @@ function themeCard(mode, label) {
 
 function syncControls() {
   $$('.theme-card').forEach((c) => c.classList.toggle('active', c.dataset.mode === getTheme()));
-  if (refs.autoyt) refs.autoyt.classList.toggle('active', autoYouTube());
-  if (refs.livebg) refs.livebg.classList.toggle('active', liveBg());
+  if (refs.autoyt) { refs.autoyt.classList.toggle('active', autoYouTube()); refs.autoyt.setAttribute('aria-checked', String(autoYouTube())); }
+  if (refs.livebg) { refs.livebg.classList.toggle('active', liveBg()); refs.livebg.setAttribute('aria-checked', String(liveBg())); }
   $$('.accent-dot').forEach((c) => c.classList.toggle('active', c.dataset.id === getAccent()));
 }
 
@@ -82,21 +82,41 @@ export function buildProfile(nick) {
   refs.top = h('div', { class: 'top-list' });
   refs.ach = h('div', { class: 'ach-grid' });
   refs.yt = h('p', { class: 'profile-note' });
-  refs.livebg = h('button', { class: 'chip', type: 'button', onclick: () => { setLiveBg(!liveBg()); syncControls(); } }, 'Живой фон плеера');
-  refs.autoyt = h('button', { class: 'chip', type: 'button', onclick: () => { setAutoYouTube(!autoYouTube()); syncControls(); } }, 'Искать и на YouTube сразу');
+  const sw = (on) => h('button', { class: 'switch', type: 'button', role: 'switch', onclick: on }, h('i'));
+  refs.livebg = sw(() => { setLiveBg(!liveBg()); syncControls(); });
+  refs.autoyt = sw(() => { setAutoYouTube(!autoYouTube()); syncControls(); });
+  const row = (title, desc, ctrl, onclick) => h('div', { class: `set-row${onclick ? ' tap' : ''}`, onclick },
+    h('div', { class: 'set-txt' }, h('b', { text: title }), desc ? h('small', { text: desc }) : null), ctrl);
 
   root.replaceChildren(
     h('div', { class: 'hero' },
-      h('div', { class: 'hero-avatar' }, h('span', { text: nick.slice(0, 1) })),
+      h('div', { class: 'hero-avatar' }, h('img', { src: 'cat.jpg', alt: '' })),
       h('div', { class: 'hero-info' }, refs.nick, refs.since,
         h('span', { class: 'beta-badge', text: `${STAGE} · v${VERSION}` }))),
 
-    h('div', { class: 'section-title', text: 'Статистика' }),
     h('div', { class: 'stats-grid' },
       statCard('time', 'Прослушано', 'clock'),
       statCard('plays', 'Треков сыграно', 'music'),
       statCard('likes', 'В избранном', 'heart-fill'),
       statCard('playlists', 'Плейлистов', 'library')),
+
+    h('div', { class: 'section-title', text: 'Настройки' }),
+    h('div', { class: 'set-card' },
+      h('div', { class: 'set-block' }, h('b', { text: 'Тема' }),
+        h('div', { class: 'theme-cards' }, themeCard('auto', 'Авто'), themeCard('light', 'Светлая'), themeCard('dark', 'Тёмная'))),
+      h('div', { class: 'set-block' }, h('b', { text: 'Цвет' }),
+        h('div', { class: 'accent-row' }, ACCENTS.map((a) => h('button', {
+          class: 'accent-dot', type: 'button', 'data-id': a.id, 'aria-label': a.name, title: a.name,
+          style: `--dot:hsl(${a.h} 80% 62%)`,
+          onclick: () => { setAccent(a.id); syncControls(); },
+        })))),
+      row('Живой фон плеера', 'Цвета обложки двигаются в такт', refs.livebg),
+      row('Искать и на YouTube', 'Быстрее старт, но тратит дневной лимит YouTube', refs.autoyt)),
+
+    h('div', { class: 'section-title', text: 'Аккаунт' }),
+    h('div', { class: 'set-card' },
+      row('Сменить пароль', '', h('span', { class: 'chev' }, icon('back')), openPasswordSheet),
+      row('Выйти', '', h('span', { class: 'chev' }, icon('logout')), () => logOut())),
 
     h('div', { class: 'section-title', text: 'Любимые исполнители' }),
     refs.top,
@@ -104,30 +124,13 @@ export function buildProfile(nick) {
     h('div', { class: 'section-title', text: 'Достижения' }),
     refs.ach,
 
-    h('div', { class: 'section-title', text: 'Внешний вид' }),
-    h('div', { class: 'theme-cards' }, themeCard('auto', 'Авто'), themeCard('light', 'Светлая'), themeCard('dark', 'Тёмная')),
-    h('div', { class: 'accent-row' }, ACCENTS.map((a) => h('button', {
-      class: 'accent-dot', type: 'button', 'data-id': a.id, 'aria-label': a.name, title: a.name,
-      style: `--dot:hsl(${a.h} 80% 62%)`,
-      onclick: () => { setAccent(a.id); syncControls(); },
-    }))),
-
-    h('div', { class: 'section-title', text: 'Звук' }),
-    refs.yt,
-    h('div', { class: 'lib-actions' }, refs.autoyt, refs.livebg),
-    h('p', { class: 'profile-note', text: 'Быстрее старт и больше исполнителей, но тратит дневной лимит YouTube (около 100 поисков на всех).' }),
-
-    h('div', { class: 'section-title' , text: 'О приложении' }),
+    h('div', { class: 'section-title', text: 'О приложении' }),
     h('div', { class: 'about-card' },
       h('div', { class: 'about-top' }, h('b', { text: 'MKW Music' }), h('span', { class: 'beta-badge', text: `${STAGE} · v${VERSION}` })),
-      h('p', { class: 'profile-note', text: 'Это бета-версия: что-то может ломаться, мы это чиним.' }),
+      h('p', { class: 'profile-note', text: 'Создатель: MKW MiloKwel. Бета-версия: что-то может ломаться, мы это чиним.' }),
       CHANGELOG.map((e, i) => changelogEntry(e, i === 0)),
       h('div', { class: 'cl-h warn', text: 'Известные проблемы' }),
       h('ul', {}, KNOWN_ISSUES.map((t) => h('li', { text: t })))),
-
-    h('div', { class: 'section-title', text: 'Безопасность' }),
-    h('div', { class: 'lib-actions' }, h('button', { class: 'chip', type: 'button', onclick: openPasswordSheet }, 'Сменить пароль')),
-    h('button', { class: 'btn tonal logout', type: 'button', onclick: () => logOut() }, icon('logout'), 'Выйти'),
     h('p', { class: 'profile-note center', text: `MKW ${VERSION} ${STAGE}` }));
 
   built = true;

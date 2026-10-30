@@ -8,6 +8,7 @@ import * as store from './store.js';
 import { debounce, shuffled } from './utils.js';
 import { isArtistBlocked } from './taste.js';
 import { searchAudius, audiusEnabled } from './audius.js';
+import { initShazam } from './shazam.js';
 import { looksLikeUrl, resolveLink } from './links.js';
 
 let currentUser = null;
@@ -191,13 +192,16 @@ export function initSearch() {
   const live = debounce(() => run(input.value), 450);
   input.addEventListener('input', () => { clear.hidden = !input.value; syncWave(); live(); });
   $('#search-form').addEventListener('submit', (e) => { e.preventDefault(); live.cancel(); run(input.value, true); input.blur(); });
+  initShazam((term) => { input.value = term; clear.hidden = false; run(term, true); });
   clear.addEventListener('click', () => { input.value = ''; clear.hidden = true; live.cancel(); run(''); input.focus(); });
   store.onStore((what) => { if (what === 'likes' || what === 'history') loadRecs(); });
 }
 
 export function setSearchUser(nick) {
   currentUser = nick;
-  $('#search-hello').textContent = `Привет, ${nick}`;
+  const hr = new Date().getHours();
+  const hi = hr < 5 ? 'Доброй ночи' : hr < 12 ? 'Доброе утро' : hr < 18 ? 'Добрый день' : 'Добрый вечер';
+  $('#search-hello').textContent = `${hi}, ${nick}`;
   results = [];
   recs = [];
   recsLoaded = false;
