@@ -2,7 +2,7 @@
 // Треки внутри очереди хранятся как отдельные копии, поэтому один и тот же трек
 // можно добавить дважды, и каждая копия остаётся отдельным элементом.
 
-import { shuffled } from './utils.js?v=0.10.1';
+import { shuffled } from './utils.js?v=0.10.2';
 
 export class Queue {
   constructor(rand = Math.random) {

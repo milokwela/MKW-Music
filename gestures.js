@@ -1,9 +1,9 @@
 // Управление жестами через камеру (MediaPipe GestureRecognizer, модель грузится с CDN).
-// ✌️ Victory — следующий, 👍 — лайк, 👎 — дизлайк, ✋ — пауза/пуск.
-import { h, toast, openSheet, closeSheet } from './ui.js?v=0.10.1';
-import * as player from './player.js?v=0.10.1';
-import * as store from './store.js?v=0.10.1';
-import { dislike } from './wave.js?v=0.10.1';
+// ✌️ следующий, 👍 лайк, 👎 дизлайк, ✋ пауза, ☝️ продолжить.
+import { h, toast, openSheet, closeSheet } from './ui.js?v=0.10.2';
+import * as player from './player.js?v=0.10.2';
+import * as store from './store.js?v=0.10.2';
+import { dislike } from './wave.js?v=0.10.2';
 
 const KEY = 'mkw.gestures';
 const LIB = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14';
@@ -24,7 +24,8 @@ function act(name) {
     const t = player.queue.current;
     if (t && !store.isLiked(t.id)) { store.toggleLike(t).catch(() => {}); toast('👍 В лайках'); }
   } else if (name === 'Thumb_Down') { toast('👎 Пропускаю'); dislike(); }
-  else if (name === 'Open_Palm') { player.toggle(); }
+  else if (name === 'Open_Palm') { if (player.st.playing) { player.toggle(); toast('✋ Пауза'); } }
+  else if (name === 'Pointing_Up') { if (!player.st.playing) { player.toggle(); toast('☝️ Играем'); } }
 }
 
 function loop() {
@@ -34,7 +35,7 @@ function loop() {
       const res = rec.recognizeForVideo(video, performance.now());
       const g = res.gestures && res.gestures[0] && res.gestures[0][0];
       const name = g && g.score > 0.7 ? g.categoryName : '';
-      const useful = ['Victory', 'Thumb_Up', 'Thumb_Down', 'Open_Palm'].includes(name) ? name : '';
+      const useful = ['Victory', 'Thumb_Up', 'Thumb_Down', 'Open_Palm', 'Pointing_Up'].includes(name) ? name : '';
       const now = Date.now();
       if (useful !== cand) { cand = useful; since = now; }
       else if (useful && now - since >= HOLD_MS) { act(useful); since = now + COOLDOWN_MS; }

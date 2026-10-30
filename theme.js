@@ -9,6 +9,7 @@ export const ACCENTS = [
 
 const KEY_T = 'mkw.theme';
 const KEY_A = 'mkw.accent';
+const KEY_H = 'mkw.accent.hue';
 
 function read(key, fallback) {
   try { return localStorage.getItem(key) || fallback; } catch { return fallback; }
@@ -18,7 +19,16 @@ function write(key, value) {
 }
 
 export const getTheme = () => read(KEY_T, 'auto');
-export const getAccent = () => (ACCENTS.some((a) => a.id === read(KEY_A, '')) ? read(KEY_A, 'pink') : 'pink');
+export const getAccent = () => (read(KEY_A, '') === 'custom' ? 'custom' : ACCENTS.some((a) => a.id === read(KEY_A, '')) ? read(KEY_A, 'pink') : 'pink');
+export const getCustomHue = () => Number(read(KEY_H, '335')) || 335;
+export function hexToHue(hex) {
+  const n = parseInt(hex.slice(1), 16), r = (n >> 16) / 255, g = ((n >> 8) & 255) / 255, b = (n & 255) / 255;
+  const mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn;
+  if (!d) return 335;
+  let h = mx === r ? ((g - b) / d) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4;
+  return Math.round(((h * 60) + 360) % 360);
+}
+export function setCustomColor(hex) { write(KEY_H, String(hexToHue(hex))); write(KEY_A, 'custom'); applyTheme(); }
 
 export function isDark() {
   const t = document.documentElement.dataset.theme;
@@ -62,12 +72,14 @@ export function applyTheme() {
   const mode = getTheme();
   const root = document.documentElement;
   if (mode === 'light' || mode === 'dark') root.dataset.theme = mode;
+  else if (mode === 'black') root.dataset.theme = 'dark';
   else delete root.dataset.theme;
-  const acc = ACCENTS.find((a) => a.id === getAccent()) || ACCENTS[0];
+  const acc = getAccent() === 'custom' ? { h: getCustomHue() } : (ACCENTS.find((a) => a.id === getAccent()) || ACCENTS[0]);
   const pal = palette(acc.h, isDark());
+  if (mode === 'black') { pal['--bg'] = '#000000'; pal['--surface'] = hsl(acc.h, 14, 7); pal['--surface-high'] = hsl(acc.h, 12, 12); }
   for (const [k, v] of Object.entries(pal)) root.style.setProperty(k, v);
   const meta = document.querySelector('meta[name="theme-color"]');
-  if (meta) meta.content = isDark() ? '#0d0a0b' : '#ffffff';
+  if (meta) meta.content = mode === 'black' ? '#000000' : isDark() ? '#0d0a0b' : '#ffffff';
   window.dispatchEvent(new CustomEvent('mkw-theme'));
 }
 

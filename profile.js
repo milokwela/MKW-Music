@@ -1,15 +1,16 @@
 // Экран «Профиль»: статистика, достижения, топ исполнителей, тема, версии.
-import { $, $$, h, icon, openSheet, closeSheet, toast } from './ui.js?v=0.10.1';
-import * as store from './store.js?v=0.10.1';
-import { ACCENTS, getTheme, getAccent, setTheme, setAccent } from './theme.js?v=0.10.1';
-import { CHANGELOG, VERSION, STAGE, KNOWN_ISSUES } from './changelog.js?v=0.10.1';
-import { plural } from './utils.js?v=0.10.1';
-import { youtubeEnabled, youtubeQuotaOut } from './youtube.js?v=0.10.1';
-import { audiusEnabled } from './audius.js?v=0.10.1';
-import { SOURCE_MODES, getSourceMode, setSourceMode } from './sources.js?v=0.10.1';
-import { gesturesOn, setGestures } from './gestures.js?v=0.10.1';
-import { liveBg, setLiveBg } from './viz.js?v=0.10.1';
-import { logOut, changePassword, authErrorText } from './auth.js?v=0.10.1';
+import { $, $$, h, icon, openSheet, closeSheet, toast } from './ui.js?v=0.10.2';
+import * as store from './store.js?v=0.10.2';
+import { ACCENTS, getTheme, getAccent, getCustomHue, setCustomColor, setTheme, setAccent } from './theme.js?v=0.10.2';
+import { CHANGELOG, VERSION, STAGE, KNOWN_ISSUES } from './changelog.js?v=0.10.2';
+import { plural } from './utils.js?v=0.10.2';
+import { youtubeEnabled, youtubeQuotaOut } from './youtube.js?v=0.10.2';
+import { audiusEnabled } from './audius.js?v=0.10.2';
+import { SOURCE_MODES, getSourceMode, setSourceMode } from './sources.js?v=0.10.2';
+import { gesturesOn, setGestures } from './gestures.js?v=0.10.2';
+import { listenerStats } from './stats.js?v=0.10.2';
+import { liveBg, setLiveBg } from './viz.js?v=0.10.2';
+import { logOut, changePassword, authErrorText } from './auth.js?v=0.10.2';
 
 const ACHIEVEMENTS = [
   { id: 'like1', icon: 'heart', title: 'Первый лайк', hint: 'Лайкните любой трек', ok: (s) => s.likes >= 1 },
@@ -91,6 +92,8 @@ export function buildProfile(nick) {
   refs.livebg = sw(() => { setLiveBg(!liveBg()); syncControls(); });
   refs.gest = sw(async () => { await setGestures(!gesturesOn()); syncControls(); });
   refs.srcnote = h('small', { class: 'src-note' });
+  refs.listeners = h('div', { class: 'listeners', text: 'Слушателей: считаем…' });
+  listenerStats().then((s) => { refs.listeners.textContent = s ? `🎧 Слушателей: ${s.total} · в этом месяце новых: ${s.month}` : '🎧 Счётчик слушателей пока недоступен'; });
   const row = (title, desc, ctrl, onclick) => h('div', { class: `set-row${onclick ? ' tap' : ''}`, onclick },
     h('div', { class: 'set-txt' }, h('b', { text: title }), desc ? h('small', { text: desc }) : null), ctrl);
 
@@ -109,13 +112,14 @@ export function buildProfile(nick) {
     h('div', { class: 'section-title', text: 'Настройки' }),
     h('div', { class: 'set-card' },
       h('div', { class: 'set-block' }, h('b', { text: 'Тема' }),
-        h('div', { class: 'theme-cards' }, themeCard('auto', 'Авто'), themeCard('light', 'Светлая'), themeCard('dark', 'Тёмная'))),
+        h('div', { class: 'theme-cards' }, themeCard('auto', 'Авто'), themeCard('light', 'Светлая'), themeCard('dark', 'Тёмная'), themeCard('black', 'Чёрная'))),
       h('div', { class: 'set-block' }, h('b', { text: 'Цвет' }),
         h('div', { class: 'accent-row' }, ACCENTS.map((a) => h('button', {
           class: 'accent-dot', type: 'button', 'data-id': a.id, 'aria-label': a.name, title: a.name,
           style: `--dot:hsl(${a.h} 80% 62%)`,
           onclick: () => { setAccent(a.id); syncControls(); },
-        })))),
+        })).concat([h('label', { class: 'accent-dot custom', 'data-id': 'custom', title: 'Свой цвет', style: `--dot:hsl(${getCustomHue()} 80% 62%)` },
+          h('input', { type: 'color', value: '#ec6aa0', oninput: (e) => { setCustomColor(e.target.value); e.target.parentNode.style.setProperty('--dot', e.target.value); syncControls(); } }), '+')]))),
       row('Живой фон плеера', 'Цвета обложки двигаются в такт', refs.livebg),
       h('div', { class: 'set-block' }, h('b', { text: 'Где искать музыку' }),
         h('div', { class: 'src-row' }, SOURCE_MODES.map((m) => h('button', { class: 'chip src-chip', type: 'button', 'data-id': m.id, onclick: () => { setSourceMode(m.id); syncControls(); } }, m.name))),
@@ -136,6 +140,7 @@ export function buildProfile(nick) {
     h('div', { class: 'section-title', text: 'О приложении' }),
     h('div', { class: 'about-card' },
       h('div', { class: 'about-top' }, h('b', { text: 'MKW Music' }), h('span', { class: 'beta-badge', text: `${STAGE} · v${VERSION}` })),
+      refs.listeners,
       h('p', { class: 'profile-note', text: 'Создатель: MKW MiloKwel. Бета-версия: что-то может ломаться, мы это чиним.' }),
       CHANGELOG.map((e, i) => changelogEntry(e, i === 0)),
       h('div', { class: 'cl-h warn', text: 'Известные проблемы' }),
