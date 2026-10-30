@@ -1,18 +1,18 @@
 // Точка входа: вход в аккаунт, навигация, тема, профиль.
-import { watchAuth, signIn, signUp, authErrorText } from './auth.js';
-import { startStore, stopStore, onStore, flushListened } from './store.js';
-import { initSearch, setSearchUser } from './search.js';
-import { initLibrary, render as renderLibrary, resetLibrary } from './library.js';
-import { initPlayerUI, resetPlayerUI, closeFull } from './playerui.js';
-import { buildProfile, updateProfile, resetProfile } from './profile.js';
-import { initArtist } from './artist.js';
-import { initLiquidNav } from './glassnav.js';
-import { initRowLens } from './rowlens.js';
-import { initViz } from './viz.js';
-import { initWave } from './wave.js';
-import { initTheme } from './theme.js';
-import * as player from './player.js';
-import { $, $$ } from './ui.js';
+import { watchAuth, signIn, signUp, authErrorText } from './auth.js?v=0.9.3';
+import { startStore, stopStore, onStore, flushListened } from './store.js?v=0.9.3';
+import { initSearch, setSearchUser } from './search.js?v=0.9.3';
+import { initLibrary, render as renderLibrary, resetLibrary } from './library.js?v=0.9.3';
+import { initPlayerUI, resetPlayerUI, closeFull } from './playerui.js?v=0.9.3';
+import { buildProfile, updateProfile, resetProfile } from './profile.js?v=0.9.3';
+import { initArtist } from './artist.js?v=0.9.3';
+import { initLiquidNav } from './glassnav.js?v=0.9.3';
+import { initRowLens } from './rowlens.js?v=0.9.3';
+import { initViz } from './viz.js?v=0.9.3';
+import { initWave } from './wave.js?v=0.9.3';
+import { initTheme } from './theme.js?v=0.9.3';
+import * as player from './player.js?v=0.9.3';
+import { $, $$ } from './ui.js?v=0.9.3';
 
 // ---------- вход ----------
 let authMode = 'login';
@@ -98,12 +98,10 @@ function onUser(user) {
 function runSplash() {
   const sp = document.getElementById('splash');
   if (!sp) return;
-  let seen = false;
-  try { seen = sessionStorage.getItem('mkw.splash') === '1'; sessionStorage.setItem('mkw.splash', '1'); } catch { /* ignore */ }
-  if (seen || window.matchMedia('(prefers-reduced-motion: reduce)').matches) { sp.remove(); return; }
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) { sp.remove(); return; }
   sp.classList.add('go');
-  setTimeout(() => sp.classList.add('out'), 2000);
-  setTimeout(() => sp.remove(), 2600);
+  setTimeout(() => sp.classList.add('out'), 3200);
+  setTimeout(() => sp.remove(), 3900);
 }
 
 function boot() {

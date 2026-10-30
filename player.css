@@ -253,3 +253,10 @@ body.lens-on { -webkit-user-select: none; user-select: none; -webkit-touch-callo
 .listen-ring i:nth-child(2) { animation-delay: .6s; } .listen-ring i:nth-child(3) { animation-delay: 1.2s; }
 @keyframes ringOut { from { transform: scale(1); opacity: .8; } to { transform: scale(2.2); opacity: 0; } }
 .listen-text { font-size: 18px; font-weight: 600; }
+
+/* Страховка: заставка исчезает сама, даже если скрипт не загрузился */
+#splash { animation: spAuto .3s 4.5s forwards; }
+@keyframes spAuto { to { opacity: 0; visibility: hidden; pointer-events: none; } }
+.sp-author { margin-top: 2px; font-size: 22px; font-weight: 800; letter-spacing: 3px; color: #fff; opacity: 0; text-shadow: 0 0 24px var(--primary, #ff6fa5); }
+#splash.go .sp-author { animation: spUp .8s 1.7s forwards; }
+#splash { animation-delay: 6s; }

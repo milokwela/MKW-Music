@@ -1,15 +1,15 @@
 // Экран поиска: iTunes, поиск по YouTube и рекомендации.
-import { searchTracks } from './catalog.js';
-import { searchYouTube, youtubeEnabled, prefetchYouTubeIds, autoYouTube } from './youtube.js';
-import { $, h, trackRow, emptyState, toast, skeleton, animateIn } from './ui.js';
-import { openTrackMenu } from './menu.js';
-import * as player from './player.js';
-import * as store from './store.js';
-import { debounce, shuffled } from './utils.js';
-import { isArtistBlocked } from './taste.js';
-import { searchAudius, audiusEnabled } from './audius.js';
-import { initShazam } from './shazam.js';
-import { looksLikeUrl, resolveLink } from './links.js';
+import { searchTracks } from './catalog.js?v=0.9.3';
+import { searchYouTube, youtubeEnabled, prefetchYouTubeIds, autoYouTube } from './youtube.js?v=0.9.3';
+import { $, h, trackRow, emptyState, toast, skeleton, animateIn } from './ui.js?v=0.9.3';
+import { openTrackMenu } from './menu.js?v=0.9.3';
+import * as player from './player.js?v=0.9.3';
+import * as store from './store.js?v=0.9.3';
+import { debounce, shuffled } from './utils.js?v=0.9.3';
+import { isArtistBlocked } from './taste.js?v=0.9.3';
+import { searchAudius, audiusEnabled } from './audius.js?v=0.9.3';
+import { initShazam } from './shazam.js?v=0.9.3';
+import { looksLikeUrl, resolveLink } from './links.js?v=0.9.3';
 
 let currentUser = null;
 let results = [];

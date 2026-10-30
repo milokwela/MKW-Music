@@ -1,12 +1,12 @@
 // Экран «Профиль»: статистика, достижения, топ исполнителей, тема, версии.
-import { $, $$, h, icon, openSheet, closeSheet, toast } from './ui.js';
-import * as store from './store.js';
-import { ACCENTS, getTheme, getAccent, setTheme, setAccent } from './theme.js';
-import { CHANGELOG, VERSION, STAGE, KNOWN_ISSUES } from './changelog.js';
-import { plural } from './utils.js';
-import { youtubeEnabled, autoYouTube, setAutoYouTube } from './youtube.js';
-import { liveBg, setLiveBg } from './viz.js';
-import { logOut, changePassword, authErrorText } from './auth.js';
+import { $, $$, h, icon, openSheet, closeSheet, toast } from './ui.js?v=0.9.3';
+import * as store from './store.js?v=0.9.3';
+import { ACCENTS, getTheme, getAccent, setTheme, setAccent } from './theme.js?v=0.9.3';
+import { CHANGELOG, VERSION, STAGE, KNOWN_ISSUES } from './changelog.js?v=0.9.3';
+import { plural } from './utils.js?v=0.9.3';
+import { youtubeEnabled, autoYouTube, setAutoYouTube } from './youtube.js?v=0.9.3';
+import { liveBg, setLiveBg } from './viz.js?v=0.9.3';
+import { logOut, changePassword, authErrorText } from './auth.js?v=0.9.3';
 
 const ACHIEVEMENTS = [
   { id: 'like1', icon: 'heart', title: 'Первый лайк', hint: 'Лайкните любой трек', ok: (s) => s.likes >= 1 },

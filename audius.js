@@ -1,5 +1,5 @@
 // Audius: бесплатные полные треки без квоты YouTube. Играют через обычный аудио-элемент, поэтому работают и при выключенном экране.
-import { AUDIUS_API_KEY } from './keys.js';
+import { AUDIUS_API_KEY } from './keys.js?v=0.9.3';
 
 const BASE = 'https://api.audius.co/v1';
 export const audiusEnabled = () => Boolean(AUDIUS_API_KEY);

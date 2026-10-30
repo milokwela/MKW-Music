@@ -1,8 +1,8 @@
 // Меню действий над треком и выбор плейлиста.
-import { h, openSheet, closeSheet, sheetItem, askText, toast } from './ui.js';
-import * as store from './store.js';
-import { openArtistFor } from './artist.js';
-import * as player from './player.js';
+import { h, openSheet, closeSheet, sheetItem, askText, toast } from './ui.js?v=0.9.3';
+import * as store from './store.js?v=0.9.3';
+import { openArtistFor } from './artist.js?v=0.9.3';
+import * as player from './player.js?v=0.9.3';
 
 function fail(e) {
   console.error(e);
