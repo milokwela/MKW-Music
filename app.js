@@ -1,18 +1,19 @@
 // Точка входа: вход в аккаунт, навигация, тема, профиль.
-import { watchAuth, signIn, signUp, authErrorText } from './auth.js?v=0.9.3';
-import { startStore, stopStore, onStore, flushListened } from './store.js?v=0.9.3';
-import { initSearch, setSearchUser } from './search.js?v=0.9.3';
-import { initLibrary, render as renderLibrary, resetLibrary } from './library.js?v=0.9.3';
-import { initPlayerUI, resetPlayerUI, closeFull } from './playerui.js?v=0.9.3';
-import { buildProfile, updateProfile, resetProfile } from './profile.js?v=0.9.3';
-import { initArtist } from './artist.js?v=0.9.3';
-import { initLiquidNav } from './glassnav.js?v=0.9.3';
-import { initRowLens } from './rowlens.js?v=0.9.3';
-import { initViz } from './viz.js?v=0.9.3';
-import { initWave } from './wave.js?v=0.9.3';
-import { initTheme } from './theme.js?v=0.9.3';
-import * as player from './player.js?v=0.9.3';
-import { $, $$ } from './ui.js?v=0.9.3';
+import { watchAuth, signIn, signUp, authErrorText } from './auth.js?v=0.10.0';
+import { startStore, stopStore, onStore, flushListened } from './store.js?v=0.10.0';
+import { initSearch, setSearchUser } from './search.js?v=0.10.0';
+import { initLibrary, render as renderLibrary, resetLibrary } from './library.js?v=0.10.0';
+import { initPlayerUI, resetPlayerUI, closeFull } from './playerui.js?v=0.10.0';
+import { buildProfile, updateProfile, resetProfile } from './profile.js?v=0.10.0';
+import { initArtist } from './artist.js?v=0.10.0';
+import { initLiquidNav } from './glassnav.js?v=0.10.0';
+import { initRowLens } from './rowlens.js?v=0.10.0';
+import { readIncoming, showIncoming } from './share.js?v=0.10.0';
+import { initViz } from './viz.js?v=0.10.0';
+import { initWave } from './wave.js?v=0.10.0';
+import { initTheme } from './theme.js?v=0.10.0';
+import * as player from './player.js?v=0.10.0';
+import { $, $$ } from './ui.js?v=0.10.0';
 
 // ---------- вход ----------
 let authMode = 'login';
@@ -83,6 +84,7 @@ function onUser(user) {
     resetLibrary();
     showView('search');
     player.warmUp();
+    setTimeout(showIncoming, 600);
   } else {
     flushListened();
     player.stop();
@@ -105,6 +107,7 @@ function runSplash() {
 }
 
 function boot() {
+  readIncoming();
   runSplash();
   initTheme();
   initAuthForm();

@@ -1,9 +1,9 @@
 // Экран «Библиотека»: лайки, плейлисты, история.
-import { $, $$, h, icon, trackRow, emptyState, askText, toast, openSheet, closeSheet, sheetItem, animateIn } from './ui.js?v=0.9.3';
-import * as store from './store.js?v=0.9.3';
-import * as player from './player.js?v=0.9.3';
-import { openTrackMenu } from './menu.js?v=0.9.3';
-import { tracksWord, timeAgo, artUrl } from './utils.js?v=0.9.3';
+import { $, $$, h, icon, trackRow, emptyState, askText, toast, openSheet, closeSheet, sheetItem, animateIn } from './ui.js?v=0.10.0';
+import * as store from './store.js?v=0.10.0';
+import * as player from './player.js?v=0.10.0';
+import { openTrackMenu } from './menu.js?v=0.10.0';
+import { tracksWord, timeAgo, artUrl } from './utils.js?v=0.10.0';
 
 let tab = 'likes';
 let openPid = null;
@@ -84,7 +84,11 @@ let lastKey = '';
 export function render() {
   const box = $('#lib-content');
   const key = `${tab}:${openPid || ''}`;
-  $$('#lib-tabs .chip').forEach((c) => c.classList.toggle('active', c.dataset.tab === tab));
+  const tabs = ['likes', 'playlists', 'history'];
+  $('#lib-tabs').style.setProperty('--i', String(tabs.indexOf(tab)));
+  $$('#lib-tabs [data-tab]').forEach((c) => c.classList.toggle('active', c.dataset.tab === tab));
+  const lc = $('#lib-tabs [data-cnt="likes"]'), pc = $('#lib-tabs [data-cnt="playlists"]');
+  try { if (lc) lc.textContent = store.state.likes.length || ''; if (pc) pc.textContent = store.state.playlists.length || ''; } catch { /* ignore */ }
   if (tab === 'likes') renderLikes(box);
   else if (tab === 'history') renderHistory(box);
   else if (openPid) renderPlaylistPage(box);

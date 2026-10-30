@@ -1,5 +1,5 @@
 // Общие кирпичики интерфейса: создание элементов, иконки, уведомления, нижние шторки, строка трека.
-import { artUrl } from './utils.js?v=0.9.3';
+import { artUrl } from './utils.js?v=0.10.0';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
@@ -51,7 +51,7 @@ export function toast(msg) {
 // ---------- нижняя шторка ----------
 export function openSheet(title, content) {
   const sheet = $('#sheet');
-  sheet.replaceChildren(h('div', { class: 'sheet-handle' }), title ? h('h2', { class: 'sheet-title', text: title }) : null, content);
+  sheet.replaceChildren(...[h('div', { class: 'sheet-handle' }), title ? h('h2', { class: 'sheet-title', text: title }) : null, content].filter(Boolean));
   sheet.scrollTop = 0;
   $('#sheet-overlay').classList.add('open');
   sheet.classList.add('open');

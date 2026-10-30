@@ -1,15 +1,17 @@
 // Экран поиска: iTunes, поиск по YouTube и рекомендации.
-import { searchTracks } from './catalog.js?v=0.9.3';
-import { searchYouTube, youtubeEnabled, prefetchYouTubeIds, autoYouTube } from './youtube.js?v=0.9.3';
-import { $, h, trackRow, emptyState, toast, skeleton, animateIn } from './ui.js?v=0.9.3';
-import { openTrackMenu } from './menu.js?v=0.9.3';
-import * as player from './player.js?v=0.9.3';
-import * as store from './store.js?v=0.9.3';
-import { debounce, shuffled } from './utils.js?v=0.9.3';
-import { isArtistBlocked } from './taste.js?v=0.9.3';
-import { searchAudius, audiusEnabled } from './audius.js?v=0.9.3';
-import { initShazam } from './shazam.js?v=0.9.3';
-import { looksLikeUrl, resolveLink } from './links.js?v=0.9.3';
+import { searchTracks } from './catalog.js?v=0.10.0';
+import { searchYouTube, youtubeEnabled, prefetchYouTubeIds, autoYouTube } from './youtube.js?v=0.10.0';
+import { $, h, trackRow, emptyState, toast, skeleton, animateIn } from './ui.js?v=0.10.0';
+import { openTrackMenu } from './menu.js?v=0.10.0';
+import * as player from './player.js?v=0.10.0';
+import * as store from './store.js?v=0.10.0';
+import { debounce, shuffled } from './utils.js?v=0.10.0';
+import { isArtistBlocked } from './taste.js?v=0.10.0';
+import { searchAudius, audiusEnabled } from './audius.js?v=0.10.0';
+import { getSourceMode } from './sources.js?v=0.10.0';
+import { youtubeQuotaOut } from './youtube.js?v=0.10.0';
+import { initShazam } from './shazam.js?v=0.10.0';
+import { looksLikeUrl, resolveLink } from './links.js?v=0.10.0';
 
 let currentUser = null;
 let results = [];
@@ -145,14 +147,19 @@ async function run(term, explicit = false) {
   status.replaceChildren(skeleton(6));
 
   // При явном поиске (Enter) сразу ищем и на YouTube: у этих треков видео уже известно, они стартуют мгновенно.
-  const wantYt = explicit && youtubeEnabled() && autoYouTube();
-  const ytPromise = wantYt ? searchYouTube(q).catch(() => []) : Promise.resolve([]);
+  const mode = getSourceMode();
+  const useItunes = mode === 'all' || mode === 'itunes';
+  const useAudius = mode === 'all' || mode === 'audius';
+  const wantYt = youtubeEnabled() && (mode === 'youtube' ? true : (mode === 'all' && explicit && autoYouTube()));
+  if (mode === 'youtube' && !explicit) { status.replaceChildren(); results = []; renderResults(); status.textContent = 'Нажмите Enter, чтобы искать на YouTube'; return; }
+  let ytError = '';
+  const ytPromise = wantYt ? searchYouTube(q).catch((e) => { ytError = String(e.message || e); return []; }) : Promise.resolve([]);
 
-  const auPromise = audiusEnabled() ? searchAudius(q, controller.signal).catch(() => []) : Promise.resolve([]);
+  const auPromise = (audiusEnabled() && useAudius) ? searchAudius(q, controller.signal).catch(() => []) : Promise.resolve([]);
   let found = [];
   let failed = false;
   try {
-    found = await searchTracks(q, controller.signal);
+    found = useItunes ? await searchTracks(q, controller.signal) : [];
   } catch (e) {
     if (e.name === 'AbortError' || mine !== seq) return;
     console.error(e);
@@ -177,13 +184,15 @@ async function run(term, explicit = false) {
     renderResults();
   }
 
-  if (!results.length) {
+  if (ytError && !results.length) status.textContent = ytError.includes('Лимит') ? 'Лимит YouTube на сегодня закончился (сбросится вечером). Выберите другой источник в Профиле' : 'YouTube не ответил';
+  else if (ytError) toast(ytError.includes('Лимит') ? 'Лимит YouTube закончился: показаны остальные источники' : 'YouTube не ответил');
+  if (!results.length && !ytError) {
     if (failed) status.textContent = 'Каталог не ответил. Проверьте интернет';
     else status.replaceChildren(emptyState('search', 'Ничего не нашлось'));
-  } else {
+  } else if (results.length) {
     pushHistory(q);
   }
-  renderMore(wantYt ? '' : q);
+  renderMore(wantYt || mode !== 'all' ? '' : q);
 }
 
 export function initSearch() {

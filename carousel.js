@@ -1,6 +1,6 @@
 // Карусель обложек в большом плеере: тянете пальцем (или мышью) влево/вправо, чтобы переключить трек.
-import * as player from './player.js?v=0.9.3';
-import { $, h, icon } from './ui.js?v=0.9.3';
+import * as player from './player.js?v=0.10.0';
+import { $, h, icon } from './ui.js?v=0.10.0';
 
 const GAP = 32;
 const big = (u) => u.replace(/\/\d+x\d+(bb)?\./, '/600x600bb.');

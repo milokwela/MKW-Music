@@ -1,8 +1,9 @@
 // Меню действий над треком и выбор плейлиста.
-import { h, openSheet, closeSheet, sheetItem, askText, toast } from './ui.js?v=0.9.3';
-import * as store from './store.js?v=0.9.3';
-import { openArtistFor } from './artist.js?v=0.9.3';
-import * as player from './player.js?v=0.9.3';
+import { h, openSheet, closeSheet, sheetItem, askText, toast } from './ui.js?v=0.10.0';
+import * as store from './store.js?v=0.10.0';
+import { shareTrack } from './share.js?v=0.10.0';
+import { openArtistFor } from './artist.js?v=0.10.0';
+import * as player from './player.js?v=0.10.0';
 
 function fail(e) {
   console.error(e);
@@ -51,6 +52,7 @@ export function openTrackMenu(track, ctx = {}) {
     sheetItem('queue', 'Добавить в очередь', () => { closeSheet(); player.addToQueue(track); toast('Добавлено в очередь'); }),
     sheetItem(liked ? 'heart-fill' : 'heart', liked ? 'Убрать из лайков' : 'В лайки', () => { closeSheet(); likeToggle(track); }),
     sheetItem('plus', 'В плейлист…', () => pickPlaylist(track)),
+    sheetItem('share', 'Поделиться', () => { closeSheet(); shareTrack(track); }),
     sheetItem('user', 'Перейти к исполнителю', () => { closeSheet(); openArtistFor(track.artist); }));
   if (ctx.playlistId) {
     box.appendChild(sheetItem('trash', 'Убрать из плейлиста', async () => {

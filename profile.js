@@ -1,12 +1,15 @@
 // Экран «Профиль»: статистика, достижения, топ исполнителей, тема, версии.
-import { $, $$, h, icon, openSheet, closeSheet, toast } from './ui.js?v=0.9.3';
-import * as store from './store.js?v=0.9.3';
-import { ACCENTS, getTheme, getAccent, setTheme, setAccent } from './theme.js?v=0.9.3';
-import { CHANGELOG, VERSION, STAGE, KNOWN_ISSUES } from './changelog.js?v=0.9.3';
-import { plural } from './utils.js?v=0.9.3';
-import { youtubeEnabled, autoYouTube, setAutoYouTube } from './youtube.js?v=0.9.3';
-import { liveBg, setLiveBg } from './viz.js?v=0.9.3';
-import { logOut, changePassword, authErrorText } from './auth.js?v=0.9.3';
+import { $, $$, h, icon, openSheet, closeSheet, toast } from './ui.js?v=0.10.0';
+import * as store from './store.js?v=0.10.0';
+import { ACCENTS, getTheme, getAccent, setTheme, setAccent } from './theme.js?v=0.10.0';
+import { CHANGELOG, VERSION, STAGE, KNOWN_ISSUES } from './changelog.js?v=0.10.0';
+import { plural } from './utils.js?v=0.10.0';
+import { youtubeEnabled, youtubeQuotaOut } from './youtube.js?v=0.10.0';
+import { audiusEnabled } from './audius.js?v=0.10.0';
+import { SOURCE_MODES, getSourceMode, setSourceMode } from './sources.js?v=0.10.0';
+import { gesturesOn, setGestures } from './gestures.js?v=0.10.0';
+import { liveBg, setLiveBg } from './viz.js?v=0.10.0';
+import { logOut, changePassword, authErrorText } from './auth.js?v=0.10.0';
 
 const ACHIEVEMENTS = [
   { id: 'like1', icon: 'heart', title: 'Первый лайк', hint: 'Лайкните любой трек', ok: (s) => s.likes >= 1 },
@@ -61,7 +64,9 @@ function themeCard(mode, label) {
 
 function syncControls() {
   $$('.theme-card').forEach((c) => c.classList.toggle('active', c.dataset.mode === getTheme()));
-  if (refs.autoyt) { refs.autoyt.classList.toggle('active', autoYouTube()); refs.autoyt.setAttribute('aria-checked', String(autoYouTube())); }
+  $$('.src-chip').forEach((c) => c.classList.toggle('active', c.dataset.id === getSourceMode()));
+  if (refs.srcnote) refs.srcnote.textContent = `iTunes: работает · YouTube: ${!youtubeEnabled() ? 'нет ключа' : youtubeQuotaOut() ? 'лимит на сегодня исчерпан' : 'работает'} · Audius: ${audiusEnabled() ? 'работает' : 'нет ключа'}`;
+  if (refs.gest) { refs.gest.classList.toggle('active', gesturesOn()); refs.gest.setAttribute('aria-checked', String(gesturesOn())); }
   if (refs.livebg) { refs.livebg.classList.toggle('active', liveBg()); refs.livebg.setAttribute('aria-checked', String(liveBg())); }
   $$('.accent-dot').forEach((c) => c.classList.toggle('active', c.dataset.id === getAccent()));
 }
@@ -84,7 +89,8 @@ export function buildProfile(nick) {
   refs.yt = h('p', { class: 'profile-note' });
   const sw = (on) => h('button', { class: 'switch', type: 'button', role: 'switch', onclick: on }, h('i'));
   refs.livebg = sw(() => { setLiveBg(!liveBg()); syncControls(); });
-  refs.autoyt = sw(() => { setAutoYouTube(!autoYouTube()); syncControls(); });
+  refs.gest = sw(async () => { await setGestures(!gesturesOn()); syncControls(); });
+  refs.srcnote = h('small', { class: 'src-note' });
   const row = (title, desc, ctrl, onclick) => h('div', { class: `set-row${onclick ? ' tap' : ''}`, onclick },
     h('div', { class: 'set-txt' }, h('b', { text: title }), desc ? h('small', { text: desc }) : null), ctrl);
 
@@ -111,7 +117,10 @@ export function buildProfile(nick) {
           onclick: () => { setAccent(a.id); syncControls(); },
         })))),
       row('Живой фон плеера', 'Цвета обложки двигаются в такт', refs.livebg),
-      row('Искать и на YouTube', 'Быстрее старт, но тратит дневной лимит YouTube', refs.autoyt)),
+      h('div', { class: 'set-block' }, h('b', { text: 'Где искать музыку' }),
+        h('div', { class: 'src-row' }, SOURCE_MODES.map((m) => h('button', { class: 'chip src-chip', type: 'button', 'data-id': m.id, onclick: () => { setSourceMode(m.id); syncControls(); } }, m.name))),
+        refs.srcnote),
+      row('Жесты (бета)', '✌️ — следующий трек, 👍 лайк, 👎 дизлайк, ✋ пауза. Включает камеру', refs.gest)),
 
     h('div', { class: 'section-title', text: 'Аккаунт' }),
     h('div', { class: 'set-card' },
