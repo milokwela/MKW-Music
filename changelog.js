@@ -1,8 +1,14 @@
 // История версий. Новые записи добавляйте сверху.
-export const VERSION = '0.11.0';
+export const VERSION = '0.11.1';
 export const STAGE = 'beta';
 
 export const CHANGELOG = [
+  {
+    version: '0.11.1',
+    date: '31 октября 2026',
+    new: ['🎉 MKW переехал на новый адрес mkwmusic.ru. Ура, мы продвигаемся!'],
+    fixed: [],
+  },
   {
     version: '0.11.0',
     date: '30 октября 2026',
