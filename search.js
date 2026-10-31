@@ -1,22 +1,23 @@
 // Экран поиска: iTunes, поиск по YouTube и рекомендации.
-import { searchTracks } from './catalog.js?v=0.10.2';
-import { searchYouTube, youtubeEnabled, prefetchYouTubeIds, autoYouTube } from './youtube.js?v=0.10.2';
-import { $, h, trackRow, emptyState, toast, skeleton, animateIn } from './ui.js?v=0.10.2';
-import { openTrackMenu } from './menu.js?v=0.10.2';
-import * as player from './player.js?v=0.10.2';
-import * as store from './store.js?v=0.10.2';
-import { debounce, shuffled } from './utils.js?v=0.10.2';
-import { isArtistBlocked } from './taste.js?v=0.10.2';
-import { searchAudius, audiusEnabled } from './audius.js?v=0.10.2';
-import { getSourceMode } from './sources.js?v=0.10.2';
-import { youtubeQuotaOut } from './youtube.js?v=0.10.2';
-import { initShazam } from './shazam.js?v=0.10.2';
-import { looksLikeUrl, resolveLink } from './links.js?v=0.10.2';
+import { searchTracks } from './catalog.js?v=0.11.0';
+import { searchYouTube, youtubeEnabled, prefetchYouTubeIds, autoYouTube } from './youtube.js?v=0.11.0';
+import { $, h, trackRow, emptyState, toast, skeleton, animateIn } from './ui.js?v=0.11.0';
+import { openTrackMenu } from './menu.js?v=0.11.0';
+import * as player from './player.js?v=0.11.0';
+import * as store from './store.js?v=0.11.0';
+import { debounce, shuffled } from './utils.js?v=0.11.0';
+import { isArtistBlocked } from './taste.js?v=0.11.0';
+import { searchAudius, audiusEnabled } from './audius.js?v=0.11.0';
+import { getSourceMode } from './sources.js?v=0.11.0';
+import { youtubeQuotaOut } from './youtube.js?v=0.11.0';
+import { initShazam } from './shazam.js?v=0.11.0';
+import { looksLikeUrl, resolveLink } from './links.js?v=0.11.0';
 
 let currentUser = null;
 let results = [];
 let recs = [];
 let recsLoaded = false;
+let recsShown = 20;
 let controller = null;
 let seq = 0;
 
@@ -50,11 +51,12 @@ function renderRecs() {
   animateIn(box);
   box.replaceChildren(
     h('div', { class: 'section-title', text: 'Для вас' }),
-    h('div', { class: 'list' }, recs.map((t, i) => trackRow(t, {
+    h('div', { class: 'list' }, recs.slice(0, recsShown).map((t, i) => trackRow(t, {
       onPlay: () => player.playTracks(recs, i),
       onMore: () => openTrackMenu(t),
       current: player.queue.current?.id === t.id,
-    }))));
+    }))),
+    recsShown < recs.length ? h('div', { style: 'text-align:center;margin:14px 0' }, h('button', { class: 'chip', type: 'button', onclick: () => { recsShown += 20; renderRecs(); } }, `Показать ещё (${recs.length - recsShown})`)) : null);
 }
 
 // Рекомендации: берём исполнителей из лайков и истории и ищем их другие треки.
@@ -63,7 +65,7 @@ async function loadRecs() {
   const seen = [...store.state.likes, ...store.state.history];
   if (!seen.length) return;
   recsLoaded = true;
-  const artists = shuffled([...new Set(seen.map((t) => t.artist).filter((a) => a && !isArtistBlocked(a)))]).slice(0, 3);
+  const artists = shuffled([...new Set(seen.map((t) => t.artist).filter((a) => a && !isArtistBlocked(a)))]).slice(0, 8);
   const batches = await Promise.allSettled(artists.map((a) => searchTracks(a)));
   const known = new Set(seen.map((t) => t.id));
   const pool = [];
@@ -76,7 +78,8 @@ async function loadRecs() {
       pool.push(t);
     }
   }
-  recs = shuffled(pool).slice(0, 15);
+  recs = shuffled(pool).slice(0, 60);
+  recsShown = 20;
   renderRecs();
   prefetchYouTubeIds(recs);
 }

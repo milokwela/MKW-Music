@@ -1,11 +1,11 @@
 // MKW Волна: бесконечная очередь, которая подстраивается под вкус и реакцию (пропуски / дослушивания).
-import { searchTracks } from './catalog.js?v=0.10.2';
-import { peekYouTubeId, prefetchYouTubeIds } from './youtube.js?v=0.10.2';
-import * as player from './player.js?v=0.10.2';
-import * as store from './store.js?v=0.10.2';
-import { $, toast } from './ui.js?v=0.10.2';
-import { shuffled } from './utils.js?v=0.10.2';
-import { norm, isArtistBlocked, blockedArtists, dislikedTracks, dislikeTrack } from './taste.js?v=0.10.2';
+import { searchTracks } from './catalog.js?v=0.11.0';
+import { peekYouTubeId, prefetchYouTubeIds } from './youtube.js?v=0.11.0';
+import * as player from './player.js?v=0.11.0';
+import * as store from './store.js?v=0.11.0';
+import { $, toast } from './ui.js?v=0.11.0';
+import { shuffled } from './utils.js?v=0.11.0';
+import { norm, isArtistBlocked, blockedArtists, dislikedTracks, dislikeTrack } from './taste.js?v=0.11.0';
 
 const SKEY = 'mkw.wave';
 let active = false;
@@ -19,7 +19,7 @@ function seedScores() {
   score = {};
   const add = (t, w) => { const a = norm(t.artist); if (a) score[a] = (score[a] || 0) + w; };
   store.state.likes.forEach((t) => add(t, 3));
-  store.state.history.slice(0, 60).forEach((t) => add(t, 1));
+  store.state.history.slice(0, 60).forEach((t, i) => add(t, i < 15 ? 1.5 : 1));
   try {
     const saved = JSON.parse(localStorage.getItem(SKEY) || '{}');
     for (const [a, w] of Object.entries(saved)) score[a] = (score[a] || 0) + w;
@@ -43,41 +43,75 @@ function pickArtist(exclude = new Set()) {
   return entries[0][0];
 }
 
-async function refill(n = 8) {
+function interleave(list) {
+  // не ставим одного исполнителя подряд
+  const out = [];
+  const rest = [...list];
+  while (rest.length) {
+    const last = out.length ? norm(out[out.length - 1].artist) : '';
+    let i = rest.findIndex((t) => norm(t.artist) !== last);
+    if (i < 0) i = 0;
+    out.push(rest.splice(i, 1)[0]);
+  }
+  return out;
+}
+
+function topGenres() {
+  const cnt = {};
+  [...store.state.likes, ...store.state.history.slice(0, 40)].forEach((t) => { if (t.genre) cnt[t.genre] = (cnt[t.genre] || 0) + 1; });
+  return Object.entries(cnt).sort((x, y) => y[1] - x[1]).map(([g]) => g).slice(0, 5);
+}
+
+async function gather(round) {
+  const used = new Set();
+  const pool = [];
+  const familiar = round === 0 ? 3 : 4;
+  for (let k = 0; k < familiar; k++) {
+    const a = pickArtist(used);
+    if (!a) break;
+    used.add(a);
+    const found = await searchTracks(a).catch(() => []);
+    const own = found.filter((t) => norm(t.artist).includes(a) || a.includes(norm(t.artist)));
+    pool.push(...shuffled(own.length ? own : found).slice(0, 8));
+  }
+  // открытия: новые исполнители из любимых жанров
+  const genres = topGenres();
+  if (genres.length && (round > 0 || Math.random() < 0.6)) {
+    const g = genres[Math.floor(Math.random() * genres.length)];
+    const found = await searchTracks(g).catch(() => []);
+    pool.push(...shuffled(found.filter((t) => (score[norm(t.artist)] ?? 0) <= 0)).slice(0, 6));
+  }
+  return pool;
+}
+
+async function refill(n = 10) {
   if (!active || filling) return;
   filling = true;
   try {
     const liked = new Set(store.state.likes.map((t) => t.id));
-    const used = new Set();
-    let pool = [];
-    for (let k = 0; k < 3 && pool.length < n * 2; k++) {
-      const a = pickArtist(used);
-      if (!a) break;
-      used.add(a);
-      const found = await searchTracks(a).catch(() => []);
-      const own = found.filter((t) => norm(t.artist).includes(a) || a.includes(norm(t.artist)));
-      pool.push(...shuffled(own.length ? own : found).slice(0, 8));
+    const recent = new Set(store.state.history.slice(0, 30).map((t) => t.id));
+    let added = 0;
+    for (let round = 0; round < 3 && added < n; round++) {
+      const have = new Set(player.queue.items.map((t) => t.id));
+      const seen = new Set();
+      const strict = round < 2;
+      let pool = (await gather(round)).filter((t) => {
+        if (!t.id || dislikedSet().has(t.id) || have.has(t.id) || seen.has(t.id) || (score[norm(t.artist)] ?? 0) <= -2 || isArtistBlocked(t.artist)) return false;
+        if (strict && (played.has(t.id) || recent.has(t.id))) return false;
+        seen.add(t.id);
+        return true;
+      });
+      await prefetchYouTubeIds(pool);
+      const cached = pool.filter((t) => peekYouTubeId(t));
+      const fresh = pool.filter((t) => !peekYouTubeId(t));
+      const want = n - added;
+      let pick = [...shuffled(cached), ...shuffled(fresh)].slice(0, want);
+      pick.sort((a2, b2) => (liked.has(b2.id) ? 1 : 0) - (liked.has(a2.id) ? 1 : 0) || Math.random() - 0.5);
+      pick = interleave(pick);
+      for (const t of pick) player.addToQueue({ ...t, wave: true });
+      added += pick.length;
     }
-    // немного нового звучания: похожие жанры из лайков
-    const genres = [...new Set(store.state.likes.map((t) => t.genre).filter(Boolean))];
-    if (genres.length && Math.random() < 0.5) {
-      const g = genres[Math.floor(Math.random() * genres.length)];
-      pool.push(...shuffled(await searchTracks(g).catch(() => [])).slice(0, 4));
-    }
-    const have = new Set(player.queue.items.map((t) => t.id));
-    const seen = new Set();
-    pool = pool.filter((t) => {
-      if (!t.id || dislikedSet().has(t.id) || have.has(t.id) || played.has(t.id) || seen.has(t.id) || (score[norm(t.artist)] ?? 0) <= -2 || isArtistBlocked(t.artist)) return false;
-      seen.add(t.id);
-      return true;
-    });
-    await prefetchYouTubeIds(pool);
-    // сначала треки, для которых видео уже известно (быстро и без траты лимита YouTube), и лайкнутые
-    const cached = pool.filter((t) => peekYouTubeId(t));
-    const fresh = pool.filter((t) => !peekYouTubeId(t));
-    const pick = [...shuffled(cached), ...shuffled(fresh).slice(0, cached.length < 4 ? 2 : 0)].slice(0, n);
-    pick.sort((a, b) => (liked.has(b.id) ? 1 : 0) - (liked.has(a.id) ? 1 : 0) || Math.random() - 0.5);
-    for (const t of pick) player.addToQueue({ ...t, wave: true });
+    if (!added && active) { played = new Set(); setTimeout(() => { if (active && remaining() < 2) refill(10); }, 4000); }
   } finally {
     filling = false;
   }
@@ -107,8 +141,8 @@ function react(kind) {
   else if (kind === 'done' || frac > 0.7) { score[a] = (score[a] || 0) + 1; streak = 0; }
   played.add(last.track.id);
   persist();
-  if (streak >= 4) { streak = 0; score = Object.fromEntries(Object.entries(score).map(([k, v]) => [k, v > 0 ? v * 0.6 : v])); refill(6); }
-  if (remaining() < 4) refill(8);
+  if (streak >= 4) { streak = 0; score = Object.fromEntries(Object.entries(score).map(([k, v]) => [k, v > 0 ? v * 0.6 : v])); refill(8); }
+  if (remaining() < 5) refill(10);
 }
 
 function setActive(on) {
@@ -118,8 +152,6 @@ function setActive(on) {
   const sub = $('#wave-sub');
   if (sub) sub.textContent = on ? 'Играет. Нажмите, чтобы выключить' : 'Музыка под ваш вкус, подстраивается на лету';
   if (on) { player.queue.setShuffle(false); }
-  const d = $('#fp-dislike');
-  if (d) d.hidden = !on;
 }
 
 export async function startWave() {
@@ -171,7 +203,7 @@ export function initWave() {
       const cur = player.queue.current;
       if (cur && !cur.wave) setActive(false);   // человек запустил своё — волна заканчивается
     }
-    if (what === 'track' && active && remaining() < 3) refill(8);
+    if (what === 'track' && active && remaining() < 5) refill(10);
   });
 }
 

@@ -1,17 +1,17 @@
 // Управление жестами через камеру (MediaPipe GestureRecognizer, модель грузится с CDN).
-// ✌️ следующий, 👍 лайк, 👎 дизлайк, ✋ пауза, ☝️ продолжить.
-import { h, toast, openSheet, closeSheet } from './ui.js?v=0.10.2';
-import * as player from './player.js?v=0.10.2';
-import * as store from './store.js?v=0.10.2';
-import { dislike } from './wave.js?v=0.10.2';
+// ✌️ следующий, 🤟 предыдущий, 👍 лайк, 👎 дизлайк, ✋ пауза, ☝️ продолжить.
+import { h, toast, openSheet, closeSheet } from './ui.js?v=0.11.0';
+import * as player from './player.js?v=0.11.0';
+import * as store from './store.js?v=0.11.0';
+import { dislike } from './wave.js?v=0.11.0';
 
 const KEY = 'mkw.gestures';
 const LIB = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14';
 const MODEL = 'https://storage.googleapis.com/mediapipe-models/gesture_recognizer/gesture_recognizer/float16/1/gesture_recognizer.task';
-const HOLD_MS = 600, COOLDOWN_MS = 2200, STEP_MS = 120;
+const COOLDOWN_MS = 2000, STEP_MS = 90;
 
 let on = false, running = false, video = null, stream = null, rec = null, timer = 0;
-let cand = '', since = 0, lastAct = 0, badge = null;
+let lastAct = 0, badge = null;
 
 export const gesturesOn = () => on;
 
@@ -20,13 +20,17 @@ function act(name) {
   if (now - lastAct < COOLDOWN_MS) return;
   lastAct = now;
   if (name === 'Victory') { toast('✌️ Следующий'); player.next(); }
+  else if (name === 'ILoveYou') { toast('🤟 Предыдущий'); player.prev(); }
   else if (name === 'Thumb_Up') {
     const t = player.queue.current;
     if (t && !store.isLiked(t.id)) { store.toggleLike(t).catch(() => {}); toast('👍 В лайках'); }
   } else if (name === 'Thumb_Down') { toast('👎 Пропускаю'); dislike(); }
-  else if (name === 'Open_Palm') { if (player.st.playing) { player.toggle(); toast('✋ Пауза'); } }
+  else if (name === 'Open_Palm') { player.pause(); toast('✋ Пауза'); }
   else if (name === 'Pointing_Up') { if (!player.st.playing) { player.toggle(); toast('☝️ Играем'); } }
 }
+
+const USEFUL = ['Victory', 'Thumb_Up', 'Thumb_Down', 'Open_Palm', 'Pointing_Up', 'ILoveYou'];
+const win = [];   // последние кадры: голосуем, чтобы редкие пропуски распознавания не мешали
 
 function loop() {
   if (!running) return;
@@ -34,11 +38,14 @@ function loop() {
     if (!document.hidden && video.readyState >= 2 && rec) {
       const res = rec.recognizeForVideo(video, performance.now());
       const g = res.gestures && res.gestures[0] && res.gestures[0][0];
-      const name = g && g.score > 0.7 ? g.categoryName : '';
-      const useful = ['Victory', 'Thumb_Up', 'Thumb_Down', 'Open_Palm', 'Pointing_Up'].includes(name) ? name : '';
-      const now = Date.now();
-      if (useful !== cand) { cand = useful; since = now; }
-      else if (useful && now - since >= HOLD_MS) { act(useful); since = now + COOLDOWN_MS; }
+      const name = g && g.score > 0.5 && USEFUL.includes(g.categoryName) ? g.categoryName : '';
+      win.push(name);
+      if (win.length > 8) win.shift();
+      const counts = {};
+      win.forEach((n) => { if (n) counts[n] = (counts[n] || 0) + 1; });
+      const best = Object.entries(counts).sort((x, y) => y[1] - x[1])[0];
+      // ладонь самая «шумная», ей хватает 4 кадров из 8; остальным нужно 5
+      if (best && best[1] >= (best[0] === 'Open_Palm' ? 4 : 5)) { act(best[0]); win.length = 0; }
     }
   } catch (e) { console.error(e); }
   timer = setTimeout(loop, STEP_MS);
@@ -97,6 +104,6 @@ export async function setGestures(v) {
   if (!v) { on = false; stop(); try { localStorage.setItem(KEY, '0'); } catch { /* ignore */ } return; }
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { toast('Браузер не даёт доступ к камере'); return; }
   toast('Включаю камеру и загружаю модель…');
-  try { await start(); on = true; try { localStorage.setItem(KEY, '1'); } catch { /* ignore */ } toast('Жесты включены. Держите жест ~0,6 сек'); }
+  try { await start(); on = true; try { localStorage.setItem(KEY, '1'); } catch { /* ignore */ } toast('Жесты включены. Держите жест около секунды'); }
   catch (e) { console.error(e); stop(); on = false; toast('Не получилось включить жесты: нет камеры или модель не загрузилась'); }
 }

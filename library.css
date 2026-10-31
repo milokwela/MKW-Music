@@ -45,3 +45,8 @@
 .accent-dot.custom { position: relative; display: grid; place-items: center; color: #fff; font-size: 22px; cursor: pointer; overflow: hidden; }
 .accent-dot.custom input { position: absolute; inset: 0; opacity: 0; width: 100%; height: 100%; cursor: pointer; }
 .listeners { margin: 8px 0 12px; padding: 12px 14px; border-radius: 16px; background: var(--primary-container); color: var(--on-primary-container); font-weight: 600; font-size: 14px; }
+.seg { touch-action: pan-y; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; }
+.seg button { touch-action: manipulation; }
+.set-card .theme-cards { grid-template-columns: repeat(4, 1fr); gap: 7px; }
+.set-card .theme-card { padding: 7px 4px; font-size: 12.5px; border-radius: 16px; }
+.set-card .tc-prev { height: 52px; padding: 6px; }

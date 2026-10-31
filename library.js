@@ -1,9 +1,9 @@
 // Экран «Библиотека»: лайки, плейлисты, история.
-import { $, $$, h, icon, trackRow, emptyState, askText, toast, openSheet, closeSheet, sheetItem, animateIn } from './ui.js?v=0.10.2';
-import * as store from './store.js?v=0.10.2';
-import * as player from './player.js?v=0.10.2';
-import { openTrackMenu } from './menu.js?v=0.10.2';
-import { tracksWord, timeAgo, artUrl } from './utils.js?v=0.10.2';
+import { $, $$, h, icon, trackRow, emptyState, askText, toast, openSheet, closeSheet, sheetItem, animateIn } from './ui.js?v=0.11.0';
+import * as store from './store.js?v=0.11.0';
+import * as player from './player.js?v=0.11.0';
+import { openTrackMenu } from './menu.js?v=0.11.0';
+import { tracksWord, timeAgo, artUrl } from './utils.js?v=0.11.0';
 
 let tab = 'likes';
 let openPid = null;
@@ -104,7 +104,7 @@ function initSegDrag() {
   seg.addEventListener('pointerdown', (e) => { drag = true; moved = false; sx = e.clientX; pid = e.pointerId; });
   seg.addEventListener('pointermove', (e) => {
     if (!drag) return;
-    if (!moved && Math.abs(e.clientX - sx) > 6) { moved = true; seg.classList.add('drag'); try { seg.setPointerCapture(pid); } catch { /* ignore */ } }
+    if (!moved && Math.abs(e.clientX - sx) > 14) { moved = true; seg.classList.add('drag'); try { seg.setPointerCapture(pid); } catch { /* ignore */ } }
     if (moved) seg.style.setProperty('--i', String(idx(e)));
   });
   const end = (e) => {
@@ -117,7 +117,7 @@ function initSegDrag() {
     if (navigator.vibrate) navigator.vibrate(8);
   };
   seg.addEventListener('pointerup', end);
-  seg.addEventListener('pointercancel', (e) => { end(e); render(); });
+  seg.addEventListener('pointercancel', () => { drag = false; moved = false; seg.classList.remove('drag'); render(); });
   seg.addEventListener('click', (e) => { if (just) { e.stopPropagation(); e.preventDefault(); } }, true);
 }
 

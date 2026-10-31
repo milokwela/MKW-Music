@@ -1,21 +1,21 @@
 // Точка входа: вход в аккаунт, навигация, тема, профиль.
-import { watchAuth, signIn, signUp, authErrorText } from './auth.js?v=0.10.2';
-import { startStore, stopStore, onStore, flushListened } from './store.js?v=0.10.2';
-import { initSearch, setSearchUser } from './search.js?v=0.10.2';
-import { initLibrary, render as renderLibrary, resetLibrary } from './library.js?v=0.10.2';
-import { initPlayerUI, resetPlayerUI, closeFull } from './playerui.js?v=0.10.2';
-import { buildProfile, updateProfile, resetProfile } from './profile.js?v=0.10.2';
-import { initArtist } from './artist.js?v=0.10.2';
-import { initLiquidNav } from './glassnav.js?v=0.10.2';
-import { initRowLens } from './rowlens.js?v=0.10.2';
-import { readIncoming, showIncoming } from './share.js?v=0.10.2';
-import { registerListener } from './stats.js?v=0.10.2';
-import { offerInstall } from './install.js?v=0.10.2';
-import { initViz } from './viz.js?v=0.10.2';
-import { initWave } from './wave.js?v=0.10.2';
-import { initTheme } from './theme.js?v=0.10.2';
-import * as player from './player.js?v=0.10.2';
-import { $, $$ } from './ui.js?v=0.10.2';
+import { watchAuth, signIn, signUp, authErrorText } from './auth.js?v=0.11.0';
+import { startStore, stopStore, onStore, flushListened } from './store.js?v=0.11.0';
+import { initSearch, setSearchUser } from './search.js?v=0.11.0';
+import { initLibrary, render as renderLibrary, resetLibrary } from './library.js?v=0.11.0';
+import { initPlayerUI, resetPlayerUI, closeFull } from './playerui.js?v=0.11.0';
+import { buildProfile, updateProfile, resetProfile } from './profile.js?v=0.11.0';
+import { initArtist } from './artist.js?v=0.11.0';
+import { initLiquidNav } from './glassnav.js?v=0.11.0';
+import { initRowLens } from './rowlens.js?v=0.11.0';
+import { readIncoming, showIncoming } from './share.js?v=0.11.0';
+import { registerListener } from './stats.js?v=0.11.0';
+import { offerInstall } from './install.js?v=0.11.0';
+import { initViz } from './viz.js?v=0.11.0';
+import { initWave } from './wave.js?v=0.11.0';
+import { initTheme } from './theme.js?v=0.11.0';
+import * as player from './player.js?v=0.11.0';
+import { $, $$ } from './ui.js?v=0.11.0';
 
 // ---------- вход ----------
 let authMode = 'login';
