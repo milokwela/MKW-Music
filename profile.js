@@ -1,16 +1,16 @@
 // Экран «Профиль»: статистика, достижения, топ исполнителей, тема, версии.
-import { $, $$, h, icon, openSheet, closeSheet, toast } from './ui.js?v=0.12.0';
-import * as store from './store.js?v=0.12.0';
-import { ACCENTS, getTheme, getAccent, getCustomHue, setCustomColor, setTheme, setAccent } from './theme.js?v=0.12.0';
-import { CHANGELOG, VERSION, STAGE, KNOWN_ISSUES } from './changelog.js?v=0.12.0';
-import { plural } from './utils.js?v=0.12.0';
-import { youtubeEnabled, youtubeQuotaOut } from './youtube.js?v=0.12.0';
-import { audiusEnabled } from './audius.js?v=0.12.0';
-import { SOURCE_MODES, getSourceMode, setSourceMode } from './sources.js?v=0.12.0';
-import { gesturesOn, setGestures } from './gestures.js?v=0.12.0';
-import { listenerStats } from './stats.js?v=0.12.0';
-import { liveBg, setLiveBg } from './viz.js?v=0.12.0';
-import { logOut, changePassword, authErrorText } from './auth.js?v=0.12.0';
+import { $, $$, h, icon, openSheet, closeSheet, toast, sheetItem } from './ui.js?v=0.13.0';
+import * as store from './store.js?v=0.13.0';
+import { ACCENTS, getTheme, getAccent, getCustomHue, setCustomColor, setTheme, setAccent } from './theme.js?v=0.13.0';
+import { CHANGELOG, VERSION, STAGE, KNOWN_ISSUES } from './changelog.js?v=0.13.0';
+import { plural } from './utils.js?v=0.13.0';
+import { youtubeEnabled, youtubeQuotaOut } from './youtube.js?v=0.13.0';
+import { audiusEnabled } from './audius.js?v=0.13.0';
+import { SOURCE_MODES, getSourceMode, setSourceMode } from './sources.js?v=0.13.0';
+import { gesturesOn, setGestures, showGestureGuide } from './gestures.js?v=0.13.0';
+import { listenerStats } from './stats.js?v=0.13.0';
+import { liveBg, setLiveBg } from './viz.js?v=0.13.0';
+import { logOut, changePassword, authErrorText } from './auth.js?v=0.13.0';
 
 const ACHIEVEMENTS = [
   { id: 'like1', icon: 'heart', title: 'Первый лайк', hint: 'Лайкните любой трек', ok: (s) => s.likes >= 1 },
@@ -81,6 +81,34 @@ function changelogEntry(entry, open) {
   return d;
 }
 
+const AV = (n) => `mkw.avatar.${n}`;
+export function getAvatar(nick) { try { return localStorage.getItem(AV(nick)) || 'mkw-logo.png'; } catch { return 'mkw-logo.png'; } }
+function resizeToDataUrl(file, size = 320) {
+  return new Promise((resolve, reject) => {
+    const img = new Image(), url = URL.createObjectURL(file);
+    img.onload = () => {
+      const c = document.createElement('canvas'); c.width = c.height = size;
+      const m = Math.min(img.width, img.height), sx = (img.width - m) / 2, sy = (img.height - m) / 2;
+      c.getContext('2d').drawImage(img, sx, sy, m, m, 0, 0, size, size);
+      URL.revokeObjectURL(url); resolve(c.toDataURL('image/jpeg', 0.85));
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('img')); };
+    img.src = url;
+  });
+}
+function avatarMenu(nick) {
+  const inp = h('input', { type: 'file', accept: 'image/*', hidden: '' });
+  inp.addEventListener('change', async () => {
+    const f = inp.files && inp.files[0]; if (!f) return;
+    try { const d = await resizeToDataUrl(f); localStorage.setItem(AV(nick), d); refs.avatar.src = d; closeSheet(); toast('Фото обновлено'); }
+    catch { toast('Не получилось загрузить фото'); }
+  });
+  openSheet('Фото профиля', h('div', {}, inp,
+    sheetItem('user', 'Выбрать фото из галереи', () => inp.click()),
+    sheetItem('close', 'Вернуть логотип MKW', () => { try { localStorage.removeItem(AV(nick)); } catch { /* ignore */ } refs.avatar.src = 'mkw-logo.png'; closeSheet(); }, true),
+    h('p', { class: 'profile-note', text: 'Фото хранится только на этом устройстве и никуда не отправляется.' })));
+}
+
 export function buildProfile(nick) {
   const root = $('#view-profile');
   refs.nick = h('div', { class: 'hero-nick', text: nick });
@@ -99,7 +127,7 @@ export function buildProfile(nick) {
 
   root.replaceChildren(
     h('div', { class: 'hero' },
-      h('div', { class: 'hero-avatar' }, h('img', { src: 'cat.jpg', alt: '' })),
+      h('button', { class: 'hero-avatar', type: 'button', 'aria-label': 'Сменить фото', onclick: () => avatarMenu(nick) }, refs.avatar = h('img', { src: getAvatar(nick), alt: '' }), h('span', { class: 'av-edit', text: 'Фото' })),
       h('div', { class: 'hero-info' }, refs.nick, refs.since,
         h('span', { class: 'beta-badge', text: `${STAGE} · v${VERSION}` }))),
 
@@ -124,7 +152,8 @@ export function buildProfile(nick) {
       h('div', { class: 'set-block' }, h('b', { text: 'Где искать музыку' }),
         h('div', { class: 'src-row' }, SOURCE_MODES.map((m) => h('button', { class: 'chip src-chip', type: 'button', 'data-id': m.id, onclick: () => { setSourceMode(m.id); syncControls(); } }, m.name))),
         refs.srcnote),
-      row('Жесты (бета)', 'Два пальца: следующий. Рок: предыдущий. Большой вверх: лайк, средний палец: снять лайк, большой вниз: дизлайк. Ладонь: пауза, палец вверх: продолжить. Кулак: тише, три пальца: громче. Включает камеру', refs.gest)),
+      row('Жесты (бета)', 'Управление рукой через камеру: треки, лайки, пауза, громкость', refs.gest),
+      row('Какие жесты показывать', '✌️ 🤟 👍 🖕 👎 ✋ ☝️ ✊ — нажмите, чтобы посмотреть все', h('span', { class: 'chev', text: '›' }), showGestureGuide)),
 
     h('div', { class: 'section-title', text: 'Аккаунт' }),
     h('div', { class: 'set-card' },

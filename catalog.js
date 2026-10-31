@@ -1,5 +1,5 @@
 // Каталог треков: iTunes Search API (бесплатно, без ключа, есть превью 30 сек).
-import { ITUNES_COUNTRIES } from './config.js?v=0.12.0';
+import { ITUNES_COUNTRIES } from './config.js?v=0.13.0';
 
 export function mapItunes(r) {
   return {
@@ -11,6 +11,7 @@ export function mapItunes(r) {
     previewUrl: r.previewUrl || '',
     duration: r.trackTimeMillis ? Math.round(r.trackTimeMillis / 1000) : 0,
     genre: r.primaryGenreName || '',
+    year: String(r.releaseDate || '').slice(0, 4),
   };
 }
 

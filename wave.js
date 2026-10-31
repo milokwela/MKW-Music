@@ -1,11 +1,11 @@
 // MKW Волна: бесконечная очередь, которая подстраивается под вкус и реакцию (пропуски / дослушивания).
-import { searchTracks } from './catalog.js?v=0.12.0';
-import { peekYouTubeId, prefetchYouTubeIds } from './youtube.js?v=0.12.0';
-import * as player from './player.js?v=0.12.0';
-import * as store from './store.js?v=0.12.0';
-import { $, toast } from './ui.js?v=0.12.0';
-import { shuffled } from './utils.js?v=0.12.0';
-import { norm, isArtistBlocked, blockedArtists, dislikedTracks, dislikeTrack } from './taste.js?v=0.12.0';
+import { searchTracks } from './catalog.js?v=0.13.0';
+import { peekYouTubeId, prefetchYouTubeIds } from './youtube.js?v=0.13.0';
+import * as player from './player.js?v=0.13.0';
+import * as store from './store.js?v=0.13.0';
+import { $, toast } from './ui.js?v=0.13.0';
+import { shuffled } from './utils.js?v=0.13.0';
+import { norm, isArtistBlocked, blockedArtists, dislikedTracks, dislikeTrack } from './taste.js?v=0.13.0';
 
 const SKEY = 'mkw.wave';
 let active = false;

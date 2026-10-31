@@ -10,6 +10,7 @@ export const ACCENTS = [
 const KEY_T = 'mkw.theme';
 const KEY_A = 'mkw.accent';
 const KEY_H = 'mkw.accent.hue';
+const KEY_N = 'mkw.accent.neutral'; // 'w' | 'b' | '' — серый/чёрный/белый без оттенка
 
 function read(key, fallback) {
   try { return localStorage.getItem(key) || fallback; } catch { return fallback; }
@@ -28,7 +29,13 @@ export function hexToHue(hex) {
   let h = mx === r ? ((g - b) / d) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4;
   return Math.round(((h * 60) + 360) % 360);
 }
-export function setCustomColor(hex) { write(KEY_H, String(hexToHue(hex))); write(KEY_A, 'custom'); applyTheme(); }
+export function setCustomColor(hex) {
+  const n = parseInt(hex.slice(1), 16), r = (n >> 16) / 255, g = ((n >> 8) & 255) / 255, b = (n & 255) / 255;
+  const mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = (mx + mn) / 2, sat = mx === mn ? 0 : (mx - mn) / (1 - Math.abs(2 * l - 1));
+  write(KEY_N, sat < 0.14 ? (l < 0.5 ? 'b' : 'w') : '');
+  write(KEY_H, String(hexToHue(hex))); write(KEY_A, 'custom'); applyTheme();
+}
+const neutral = () => (getAccent() === 'custom' ? read(KEY_N, '') : '');
 
 export function isDark() {
   const t = document.documentElement.dataset.theme;
@@ -38,6 +45,20 @@ export function isDark() {
 }
 
 const hsl = (h, s, l) => `hsl(${h} ${s}% ${l}%)`;
+
+function neutralPalette(kind, dark) {
+  // серый акцент без розового оттенка; «чёрный» на тёмной теме превращается в светло-серый, чтобы быть видимым
+  const lightAccent = dark ? (kind === 'w' ? 96 : 84) : (kind === 'w' ? 60 : 14);
+  return dark ? {
+    '--primary': hsl(0, 0, lightAccent), '--on-primary': hsl(0, 0, 10), '--primary-container': hsl(0, 0, 24),
+    '--on-primary-container': hsl(0, 0, 94), '--bg': hsl(0, 0, 6), '--on-bg': hsl(0, 0, 92),
+    '--surface': hsl(0, 0, 11), '--surface-high': hsl(0, 0, 16), '--outline': hsl(0, 0, 58), '--on-surface-var': hsl(0, 0, 78),
+  } : {
+    '--primary': hsl(0, 0, lightAccent), '--on-primary': '#ffffff', '--primary-container': hsl(0, 0, 90),
+    '--on-primary-container': hsl(0, 0, 10), '--bg': hsl(0, 0, 99), '--on-bg': hsl(0, 0, 10),
+    '--surface': hsl(0, 0, 96), '--surface-high': hsl(0, 0, 92), '--outline': hsl(0, 0, 50), '--on-surface-var': hsl(0, 0, 30),
+  };
+}
 
 function palette(h, dark) {
   if (dark) {
@@ -75,8 +96,11 @@ export function applyTheme() {
   else if (mode === 'black') root.dataset.theme = 'dark';
   else delete root.dataset.theme;
   const acc = getAccent() === 'custom' ? { h: getCustomHue() } : (ACCENTS.find((a) => a.id === getAccent()) || ACCENTS[0]);
-  const pal = palette(acc.h, isDark());
-  if (mode === 'black') { pal['--bg'] = '#000000'; pal['--surface'] = hsl(acc.h, 14, 7); pal['--surface-high'] = hsl(acc.h, 12, 12); }
+  const nk = neutral();
+  const pal = nk ? neutralPalette(nk, isDark()) : palette(acc.h, isDark());
+  if (mode === 'black') { pal['--bg'] = '#000000'; pal['--surface'] = hsl(acc.h, nk ? 0 : 14, 7); pal['--surface-high'] = hsl(acc.h, nk ? 0 : 12, 12); }
+  root.dataset.neutral = nk ? '1' : '';
+  root.style.setProperty('--mix2', nk ? '#8a8a8a' : '#8f6bff');
   for (const [k, v] of Object.entries(pal)) root.style.setProperty(k, v);
   const meta = document.querySelector('meta[name="theme-color"]');
   if (meta) meta.content = mode === 'black' ? '#000000' : isDark() ? '#0d0a0b' : '#ffffff';

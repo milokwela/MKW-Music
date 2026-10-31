@@ -8,16 +8,24 @@
 <link rel="icon" type="image/png" href="mkw-favicon.png">
 <link rel="apple-touch-icon" href="mkw-180.png">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="stylesheet" href="variables.css?v=0.12.0">
-<link rel="stylesheet" href="global.css?v=0.12.0">
-<link rel="stylesheet" href="auth.css?v=0.12.0">
-<link rel="stylesheet" href="search.css?v=0.12.0">
-<link rel="stylesheet" href="library.css?v=0.12.0">
-<link rel="stylesheet" href="player.css?v=0.12.0">
-<link rel="stylesheet" href="polish.css?v=0.12.0">
-<link rel="stylesheet" href="glow.css?v=0.12.0">
+<link rel="stylesheet" href="variables.css?v=0.13.0">
+<link rel="stylesheet" href="global.css?v=0.13.0">
+<link rel="stylesheet" href="auth.css?v=0.13.0">
+<link rel="stylesheet" href="search.css?v=0.13.0">
+<link rel="stylesheet" href="library.css?v=0.13.0">
+<link rel="stylesheet" href="player.css?v=0.13.0">
+<link rel="stylesheet" href="polish.css?v=0.13.0">
+<link rel="stylesheet" href="glow.css?v=0.13.0">
 </head>
 <body>
+<script>
+/* Страховка: заставка гарантированно исчезает, даже если скрипты приложения загрузились поздно или упали (бывает в Яндекс Браузере) */
+(function(){var s=function(){return document.getElementById('splash')};
+setTimeout(function(){var e=s();if(e)e.classList.add('go')},30);
+setTimeout(function(){var e=s();if(e)e.classList.add('out')},3300);
+setTimeout(function(){var e=s();if(e&&e.parentNode)e.parentNode.removeChild(e)},4200);
+document.addEventListener('click',function(){var e=s();if(e&&e.parentNode)e.parentNode.removeChild(e)});})();
+</script>
 <div id="splash" aria-hidden="true">
   <div class="sp-stars"></div>
   <div class="sp-spark"></div>
@@ -29,6 +37,7 @@
 </div>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-lyrics" viewBox="0 0 24 24"><path d="M5 6h14M5 11h9M5 16h12M5 21h6"/></symbol>
   <symbol id="i-mic" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></symbol>
   <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M16.5 16.5L21 21"/></symbol>
   <symbol id="i-library" viewBox="0 0 24 24"><path d="M4 4v16M9 4v16M14.500 5.200l4.200 14.600"/></symbol>
@@ -110,6 +119,14 @@
       <div id="search-recs"></div>
       <div class="list" id="search-results"></div>
       <div id="search-more" style="text-align:center;margin:16px 0"></div>
+      <div class="home-logo" aria-hidden="true">
+        <div class="hl-stage">
+          <i class="hl-ring r1"></i><i class="hl-ring r2"></i><i class="hl-orbit"><b></b></i><i class="hl-orbit o2"><b></b></i>
+          <div class="hl-icon"><img src="mkw-512.png" alt=""></div>
+        </div>
+        <div class="hl-name">MKW Music</div>
+        <div class="hl-sub">Музыка под ваш вкус</div>
+      </div>
     </section>
 
     <section class="view" id="view-library" hidden>
@@ -158,6 +175,7 @@
       <button class="icon-btn" id="fp-more" type="button" aria-label="Ещё"><svg class="icon"><use href="#i-more"/></svg></button>
     </div>
     <div id="fp-art"></div>
+    <div id="fp-lyrics" hidden aria-live="off"><div class="ly-scroll"></div></div>
     <div class="fp-meta">
       <div class="txt"><div id="fp-title"></div><button type="button" id="fp-artist"></button></div>
       <button class="icon-btn" id="fp-dislike" type="button" aria-label="Не нравится"><svg class="icon"><use href="#i-dislike"/></svg></button>
@@ -175,6 +193,7 @@
       <button class="icon-btn" id="fp-repeat" type="button" aria-label="Повтор"><svg class="icon"><use href="#i-repeat"/></svg></button>
     </div>
     <div class="fp-extra">
+      <button class="icon-btn" id="fp-lyrics-btn" type="button" aria-label="Текст песни"><svg class="icon"><use href="#i-lyrics"/></svg></button>
       <button class="icon-btn" id="fp-queue" type="button" aria-label="Очередь"><svg class="icon"><use href="#i-queue"/></svg></button>
       <button class="icon-btn" id="fp-sleep" type="button" aria-label="Таймер сна"><svg class="icon"><use href="#i-timer"/></svg></button>
     </div>
@@ -196,6 +215,6 @@
 <audio id="preview-player" preload="none"></audio>
 <div id="yt-holder" style="position:fixed;width:1px;height:1px;left:-10px;top:-10px;overflow:hidden;opacity:0;pointer-events:none"><div id="yt-target"></div></div>
 
-<script type="module" src="app.js?v=0.12.0"></script>
+<script type="module" src="app.js?v=0.13.0"></script>
 </body>
 </html>

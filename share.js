@@ -1,6 +1,6 @@
 // Поделиться треком: ссылка на сайт с зашитым треком; по ней у друга откроется окно «Слушать».
-import { $, h, toast, openSheet, closeSheet } from './ui.js?v=0.12.0';
-import * as player from './player.js?v=0.12.0';
+import { $, h, toast, openSheet, closeSheet } from './ui.js?v=0.13.0';
+import * as player from './player.js?v=0.13.0';
 
 const enc = (o) => btoa(unescape(encodeURIComponent(JSON.stringify(o)))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 const dec = (s) => JSON.parse(decodeURIComponent(escape(atob(s.replace(/-/g, '+').replace(/_/g, '/')))));

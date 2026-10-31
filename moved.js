@@ -1,5 +1,5 @@
 // Разовое сообщение о переезде на новый домен.
-import { h, openSheet, closeSheet } from './ui.js?v=0.12.0';
+import { h, openSheet, closeSheet } from './ui.js?v=0.13.0';
 
 const KEY = 'mkw.moved.v1';
 
@@ -13,7 +13,7 @@ export function showMoved() {
 }
 
 // Новая иконка: у установленного приложения значок на телефоне сам не меняется, предлагаем переустановить.
-const IKEY = 'mkw.icon.v2';
+const IKEY = 'mkw.icon.v3';
 export function showIconUpdate() {
   const installed = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
   if (!installed) return;
