@@ -1,9 +1,9 @@
 // Движок плеера: очередь, YouTube (полные треки) и превью iTunes (30 сек) как запасной вариант.
-import { audiusStreamUrl } from './audius.js?v=0.11.1';
-import { Queue } from './queue.js?v=0.11.1';
-import { findYouTubeId, peekYouTubeId, loadYouTubeApi, youtubeEnabled } from './youtube.js?v=0.11.1';
-import { logPlay, addListened } from './store.js?v=0.11.1';
-import { artUrl } from './utils.js?v=0.11.1';
+import { audiusStreamUrl } from './audius.js?v=0.12.0';
+import { Queue } from './queue.js?v=0.12.0';
+import { findYouTubeId, peekYouTubeId, loadYouTubeApi, youtubeEnabled } from './youtube.js?v=0.12.0';
+import { logPlay, addListened } from './store.js?v=0.12.0';
+import { artUrl } from './utils.js?v=0.12.0';
 
 export const queue = new Queue();
 export const st = {
@@ -263,10 +263,33 @@ setInterval(() => {
   } else if (st.mode === 'preview') {
     st.time = audio.currentTime || 0;
   }
+  const cid = queue.current ? queue.current.id : '';
+  if (cid !== volFor) { volFor = cid; applyVolume(); }
   emit('time');
 }, 500);
 
 // ---------- управление ----------
+// ---------- громкость ----------
+const VKEY = 'mkw.vol';
+let vol = (() => { try { const v = parseFloat(localStorage.getItem(VKEY)); return Number.isFinite(v) ? Math.min(1, Math.max(0, v)) : 1; } catch { return 1; } })();
+let volFor = '';
+function applyVolume() {
+  try { audio.volume = vol; } catch { /* ignore */ }
+  try { if (yt && yt.setVolume) yt.setVolume(Math.round(vol * 100)); } catch { /* ignore */ }
+}
+export const getVolume = () => vol;
+export function setVolume(v) {
+  vol = Math.min(1, Math.max(0, v));
+  try { localStorage.setItem(VKEY, String(vol)); } catch { /* ignore */ }
+  applyVolume();
+  return vol;
+}
+
+export function previousTrack() {
+  if (queue.index > 0 && queue.prev()) startCurrent();
+  else seek(0);
+}
+
 export function toggle() {
   if (!queue.current) return;
   if (!st.mode) { if (!st.loading) startCurrent(); return; }

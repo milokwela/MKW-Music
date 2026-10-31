@@ -1,9 +1,10 @@
 // Управление жестами через камеру (MediaPipe GestureRecognizer, модель грузится с CDN).
-// ✌️ следующий, 🤟 предыдущий, 👍 лайк, 👎 дизлайк, ✋ пауза, ☝️ продолжить.
-import { h, toast, openSheet, closeSheet } from './ui.js?v=0.11.1';
-import * as player from './player.js?v=0.11.1';
-import * as store from './store.js?v=0.11.1';
-import { dislike } from './wave.js?v=0.11.1';
+// Два пальца: следующий. Рок: предыдущий. Большой вверх: лайк. Средний палец: снять лайк. Большой вниз: дизлайк.
+// Ладонь: пауза. Палец вверх: продолжить. Кулак: тише. Три пальца: громче.
+import { h, toast, openSheet, closeSheet } from './ui.js?v=0.12.0';
+import * as player from './player.js?v=0.12.0';
+import * as store from './store.js?v=0.12.0';
+import { dislike } from './wave.js?v=0.12.0';
 
 const KEY = 'mkw.gestures';
 const LIB = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14';
@@ -17,19 +18,40 @@ export const gesturesOn = () => on;
 
 function act(name) {
   const now = Date.now();
-  if (now - lastAct < COOLDOWN_MS) return;
+  const repeat = name === 'vol-up' || name === 'vol-down';
+  if (now - lastAct < (repeat ? 900 : COOLDOWN_MS)) return;
   lastAct = now;
-  if (name === 'Victory') { toast('✌️ Следующий'); player.next(); }
-  else if (name === 'ILoveYou') { toast('🤟 Предыдущий'); player.prev(); }
-  else if (name === 'Thumb_Up') {
-    const t = player.queue.current;
-    if (t && !store.isLiked(t.id)) { store.toggleLike(t).catch(() => {}); toast('👍 В лайках'); }
-  } else if (name === 'Thumb_Down') { toast('👎 Пропускаю'); dislike(); }
-  else if (name === 'Open_Palm') { player.pause(); toast('✋ Пауза'); }
-  else if (name === 'Pointing_Up') { if (!player.st.playing) { player.toggle(); toast('☝️ Играем'); } }
+  const t = player.queue.current;
+  if (name === 'Victory') { toast('Следующий трек'); player.next(); }
+  else if (name === 'ILoveYou') { toast('Предыдущий трек'); player.previousTrack(); }
+  else if (name === 'Thumb_Up') { if (t && !store.isLiked(t.id)) { store.toggleLike(t).catch(() => {}); toast('Добавлено в лайки'); } }
+  else if (name === 'middle') { if (t && store.isLiked(t.id)) { store.toggleLike(t).catch(() => {}); toast('Лайк снят'); } }
+  else if (name === 'Thumb_Down') { toast('Дизлайк, пропускаю'); dislike(); }
+  else if (name === 'Open_Palm') { player.pause(); toast('Пауза'); }
+  else if (name === 'Pointing_Up') { if (!player.st.playing) { player.toggle(); toast('Продолжаем'); } }
+  else if (name === 'vol-down') { const v = player.setVolume(player.getVolume() - 0.15); toast(`Громкость ${Math.round(v * 100)}%`); }
+  else if (name === 'vol-up') { const v = player.setVolume(player.getVolume() + 0.15); toast(`Громкость ${Math.round(v * 100)}%`); }
 }
 
-const USEFUL = ['Victory', 'Thumb_Up', 'Thumb_Down', 'Open_Palm', 'Pointing_Up', 'ILoveYou'];
+// Свои жесты по 21 точке руки (в MediaPipe их нет): считаем, какие пальцы вытянуты.
+// Палец вытянут, если его кончик заметно дальше от запястья, чем основание. Это не зависит от поворота руки.
+const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+export function fingerState(lm) {
+  const w = lm[0];
+  const ext = (tip, mcp) => dist(lm[tip], w) / Math.max(1e-6, dist(lm[mcp], w));
+  const r = { index: ext(8, 5), middle: ext(12, 9), ring: ext(16, 13), pinky: ext(20, 17) };
+  const up = (v) => v > 1.55, down = (v) => v < 1.35;
+  return { r, up, down };
+}
+export function customGesture(lm) {
+  if (!lm || lm.length < 21) return '';
+  const { r, up, down } = fingerState(lm);
+  if (up(r.middle) && down(r.index) && down(r.ring) && down(r.pinky)) return 'middle';
+  if (up(r.index) && up(r.middle) && up(r.ring) && down(r.pinky)) return 'vol-up';
+  return '';
+}
+
+const USEFUL = ['Victory', 'Thumb_Up', 'Thumb_Down', 'Open_Palm', 'Pointing_Up', 'ILoveYou', 'Closed_Fist'];
 const win = [];   // последние кадры: голосуем, чтобы редкие пропуски распознавания не мешали
 
 function loop() {
@@ -38,13 +60,16 @@ function loop() {
     if (!document.hidden && video.readyState >= 2 && rec) {
       const res = rec.recognizeForVideo(video, performance.now());
       const g = res.gestures && res.gestures[0] && res.gestures[0][0];
-      const name = g && g.score > 0.5 && USEFUL.includes(g.categoryName) ? g.categoryName : '';
+      let name = g && g.score > 0.5 && USEFUL.includes(g.categoryName) ? g.categoryName : '';
+      const custom = res.landmarks && res.landmarks[0] ? customGesture(res.landmarks[0]) : '';
+      if (custom) name = custom;
+      else if (name === 'Closed_Fist') name = 'vol-down';
       win.push(name);
       if (win.length > 8) win.shift();
       const counts = {};
       win.forEach((n) => { if (n) counts[n] = (counts[n] || 0) + 1; });
       const best = Object.entries(counts).sort((x, y) => y[1] - x[1])[0];
-      // ладонь самая «шумная», ей хватает 4 кадров из 8; остальным нужно 5
+      // ладони хватает 4 кадров из 8, остальным нужно 5
       if (best && best[1] >= (best[0] === 'Open_Palm' ? 4 : 5)) { act(best[0]); win.length = 0; }
     }
   } catch (e) { console.error(e); }

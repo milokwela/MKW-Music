@@ -1,7 +1,7 @@
 // Поиск видео на YouTube для трека и загрузка IFrame Player API.
-import { db } from './firebase.js?v=0.11.1';
+import { db } from './firebase.js?v=0.12.0';
 import { doc, getDoc, setDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
-import { YOUTUBE_API_KEY } from './config.js?v=0.11.1';
+import { YOUTUBE_API_KEY } from './config.js?v=0.12.0';
 
 export const youtubeEnabled = () => Boolean(YOUTUBE_API_KEY);
 

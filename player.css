@@ -232,7 +232,7 @@ body.lens-on { -webkit-user-select: none; user-select: none; -webkit-touch-callo
 #splash.go .sp-burst i { animation: spBurst .8s .9s ease-out forwards; }
 .sp-burst i:nth-child(1) { --a: 0deg; } .sp-burst i:nth-child(2) { --a: 45deg; } .sp-burst i:nth-child(3) { --a: 90deg; } .sp-burst i:nth-child(4) { --a: 135deg; } .sp-burst i:nth-child(5) { --a: 180deg; } .sp-burst i:nth-child(6) { --a: 225deg; } .sp-burst i:nth-child(7) { --a: 270deg; } .sp-burst i:nth-child(8) { --a: 315deg; }
 @keyframes spBurst { 0% { opacity: 1; transform: rotate(var(--a)) translateY(0) scale(1.2); } 100% { opacity: 0; transform: rotate(var(--a)) translateY(-90px) scale(.2); } }
-.sp-cat { width: 140px; height: 140px; border-radius: 50%; object-fit: cover; opacity: 0; transform: scale(.6); box-shadow: 0 0 0 2px rgba(255,255,255,.25), 0 0 60px rgba(255,111,165,.35); }
+.sp-cat { width: 150px; height: 150px; border-radius: 28%; object-fit: cover; opacity: 0; transform: scale(.6); box-shadow: 0 0 0 2px rgba(255,255,255,.25), 0 0 60px rgba(255,111,165,.35); }
 #splash.go .sp-cat { animation: spCat .9s .85s cubic-bezier(.3,1.4,.5,1) forwards; }
 @keyframes spCat { to { opacity: 1; transform: scale(1); } }
 .sp-name { margin-top: 14px; font-size: 40px; font-weight: 900; letter-spacing: 8px; color: #fff; opacity: 0; transform: translateY(10px); }
@@ -241,7 +241,7 @@ body.lens-on { -webkit-user-select: none; user-select: none; -webkit-touch-callo
 @keyframes spUp { to { opacity: 1; transform: none; } }
 @keyframes spFade { to { opacity: .9; } }
 @media (prefers-reduced-motion: reduce) { .hello-sky .moon, .hello .view-title, .wave-bg s { animation: none; } }
-.auth-logo { border-radius: 50%; }
+.auth-logo { border-radius: 28%; }
 
 /* Шазам */
 .search-form #mic-btn { color: var(--primary); }

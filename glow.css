@@ -1,0 +1,45 @@
+/* v0.12: чуть больше глубины, света и движения. Подключается последним. */
+::selection { background: color-mix(in srgb, var(--primary) 40%, transparent); }
+html { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--primary) 45%, transparent) transparent; }
+
+/* заголовки разделов с акцентной чертой */
+.section-title { display: flex; align-items: center; gap: 10px; font-weight: 700; letter-spacing: .4px; text-transform: none; color: var(--on-bg); }
+.section-title::before { content: ""; width: 4px; height: 16px; border-radius: 2px; background: linear-gradient(180deg, var(--primary), color-mix(in srgb, var(--primary) 30%, #8f6bff)); }
+
+/* строки треков: стеклянная подсветка и объёмная обложка */
+.track-row { border-radius: 18px; padding: 7px 8px; }
+@media (hover: hover) { .list > .track-row:hover, .list .track-row:hover { background: color-mix(in srgb, var(--primary) 9%, transparent); } }
+.track-art { box-shadow: 0 6px 18px rgba(0, 0, 0, .28), inset 0 0 0 1px rgba(255, 255, 255, .06); transition: transform .25s cubic-bezier(.3, 1.4, .5, 1); }
+.track-row:active .track-art { transform: scale(.94); }
+
+/* карточка волны: плавающий градиент и пульс кнопки */
+#wave-btn { background-size: 220% 220%; animation: waveShift 14s ease-in-out infinite; box-shadow: 0 18px 50px color-mix(in srgb, var(--primary) 35%, transparent), inset 0 1px 0 rgba(255, 255, 255, .35); }
+@keyframes waveShift { 0%, 100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
+#wave-btn .wave-play, #wave-btn .play-btn, #wave-btn > :first-child { animation: playPulse 3.2s ease-in-out infinite; }
+@keyframes playPulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(255, 255, 255, .45); } 50% { box-shadow: 0 0 0 14px rgba(255, 255, 255, 0); } }
+
+/* кнопки */
+.btn:not(.tonal):not(.ghost) { background: linear-gradient(135deg, var(--primary), color-mix(in srgb, var(--primary) 55%, #8f6bff)); color: var(--on-primary); box-shadow: 0 8px 24px color-mix(in srgb, var(--primary) 30%, transparent), inset 0 1px 0 rgba(255, 255, 255, .25); }
+
+/* нижнее меню и мини-плеер: плотнее стекло */
+#mini-player { backdrop-filter: blur(22px) saturate(1.6); -webkit-backdrop-filter: blur(22px) saturate(1.6); }
+#bottom-nav .nav-lens { box-shadow: 0 6px 22px color-mix(in srgb, var(--primary) 45%, transparent), inset 0 1px 0 rgba(255, 255, 255, .35); }
+
+/* поиск */
+.search-box, #search-form { box-shadow: 0 8px 30px rgba(0, 0, 0, .12), inset 0 1px 0 rgba(255, 255, 255, .18); }
+
+/* профиль */
+.stat-card { background: linear-gradient(160deg, color-mix(in srgb, var(--primary) 14%, var(--surface)), var(--surface)); border: 1px solid color-mix(in srgb, var(--primary) 16%, transparent); }
+.hero { background: radial-gradient(120% 140% at 0% 0%, color-mix(in srgb, var(--primary) 26%, transparent), transparent 60%), var(--surface); }
+.hero-avatar { box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 55%, transparent), 0 10px 30px rgba(0, 0, 0, .35); }
+
+/* экран входа: дышащее лого и свечение */
+.auth-logo { box-shadow: 0 0 0 1px rgba(255, 255, 255, .12), 0 18px 50px color-mix(in srgb, var(--primary) 40%, rgba(0, 0, 0, .5)); animation: logoIn .8s cubic-bezier(.2, .9, .3, 1.2) both, logoBreath 5s ease-in-out 1s infinite; }
+@keyframes logoBreath { 50% { transform: translateY(-4px) scale(1.03); } }
+.sp-cat { box-shadow: 0 0 0 1px rgba(255, 255, 255, .22), 0 0 80px rgba(255, 255, 255, .22), 0 0 140px color-mix(in srgb, var(--primary) 40%, transparent); }
+
+/* плавное переключение вкладок */
+.view:not([hidden]) { animation: viewIn .4s cubic-bezier(.2, .8, .2, 1) both; }
+@keyframes viewIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+
+@media (prefers-reduced-motion: reduce) { #wave-btn, #wave-btn *, .auth-logo, .view { animation: none !important; } }
