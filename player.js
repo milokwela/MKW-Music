@@ -1,9 +1,10 @@
 // Движок плеера: очередь, YouTube (полные треки) и превью iTunes (30 сек) как запасной вариант.
-import { audiusStreamUrl } from './audius.js?v=0.13.0';
-import { Queue } from './queue.js?v=0.13.0';
-import { findYouTubeId, peekYouTubeId, loadYouTubeApi, youtubeEnabled } from './youtube.js?v=0.13.0';
-import { logPlay, addListened } from './store.js?v=0.13.0';
-import { artUrl } from './utils.js?v=0.13.0';
+import { audiusStreamUrl } from './audius.js?v=0.13.1';
+import { Queue } from './queue.js?v=0.13.1';
+import { findYouTubeId, peekYouTubeId, loadYouTubeApi, youtubeEnabled } from './youtube.js?v=0.13.1';
+import { logPlay, addListened } from './store.js?v=0.13.1';
+import { artUrl } from './utils.js?v=0.13.1';
+import { proxify } from './bypass.js?v=0.13.1';
 
 export const queue = new Queue();
 export const st = {
@@ -191,7 +192,7 @@ function startPreview(track, id) {
   if (id !== loadId) return;
   st.mode = 'preview';
   st.loading = true;
-  audio.src = track.auId ? audiusStreamUrl(track.auId) : track.previewUrl;
+  audio.src = track.auId ? audiusStreamUrl(track.auId) : proxify(track.previewUrl);
   audio.play().then(() => { logPlay(track); prefetchNext(); }).catch((e) => {
     if (id !== loadId) return;
     st.loading = false;

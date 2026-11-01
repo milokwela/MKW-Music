@@ -1,16 +1,18 @@
 // Экран «Профиль»: статистика, достижения, топ исполнителей, тема, версии.
-import { $, $$, h, icon, openSheet, closeSheet, toast, sheetItem } from './ui.js?v=0.13.0';
-import * as store from './store.js?v=0.13.0';
-import { ACCENTS, getTheme, getAccent, getCustomHue, setCustomColor, setTheme, setAccent } from './theme.js?v=0.13.0';
-import { CHANGELOG, VERSION, STAGE, KNOWN_ISSUES } from './changelog.js?v=0.13.0';
-import { plural } from './utils.js?v=0.13.0';
-import { youtubeEnabled, youtubeQuotaOut } from './youtube.js?v=0.13.0';
-import { audiusEnabled } from './audius.js?v=0.13.0';
-import { SOURCE_MODES, getSourceMode, setSourceMode } from './sources.js?v=0.13.0';
-import { gesturesOn, setGestures, showGestureGuide } from './gestures.js?v=0.13.0';
-import { listenerStats } from './stats.js?v=0.13.0';
-import { liveBg, setLiveBg } from './viz.js?v=0.13.0';
-import { logOut, changePassword, authErrorText } from './auth.js?v=0.13.0';
+import { $, $$, h, icon, openSheet, closeSheet, toast, sheetItem } from './ui.js?v=0.13.1';
+import * as store from './store.js?v=0.13.1';
+import { ACCENTS, getTheme, getAccent, getCustomHue, setCustomColor, setTheme, setAccent } from './theme.js?v=0.13.1';
+import { CHANGELOG, VERSION, STAGE, KNOWN_ISSUES } from './changelog.js?v=0.13.1';
+import { plural } from './utils.js?v=0.13.1';
+import { youtubeEnabled, youtubeQuotaOut } from './youtube.js?v=0.13.1';
+import { audiusEnabled } from './audius.js?v=0.13.1';
+import { SOURCE_MODES, getSourceMode, setSourceMode } from './sources.js?v=0.13.1';
+import { gesturesOn, setGestures, showGestureGuide } from './gestures.js?v=0.13.1';
+import { listenerStats } from './stats.js?v=0.13.1';
+import { liveBg, setLiveBg } from './viz.js?v=0.13.1';
+import { lowPower, setLowPower } from './perf.js?v=0.13.1';
+import { bypassOn, setBypass, bypassAvailable } from './bypass.js?v=0.13.1';
+import { logOut, changePassword, authErrorText } from './auth.js?v=0.13.1';
 
 const ACHIEVEMENTS = [
   { id: 'like1', icon: 'heart', title: 'Первый лайк', hint: 'Лайкните любой трек', ok: (s) => s.likes >= 1 },
@@ -68,6 +70,8 @@ function syncControls() {
   $$('.src-chip').forEach((c) => c.classList.toggle('active', c.dataset.id === getSourceMode()));
   if (refs.srcnote) refs.srcnote.textContent = `iTunes: работает · YouTube: ${!youtubeEnabled() ? 'нет ключа' : youtubeQuotaOut() ? 'лимит на сегодня исчерпан' : 'работает'} · Audius: ${audiusEnabled() ? 'работает' : 'нет ключа'}`;
   if (refs.gest) { refs.gest.classList.toggle('active', gesturesOn()); refs.gest.setAttribute('aria-checked', String(gesturesOn())); }
+  if (refs.lowp) { refs.lowp.classList.toggle('active', lowPower()); refs.lowp.setAttribute('aria-checked', String(lowPower())); }
+  if (refs.bypass) { refs.bypass.classList.toggle('active', bypassOn()); refs.bypass.setAttribute('aria-checked', String(bypassOn())); }
   if (refs.livebg) { refs.livebg.classList.toggle('active', liveBg()); refs.livebg.setAttribute('aria-checked', String(liveBg())); }
   $$('.accent-dot').forEach((c) => c.classList.toggle('active', c.dataset.id === getAccent()));
 }
@@ -118,6 +122,8 @@ export function buildProfile(nick) {
   refs.yt = h('p', { class: 'profile-note' });
   const sw = (on) => h('button', { class: 'switch', type: 'button', role: 'switch', onclick: on }, h('i'));
   refs.livebg = sw(() => { setLiveBg(!liveBg()); syncControls(); });
+  refs.bypass = sw(() => { if (!bypassAvailable()) { toast('Сначала укажите адрес Worker в shazam-config.js'); return; } setBypass(!bypassOn()); syncControls(); toast(bypassOn() ? 'Обход включён: звук идёт через сервер MKW' : 'Обход выключен'); });
+  refs.lowp = sw(() => { setLowPower(!lowPower()); syncControls(); });
   refs.gest = sw(async () => { await setGestures(!gesturesOn()); syncControls(); });
   refs.srcnote = h('small', { class: 'src-note' });
   refs.listeners = h('div', { class: 'listeners', text: 'Слушателей: считаем…' });
@@ -152,6 +158,8 @@ export function buildProfile(nick) {
       h('div', { class: 'set-block' }, h('b', { text: 'Где искать музыку' }),
         h('div', { class: 'src-row' }, SOURCE_MODES.map((m) => h('button', { class: 'chip src-chip', type: 'button', 'data-id': m.id, onclick: () => { setSourceMode(m.id); syncControls(); } }, m.name))),
         refs.srcnote),
+      row('Обход РФ', 'Если без VPN нет звука: превью и обложки идут через сервер MKW. YouTube не затрагивает', refs.bypass),
+      row('Оптимизация для слабых устройств', 'Отключает размытие и тяжёлые анимации. Для старых телефонов', refs.lowp),
       row('Жесты (бета)', 'Управление рукой через камеру: треки, лайки, пауза, громкость', refs.gest),
       row('Какие жесты показывать', '✌️ 🤟 👍 🖕 👎 ✋ ☝️ ✊ — нажмите, чтобы посмотреть все', h('span', { class: 'chev', text: '›' }), showGestureGuide)),
 

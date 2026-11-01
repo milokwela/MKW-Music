@@ -1,5 +1,5 @@
 // Каталог треков: iTunes Search API (бесплатно, без ключа, есть превью 30 сек).
-import { ITUNES_COUNTRIES } from './config.js?v=0.13.0';
+import { ITUNES_COUNTRIES } from './config.js?v=0.13.1';
 
 export function mapItunes(r) {
   return {
@@ -41,6 +41,43 @@ export async function searchTracks(term, signal) {
       lastError = e;
     }
   }
+  // запасной источник: Deezer (открытый поиск без ключа, превью 30 сек)
+  try {
+    const out = await searchDeezer(q, signal);
+    if (out.length) return out;
+  } catch (e) {
+    if (e.name === 'AbortError') throw e;
+  }
   if (lastError) throw lastError;
   return [];
+}
+
+export function mapDeezer(r) {
+  return {
+    id: `dz${r.id}`,
+    title: r.title || '',
+    artist: (r.artist && r.artist.name) || '',
+    album: (r.album && r.album.title) || '',
+    artwork: (r.album && (r.album.cover_medium || r.album.cover)) || '',
+    previewUrl: r.preview || '',
+    duration: Number(r.duration) || 0,
+    genre: '',
+    year: '',
+  };
+}
+
+async function searchDeezer(q, signal) {
+  const res = await fetch(`https://api.deezer.com/search?q=${encodeURIComponent(q)}&limit=30`, { signal });
+  if (!res.ok) throw new Error(`Deezer ${res.status}`);
+  const data = await res.json();
+  const seen = new Set();
+  const out = [];
+  for (const r of data.data || []) {
+    if (!r.id || !r.preview) continue;
+    const t = mapDeezer(r);
+    if (seen.has(t.id)) continue;
+    seen.add(t.id);
+    out.push(t);
+  }
+  return out;
 }

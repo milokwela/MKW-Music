@@ -1,0 +1,50 @@
+/* Режим «слабое устройство» */
+.lowpower *, .lowpower *::before, .lowpower *::after { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; filter: none !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+.lowpower .aurora, .lowpower #stars, .lowpower .glow, .lowpower .hl-orbit, .lowpower .hl-ring, .lowpower #fp-bg, .lowpower #fp-glow, .lowpower .sp-stars { display: none !important; }
+.lowpower #viz, .lowpower canvas { display: none !important; }
+.lowpower #splash { display: none !important; }
+
+/* Текст песни: размытая обложка текущего трека за текстом */
+#fp-lyrics { position: relative; isolation: isolate; border-radius: 28px; padding: 8px 0; overflow: hidden; }
+#fp-lyrics::before { content: ""; position: absolute; inset: -30px; z-index: -1; background: var(--ly-art, none) center / cover no-repeat; filter: blur(48px) saturate(1.25); opacity: .55; transform: scale(1.1); transition: background-image .6s ease; }
+#fp-lyrics::after { content: ""; position: absolute; inset: 0; z-index: -1; background: linear-gradient(180deg, color-mix(in srgb, var(--bg) 70%, transparent), transparent 35%, transparent 65%, color-mix(in srgb, var(--bg) 70%, transparent)); }
+.lowpower #fp-lyrics::before { filter: none; opacity: .25; }
+
+/* Премиум-анимации для мощных устройств и ПК (без режима «слабое устройство») */
+@media (min-width: 900px), (min-resolution: 2dppx) and (min-width: 600px) {
+  :root:not(.lowpower) .card, :root:not(.lowpower) .btn, :root:not(.lowpower) .track-row { transition-timing-function: cubic-bezier(.2, .8, .2, 1); }
+  :root:not(.lowpower) .track-row:active { transform: scale(.985); }
+}
+:root:not(.lowpower) .view:not([hidden]) { animation: viewIn .45s cubic-bezier(.2, .8, .2, 1) both; }
+:root:not(.lowpower) .list > * { animation: rowIn .5s cubic-bezier(.2, .8, .2, 1) both; }
+:root:not(.lowpower) .list > *:nth-child(2) { animation-delay: .03s; }
+:root:not(.lowpower) .list > *:nth-child(3) { animation-delay: .06s; }
+:root:not(.lowpower) .list > *:nth-child(4) { animation-delay: .09s; }
+:root:not(.lowpower) .list > *:nth-child(n+5) { animation-delay: .12s; }
+@keyframes viewIn { from { opacity: 0; transform: translateY(14px) scale(.99); } to { opacity: 1; transform: none; } }
+@keyframes rowIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { :root .view, :root .list > * { animation: none !important; } }
+
+/* Текст: строки размываются по мере удаления от текущей, как в референсе */
+.ly-line { transition: filter .55s cubic-bezier(.2,.8,.2,1), opacity .55s cubic-bezier(.2,.8,.2,1), transform .55s cubic-bezier(.2,.8,.2,1), color .4s; will-change: filter, transform; }
+.ly-line.now { color: var(--primary); background: none; -webkit-text-fill-color: currentColor; transform: scale(1.02); }
+.lowpower .ly-line { transition: none; filter: none !important; }
+
+/* Нижнее меню: пружинистая «линза», иконки оживают при выборе */
+#bottom-nav .nav-lens { transition: transform .5s cubic-bezier(.34,1.56,.64,1), width .45s cubic-bezier(.34,1.56,.64,1), box-shadow .4s; }
+#bottom-nav .nav-btn svg, #bottom-nav .nav-btn .icon { transition: transform .45s cubic-bezier(.34,1.56,.64,1), color .3s; }
+#bottom-nav .nav-btn.active svg, #bottom-nav .nav-btn.active .icon { transform: translateY(-1px) scale(1.12); }
+#bottom-nav .nav-btn:active svg, #bottom-nav .nav-btn:active .icon { transform: scale(.88); }
+#bottom-nav .nav-btn span { transition: opacity .3s, transform .4s cubic-bezier(.2,.8,.2,1); }
+#bottom-nav .nav-btn:not(.active) span { opacity: .8; }
+.lowpower #bottom-nav .nav-lens, .lowpower #bottom-nav .nav-btn svg { transition: none !important; }
+
+/* Иконки в шапке и кнопки: плавный отклик */
+.icon-btn { transition: transform .3s cubic-bezier(.34,1.56,.64,1), background-color .3s, color .3s; }
+.icon-btn:active { transform: scale(.86); }
+@media (hover: hover) { .icon-btn:hover { background-color: color-mix(in srgb, var(--primary) 12%, transparent); } }
+
+/* Стекло: мини-плеер и нижнее меню с преломлением фона и мягкой подсветкой краёв */
+#mini-player { backdrop-filter: blur(26px) saturate(1.9); -webkit-backdrop-filter: blur(26px) saturate(1.9); border: 1px solid rgba(255,255,255,.14); box-shadow: inset 0 1px 0 rgba(255,255,255,.22), 0 14px 40px rgba(0,0,0,.35); transition: transform .45s cubic-bezier(.2,.8,.2,1), opacity .35s; }
+.lowpower #mini-player { backdrop-filter: none; -webkit-backdrop-filter: none; }
+.lowpower #bottom-nav { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }

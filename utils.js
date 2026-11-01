@@ -1,3 +1,4 @@
+import { proxify } from './bypass.js?v=0.13.1';
 // Мелкие чистые функции. Здесь нет обращений к DOM, поэтому их можно проверять без браузера.
 
 const ESC = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
@@ -59,7 +60,7 @@ export function tracksWord(n) {
 // Размер обложки iTunes: .../100x100bb.jpg -> .../300x300bb.jpg
 export function artUrl(url, size) {
   if (!url) return '';
-  return url.replace(/\/\d+x\d+(bb)?\.(jpg|png|webp)(?=$|\?)/, `/${size}x${size}bb.$2`);
+  return proxify(url.replace(/\/\d+x\d+(bb)?\.(jpg|png|webp)(?=$|\?)/, `/${size}x${size}bb.$2`));
 }
 
 // Оставляет в треке только те поля, которые мы храним.

@@ -1,6 +1,6 @@
 // Текст песни: строки подсвечиваются в такт музыке (синхронный текст из LRCLIB), на текущей строке слова «заливаются».
-import { $, h, toast } from './ui.js?v=0.13.0';
-import * as player from './player.js?v=0.13.0';
+import { $, h, toast } from './ui.js?v=0.13.1';
+import * as player from './player.js?v=0.13.1';
 
 const API = 'https://lrclib.net/api';
 const cache = new Map();
@@ -33,8 +33,19 @@ async function load(track, dur) {
   if (dur > 0) q.set('duration', String(Math.round(dur)));
   let res = await getJson(`${API}/get?${q}`);
   if (!res || (!res.syncedLyrics && !res.plainLyrics)) {
-    const list = await getJson(`${API}/search?${new URLSearchParams({ track_name: title, artist_name: artist })}`);
-    if (Array.isArray(list)) res = list.find((x) => x.syncedLyrics) || list.find((x) => x.plainLyrics) || null;
+    const tries = [
+      { track_name: title, artist_name: artist },
+      { track_name: title },
+      { q: `${artist} ${title}` },
+      { q: title },
+    ];
+    for (const params of tries) {
+      const list = await getJson(`${API}/search?${new URLSearchParams(params)}`);
+      if (Array.isArray(list)) {
+        res = list.find((x) => x.syncedLyrics) || list.find((x) => x.plainLyrics) || null;
+        if (res) break;
+      }
+    }
   }
   const val = res && res.syncedLyrics ? { synced: parseLrc(res.syncedLyrics) } : res && res.plainLyrics ? { plain: res.plainLyrics } : null;
   cache.set(key, val);
@@ -81,7 +92,13 @@ function frame() {
     const nodes = box().children;
     if (i !== active) {
       if (active >= 0 && nodes[active]) { nodes[active].classList.remove('now'); nodes[active].style.removeProperty('--p'); }
-      for (let k = 0; k < nodes.length; k++) nodes[k].classList.toggle('past', k < i);
+      for (let k = 0; k < nodes.length; k++) {
+        nodes[k].classList.toggle('past', k < i);
+        // глубина резкости: чем дальше от текущей строки, тем сильнее размытие и слабее строка
+        const d = Math.abs(k - (i < 0 ? 0 : i));
+        if (k === i) { nodes[k].style.filter = ''; nodes[k].style.opacity = ''; }
+        else { nodes[k].style.filter = `blur(${Math.min(6, 1.2 + d * 1.1).toFixed(2)}px)`; nodes[k].style.opacity = String(Math.max(.22, 1 - d * .18).toFixed(2)); }
+      }
       active = i;
       if (nodes[i]) { nodes[i].classList.add('now'); const sc = box(); sc.scrollTo({ top: nodes[i].offsetTop - sc.clientHeight / 2 + nodes[i].offsetHeight / 2, behavior: 'smooth' }); }
     }
@@ -94,8 +111,15 @@ function frame() {
   raf = requestAnimationFrame(frame);
 }
 
+function paintBg() {
+  const t = player.queue.current;
+  const el = $('#fp-lyrics');
+  el.style.setProperty('--ly-art', t && t.artwork ? `url("${t.artwork}")` : 'none');
+}
+
 function setOpen(v) {
   open = v;
+  if (v) paintBg();
   $('#full-player').classList.toggle('lyrics-on', v);
   $('#fp-lyrics').hidden = !v;
   $('#fp-lyrics-btn').classList.toggle('on', v);
@@ -107,7 +131,7 @@ export function initLyrics() {
   $('#fp-lyrics-btn').addEventListener('click', () => { if (!player.queue.current) { toast('Сначала включите песню'); return; } setOpen(!open); });
   player.onPlayer((ev) => {
     if (ev === 'time') stamp = { t: player.st.time, at: performance.now() };
-    else if (ev === 'track' && open) refresh();
+    else if (ev === 'track' && open) { paintBg(); refresh(); }
     else if (ev === 'state' || ev === 'play' || ev === 'pause') stamp = { t: player.st.time, at: performance.now() };
   });
 }

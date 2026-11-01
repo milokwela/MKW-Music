@@ -1,6 +1,6 @@
 // «Шазам»: слушаем микрофон (или берём аудио/видео файл) и узнаём песню через Cloudflare Worker.
-import { RECOGNIZE_URL } from './shazam-config.js?v=0.13.0';
-import { $, h, toast, openSheet, closeSheet, icon } from './ui.js?v=0.13.0';
+import { RECOGNIZE_URL } from './shazam-config.js?v=0.13.1';
+import { $, h, toast, openSheet, closeSheet, icon } from './ui.js?v=0.13.1';
 
 const REC_SECONDS = 9;
 let busy = false;
