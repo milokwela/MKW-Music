@@ -5,39 +5,43 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#a8326a">
 <title>MKW</title>
-<link rel="icon" type="image/png" href="mkw-favicon.png">
+<link rel="icon" type="image/png" href="mkw-favicon.png?v=5">
 <link rel="apple-touch-icon" href="ic4-180.png">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="stylesheet" href="variables.css?v=0.16.0">
-<link rel="stylesheet" href="global.css?v=0.16.0">
-<link rel="stylesheet" href="auth.css?v=0.16.0">
-<link rel="stylesheet" href="search.css?v=0.16.0">
-<link rel="stylesheet" href="library.css?v=0.16.0">
-<link rel="stylesheet" href="player.css?v=0.16.0">
-<link rel="stylesheet" href="polish.css?v=0.16.0">
-<link rel="stylesheet" href="glow.css?v=0.16.0">
-<link rel="stylesheet" href="perf.css?v=0.16.0">
-<link rel="stylesheet" href="glass2.css?v=0.16.0">
-<link rel="stylesheet" href="profile2.css?v=0.16.0">
+<link rel="stylesheet" href="variables.css?v=0.17.0">
+<link rel="stylesheet" href="global.css?v=0.17.0">
+<link rel="stylesheet" href="auth.css?v=0.17.0">
+<link rel="stylesheet" href="search.css?v=0.17.0">
+<link rel="stylesheet" href="library.css?v=0.17.0">
+<link rel="stylesheet" href="player.css?v=0.17.0">
+<link rel="stylesheet" href="polish.css?v=0.17.0">
+<link rel="stylesheet" href="glow.css?v=0.17.0">
+<link rel="stylesheet" href="perf.css?v=0.17.0">
+<link rel="stylesheet" href="glass2.css?v=0.17.0">
+<link rel="stylesheet" href="profile2.css?v=0.17.0">
+<link rel="stylesheet" href="v17.css?v=0.17.0">
 </head>
 <body>
 <script>
 /* Страховка: заставка гарантированно исчезает, даже если скрипты приложения загрузились поздно или упали (бывает в Яндекс Браузере) */
 (function(){var s=function(){return document.getElementById('splash')};
 setTimeout(function(){var e=s();if(e)e.classList.add('go')},30);
-setTimeout(function(){var e=s();if(e)e.classList.add('out')},3300);
-setTimeout(function(){var e=s();if(e&&e.parentNode)e.parentNode.removeChild(e)},4200);
+setTimeout(function(){var e=s();if(e)e.classList.add('out')},3500);
+setTimeout(function(){var e=s();if(e&&e.parentNode)e.parentNode.removeChild(e)},4300);
 document.addEventListener('click',function(){var e=s();if(e&&e.parentNode)e.parentNode.removeChild(e)});})();
 </script>
 <div id="splash" aria-hidden="true">
-  <div class="sp2-aurora"></div><div class="sp2-stars"></div>
-  <div class="sp2-stage">
-    <i class="sp2-ring r1"></i><i class="sp2-ring r2"></i><i class="sp2-ring r3"></i><i class="sp2-sweep"></i>
-    <div class="sp2-logo"><img src="mkw-logo.png" alt=""><i class="sp2-shine"></i></div>
+  <div class="sp3-sky"><i></i><i></i><i></i></div>
+  <div class="sp3-meteor"><b></b></div>
+  <div class="sp3-stage">
+    <i class="sp3-flash"></i><i class="sp3-wave"></i><i class="sp3-wave w2"></i>
+    <div class="sp3-burst"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+    <div class="sp3-orbit"><i></i><i></i><i></i></div>
+    <div class="sp3-logo"><img src="mkw-logo.png" alt=""><i class="sp3-shine"></i></div>
   </div>
-  <div class="sp2-name"><span>M</span><span>K</span><span>W</span></div>
-  <div class="sp2-music">MUSIC</div>
-  <div class="sp2-by">создатель <b>MiloKwel</b></div>
+  <div class="sp3-name"><span>M</span><span>K</span><span>W</span></div>
+  <div class="sp3-music"><span>M</span><span>U</span><span>S</span><span>I</span><span>C</span></div>
+  <div class="sp3-by">создатель <b>MiloKwel</b></div>
 </div>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -79,23 +83,40 @@ document.addEventListener('click',function(){var e=s();if(e&&e.parentNode)e.pare
 <section id="auth-screen" hidden>
   <div class="blobs" aria-hidden="true"><i></i><i></i><i></i></div>
   <div class="auth-card">
-    <img class="auth-logo" src="mkw-logo.png" alt="">
-    <h1 class="auth-title">MKW</h1>
-    <p class="auth-sub">Музыка для своих</p>
+    <div class="auth-brand">
+      <div class="auth-logo-wrap"><img class="auth-logo" src="mkw-logo.png" alt=""><i></i></div>
+      <h1 class="auth-title">MKW Music</h1>
+      <p class="auth-sub" id="auth-sub">С возвращением! Войдите, и музыка продолжится</p>
+    </div>
     <div class="seg" id="auth-tabs">
+      <i class="seg-pill"></i>
       <button type="button" data-mode="login" class="active">Вход</button>
       <button type="button" data-mode="register">Регистрация</button>
     </div>
     <form id="auth-form" autocomplete="on" novalidate>
-      <label class="field"><span>Ник (латиница и цифры, 3–20)</span>
-        <input id="auth-nick" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" maxlength="20"></label>
-      <label class="field"><span>Пароль (от 6 символов)</span>
-        <input id="auth-pass" type="password" autocomplete="current-password" maxlength="64"></label>
+      <label class="field af">
+        <span class="af-ic"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg></span>
+        <input id="auth-nick" type="text" placeholder=" " autocomplete="username" autocapitalize="none" spellcheck="false" maxlength="20">
+        <span class="af-label">Ник</span>
+        <span class="af-ok" aria-hidden="true"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></span>
+      </label>
+      <p class="af-hint" id="nick-hint">Латиница и цифры, от 3 до 20 символов</p>
+      <label class="field af">
+        <span class="af-ic"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zM9 8V6c0-1.66 1.34-3 3-3s3 1.34 3 3v2H9z"/></svg></span>
+        <input id="auth-pass" type="password" placeholder=" " autocomplete="current-password" maxlength="64">
+        <span class="af-label">Пароль</span>
+        <button type="button" class="af-eye" id="auth-eye" aria-label="Показать пароль"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg></button>
+      </label>
+      <div class="pw-meter" id="pw-meter" hidden><i></i><i></i><i></i><span></span></div>
+      <label class="field af" id="pass2-wrap" hidden>
+        <span class="af-ic"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 1 3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-1.2 15.6L6.6 12.4 8 11l2.8 2.8L16 8.6 17.4 10l-6.6 6.6z"/></svg></span>
+        <input id="auth-pass2" type="password" placeholder=" " autocomplete="new-password" maxlength="64">
+        <span class="af-label">Повторите пароль</span>
+      </label>
       <p class="auth-error" id="auth-error" role="alert"></p>
-      <button class="btn block" id="auth-submit" type="submit">Войти</button>
+      <button class="btn block auth-go" id="auth-submit" type="submit">Войти</button>
     </form>
-    <p class="moved-note">🎉 Ура, мы продвигаемся и переехали на новый адрес <b>mkwmusic.ru</b>! Войдите с прежним ником и паролем: лайки, плейлисты и история на месте.</p>
-    <p class="auth-hint">Почта не нужна. Забыли пароль — напишите админу.</p>
+    <p class="auth-hint">Почта не нужна: только ник и пароль. Забыли пароль — напишите админу.</p>
   </div>
 </section>
 
@@ -204,6 +225,13 @@ document.addEventListener('click',function(){var e=s();if(e&&e.parentNode)e.pare
   </div>
 </section>
 
+<section id="user-page" aria-label="Профиль слушателя">
+  <div class="artist-inner">
+    <button class="icon-btn" id="user-back" type="button" aria-label="Назад"><svg class="icon"><use href="#i-back"/></svg></button>
+    <div id="user-body"></div>
+  </div>
+</section>
+
 <div id="sheet-overlay"></div>
 <div id="sheet" role="dialog" aria-modal="true"></div>
 <div id="toast" role="status" aria-live="polite"></div>
@@ -211,6 +239,6 @@ document.addEventListener('click',function(){var e=s();if(e&&e.parentNode)e.pare
 <audio id="preview-player" preload="none"></audio>
 <div id="yt-holder" style="position:fixed;width:1px;height:1px;left:-10px;top:-10px;overflow:hidden;opacity:0;pointer-events:none"><div id="yt-target"></div></div>
 
-<script type="module" src="app.js?v=0.16.0"></script>
+<script type="module" src="app.js?v=0.17.0"></script>
 </body>
 </html>
