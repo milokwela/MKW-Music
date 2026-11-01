@@ -41,6 +41,13 @@ service cloud.firestore {
         && request.resource.data.favArtists is list && request.resource.data.favArtists.size() <= 4
         && request.resource.data.favTracks is list && request.resource.data.favTracks.size() <= 10;
     }
+    match /friends/{uid} {
+      allow read: if request.auth != null;
+      allow delete: if request.auth != null && request.auth.uid == uid;
+      allow create, update: if request.auth != null && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['list', 'updatedAt'])
+        && request.resource.data.list is list && request.resource.data.list.size() <= 200;
+    }
     match /joined/{uid} {
       allow read: if request.auth != null;
       allow create: if request.auth != null && request.auth.uid == uid

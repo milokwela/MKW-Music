@@ -174,6 +174,52 @@ async function playable(url) {
   if (!(r.status === 206 || r.status === 200)) throw new Error(String(r.status));
   return url;
 }
+
+// Прямой запрос к плееру YouTube из Worker (клиенты без «подписи» ссылок). Ссылки привязаны к IP Worker,
+// поэтому звук отдаём через /ytp (Worker пересылает байты, поддерживает перемотку Range).
+const YT_CLIENTS = [
+  { name: 'ANDROID_VR', id: 28, version: '1.60.19', ua: 'com.google.android.apps.youtube.vr.oculus/1.60.19 (Linux; U; Android 12L; eureka-user Build/SQ3A.220605.009.A1) gzip', extra: { deviceMake: 'Oculus', deviceModel: 'Quest 3', androidSdkVersion: 32, osName: 'Android', osVersion: '12L' } },
+  { name: 'IOS', id: 5, version: '20.10.4', ua: 'com.google.ios.youtube/20.10.4 (iPhone16,2; U; CPU iOS 18_3_2 like Mac OS X;)', extra: { deviceMake: 'Apple', deviceModel: 'iPhone16,2', osName: 'iPhone', osVersion: '18.3.2.22D82' } },
+  { name: 'TVHTML5_SIMPLY_EMBEDDED_PLAYER', id: 85, version: '2.0', ua: 'Mozilla/5.0 (PlayStation; PlayStation 4/12.00) AppleWebKit/605.1.15 (KHTML, like Gecko)', extra: {}, embed: true },
+];
+async function innertube(id, origin) {
+  for (const c of YT_CLIENTS) {
+    try {
+      const body = { context: { client: { clientName: c.name, clientVersion: c.version, hl: 'ru', gl: 'US', ...c.extra }, ...(c.embed ? { thirdParty: { embedUrl: 'https://www.youtube.com/' } } : {}) }, videoId: id, contentCheckOk: true, racyCheckOk: true };
+      const r = await timed(fetch('https://www.youtube.com/youtubei/v1/player?prettyPrint=false', {
+        method: 'POST', headers: { 'Content-Type': 'application/json', 'User-Agent': c.ua, 'X-Youtube-Client-Name': String(c.id), 'X-Youtube-Client-Version': c.version, Origin: 'https://www.youtube.com' }, body: JSON.stringify(body),
+      }), 7000);
+      const j = await r.json();
+      if (!j.playabilityStatus || j.playabilityStatus.status !== 'OK') continue;
+      const fm = ((j.streamingData && j.streamingData.adaptiveFormats) || []).filter((f) => f.url && String(f.mimeType || '').startsWith('audio/'));
+      if (!fm.length) continue;
+      fm.sort((a, b) => ((/mp4/.test(b.mimeType) ? 1e7 : 0) + (b.bitrate || 0)) - ((/mp4/.test(a.mimeType) ? 1e7 : 0) + (a.bitrate || 0)));
+      // проверяем, что ссылка правда отдаёт звук (иначе YouTube требует токен — пробуем следующий клиент)
+      const t = await timed(fetch(fm[0].url, { headers: { Range: 'bytes=0-1', 'User-Agent': c.ua } }), 5000);
+      if (!(t.status === 206 || t.status === 200)) continue;
+      return fm.slice(0, 3).map((f) => `${origin}/ytp?c=${encodeURIComponent(c.name)}&u=${encodeURIComponent(f.url)}`);
+    } catch { /* следующий клиент */ }
+  }
+  return [];
+}
+async function ytProxy(request) {
+  const u = new URL(request.url);
+  let target;
+  try { target = new URL(u.searchParams.get('u') || ''); } catch { return new Response('bad url', { status: 400 }); }
+  if (target.protocol !== 'https:' || !/(^|\.)googlevideo\.com$/.test(target.hostname)) return new Response('host not allowed', { status: 403 });
+  const c = YT_CLIENTS.find((x) => x.name === u.searchParams.get('c')) || YT_CLIENTS[0];
+  const headers = { 'User-Agent': c.ua };
+  const range = request.headers.get('Range');
+  headers.Range = range || 'bytes=0-';
+  const up = await fetch(target.toString(), { headers });
+  const out = new Headers();
+  for (const h of ['Content-Type', 'Content-Length', 'Content-Range', 'Accept-Ranges']) { const v = up.headers.get(h); if (v) out.set(h, v); }
+  if (!out.get('Accept-Ranges')) out.set('Accept-Ranges', 'bytes');
+  out.set('Access-Control-Allow-Origin', '*');
+  out.set('Cache-Control', 'private, max-age=3600');
+  return new Response(up.body, { status: up.status, headers: out });
+}
+
 async function ytAudio(request) {
   const id = new URL(request.url).searchParams.get('id') || '';
   const head = { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'public, max-age=1800' };
@@ -199,11 +245,13 @@ async function ytAudio(request) {
     return urls;
   })(), 9000));
   let urls = [];
-  try { urls = await Promise.any([...inv, ...piped]); } catch { /* ничего не нашлось */ }
+  const origin = new URL(request.url).origin;
+  try { urls = await Promise.any([timed(innertube(id, origin).then((l) => { if (!l.length) throw new Error('нет'); return l; }), 15000), ...inv, ...piped]); } catch { /* ничего не нашлось */ }
   const out = new Response(JSON.stringify({ urls }), { headers: head });
   if (urls.length) await cache.put(key, out.clone());
   return out;
 }
+
 
 export default {
   async fetch(request, env) {
@@ -214,6 +262,7 @@ export default {
     if (request.method === 'GET' && path === '/lyrics') return lyrics(request);
     if (request.method === 'GET' && path === '/artist') return artist(request);
     if (request.method === 'GET' && path === '/yt') return ytAudio(request);
+    if (request.method === 'GET' && path === '/ytp') return ytProxy(request);
     const origin = request.headers.get('Origin') || '';
     const list = String(env.ALLOWED_ORIGIN || '').split(',').map((s) => s.trim()).filter(Boolean);
     const ok = list.includes(origin) || origin.startsWith('http://localhost');

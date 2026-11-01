@@ -1,11 +1,11 @@
 // Движок плеера: очередь, YouTube (полные треки) и превью iTunes (30 сек) как запасной вариант.
-import { audiusStreamUrl } from './audius.js?v=0.19.0';
-import { Queue } from './queue.js?v=0.19.0';
-import { findYouTubeId, peekYouTubeId, loadYouTubeApi, youtubeEnabled } from './youtube.js?v=0.19.0';
-import { logPlay, addListened } from './store.js?v=0.19.0';
-import { artUrl } from './utils.js?v=0.19.0';
-import { proxify } from './bypass.js?v=0.19.0';
-import { resolveStream, peekStream, dropStream, streamsOn } from './stream.js?v=0.19.0';
+import { audiusStreamUrl } from './audius.js?v=0.20.0';
+import { Queue } from './queue.js?v=0.20.0';
+import { findYouTubeId, peekYouTubeId, loadYouTubeApi, youtubeEnabled } from './youtube.js?v=0.20.0';
+import { logPlay, addListened } from './store.js?v=0.20.0';
+import { artUrl } from './utils.js?v=0.20.0';
+import { proxify } from './bypass.js?v=0.20.0';
+import { resolveStream, peekStream, dropStream, streamsOn } from './stream.js?v=0.20.0';
 
 export const queue = new Queue();
 export const st = {
@@ -168,12 +168,13 @@ async function startCurrent() {
 
   if (vid) {
     st.vid = vid;
-    // 1) полный трек обычным звуком: играет в фоне и при выключенном экране
+    // 1) «Слушать в фоне»: если звук уже найден — сразу им; если приложение свёрнуто — ждём звук (видео в фоне не заиграет)
     if (streamsOn()) {
-      const urls = peekStream(vid) || await Promise.race([resolveStream(vid), new Promise((r) => setTimeout(() => r(null), document.hidden ? 9000 : 3000))]);
+      let urls = peekStream(vid);
+      if (!urls && document.hidden) urls = await Promise.race([resolveStream(vid), new Promise((r) => setTimeout(() => r(null), 12000))]);
       if (id !== loadId) return;
       if (urls && urls.length) { startStream(track, vid, urls, id, 0); return; }
-      resolveStream(vid); // ищем дальше: пригодится, если свернуть приложение
+      resolveStream(vid); // ищем звук, пока играет видео: пригодится, когда выключите экран
     }
     // 2) видеоплеер YouTube
     if (await startYT(track, vid, id)) return;
@@ -257,14 +258,23 @@ function unlockAudio() {
 }
 document.addEventListener('pointerdown', unlockAudio, true);
 
-// Свернули приложение во время видео: если звук уже найден, тихо переключаемся на него с того же места.
+// Свернули приложение или выключили экран во время видео: переключаемся на звук с того же места.
+// Если звук ещё ищется — дожидаемся и включаем, как только найдётся.
+let lastYtTime = 0;
+setInterval(() => { if (st.mode === 'yt' && st.playing) lastYtTime = st.time; }, 1000);
 document.addEventListener('visibilitychange', () => {
-  if (!document.hidden || st.mode !== 'yt' || !st.vid || userPaused) return;
-  const urls = peekStream(st.vid);
-  if (!urls || !queue.current) return;
+  if (!document.hidden || st.mode !== 'yt' || !st.vid || userPaused || !streamsOn()) return;
+  const id = loadId, vid = st.vid, track = queue.current;
+  if (!track) return;
   let at = 0;
   try { at = yt.getCurrentTime() || st.time || 0; } catch { at = st.time || 0; }
-  startStream(queue.current, st.vid, urls, loadId, at);
+  const go = (urls) => {
+    if (!urls || !urls.length || id !== loadId || st.mode !== 'yt') return;
+    const pos = Math.max(at, lastYtTime);
+    startStream(track, vid, urls, id, pos);
+  };
+  const ready = peekStream(vid);
+  if (ready) go(ready); else resolveStream(vid).then(go);
 });
 
 function startPreview(track, id) {

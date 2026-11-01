@@ -1,11 +1,11 @@
 // Управление жестами через камеру (MediaPipe GestureRecognizer, модель грузится с CDN).
 // Два пальца: следующий. Рок: предыдущий. Большой вверх: лайк. Средний палец: снять лайк. Большой вниз: дизлайк.
 // Ладонь: пауза. Палец вверх: продолжить. Кулак: тише. Три пальца: громче.
-import { h, toast, openSheet, closeSheet } from './ui.js?v=0.19.0';
-import { mi } from './icons2.js?v=0.19.0';
-import * as player from './player.js?v=0.19.0';
-import * as store from './store.js?v=0.19.0';
-import { dislike } from './wave.js?v=0.19.0';
+import { h, toast, openSheet, closeSheet } from './ui.js?v=0.20.0';
+import { mi } from './icons2.js?v=0.20.0';
+import * as player from './player.js?v=0.20.0';
+import * as store from './store.js?v=0.20.0';
+import { dislike } from './wave.js?v=0.20.0';
 
 const KEY = 'mkw.gestures';
 const LIB = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14';
@@ -74,13 +74,48 @@ export function customGesture(lm) {
 const USEFUL = ['Victory', 'Thumb_Up', 'Thumb_Down', 'Open_Palm', 'Pointing_Up', 'ILoveYou', 'Closed_Fist'];
 const win = [];   // последние кадры: голосуем, чтобы редкие пропуски распознавания не мешали
 
+// ---------- темнота: замеряем яркость кадра, осветляем картинку для модели, подсвечиваем экраном ----------
+let dark = 0, lastMeter = 0, cv = null, cx = null, meter = null, mx = null, light = null;
+function measure() {
+  if (!meter) { meter = document.createElement('canvas'); meter.width = 32; meter.height = 24; mx = meter.getContext('2d', { willReadFrequently: true }); }
+  mx.drawImage(video, 0, 0, 32, 24);
+  const d = mx.getImageData(0, 0, 32, 24).data;
+  let sum = 0;
+  for (let i = 0; i < d.length; i += 4) sum += d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114;
+  return sum / (d.length / 4); // 0…255
+}
+function setDark(level) {
+  if (level === dark) return;
+  dark = level;
+  try { rec.setOptions({ minHandDetectionConfidence: dark ? 0.3 : 0.45, minHandPresenceConfidence: dark ? 0.3 : 0.45, minTrackingConfidence: dark ? 0.3 : 0.45 }); } catch { /* старая версия */ }
+  // подсветка экраном: белое свечение по краям освещает руку
+  if (dark >= 2 && !light) { light = h('div', { class: 'gest-light' }); document.body.appendChild(light); toast('Темно — подсвечиваю экраном, держите руку ближе'); }
+  if (dark < 2 && light) { light.remove(); light = null; }
+  // камера: светлее экспозиция, если телефон это умеет
+  try {
+    const tr = stream.getVideoTracks()[0], caps = tr.getCapabilities ? tr.getCapabilities() : {};
+    if (caps.exposureCompensation) tr.applyConstraints({ advanced: [{ exposureCompensation: dark ? caps.exposureCompensation.max * 0.8 : 0 }] }).catch(() => {});
+  } catch { /* ignore */ }
+}
+function frameSource() {
+  if (!dark) return video;
+  const w = video.videoWidth || 640, hh = video.videoHeight || 480;
+  if (!cv) { cv = document.createElement('canvas'); cx = cv.getContext('2d'); }
+  if (cv.width !== w) { cv.width = w; cv.height = hh; }
+  cx.filter = dark >= 2 ? 'brightness(2.4) contrast(1.35)' : 'brightness(1.6) contrast(1.2)';
+  cx.drawImage(video, 0, 0, w, hh);
+  return cv;
+}
+
 function loop() {
   if (!running) return;
   try {
     if (!document.hidden && video.readyState >= 2 && rec) {
-      const res = rec.recognizeForVideo(video, performance.now());
+      const now = performance.now();
+      if (now - lastMeter > 1200) { lastMeter = now; const l = measure(); setDark(l < 38 ? 2 : l < 70 ? 1 : 0); }
+      const res = rec.recognizeForVideo(frameSource(), now);
       const g = res.gestures && res.gestures[0] && res.gestures[0][0];
-      let name = g && g.score > 0.5 && USEFUL.includes(g.categoryName) ? g.categoryName : '';
+      let name = g && g.score > (dark ? 0.38 : 0.5) && USEFUL.includes(g.categoryName) ? g.categoryName : '';
       const custom = res.landmarks && res.landmarks[0] ? customGesture(res.landmarks[0]) : '';
       if (custom) name = custom;
       else if (name === 'Closed_Fist') name = 'vol-down';
@@ -98,12 +133,15 @@ function loop() {
 
 async function start() {
   // сначала камера (браузеры, особенно Яндекс, любят запрашивать доступ сразу после нажатия), потом тяжёлая модель
-  stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
+  stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 }, frameRate: { ideal: 30 } }, audio: false })
+    .catch(() => navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false }));
   const vision = await import(`${LIB}/vision_bundle.mjs`);
   const fileset = await vision.FilesetResolver.forVisionTasks(`${LIB}/wasm`);
   rec = await vision.GestureRecognizer.createFromOptions(fileset, {
     baseOptions: { modelAssetPath: MODEL }, runningMode: 'VIDEO', numHands: 1,
+    minHandDetectionConfidence: 0.45, minHandPresenceConfidence: 0.45, minTrackingConfidence: 0.45,
   });
+  dark = 0;
   video = h('video', { class: 'gest-video', playsinline: '', muted: '', autoplay: '' });
   video.srcObject = stream;
   badge = h('div', { class: 'gest-badge' }, video);
@@ -120,6 +158,8 @@ function stop() {
   stream = null;
   if (badge) badge.remove();
   badge = null;
+  if (light) { light.remove(); light = null; }
+  dark = 0;
   try { rec && rec.close(); } catch { /* ignore */ }
   rec = null;
 }

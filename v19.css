@@ -52,7 +52,7 @@ body.drag-mouse, body.drag-mouse * { cursor: grabbing !important; user-select: n
 /* --- профиль: раскладка --- */
 .p-side, .p-main { display: contents; }
 @media (min-width: 1000px) {
-  #view-profile { max-width: 1240px !important; margin: 0 auto; display: grid !important; grid-template-columns: 380px minmax(0, 1fr); column-gap: 28px; align-items: start; }
+  #view-profile:not([hidden]) { max-width: 1240px !important; margin: 0 auto; display: grid !important; grid-template-columns: 380px minmax(0, 1fr); column-gap: 28px; align-items: start; }
   #view-profile .p-side { display: block; position: sticky; top: 16px; }
   #view-profile .p-main { display: block; min-width: 0; }
   #view-profile .ptabs { position: relative; top: 0; grid-template-columns: 1fr; border-radius: 26px; padding: 6px; margin: 0; }
@@ -70,7 +70,7 @@ body.drag-mouse, body.drag-mouse * { cursor: grabbing !important; user-select: n
 }
 
 @media (min-width: 1200px) { #app { max-width: 1240px !important; } }
-@media (min-width: 1000px) and (max-width: 1199px) { #view-profile { grid-template-columns: 320px minmax(0, 1fr) !important; } }
+@media (min-width: 1000px) and (max-width: 1199px) { #view-profile:not([hidden]) { grid-template-columns: 320px minmax(0, 1fr) !important; } }
 
 /* --- профиль: новые настройки вида --- */
 .hero-bio { font-size: 14px; line-height: 1.45; margin-top: 6px; opacity: .85; white-space: pre-line; }
@@ -184,3 +184,7 @@ html.voice-ok::after { opacity: 1; background: #3ec97a; animation: none; }
 .nw-wow { background: linear-gradient(135deg, var(--primary), color-mix(in srgb, var(--primary) 55%, #7a5cff)) !important; }
 .no-blur #bottom-nav, .no-blur #mini-player { background: var(--surface) !important; }
 .no-blur .nw, .no-blur .iv-bg { background: rgba(0,0,0,.85); }
+
+/* фото поверх заглушки: человечек виден только пока фото нет */
+.ah-photo .ah-img, .top-av img, .fa-av img { z-index: 1; }
+.has-photo .ah-ph, .top-av.ok > .mi, .fa-av.ok > .mi { display: none !important; }

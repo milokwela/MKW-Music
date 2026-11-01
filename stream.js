@@ -1,9 +1,9 @@
 // Полный трек обычным аудиопотоком вместо видеоплеера YouTube.
 // Зачем: видео браузер ставит на паузу, когда экран выключен или приложение свёрнуто, а обычный звук играет дальше.
 // Откуда: открытые зеркала YouTube (Invidious, Piped) — напрямую и через ваш Cloudflare Worker (/yt).
-import { RECOGNIZE_URL } from './shazam-config.js?v=0.19.0';
+import { RECOGNIZE_URL } from './shazam-config.js?v=0.20.0';
 
-const KEY = 'mkw.stream';
+const KEY = 'mkw.bgplay'; // «Слушать в фоне с выключенным экраном» — бета, по умолчанию выключено
 const GKEY = 'mkw.stream.good';
 const INV = [
   'https://inv.nadeko.net', 'https://invidious.nerdvpn.de', 'https://yewtu.be', 'https://invidious.f5.si',
@@ -16,7 +16,7 @@ const memo = new Map();   // id видео → Promise<string[]>
 const done = new Map();   // id видео → string[] (уже найдено)
 let lastOk = (() => { try { return localStorage.getItem(GKEY) || ''; } catch { return ''; } })();
 
-export const streamsOn = () => { try { return localStorage.getItem(KEY) !== '0'; } catch { return true; } };
+export const streamsOn = () => { try { return localStorage.getItem(KEY) === '1'; } catch { return false; } };
 export function setStreams(v) { try { localStorage.setItem(KEY, v ? '1' : '0'); } catch { /* ignore */ } }
 export const peekStream = (vid) => done.get(vid) || null;
 
