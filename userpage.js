@@ -1,18 +1,18 @@
 // Страница другого слушателя: баннер, фото, статус, значки, статистика, любимые исполнители и треки.
-import { $, h, trackRow, animateIn } from './ui.js?v=0.21.0';
-import * as player from './player.js?v=0.21.0';
-import { openTrackMenu } from './menu.js?v=0.21.0';
-import { getProfile } from './leaders.js?v=0.21.0';
-import { ACH, bannerCss, formatListened } from './profile.js?v=0.21.0';
-import { artistPic } from './artistpic.js?v=0.21.0';
-import { openArtist } from './artist.js?v=0.21.0';
-import { mi } from './icons2.js?v=0.21.0';
-import { plural } from './utils.js?v=0.21.0';
-import { openImage } from './viewer.js?v=0.21.0';
-import { isDev, devBadge } from './dev.js?v=0.21.0';
-import { isFriend, addFriend, removeFriend, loadFriends, friendsLoaded } from './friends.js?v=0.21.0';
-import { toast } from './ui.js?v=0.21.0';
-import { searchTracks } from './catalog.js?v=0.21.0';
+import { $, h, trackRow, animateIn } from './ui.js?v=0.22.0';
+import * as player from './player.js?v=0.22.0';
+import { openTrackMenu } from './menu.js?v=0.22.0';
+import { getProfile } from './leaders.js?v=0.22.0';
+import { ACH, bannerCss, formatListened } from './profile.js?v=0.22.0';
+import { artistPic } from './artistpic.js?v=0.22.0';
+import { openArtist } from './artist.js?v=0.22.0';
+import { mi } from './icons2.js?v=0.22.0';
+import { plural } from './utils.js?v=0.22.0';
+import { openImage } from './viewer.js?v=0.22.0';
+import { isDev, devBadge } from './dev.js?v=0.22.0';
+import { isFriend, addFriend, removeFriend, loadFriends, friendsLoaded } from './friends.js?v=0.22.0';
+import { toast } from './ui.js?v=0.22.0';
+import { searchTracks } from './catalog.js?v=0.22.0';
 
 export function seenText(seen) {
   const t = Number(seen) || 0;

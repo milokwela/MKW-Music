@@ -1,12 +1,12 @@
 // Голосовое управление (бета): «MKW, следующая», «MKW, громче», «Музыка, лайк», «MKW, включи Баста».
 // Работает через распознавание речи браузера (Chrome, Яндекс Браузер, Edge, Safari). Слушает, пока вкладка открыта.
-import { toast, openSheet, h } from './ui.js?v=0.21.0';
-import * as player from './player.js?v=0.21.0';
-import * as store from './store.js?v=0.21.0';
-import { dislike, startWave, waveActive } from './wave.js?v=0.21.0';
-import { searchTracks } from './catalog.js?v=0.21.0';
-import { mi } from './icons2.js?v=0.21.0';
-import { openFull, closeFull, isFullOpen } from './playerui.js?v=0.21.0';
+import { toast, openSheet, h } from './ui.js?v=0.22.0';
+import * as player from './player.js?v=0.22.0';
+import * as store from './store.js?v=0.22.0';
+import { dislike, startWave, waveActive } from './wave.js?v=0.22.0';
+import { searchTracks } from './catalog.js?v=0.22.0';
+import { mi } from './icons2.js?v=0.22.0';
+import { openFull, closeFull, isFullOpen } from './playerui.js?v=0.22.0';
 
 const KEY = 'mkw.voice';
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;

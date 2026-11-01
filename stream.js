@@ -1,7 +1,7 @@
 // Полный трек обычным аудиопотоком вместо видеоплеера YouTube.
 // Зачем: видео браузер ставит на паузу, когда экран выключен или приложение свёрнуто, а обычный звук играет дальше.
 // Откуда: ваш Cloudflare Worker (/bg: YouTube напрямую, SoundCloud, зеркала) и открытые зеркала YouTube (Invidious, Piped).
-import { RECOGNIZE_URL } from './shazam-config.js?v=0.21.0';
+import { RECOGNIZE_URL } from './shazam-config.js?v=0.22.0';
 
 const KEY = 'mkw.bgplay'; // «Слушать в фоне с выключенным экраном» — бета, по умолчанию выключено
 const GKEY = 'mkw.stream.good';
@@ -13,6 +13,7 @@ const INV = [
 const PIPED = ['https://pipedapi.kavin.rocks', 'https://pipedapi.adminforge.de', 'https://api.piped.private.coffee', 'https://pipedapi.reallyaweso.me'];
 
 const memo = new Map();   // id видео → Promise<string[]>
+const meta = new Map();   // ссылка → { src, label, id } — откуда звук и что за запись
 const done = new Map();   // id видео → string[] (уже найдено)
 let lastOk = (() => { try { return localStorage.getItem(GKEY) || ''; } catch { return ''; } })();
 
@@ -37,14 +38,14 @@ async function fromInvidious(inst, vid) {
   const fm = (j.adaptiveFormats || []).filter((f) => String(f.type || '').startsWith('audio/') && f.url)
     .map((f) => ({ type: f.type, bitrate: f.bitrate, url: f.url.startsWith('http') ? f.url : `${inst}${f.url}` }));
   if (!fm.length) throw new Error('нет звука');
-  return { urls: rank(fm), src: inst };
+  return { urls: rank(fm), src: inst, label: 'зеркало YouTube', id: `yt${vid}` };
 }
 
 async function fromPiped(api, vid) {
   const j = await getJson(`${api}/streams/${vid}`, 7000);
   const fm = (j.audioStreams || []).filter((f) => f.url).map((f) => ({ type: f.mimeType || '', bitrate: f.bitrate, url: f.url }));
   if (!fm.length) throw new Error('нет звука');
-  return { urls: rank(fm), src: api };
+  return { urls: rank(fm), src: api, label: 'зеркало YouTube', id: `yt${vid}` };
 }
 
 const W = () => RECOGNIZE_URL.replace(/\/$/, '');
@@ -59,7 +60,28 @@ async function fromWorker(vid, t) {
     if (j) j.src = 'mirror';
   }
   if (!j || !Array.isArray(j.urls) || !j.urls.length) throw new Error('пусто');
-  return { urls: j.urls, src: j.src || 'worker' };
+  // новый Worker отдаёт несколько кандидатов с уверенностью; убираем те, что вы пометили «не та песня»
+  const bad = new Set(wrongFor(t && t.id));
+  const cands = (Array.isArray(j.cands) && j.cands.length ? j.cands : [{ urls: j.urls, src: j.src || 'worker', label: '', id: j.src || 'w' }]).filter((c) => !bad.has(c.id));
+  if (!cands.length) throw new Error('все варианты отклонены');
+  const urls = [];
+  for (const c of cands) for (const u of c.urls) { urls.push(u); meta.set(u, { src: c.src, label: c.label || '', id: c.id }); }
+  return { urls, src: cands[0].src, label: cands[0].label, id: cands[0].id, worker: true };
+}
+
+// «Не та песня»: запоминаем отклонённую запись для этого трека
+const WKEY = 'mkw.bg.wrong';
+const wrongAll = () => { try { return JSON.parse(localStorage.getItem(WKEY) || '{}'); } catch { return {}; } };
+const wrongFor = (tid) => (tid && wrongAll()[tid]) || [];
+export const streamInfo = (url) => meta.get(url) || null;
+export function markWrong(tid, vid, url) {
+  const m = meta.get(url);
+  const cid = m ? m.id : url;
+  if (tid) { const all = wrongAll(); all[tid] = [...new Set([...(all[tid] || []), cid])].slice(-10); try { localStorage.setItem(WKEY, JSON.stringify(all)); } catch { /* ignore */ } }
+  const l = done.get(vid) || [];
+  const rest = l.filter((u) => (meta.get(u) ? meta.get(u).id !== cid : u !== url));
+  if (rest.length) done.set(vid, rest); else done.delete(vid);
+  return rest;
 }
 
 // Список ссылок на звук (лучшая первой) или null. Повторные вызовы для одного видео не делают новых запросов.
@@ -72,6 +94,7 @@ export function resolveStream(vid, t, force) {
   const isYt = /^[\w-]{11}$/.test(vid); // «sc:…» — трека нет на YouTube, ищем по названию (SoundCloud)
   const tries = [fromWorker(isYt ? vid : '', t), ...(isYt ? [...inv.slice(0, 7).map((i) => fromInvidious(i, vid)), ...PIPED.map((p) => fromPiped(p, vid))] : [])];
   const p = Promise.any(tries).then((r) => {
+    if (!r.worker) for (const u of r.urls) meta.set(u, { src: 'mirror', label: r.label || 'зеркало YouTube', id: r.id || `yt${vid}` });
     done.set(vid, r.urls);
     streamSource.set(vid, /^https?:/.test(r.src) ? 'mirror' : r.src);
     if (r.src !== 'worker') { lastOk = r.src; try { localStorage.setItem(GKEY, r.src); } catch { /* ignore */ } }
@@ -98,14 +121,15 @@ export async function checkBackground(vid, t) {
     try {
       const p = await getJson(`${W()}/ping`, 7000);
       add(true, 'Сервер MKW доступен');
-      add(Boolean(p && p.bg >= 2), p && p.bg >= 2 ? 'Сервер обновлён (YouTube + SoundCloud)' : 'Сервер старый: вставьте новый recognize-worker.js в Cloudflare и нажмите Deploy');
+      add(Boolean(p && p.bg >= 3), p && p.bg >= 3 ? 'Сервер обновлён (YouTube, SoundCloud, Audius, точная сверка версии)' : 'Сервер старый: вставьте новый recognize-worker.js в Cloudflare и нажмите Deploy');
     } catch { add(false, 'Сервер MKW недоступен из этой сети (включите VPN)'); }
   }
   const t0 = performance.now();
   const urls = await Promise.race([resolveStream(vid, t, true), new Promise((r) => setTimeout(() => r(null), 20000))]);
   if (urls && urls.length) {
-    const src = streamSource.get(vid) || 'зеркало';
-    add(true, `Звук трека найден за ${((performance.now() - t0) / 1000).toFixed(1)} с (${src === 'youtube' ? 'YouTube' : src === 'soundcloud' ? 'SoundCloud' : 'зеркало YouTube'})`);
+    const m = meta.get(urls[0]) || {};
+    const names = { youtube: 'YouTube', soundcloud: 'SoundCloud', audius: 'Audius', cobalt: 'YouTube через cobalt', mirror: 'зеркало YouTube' };
+    add(true, `Звук найден за ${((performance.now() - t0) / 1000).toFixed(1)} с: ${names[m.src] || 'зеркало YouTube'}${m.label && m.src !== 'youtube' ? ` · ${m.label}` : ''}`);
     const ok = await new Promise((res) => {
       const a = new Audio(); a.muted = true; a.preload = 'auto';
       const end = (v) => { clearTimeout(tm); a.src = ''; res(v); };

@@ -1,6 +1,6 @@
 // Друзья: у каждого открытый список friends/{uid} = { list: [uid…] }.
 // Друг — тот, кого вы добавили; «взаимно» — если и он добавил вас; «заявки» — кто добавил вас, а вы его ещё нет.
-import { db, auth } from './firebase.js?v=0.21.0';
+import { db, auth } from './firebase.js?v=0.22.0';
 import { doc, getDoc, setDoc, collection, query, where, getDocs, limit } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
 let mine = [];
