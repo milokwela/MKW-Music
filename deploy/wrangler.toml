@@ -1,0 +1,7 @@
+# Автовыкладка Cloudflare Worker из GitHub (см. .github/workflows/deploy-backend.yml)
+name = "mkw-recognize"
+main = "../docs/recognize-worker.js"
+compatibility_date = "2024-11-01"
+workers_dev = true
+# не трогать переменные и секреты, заданные в панели Cloudflare (ALLOWED_ORIGIN, ACR_*, AUDD_TOKEN)
+keep_vars = true
