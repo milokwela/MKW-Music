@@ -1,8 +1,8 @@
 // Текст песни: синхронный (LRCLIB), слова заливаются цветом акцента, соседние строки размыты. Работает и в «Волне».
 // Если синхронного текста нет, берётся обычный (lyrics.ovh): строки идут равномерно по длине трека (приблизительно).
-import { $, h, toast } from './ui.js?v=0.18.0';
-import * as player from './player.js?v=0.18.0';
-import { RECOGNIZE_URL } from './shazam-config.js?v=0.18.0';
+import { $, h, toast } from './ui.js?v=0.19.0';
+import * as player from './player.js?v=0.19.0';
+import { RECOGNIZE_URL } from './shazam-config.js?v=0.19.0';
 
 const API = 'https://lrclib.net/api';
 const MKEY = 'mkw.lyrics.mode';
@@ -124,7 +124,7 @@ function paintTools() {
 
 function renderBody() {
   const sc = box(); active = -2;
-  const preview = player.st.mode === 'preview';
+  const preview = player.st.mode === 'preview' && !player.st.full;
   if (mode === 'static' || !lines.length || preview) {
     const txt = rawPlain || lines.map((l) => l.text).join('\n');
     $('#fp-lyrics').classList.add('ly-static');

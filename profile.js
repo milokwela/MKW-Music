@@ -1,25 +1,28 @@
 // Экран «Профиль»: карточка с баннером, витрина (любимые исполнители и треки), вкладки Обзор / Слушатели / Настройки / О MKW.
-import { $, $$, h, icon, openSheet, closeSheet, toast, sheetItem, trackRow } from './ui.js?v=0.18.0';
-import * as store from './store.js?v=0.18.0';
-import * as player from './player.js?v=0.18.0';
-import { ACCENTS, getTheme, getAccent, getCustomHue, setCustomColor, setTheme, setAccent, hslHex, getNeutral } from './theme.js?v=0.18.0';
-import { CHANGELOG, VERSION, STAGE, KNOWN_ISSUES } from './changelog.js?v=0.18.0';
-import { plural, pickTrack } from './utils.js?v=0.18.0';
-import { youtubeEnabled, youtubeQuotaOut } from './youtube.js?v=0.18.0';
-import { audiusEnabled } from './audius.js?v=0.18.0';
-import { SOURCE_MODES, getSourceMode, setSourceMode } from './sources.js?v=0.18.0';
-import { gesturesOn, setGestures, showGestureGuide } from './gestures.js?v=0.18.0';
-import { listenerStats } from './stats.js?v=0.18.0';
-import { liveBg, setLiveBg } from './viz.js?v=0.18.0';
-import { lowPower, setLowPower } from './perf.js?v=0.18.0';
-import { logOut, changePassword, changeNick, authErrorText } from './auth.js?v=0.18.0';
-import { connectionCountry } from './geo.js?v=0.18.0';
-import { publishCard, publishProfile, myCard, getProfile, topListeners, hiddenFromBoard, setHidden, myUid } from './leaders.js?v=0.18.0';
-import { mi } from './icons2.js?v=0.18.0';
-import { artistPic } from './artistpic.js?v=0.18.0';
-import { openArtist } from './artist.js?v=0.18.0';
-import { openUserPage, favArtistsRow, favTracksList } from './userpage.js?v=0.18.0';
-import { voiceOn, setVoice, showVoiceGuide, voiceSupported } from './voice.js?v=0.18.0';
+import { $, $$, h, icon, openSheet, closeSheet, toast, sheetItem, trackRow } from './ui.js?v=0.19.0';
+import * as store from './store.js?v=0.19.0';
+import * as player from './player.js?v=0.19.0';
+import { ACCENTS, getTheme, getAccent, getCustomHue, setCustomColor, setTheme, setAccent, hslHex, getNeutral } from './theme.js?v=0.19.0';
+import { CHANGELOG, VERSION, STAGE, KNOWN_ISSUES } from './changelog.js?v=0.19.0';
+import { plural, pickTrack } from './utils.js?v=0.19.0';
+import { youtubeEnabled, youtubeQuotaOut } from './youtube.js?v=0.19.0';
+import { audiusEnabled } from './audius.js?v=0.19.0';
+import { SOURCE_MODES, getSourceMode, setSourceMode } from './sources.js?v=0.19.0';
+import { gesturesOn, setGestures, showGestureGuide } from './gestures.js?v=0.19.0';
+import { listenerStats } from './stats.js?v=0.19.0';
+import { liveBg, setLiveBg } from './viz.js?v=0.19.0';
+import { lowPower, setLowPower } from './perf.js?v=0.19.0';
+import { logOut, changePassword, changeNick, authErrorText } from './auth.js?v=0.19.0';
+import { connectionCountry } from './geo.js?v=0.19.0';
+import { publishCard, publishProfile, myCard, getProfile, topListeners, hiddenFromBoard, setHidden, myUid } from './leaders.js?v=0.19.0';
+import { mi } from './icons2.js?v=0.19.0';
+import { artistPic } from './artistpic.js?v=0.19.0';
+import { openArtist } from './artist.js?v=0.19.0';
+import { openUserPage, favArtistsRow, favTracksList, isOnline } from './userpage.js?v=0.19.0';
+import { voiceOn, setVoice, showVoiceGuide, voiceSupported } from './voice.js?v=0.19.0';
+import { openImage } from './viewer.js?v=0.19.0';
+import { ping } from './leaders.js?v=0.19.0';
+import { streamsOn, setStreams } from './stream.js?v=0.19.0';
 
 // s: sec, likes, playlists, plays, days, artists, night, styled, showcase, rank
 export const ACHIEVEMENTS = [
@@ -69,7 +72,11 @@ let built = false, curNick = '', boardLoaded = 0, myRank = 0, restored = false;
 const refs = {};
 
 const CKEY = (n) => `mkw.pcustom.${n}`;
-const DEF = { status: '', banner: 'accent', bannerImg: '', frame: 'glow', badges: [], favArtists: [], favTracks: [] };
+const DEF = { status: '', banner: 'accent', bannerImg: '', frame: 'glow', badges: [], favArtists: [], favTracks: [], bio: '', nickStyle: 'plain', shape: 'circle', effect: 'none', showNow: true };
+export const NICK_STYLES = [{ id: 'plain', name: 'Обычный' }, { id: 'accent', name: 'Цвет акцента' }, { id: 'gradient', name: 'Градиент' }, { id: 'rainbow', name: 'Радуга' }, { id: 'glow', name: 'Неон' }];
+export const SHAPES = [{ id: 'circle', name: 'Круг' }, { id: 'squircle', name: 'Скруглённый' }, { id: 'flower', name: 'Цветок' }];
+export const EFFECTS = [{ id: 'none', name: 'Без эффекта' }, { id: 'stars', name: 'Звёзды' }, { id: 'aurora', name: 'Сияние' }, { id: 'snow', name: 'Снег' }, { id: 'waves', name: 'Волны' }];
+const nowPlaying = () => { const c = getCustom(), t = player.queue.current; return c.showNow !== false && t && player.st.playing ? `${t.artist} — ${t.title}` : ''; };
 function getCustom() {
   try { return { ...DEF, ...JSON.parse(localStorage.getItem(CKEY(curNick)) || '{}') }; } catch { return { ...DEF }; }
 }
@@ -124,7 +131,7 @@ function syncControls() {
   $$('.src-chip').forEach((c) => c.classList.toggle('active', c.dataset.id === getSourceMode()));
   if (refs.srcnote) refs.srcnote.textContent = `iTunes: работает · YouTube: ${!youtubeEnabled() ? 'нет ключа' : youtubeQuotaOut() ? 'лимит на сегодня исчерпан' : 'работает'} · Audius: ${audiusEnabled() ? 'работает' : 'нет ключа'}`;
   const tog = (el, v) => { if (el) { el.classList.toggle('active', v); el.setAttribute('aria-checked', String(v)); } };
-  tog(refs.gest, gesturesOn()); tog(refs.voice, voiceOn()); tog(refs.lowp, lowPower()); tog(refs.livebg, liveBg()); tog(refs.board, !hiddenFromBoard());
+  tog(refs.gest, gesturesOn()); tog(refs.voice, voiceOn()); tog(refs.bgplay, streamsOn()); tog(refs.lowp, lowPower()); tog(refs.livebg, liveBg()); tog(refs.board, !hiddenFromBoard());
   $$('.swatch').forEach((c) => c.classList.toggle('active', c.dataset.id === getAccent()));
   if (refs.customSw) {
     const nt = getNeutral();
@@ -192,6 +199,7 @@ function avatarMenu(nick) {
     catch { toast('Не получилось загрузить фото'); }
   });
   openSheet('Фото профиля', h('div', {}, inp,
+    sheetItem('user', 'Посмотреть фото', () => { closeSheet(); openImage(getAvatar(nick), nick); }),
     sheetItem('user', 'Выбрать фото из галереи', () => inp.click()),
     sheetItem('close', 'Вернуть логотип MKW', () => { try { localStorage.removeItem(AV(nick)); } catch { /* ignore */ } refs.avatar.src = 'mkw-logo.png'; closeSheet(); pushCard(true); }, true),
     h('p', { class: 'profile-note', text: 'Фото видно другим слушателям в рейтинге и в вашем профиле (если вы не скрыли себя во вкладке «Слушатели»).' })));
@@ -238,11 +246,12 @@ function pushCard(full) {
   pushTimer = setTimeout(async () => {
     const c = getCustom(), s = statsNow(), av = getAvatar(curNick);
     const small = await imageTo(av, 72, 72, 0.7);
-    publishCard({ nick: curNick, sec: s.sec, plays: s.plays, likes: s.likes, status: c.status, banner: c.bannerImg ? 'img' : c.banner, frame: c.frame, badges: c.badges, avatar: small });
+    publishCard({ nick: curNick, sec: s.sec, plays: s.plays, likes: s.likes, status: c.status, banner: c.bannerImg ? 'img' : c.banner, frame: c.frame, badges: c.badges, avatar: small, shape: c.shape, now: nowPlaying() });
     if (full !== false) {
       publishProfile({
         nick: curNick, status: c.status, banner: c.banner, bannerImg: c.bannerImg, frame: c.frame, badges: c.badges,
-        avatar: await imageTo(av, 240, 240, 0.78), favArtists: c.favArtists, favTracks: c.favTracks.map(pickTrack),
+        avatar: await imageTo(av, 360, 360, 0.8), favArtists: c.favArtists, favTracks: c.favTracks.map(pickTrack),
+        bio: c.bio, nickStyle: c.nickStyle, shape: c.shape, effect: c.effect, now: nowPlaying(),
         sec: s.sec, plays: s.plays, likes: s.likes, days: s.days, achCount: ACHIEVEMENTS.filter((a) => achDone(a, s)).length,
       });
     }
@@ -258,6 +267,10 @@ function paintHero() {
   const c = getCustom();
   refs.hero.style.setProperty('--banner', bannerCss(c.banner, c.bannerImg));
   refs.hero.dataset.frame = c.frame;
+  refs.hero.dataset.shape = c.shape;
+  refs.hero.dataset.effect = c.effect;
+  refs.nick.dataset.style = c.nickStyle;
+  refs.bio.textContent = c.bio; refs.bio.hidden = !c.bio;
   refs.status.textContent = c.status || 'Добавьте статус — нажмите «Изменить»';
   refs.status.classList.toggle('st-empty', !c.status);
   refs.heroBadges.replaceChildren(...badgeChips(c.badges).children);
@@ -334,8 +347,22 @@ function editProfile() {
   };
 
   paintB(); paintF(); paintA(); paintArt(); paintTr(); paintPrev();
+  // оформление: о себе, стиль ника, форма фото, эффект на карточке
+  let nickStyle = c.nickStyle, shape = c.shape, effect = c.effect, showNow = c.showNow !== false;
+  const bio = h('textarea', { class: 'sheet-input pe-bio', maxlength: '160', rows: '3', placeholder: 'Пара слов о себе и своей музыке' });
+  bio.value = c.bio || '';
+  const chips = (list, get, set) => {
+    const box = h('div', { class: 'pe-frames' });
+    const paint = () => box.replaceChildren(...list.map((x) => h('button', { type: 'button', class: `chip${x.id === get() ? ' active' : ''}`, onclick: () => { set(x.id); paint(); } }, x.name)));
+    paint();
+    return box;
+  };
+  const nsWrap = chips(NICK_STYLES, () => nickStyle, (v) => { nickStyle = v; });
+  const shWrap = chips(SHAPES, () => shape, (v) => { shape = v; });
+  const efWrap = chips(EFFECTS, () => effect, (v) => { effect = v; });
+  const nowSw = h('button', { class: `switch${showNow ? ' active' : ''}`, type: 'button', role: 'switch', onclick: () => { showNow = !showNow; nowSw.classList.toggle('active', showNow); } }, h('i'));
   const save = h('button', { class: 'btn', type: 'button', onclick: () => {
-    setCustom({ status: st.value.trim(), banner, bannerImg, frame, badges, favArtists: favA, favTracks: favT });
+    setCustom({ status: st.value.trim(), banner, bannerImg, frame, badges, favArtists: favA, favTracks: favT, bio: bio.value.trim(), nickStyle, shape, effect, showNow });
     closeSheet(); toast('Профиль обновлён'); updateProfile();
   } }, 'Сохранить');
   openSheet('Мой профиль', h('div', { class: 'pw-form pe' }, upl,
@@ -343,7 +370,12 @@ function editProfile() {
     h('div', { class: 'pe-h' }, mi('image'), 'Фон карточки'), bWrap,
     h('button', { class: 'btn tonal', type: 'button', onclick: () => avatarMenu(curNick) }, mi('person'), ' Сменить фото профиля'),
     h('div', { class: 'pe-h' }, mi('edit'), 'Статус'), st,
+    h('div', { class: 'pe-h' }, mi('person'), 'О себе'), bio,
+    h('div', { class: 'pe-h' }, mi('palette'), 'Стиль ника'), nsWrap,
     h('div', { class: 'pe-h' }, mi('sparkle'), 'Рамка фото'), fWrap,
+    h('div', { class: 'pe-h' }, mi('image'), 'Форма фото'), shWrap,
+    h('div', { class: 'pe-h' }, mi('star'), 'Эффект на карточке'), efWrap,
+    h('div', { class: 'set-row pe-row' }, h('div', { class: 'set-txt' }, h('b', { text: 'Показывать, что я слушаю' }), h('small', { text: 'Другие увидят текущий трек, пока вы в сети' })), nowSw),
     h('div', { class: 'pe-h' }, mi('medal'), 'Значки в профиле (до 3)'), aWrap,
     h('div', { class: 'pe-h' }, mi('mic'), 'Любимые исполнители (до 4)'), artWrap, artAdd,
     h('div', { class: 'pe-h' }, mi('star'), 'Любимые треки (до 10)'), trWrap,
@@ -365,10 +397,10 @@ async function loadBoard(force) {
     const t = formatListened(Number(u.sec) || 0);
     return h('button', { type: 'button', class: `lb-row${u.uid === me ? ' me' : ''}${i < 3 ? ` top${i + 1}` : ''}`, style: `--banner:${bannerCss(u.banner === 'img' ? 'accent' : u.banner)};animation-delay:${Math.min(i, 12) * 35}ms`, onclick: () => openUserPage(u.uid, u) },
       h('span', { class: 'lb-rank' }, i < 3 ? mi('medal') : String(i + 1)),
-      h('span', { class: 'lb-av', 'data-frame': u.frame || 'none' }, h('img', { src: u.avatar || 'mkw-logo.png', alt: '', loading: 'lazy' })),
+      h('span', { class: 'lb-av', 'data-frame': u.frame || 'none', 'data-shape': u.shape || 'circle' }, h('img', { src: u.avatar || 'mkw-logo.png', alt: '', loading: 'lazy' }), isOnline(u.seen) ? h('i', { class: 'online-dot' }) : null),
       h('div', { class: 'lb-body' },
         h('div', { class: 'lb-nick', text: u.uid === me ? `${u.nick} · вы` : u.nick }),
-        u.status ? h('div', { class: 'lb-status', text: u.status }) : null,
+        u.now && isOnline(u.seen) ? h('div', { class: 'lb-status now', text: `Слушает: ${u.now}` }) : u.status ? h('div', { class: 'lb-status', text: u.status }) : null,
         (u.badges || []).length ? h('div', { class: 'lb-badges' }, (u.badges || []).filter((id) => ACH[id]).map((id) => mi(ACH[id].i))) : null),
       h('div', { class: 'lb-time' }, h('b', { text: String(t.value) }), h('small', { text: t.unit })),
       h('span', { class: 'chev', text: '›' }));
@@ -392,6 +424,7 @@ export function buildProfile(nick) {
   refs.nick = h('div', { class: 'hero-nick', text: nick });
   refs.since = h('div', { class: 'hero-since', text: '' });
   refs.status = h('div', { class: 'hero-status' });
+  refs.bio = h('div', { class: 'hero-bio', hidden: '' });
   refs.heroBadges = h('div', { class: 'pbadges' });
   refs.top = h('div', { class: 'top-list' });
   refs.ach = h('div', { class: 'ach-grid' });
@@ -403,6 +436,7 @@ export function buildProfile(nick) {
   refs.lowp = sw(() => { setLowPower(!lowPower()); syncControls(); });
   refs.gest = sw(async () => { await setGestures(!gesturesOn()); syncControls(); });
   refs.voice = sw(() => { setVoice(!voiceOn()); syncControls(); });
+  refs.bgplay = sw(() => { setStreams(!streamsOn()); syncControls(); toast(streamsOn() ? 'Полные треки будут играть в фоне' : 'Полные треки снова через видеоплеер'); });
   refs.board = sw(async () => { await setHidden(!hiddenFromBoard()); syncControls(); if (!hiddenFromBoard()) pushCard(true); setTimeout(() => loadBoard(true), 1800); });
   refs.boardList = h('div', { class: 'lb-list' });
   refs.myRank = h('div', { class: 'lb-me' });
@@ -423,14 +457,15 @@ export function buildProfile(nick) {
       h('div', { class: 'phero-btns' },
         h('button', { class: 'btn tonal phero-edit', type: 'button', onclick: () => openUserPage(myUid(), null, true), title: 'Как видят другие' }, mi('person')),
         h('button', { class: 'btn tonal phero-edit', type: 'button', onclick: editProfile }, mi('edit'), ' Изменить'))),
-    h('div', { class: 'phero-info' }, refs.nick, refs.status, refs.since, refs.heroBadges));
+    h('div', { class: 'phero-fx' }, h('i'), h('i'), h('i'), h('i'), h('i'), h('i')),
+    h('div', { class: 'phero-info' }, refs.nick, refs.status, refs.bio, refs.since, refs.heroBadges));
 
   const tabBtn = (id, label, ic) => h('button', { class: 'ptab', type: 'button', 'data-tab': id, onclick: () => setTab(id) }, mi(ic), h('span', { text: label }));
   refs.tabs = h('div', { class: 'ptabs' }, h('i', { class: 'ptab-lens' }), tabBtn('main', 'Обзор', 'person'), tabBtn('board', 'Слушатели', 'group'), tabBtn('set', 'Настройки', 'palette'), tabBtn('about', 'О MKW', 'note'));
 
   root.replaceChildren(
-    refs.hero,
-    refs.tabs,
+    h('div', { class: 'p-side' }, refs.hero, refs.tabs),
+    h('div', { class: 'p-main' },
     h('div', { class: 'ppane', 'data-pane': 'main' },
       h('div', { class: 'stats-grid' },
         statCard('time', 'Прослушано', 'timer'), statCard('plays', 'Треков сыграно', 'play-circle'),
@@ -455,6 +490,7 @@ export function buildProfile(nick) {
         h('div', { class: 'set-block' }, h('b', { text: 'Где искать музыку' }),
           h('div', { class: 'src-row' }, SOURCE_MODES.map((m) => h('button', { class: 'chip src-chip', type: 'button', 'data-id': m.id, onclick: () => { setSourceMode(m.id); syncControls(); } }, m.name))),
           refs.srcnote),
+        row('Музыка в фоне', 'Полные треки звуком, а не видео: играют при выключенном экране и в свёрнутом приложении', refs.bgplay, null, 'headphones'),
         row('Страна подключения', 'С VPN покажет страну VPN', refs.country = h('span', { class: 'conn-country', text: '…' }), null, 'globe'),
         h('div', { class: 'vpn-note' }, h('span', { class: 'set-ic' }, mi('shield')), h('div', {}, h('b', { text: 'Нет звука или обложек из России?' }), h('small', { text: 'Провайдеры блокируют часть музыкальных серверов. Включите любой VPN, и всё заработает.' })))),
       group('Устройство',
@@ -475,7 +511,7 @@ export function buildProfile(nick) {
         h('p', { class: 'profile-note', text: 'MKW Music — название сервиса. MiloKwel — его создатель: он делает все обновления и разработку. Бета-версия: что-то может ломаться, всё чиним.' }),
         CHANGELOG.map((e, i) => changelogEntry(e, i === 0)),
         h('div', { class: 'cl-h warn', text: 'Известные проблемы' }),
-        h('ul', {}, KNOWN_ISSUES.map((t) => h('li', { text: t }))))));
+        h('ul', {}, KNOWN_ISSUES.map((t) => h('li', { text: t })))))));
 
   built = true;
   setTab(refs.tab || 'main');
@@ -483,6 +519,11 @@ export function buildProfile(nick) {
   syncControls();
   updateProfile();
   setTimeout(() => pushCard(true), 5000);
+  if (!refs.presence) {
+    refs.presence = setInterval(() => { if (!document.hidden) ping(nowPlaying()); }, 240000);
+    let lastNow = '';
+    player.onPlayer((ev) => { if (ev !== 'state' && ev !== 'track') return; const n = nowPlaying(); if (n !== lastNow) { lastNow = n; ping(n, Date.now() - (refs.lastPingForce || 0) > 60000); refs.lastPingForce = Date.now(); } });
+  }
   if (!restored) {
     restored = true;
     // на новом устройстве подтягиваем оформление профиля с сервера

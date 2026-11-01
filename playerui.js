@@ -1,12 +1,12 @@
 // Интерфейс плеера: мини-плеер, большой плеер, очередь, таймер сна.
-import { $, h, icon, setIcon, artEl, trackRow, openSheet, closeSheet, sheetItem, highlightCurrent, toast, emptyState } from './ui.js?v=0.18.0';
-import { openArtistFor } from './artist.js?v=0.18.0';
-import { renderCarousel, initCarousel } from './carousel.js?v=0.18.0';
-import * as player from './player.js?v=0.18.0';
-import * as store from './store.js?v=0.18.0';
-import { likeToggle, openTrackMenu } from './menu.js?v=0.18.0';
-import { formatTime } from './utils.js?v=0.18.0';
-import { youtubeEnabled } from './youtube.js?v=0.18.0';
+import { $, h, icon, setIcon, artEl, trackRow, openSheet, closeSheet, sheetItem, highlightCurrent, toast, emptyState } from './ui.js?v=0.19.0';
+import { openArtistFor } from './artist.js?v=0.19.0';
+import { renderCarousel, initCarousel } from './carousel.js?v=0.19.0';
+import * as player from './player.js?v=0.19.0';
+import * as store from './store.js?v=0.19.0';
+import { likeToggle, openTrackMenu } from './menu.js?v=0.19.0';
+import { formatTime } from './utils.js?v=0.19.0';
+import { youtubeEnabled } from './youtube.js?v=0.19.0';
 
 const { queue, st } = player;
 let seeking = false;
@@ -62,6 +62,22 @@ function initDrag() {
     el.addEventListener('touchcancel', end);
   }
   mini.addEventListener('click', (e) => { if (swallow) { e.stopPropagation(); e.preventDefault(); } }, true);
+  full.addEventListener('click', (e) => { if (swallow) { e.stopPropagation(); e.preventDefault(); } }, true);
+
+  // То же самое мышью на компьютере: зажать мини-плеер и потянуть вверх, зажать плеер и потянуть вниз
+  const fake = (e) => ({ touches: [{ clientX: e.clientX, clientY: e.clientY }], target: e.target, cancelable: true, preventDefault: () => e.preventDefault() });
+  const mouseStart = (m) => (e) => {
+    if (e.pointerType !== 'mouse' || e.button !== 0) return;
+    if (m === 'close' && e.target.closest('#fp-lyrics, #fp-art, .fp-seek, input, button:not(#fp-close)')) return;
+    if (m === 'open' && e.target.closest('#mini-toggle, #mini-next')) return;
+    start(m)(fake(e));
+    const mv = (ev) => { move(fake(ev)); if (full.classList.contains('dragging')) document.body.classList.add('drag-mouse'); };
+    const up = () => { window.removeEventListener('pointermove', mv); window.removeEventListener('pointerup', up); document.body.classList.remove('drag-mouse'); end(); };
+    window.addEventListener('pointermove', mv);
+    window.addEventListener('pointerup', up);
+  };
+  mini.addEventListener('pointerdown', mouseStart('open'));
+  full.addEventListener('pointerdown', mouseStart('close'));
 }
 
 // Высота дока (мини-плеер + меню) → CSS-переменная, чтобы контент и тосты не прятались под ним.
@@ -73,7 +89,7 @@ function initDock() {
   window.addEventListener('resize', set);
 }
 export function isFullOpen() { return $('#full-player').classList.contains('open'); }
-export { closeFull };
+export { closeFull, openFull };
 
 function renderTrack() {
   const t = queue.current;
@@ -115,9 +131,9 @@ function renderState() {
   setIcon($('#mini-toggle svg'), playIcon);
   setIcon($('#fp-toggle svg'), playIcon);
   const badge = $('#fp-badge');
-  badge.textContent = queue.current?.wave ? 'MKW Волна' : st.mode === 'yt' ? 'MKW' : st.mode === 'preview' ? (queue.current?.auId ? 'MKW · Audius' : 'MKW · фрагмент') : st.loading ? 'Загрузка…' : '';
-  badge.classList.toggle('yt', st.mode === 'yt');
-  $('#fp-note').textContent = st.message || (st.mode === 'preview' && !youtubeEnabled() ? 'Полные треки появятся после подключения YouTube-ключа' : '');
+  badge.textContent = queue.current?.wave ? 'MKW Волна' : st.mode === 'yt' ? 'MKW' : st.mode === 'preview' ? (st.full ? 'MKW · фон' : queue.current?.auId ? 'MKW · Audius' : 'MKW · фрагмент') : st.loading ? 'Загрузка…' : '';
+  badge.classList.toggle('yt', st.mode === 'yt' || st.full);
+  $('#fp-note').textContent = st.message || (st.mode === 'preview' && !st.full && !youtubeEnabled() ? 'Полные треки появятся после подключения YouTube-ключа' : '');
   $('#fp-shuffle').classList.toggle('on', queue.shuffle);
   $('#fp-repeat').classList.toggle('on', queue.repeat !== 'off');
   setIcon($('#fp-repeat svg'), queue.repeat === 'one' ? 'repeat-one' : 'repeat');

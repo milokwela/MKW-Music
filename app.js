@@ -1,26 +1,27 @@
 // Точка входа: вход в аккаунт, навигация, тема, профиль.
-import { initLyrics } from './lyrics.js?v=0.18.0';
-import { initPerf } from './perf.js?v=0.18.0';
-import { watchAuth, signIn, signUp, authErrorText } from './auth.js?v=0.18.0';
-import { startStore, stopStore, onStore, flushListened } from './store.js?v=0.18.0';
-import { initSearch, setSearchUser } from './search.js?v=0.18.0';
-import { initLibrary, render as renderLibrary, resetLibrary } from './library.js?v=0.18.0';
-import { initPlayerUI, resetPlayerUI, closeFull } from './playerui.js?v=0.18.0';
-import { buildProfile, updateProfile, resetProfile } from './profile.js?v=0.18.0';
-import { initArtist, closeArtist } from './artist.js?v=0.18.0';
-import { initUserPage, closeUserPage } from './userpage.js?v=0.18.0';
-import { initMotion, viewDirection, animateView } from './motion.js?v=0.18.0';
-import { initLiquidNav } from './glassnav.js?v=0.18.0';
-import { initRowLens } from './rowlens.js?v=0.18.0';
-import { readIncoming, showIncoming } from './share.js?v=0.18.0';
-import { registerListener } from './stats.js?v=0.18.0';
-import { offerInstall } from './install.js?v=0.18.0';
-import { showMoved, showIconUpdate } from './moved.js?v=0.18.0';
-import { initViz } from './viz.js?v=0.18.0';
-import { initWave } from './wave.js?v=0.18.0';
-import { initTheme } from './theme.js?v=0.18.0';
-import * as player from './player.js?v=0.18.0';
-import { $, $$ } from './ui.js?v=0.18.0';
+import { initLyrics } from './lyrics.js?v=0.19.0';
+import { initPerf } from './perf.js?v=0.19.0';
+import { watchAuth, signIn, signUp, authErrorText } from './auth.js?v=0.19.0';
+import { startStore, stopStore, onStore, flushListened } from './store.js?v=0.19.0';
+import { initSearch, setSearchUser } from './search.js?v=0.19.0';
+import { initLibrary, render as renderLibrary, resetLibrary } from './library.js?v=0.19.0';
+import { initPlayerUI, resetPlayerUI, closeFull } from './playerui.js?v=0.19.0';
+import { buildProfile, updateProfile, resetProfile } from './profile.js?v=0.19.0';
+import { initArtist, closeArtist } from './artist.js?v=0.19.0';
+import { initUserPage, closeUserPage } from './userpage.js?v=0.19.0';
+import { initMotion, viewDirection, animateView } from './motion.js?v=0.19.0';
+import { initLiquidNav } from './glassnav.js?v=0.19.0';
+import { initRowLens } from './rowlens.js?v=0.19.0';
+import { readIncoming, showIncoming } from './share.js?v=0.19.0';
+import { registerListener } from './stats.js?v=0.19.0';
+import { offerInstall } from './install.js?v=0.19.0';
+import { showMoved, showIconUpdate } from './moved.js?v=0.19.0';
+import { showNews } from './news.js?v=0.19.0';
+import { initViz } from './viz.js?v=0.19.0';
+import { initWave } from './wave.js?v=0.19.0';
+import { initTheme } from './theme.js?v=0.19.0';
+import * as player from './player.js?v=0.19.0';
+import { $, $$ } from './ui.js?v=0.19.0';
 
 // ---------- вход ----------
 let authMode = 'login';
@@ -126,6 +127,7 @@ function onUser(user) {
     setTimeout(showIncoming, 600);
     setTimeout(showMoved, 1200);
     setTimeout(showIconUpdate, 2600);
+    setTimeout(showNews, 3700);
     setTimeout(offerInstall, 9000);
   } else {
     flushListened();
@@ -152,6 +154,7 @@ function boot() {
   readIncoming();
   runSplash();
   initMotion();
+  if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
   initTheme();
   initAuthForm();
   initNav();

@@ -1,10 +1,11 @@
 // Движок плеера: очередь, YouTube (полные треки) и превью iTunes (30 сек) как запасной вариант.
-import { audiusStreamUrl } from './audius.js?v=0.18.0';
-import { Queue } from './queue.js?v=0.18.0';
-import { findYouTubeId, peekYouTubeId, loadYouTubeApi, youtubeEnabled } from './youtube.js?v=0.18.0';
-import { logPlay, addListened } from './store.js?v=0.18.0';
-import { artUrl } from './utils.js?v=0.18.0';
-import { proxify } from './bypass.js?v=0.18.0';
+import { audiusStreamUrl } from './audius.js?v=0.19.0';
+import { Queue } from './queue.js?v=0.19.0';
+import { findYouTubeId, peekYouTubeId, loadYouTubeApi, youtubeEnabled } from './youtube.js?v=0.19.0';
+import { logPlay, addListened } from './store.js?v=0.19.0';
+import { artUrl } from './utils.js?v=0.19.0';
+import { proxify } from './bypass.js?v=0.19.0';
+import { resolveStream, peekStream, dropStream, streamsOn } from './stream.js?v=0.19.0';
 
 export const queue = new Queue();
 export const st = {
@@ -15,6 +16,8 @@ export const st = {
   duration: 0,
   sleepAt: 0,
   message: '', // последнее сообщение об ошибке для интерфейса
+  full: false, // в режиме 'preview' играет не фрагмент, а полный трек аудиопотоком
+  vid: '',     // id видео YouTube текущего трека
 };
 
 const audio = document.getElementById('preview-player');
@@ -122,7 +125,10 @@ export function warmUp() {
 function prefetchNext() {
   if (!youtubeEnabled()) return;
   const nxt = queue.items[queue.index + 1];
-  if (nxt && !nxt.ytId && !peekYouTubeId(nxt)) findYouTube(nxt);
+  if (!nxt) return;
+  const known = nxt.ytId || peekYouTubeId(nxt);
+  if (known) { resolveStream(known); return; }
+  findYouTubeId(nxt).then((v) => { if (v) resolveStream(v); }).catch(() => {});
 }
 function findYouTube(t) { findYouTubeId(t).catch(() => {}); }
 
@@ -139,13 +145,13 @@ async function startCurrent() {
   const id = ++loadId;
   userPaused = false;
   stopAll();
-  if (track && youtubeEnabled() && !track.auId) keepOn(); else keepOff();
+  keepOff();
   if (!track) {
     st.mode = null; st.loading = false; st.time = 0; st.duration = 0;
     emit('track');
     return;
   }
-  st.mode = null;
+  st.mode = null; st.full = false; st.vid = '';
   st.loading = true;
   st.time = 0;
   st.duration = track.duration || 0;
@@ -161,36 +167,109 @@ async function startCurrent() {
   if (id !== loadId) return;
 
   if (vid) {
-    try {
-      const p = yt || await ensureYT();
+    st.vid = vid;
+    // 1) полный трек обычным звуком: играет в фоне и при выключенном экране
+    if (streamsOn()) {
+      const urls = peekStream(vid) || await Promise.race([resolveStream(vid), new Promise((r) => setTimeout(() => r(null), document.hidden ? 9000 : 3000))]);
       if (id !== loadId) return;
-      st.mode = 'yt';
-      p.loadVideoById(vid);
-      // Если за 7 секунд не заиграло (часто на телефоне без касания), падаем на превью.
-      // Не заиграло само (iPhone просит нажать): не прыгаем на фрагмент, а просим нажать ▶.
-      watchdog = setTimeout(() => {
-        if (id !== loadId || st.mode !== 'yt' || st.playing) return;
-        st.loading = false;
-        st.message = 'Нажмите ▶, чтобы включить полный трек';
-        emit('state');
-        watchdog = setTimeout(() => { if (id === loadId && st.mode === 'yt' && !st.playing) fallbackToPreview(); }, 25000);
-      }, 3500);
-      logPlay(track);
-      prefetchNext();
-      emit('state');
-      return;
-    } catch (e) {
-      console.warn('YouTube не сработал', e);
-      if (id !== loadId) return;
+      if (urls && urls.length) { startStream(track, vid, urls, id, 0); return; }
+      resolveStream(vid); // ищем дальше: пригодится, если свернуть приложение
     }
+    // 2) видеоплеер YouTube
+    if (await startYT(track, vid, id)) return;
+    if (id !== loadId) return;
   }
   if (track.previewUrl) startPreview(track, id);
   else unavailable(id);
 }
 
+async function startYT(track, vid, id, at = 0) {
+  try {
+    const p = yt || await ensureYT();
+    if (id !== loadId) return true;
+    st.mode = 'yt'; st.full = true;
+    keepOn();
+    if (at > 0) p.loadVideoById(vid, at); else p.loadVideoById(vid);
+    // Не заиграло само (iPhone просит нажать): не прыгаем на фрагмент, а просим нажать ▶.
+    watchdog = setTimeout(() => {
+      if (id !== loadId || st.mode !== 'yt' || st.playing) return;
+      st.loading = false;
+      st.message = 'Нажмите ▶, чтобы включить полный трек';
+      emit('state');
+      watchdog = setTimeout(() => { if (id === loadId && st.mode === 'yt' && !st.playing) fallbackToPreview(); }, 25000);
+    }, 3500);
+    if (!at) { logPlay(track); prefetchNext(); }
+    emit('state');
+    return true;
+  } catch (e) {
+    console.warn('YouTube не сработал', e);
+    return false;
+  }
+}
+
+// Полный трек через <audio>. При ошибке пробуем следующую ссылку, потом видеоплеер.
+let streamUrls = [];
+function startStream(track, vid, urls, id, at) {
+  if (id !== loadId) return;
+  if (yt) { try { yt.stopVideo(); } catch { /* ignore */ } }
+  keepOff();
+  streamUrls = [...urls];
+  st.mode = 'preview'; st.full = true; st.vid = vid; st.loading = true;
+  const url = streamUrls[0];
+  audio.src = url;
+  const go = () => {
+    if (at > 0) { try { audio.currentTime = at; } catch { /* ignore */ } }
+    audio.play().then(() => { if (!at) { logPlay(track); prefetchNext(); } }).catch((e) => {
+      if (id !== loadId) return;
+      st.loading = false; st.playing = false;
+      if (e && e.name === 'NotAllowedError') { st.message = 'Нажмите ▶, браузер не дал включить звук сам'; emit('state'); }
+    });
+  };
+  if (at > 0) audio.addEventListener('loadedmetadata', go, { once: true }); else go();
+  clearTimeout(watchdog);
+  // зеркало молчит дольше 9 секунд — берём следующее
+  watchdog = setTimeout(() => {
+    if (id === loadId && st.mode === 'preview' && st.full && !st.playing && !userPaused && !st.message && audio.readyState < 3) streamFailed(id);
+  }, 9000);
+  emit('track');
+}
+function streamFailed(id) {
+  if (id !== loadId) return;
+  const track = queue.current;
+  const bad = streamUrls.shift();
+  if (st.vid && bad) dropStream(st.vid, bad);
+  if (streamUrls.length) { startStream(track, st.vid, streamUrls, id, audio.currentTime || 0); return; }
+  // звук не пошёл ни по одной ссылке — видеоплеер
+  st.full = false;
+  const at = st.time || 0;
+  startYT(track, st.vid, id, at).then((ok) => { if (!ok && id === loadId) fallbackToPreview(); });
+}
+
+// iPhone разрешает звук только после касания: «разогреваем» основной плеер при первом касании экрана
+function unlockAudio() {
+  document.removeEventListener('pointerdown', unlockAudio, true);
+  if (audio.src) return;
+  try {
+    const blob = silentWavUrl();
+    audio.src = blob; audio.muted = true;
+    audio.play().then(() => { if (audio.src === blob) audio.pause(); audio.muted = false; }).catch(() => { audio.muted = false; });
+  } catch { /* ignore */ }
+}
+document.addEventListener('pointerdown', unlockAudio, true);
+
+// Свернули приложение во время видео: если звук уже найден, тихо переключаемся на него с того же места.
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden || st.mode !== 'yt' || !st.vid || userPaused) return;
+  const urls = peekStream(st.vid);
+  if (!urls || !queue.current) return;
+  let at = 0;
+  try { at = yt.getCurrentTime() || st.time || 0; } catch { at = st.time || 0; }
+  startStream(queue.current, st.vid, urls, loadId, at);
+});
+
 function startPreview(track, id) {
   if (id !== loadId) return;
-  st.mode = 'preview';
+  st.mode = 'preview'; st.full = false;
   st.loading = true;
   audio.src = track.auId ? audiusStreamUrl(track.auId) : proxify(track.previewUrl);
   audio.play().then(() => { logPlay(track); prefetchNext(); }).catch((e) => {
@@ -246,7 +325,7 @@ audio.addEventListener('pause', () => {
 });
 audio.addEventListener('waiting', () => { if (st.mode === 'preview') { st.loading = true; emit('state'); } });
 audio.addEventListener('ended', () => { if (st.mode === 'preview') handleEnded(); });
-audio.addEventListener('error', () => { if (st.mode === 'preview' && audio.src) unavailable(loadId); });
+audio.addEventListener('error', () => { if (st.mode !== 'preview' || !audio.src || audio.src.startsWith('blob:')) return; if (st.full) streamFailed(loadId); else unavailable(loadId); });
 audio.addEventListener('loadedmetadata', () => {
   if (st.mode === 'preview' && Number.isFinite(audio.duration)) { st.duration = audio.duration; emit('time'); }
 });

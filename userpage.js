@@ -1,13 +1,28 @@
 // Страница другого слушателя: баннер, фото, статус, значки, статистика, любимые исполнители и треки.
-import { $, h, trackRow, animateIn } from './ui.js?v=0.18.0';
-import * as player from './player.js?v=0.18.0';
-import { openTrackMenu } from './menu.js?v=0.18.0';
-import { getProfile } from './leaders.js?v=0.18.0';
-import { ACH, bannerCss, formatListened } from './profile.js?v=0.18.0';
-import { artistPic } from './artistpic.js?v=0.18.0';
-import { openArtist } from './artist.js?v=0.18.0';
-import { mi } from './icons2.js?v=0.18.0';
-import { plural } from './utils.js?v=0.18.0';
+import { $, h, trackRow, animateIn } from './ui.js?v=0.19.0';
+import * as player from './player.js?v=0.19.0';
+import { openTrackMenu } from './menu.js?v=0.19.0';
+import { getProfile } from './leaders.js?v=0.19.0';
+import { ACH, bannerCss, formatListened } from './profile.js?v=0.19.0';
+import { artistPic } from './artistpic.js?v=0.19.0';
+import { openArtist } from './artist.js?v=0.19.0';
+import { mi } from './icons2.js?v=0.19.0';
+import { plural } from './utils.js?v=0.19.0';
+import { openImage } from './viewer.js?v=0.19.0';
+
+export function seenText(seen) {
+  const t = Number(seen) || 0;
+  if (!t) return '';
+  const m = Math.floor((Date.now() - t) / 60000);
+  if (m < 6) return 'в сети';
+  if (m < 60) return `был(а) в сети ${m} ${plural(m, 'минуту', 'минуты', 'минут')} назад`;
+  const hh = Math.floor(m / 60);
+  if (hh < 24) return `был(а) в сети ${hh} ${plural(hh, 'час', 'часа', 'часов')} назад`;
+  const d = Math.floor(hh / 24);
+  if (d < 30) return `был(а) в сети ${d} ${plural(d, 'день', 'дня', 'дней')} назад`;
+  return 'давно не заходил(а)';
+}
+export const isOnline = (seen) => Date.now() - (Number(seen) || 0) < 6 * 60000;
 
 let seq = 0;
 
@@ -33,12 +48,16 @@ function render(u, isMe) {
   const t = formatListened(Number(u.sec) || 0);
   const stat = (ic, val, label) => h('div', { class: 'up-stat' }, mi(ic), h('b', { text: String(val) }), h('small', { text: label }));
   const kids = [
-    h('div', { class: 'phero up-hero', 'data-frame': u.frame || 'none', style: `--banner:${bannerCss(u.banner === 'img' ? 'accent' : u.banner, u.bannerImg)}` },
-      h('div', { class: 'phero-banner' }),
-      h('div', { class: 'phero-row' }, h('span', { class: 'hero-avatar' }, h('img', { src: u.avatar || 'mkw-logo.png', alt: '' }))),
+    h('div', { class: 'phero up-hero', 'data-frame': u.frame || 'none', 'data-shape': u.shape || 'circle', 'data-effect': u.effect || 'none', style: `--banner:${bannerCss(u.banner === 'img' ? 'accent' : u.banner, u.bannerImg)}` },
+      h('div', { class: 'phero-banner', onclick: () => u.bannerImg && openImage(u.bannerImg) }),
+      h('div', { class: 'phero-fx' }, h('i'), h('i'), h('i'), h('i'), h('i'), h('i')),
+      h('div', { class: 'phero-row' }, h('button', { type: 'button', class: 'hero-avatar', 'aria-label': 'Открыть фото', onclick: () => openImage(u.avatar || 'mkw-logo.png', u.nick) }, h('img', { src: u.avatar || 'mkw-logo.png', alt: '' }), isOnline(u.seen) ? h('span', { class: 'online-dot' }) : null)),
       h('div', { class: 'phero-info' },
-        h('div', { class: 'hero-nick', text: u.nick || 'Слушатель' }),
+        h('div', { class: 'hero-nick', 'data-style': u.nickStyle || 'plain', text: u.nick || 'Слушатель' }),
+        u.seen ? h('div', { class: `hero-seen${isOnline(u.seen) ? ' on' : ''}`, text: seenText(u.seen) }) : null,
         u.status ? h('div', { class: 'hero-status', text: u.status }) : null,
+        u.bio ? h('div', { class: 'hero-bio', text: u.bio }) : null,
+        u.now && isOnline(u.seen) ? h('div', { class: 'hero-now' }, mi('note'), h('span', { text: `Слушает: ${u.now}` })) : null,
         u.days ? h('div', { class: 'hero-since', text: `С MKW ${u.days} ${plural(u.days, 'день', 'дня', 'дней')}` }) : null,
         h('div', { class: 'pbadges' }, (u.badges || []).filter((id) => ACH[id]).map((id) => h('span', { class: 'pbadge' }, mi(ACH[id].i), h('b', { text: ACH[id].title })))))),
     h('div', { class: 'up-stats' },
