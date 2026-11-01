@@ -1,10 +1,10 @@
 // Движок плеера: очередь, YouTube (полные треки) и превью iTunes (30 сек) как запасной вариант.
-import { audiusStreamUrl } from './audius.js?v=0.17.0';
-import { Queue } from './queue.js?v=0.17.0';
-import { findYouTubeId, peekYouTubeId, loadYouTubeApi, youtubeEnabled } from './youtube.js?v=0.17.0';
-import { logPlay, addListened } from './store.js?v=0.17.0';
-import { artUrl } from './utils.js?v=0.17.0';
-import { proxify } from './bypass.js?v=0.17.0';
+import { audiusStreamUrl } from './audius.js?v=0.18.0';
+import { Queue } from './queue.js?v=0.18.0';
+import { findYouTubeId, peekYouTubeId, loadYouTubeApi, youtubeEnabled } from './youtube.js?v=0.18.0';
+import { logPlay, addListened } from './store.js?v=0.18.0';
+import { artUrl } from './utils.js?v=0.18.0';
+import { proxify } from './bypass.js?v=0.18.0';
 
 export const queue = new Queue();
 export const st = {
@@ -338,6 +338,14 @@ export function playTracks(tracks, start = 0) {
   queue.set(tracks, start);
   emit('queue');
   startCurrent();
+}
+
+// Волна: убрать запланированные треки после позиции n (когда настроение сменилось)
+export function trimQueue(n) {
+  if (queue.items.length <= n) return;
+  queue.items = queue.items.slice(0, Math.max(n, queue.index + 1));
+  if (queue._orig) queue._orig = null;
+  emit('queue');
 }
 
 export function addToQueue(track) {

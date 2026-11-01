@@ -1,24 +1,25 @@
 // Экран «Профиль»: карточка с баннером, витрина (любимые исполнители и треки), вкладки Обзор / Слушатели / Настройки / О MKW.
-import { $, $$, h, icon, openSheet, closeSheet, toast, sheetItem, trackRow } from './ui.js?v=0.17.0';
-import * as store from './store.js?v=0.17.0';
-import * as player from './player.js?v=0.17.0';
-import { ACCENTS, getTheme, getAccent, getCustomHue, setCustomColor, setTheme, setAccent, hslHex, getNeutral } from './theme.js?v=0.17.0';
-import { CHANGELOG, VERSION, STAGE, KNOWN_ISSUES } from './changelog.js?v=0.17.0';
-import { plural, pickTrack } from './utils.js?v=0.17.0';
-import { youtubeEnabled, youtubeQuotaOut } from './youtube.js?v=0.17.0';
-import { audiusEnabled } from './audius.js?v=0.17.0';
-import { SOURCE_MODES, getSourceMode, setSourceMode } from './sources.js?v=0.17.0';
-import { gesturesOn, setGestures, showGestureGuide } from './gestures.js?v=0.17.0';
-import { listenerStats } from './stats.js?v=0.17.0';
-import { liveBg, setLiveBg } from './viz.js?v=0.17.0';
-import { lowPower, setLowPower } from './perf.js?v=0.17.0';
-import { logOut, changePassword, changeNick, authErrorText } from './auth.js?v=0.17.0';
-import { connectionCountry } from './geo.js?v=0.17.0';
-import { publishCard, publishProfile, myCard, getProfile, topListeners, hiddenFromBoard, setHidden, myUid } from './leaders.js?v=0.17.0';
-import { mi } from './icons2.js?v=0.17.0';
-import { artistPic } from './artistpic.js?v=0.17.0';
-import { openArtist } from './artist.js?v=0.17.0';
-import { openUserPage, favArtistsRow, favTracksList } from './userpage.js?v=0.17.0';
+import { $, $$, h, icon, openSheet, closeSheet, toast, sheetItem, trackRow } from './ui.js?v=0.18.0';
+import * as store from './store.js?v=0.18.0';
+import * as player from './player.js?v=0.18.0';
+import { ACCENTS, getTheme, getAccent, getCustomHue, setCustomColor, setTheme, setAccent, hslHex, getNeutral } from './theme.js?v=0.18.0';
+import { CHANGELOG, VERSION, STAGE, KNOWN_ISSUES } from './changelog.js?v=0.18.0';
+import { plural, pickTrack } from './utils.js?v=0.18.0';
+import { youtubeEnabled, youtubeQuotaOut } from './youtube.js?v=0.18.0';
+import { audiusEnabled } from './audius.js?v=0.18.0';
+import { SOURCE_MODES, getSourceMode, setSourceMode } from './sources.js?v=0.18.0';
+import { gesturesOn, setGestures, showGestureGuide } from './gestures.js?v=0.18.0';
+import { listenerStats } from './stats.js?v=0.18.0';
+import { liveBg, setLiveBg } from './viz.js?v=0.18.0';
+import { lowPower, setLowPower } from './perf.js?v=0.18.0';
+import { logOut, changePassword, changeNick, authErrorText } from './auth.js?v=0.18.0';
+import { connectionCountry } from './geo.js?v=0.18.0';
+import { publishCard, publishProfile, myCard, getProfile, topListeners, hiddenFromBoard, setHidden, myUid } from './leaders.js?v=0.18.0';
+import { mi } from './icons2.js?v=0.18.0';
+import { artistPic } from './artistpic.js?v=0.18.0';
+import { openArtist } from './artist.js?v=0.18.0';
+import { openUserPage, favArtistsRow, favTracksList } from './userpage.js?v=0.18.0';
+import { voiceOn, setVoice, showVoiceGuide, voiceSupported } from './voice.js?v=0.18.0';
 
 // s: sec, likes, playlists, plays, days, artists, night, styled, showcase, rank
 export const ACHIEVEMENTS = [
@@ -113,7 +114,7 @@ function statCard(key, label, ic) {
 }
 
 function swatch(id, name, hue, onclick) {
-  return h('button', { class: 'swatch', type: 'button', 'data-id': id, style: `--h:${hue}`, 'aria-label': name, onclick },
+  return h('button', { class: `swatch${id === 'mono' ? ' mono' : ''}`, type: 'button', 'data-id': id, style: `--h:${hue}`, 'aria-label': name, onclick },
     h('span', { class: 'sw-prev' }, h('i'), h('i'), h('i'), h('b', {}, mi('check'))),
     h('span', { class: 'sw-name', text: name }));
 }
@@ -123,7 +124,7 @@ function syncControls() {
   $$('.src-chip').forEach((c) => c.classList.toggle('active', c.dataset.id === getSourceMode()));
   if (refs.srcnote) refs.srcnote.textContent = `iTunes: работает · YouTube: ${!youtubeEnabled() ? 'нет ключа' : youtubeQuotaOut() ? 'лимит на сегодня исчерпан' : 'работает'} · Audius: ${audiusEnabled() ? 'работает' : 'нет ключа'}`;
   const tog = (el, v) => { if (el) { el.classList.toggle('active', v); el.setAttribute('aria-checked', String(v)); } };
-  tog(refs.gest, gesturesOn()); tog(refs.lowp, lowPower()); tog(refs.livebg, liveBg()); tog(refs.board, !hiddenFromBoard());
+  tog(refs.gest, gesturesOn()); tog(refs.voice, voiceOn()); tog(refs.lowp, lowPower()); tog(refs.livebg, liveBg()); tog(refs.board, !hiddenFromBoard());
   $$('.swatch').forEach((c) => c.classList.toggle('active', c.dataset.id === getAccent()));
   if (refs.customSw) {
     const nt = getNeutral();
@@ -401,6 +402,7 @@ export function buildProfile(nick) {
   refs.livebg = sw(() => { setLiveBg(!liveBg()); syncControls(); });
   refs.lowp = sw(() => { setLowPower(!lowPower()); syncControls(); });
   refs.gest = sw(async () => { await setGestures(!gesturesOn()); syncControls(); });
+  refs.voice = sw(() => { setVoice(!voiceOn()); syncControls(); });
   refs.board = sw(async () => { await setHidden(!hiddenFromBoard()); syncControls(); if (!hiddenFromBoard()) pushCard(true); setTimeout(() => loadBoard(true), 1800); });
   refs.boardList = h('div', { class: 'lb-list' });
   refs.myRank = h('div', { class: 'lb-me' });
@@ -458,7 +460,9 @@ export function buildProfile(nick) {
       group('Устройство',
         row('Оптимизация для слабых устройств', 'Отключает размытие и тяжёлые анимации', refs.lowp, null, 'rocket'),
         row('Жесты (бета)', 'Управление рукой через камеру', refs.gest, null, 'hand-open'),
-        row('Какие жесты показывать', 'Список жестов и что они делают', chev(), showGestureGuide, 'hand-peace')),
+        row('Какие жесты показывать', 'Список жестов и что они делают', chev(), showGestureGuide, 'hand-peace'),
+        row('Голосовое управление (бета)', voiceSupported() ? '«MKW, следующая», «MKW, громче», «MKW, лайк»' : 'Этот браузер не поддерживает', refs.voice, null, 'mic'),
+        row('Какие команды говорить', 'Все голосовые команды', chev(), showVoiceGuide, 'note')),
       group('Аккаунт',
         row('Изменить профиль', 'Фото, баннер, статус, витрина', chev(), editProfile, 'edit'),
         row('Сменить ник', 'Имя в приложении и вход', chev(), openNickSheet, 'person'),

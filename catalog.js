@@ -1,5 +1,6 @@
+import { jsonp } from './jsonp.js?v=0.18.0';
 // Каталог треков: iTunes Search API (бесплатно, без ключа, есть превью 30 сек).
-import { ITUNES_COUNTRIES } from './config.js?v=0.17.0';
+import { ITUNES_COUNTRIES } from './config.js?v=0.18.0';
 
 export function mapItunes(r) {
   return {
@@ -67,9 +68,10 @@ export function mapDeezer(r) {
 }
 
 async function searchDeezer(q, signal) {
-  const res = await fetch(`https://api.deezer.com/search?q=${encodeURIComponent(q)}&limit=30`, { signal });
-  if (!res.ok) throw new Error(`Deezer ${res.status}`);
-  const data = await res.json();
+  // Deezer без CORS: запрос через JSONP
+  const data = await jsonp(`https://api.deezer.com/search?q=${encodeURIComponent(q)}&limit=30`, 9000);
+  if (signal && signal.aborted) throw new DOMException('aborted', 'AbortError');
+  if (!data || data.error) throw new Error('Deezer недоступен');
   const seen = new Set();
   const out = [];
   for (const r of data.data || []) {

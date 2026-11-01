@@ -93,7 +93,7 @@ async function netease(artist, title, dur) {
     if (lrc && /\[\d+:\d+/.test(lrc) && !/纯音乐|instrumental/i.test(lrc)) {
       // убираем служебные строки «作词/作曲» (автор слов/музыки)
       const clean = lrc.split('\n').filter((x) => !/^\[\d+:\d+(\.\d+)?\]\s*(作词|作曲|编曲|制作|词|曲)\s*[:：]/.test(x)).join('\n');
-      return { synced: clean, source: 'NetEase' };
+      return { synced: clean, source: 'NetEase', dur: song.duration / 1000 };
     }
   }
   return null;

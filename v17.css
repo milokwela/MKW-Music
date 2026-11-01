@@ -26,8 +26,8 @@
 .ah-bg { position: absolute; inset: -40px; z-index: -2; background: var(--ah-img, linear-gradient(135deg, var(--primary), var(--primary-container))) center / cover; filter: blur(38px) saturate(1.4); opacity: .75; transform: scale(1.1); transition: background .6s; }
 .artist-hero::after { content: ""; position: absolute; inset: 0; z-index: -1; background: linear-gradient(180deg, transparent 10%, color-mix(in srgb, var(--bg) 82%, transparent) 75%, var(--bg)); }
 .ah-photo { position: relative; width: 132px; height: 132px; border-radius: 50%; flex: none; overflow: hidden; background: color-mix(in srgb, var(--primary) 25%, var(--surface)); box-shadow: 0 18px 40px rgba(0,0,0,.4), 0 0 0 3px color-mix(in srgb, var(--primary) 50%, transparent); display: grid; place-items: center; animation: ahIn .6s cubic-bezier(.2,.9,.3,1.1) both; }
-.ah-photo img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity .5s; }
-.has-photo .ah-photo img { opacity: 1; }
+.ah-photo .ah-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity .5s; }
+.has-photo .ah-photo .ah-img { opacity: 1; }
 .ah-ph .mi { width: 56px; height: 56px; color: var(--primary); opacity: .7; }
 .ah-txt { min-width: 0; animation: rise .5s .1s both; }
 .ah-kind { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; opacity: .85; }
@@ -158,70 +158,29 @@ button.top-row { display: flex; align-items: center; gap: 12px; width: 100%; pad
 .up-stat small { opacity: .65; font-size: 12px; }
 .phero-banner { background: var(--banner) !important; }
 
-/* --- заставка 0.17: падающая звезда → вспышка → логотип --- */
-#splash { background: radial-gradient(130% 90% at 50% 40%, #1d0b1a 0%, #08050b 65%) !important; display: grid !important; place-items: center; align-content: center; gap: 0 !important; overflow: hidden; }
-#splash > :not([class^="sp3"]) { display: none !important; }
-.sp3-sky { position: absolute; inset: 0; opacity: 0; }
-.sp3-sky i { position: absolute; inset: 0; background-repeat: repeat; }
-.sp3-sky i:nth-child(1) { background-image: radial-gradient(1.4px 1.4px at 10% 20%, #fff, transparent), radial-gradient(1px 1px at 30% 70%, #fff, transparent), radial-gradient(1.2px 1.2px at 70% 30%, #fff, transparent), radial-gradient(1px 1px at 90% 80%, #fff, transparent), radial-gradient(1.6px 1.6px at 55% 10%, #fff, transparent); background-size: 340px 340px; }
-.sp3-sky i:nth-child(2) { background-image: radial-gradient(1px 1px at 20% 40%, #ffd9ec, transparent), radial-gradient(1.3px 1.3px at 80% 60%, #d9e4ff, transparent), radial-gradient(1px 1px at 45% 85%, #fff, transparent); background-size: 220px 220px; animation: sp3tw 2.4s ease-in-out infinite alternate; }
-.sp3-sky i:nth-child(3) { background: radial-gradient(45% 40% at 50% 45%, color-mix(in srgb, var(--primary, #ff4f9a) 28%, transparent), transparent 70%); opacity: 0; }
-#splash.go .sp3-sky { animation: sp3fade .8s ease forwards; }
-#splash.go .sp3-sky i:nth-child(3) { animation: sp3fade .9s 1s ease forwards; }
-
-/* метеор: летит по диагонали к центру, хвост светится цветом акцента */
-.sp3-meteor { position: absolute; left: 50%; top: calc(50% - 70px); width: 0; height: 0; transform: rotate(130deg); }
-.sp3-meteor b { position: absolute; right: 0; top: -2px; width: 300px; height: 4px; border-radius: 4px; opacity: 0;
-  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--primary, #ff4f9a) 50%, transparent) 55%, #fff);
-  filter: drop-shadow(0 0 6px var(--primary, #ff4f9a)) drop-shadow(0 0 14px var(--primary, #ff4f9a)); transform: translateX(-70vmax); }
-.sp3-meteor b::after { content: ""; position: absolute; right: -6px; top: -6px; width: 16px; height: 16px; border-radius: 50%; background: #fff; box-shadow: 0 0 18px 6px #fff, 0 0 40px 14px var(--primary, #ff4f9a); }
-#splash.go .sp3-meteor b { animation: sp3fly .9s .15s cubic-bezier(.55,0,.85,.45) forwards; }
-
-.sp3-stage { position: relative; width: 170px; height: 170px; display: grid; place-items: center; margin-top: -40px; }
-.sp3-flash { position: absolute; width: 40px; height: 40px; border-radius: 50%; background: #fff; box-shadow: 0 0 80px 40px #fff, 0 0 180px 90px var(--primary, #ff4f9a); opacity: 0; transform: scale(.2); }
-#splash.go .sp3-flash { animation: sp3flash .7s 1.02s ease-out forwards; }
-.sp3-wave { position: absolute; inset: 0; border-radius: 50%; border: 2px solid color-mix(in srgb, var(--primary, #ff4f9a) 70%, #fff); opacity: 0; }
-#splash.go .sp3-wave { animation: sp3wave 1.3s 1.05s cubic-bezier(.2,.7,.3,1) forwards; }
-#splash.go .sp3-wave.w2 { animation-delay: 1.25s; }
-.sp3-burst { position: absolute; left: 50%; top: 50%; }
-.sp3-burst i { position: absolute; width: 4px; height: 14px; margin: -7px -2px; border-radius: 2px; background: linear-gradient(#fff, var(--primary, #ff4f9a)); opacity: 0; transform: rotate(var(--a)) translateY(0); }
-.sp3-burst i:nth-child(1) { --a: 0deg; } .sp3-burst i:nth-child(2) { --a: 30deg; } .sp3-burst i:nth-child(3) { --a: 60deg; } .sp3-burst i:nth-child(4) { --a: 90deg; }
-.sp3-burst i:nth-child(5) { --a: 120deg; } .sp3-burst i:nth-child(6) { --a: 150deg; } .sp3-burst i:nth-child(7) { --a: 180deg; } .sp3-burst i:nth-child(8) { --a: 210deg; }
-.sp3-burst i:nth-child(9) { --a: 240deg; } .sp3-burst i:nth-child(10) { --a: 270deg; } .sp3-burst i:nth-child(11) { --a: 300deg; } .sp3-burst i:nth-child(12) { --a: 330deg; }
-#splash.go .sp3-burst i { animation: sp3burst .9s 1.05s cubic-bezier(.1,.8,.3,1) forwards; }
-.sp3-orbit { position: absolute; left: 50%; top: 50%; width: 0; height: 0; opacity: 0; }
-.sp3-orbit i { position: absolute; width: 6px; height: 6px; margin: -3px; border-radius: 50%; background: #fff; box-shadow: 0 0 10px 3px var(--primary, #ff4f9a); transform: rotate(var(--a, 0deg)) translateY(-104px); }
-.sp3-orbit i:nth-child(2) { --a: 120deg; width: 4px; height: 4px; margin: -2px; } .sp3-orbit i:nth-child(3) { --a: 240deg; width: 5px; height: 5px; }
-#splash.go .sp3-orbit { animation: sp3fade .6s 1.7s forwards, sp3spin 3.2s 1.7s linear infinite; }
-.sp3-logo { position: relative; width: 150px; height: 150px; opacity: 0; filter: blur(14px) brightness(2.2); transform: scale(.35) rotate(-14deg); clip-path: circle(0% at 50% 50%); }
-.sp3-logo img { width: 100%; height: 100%; display: block; filter: drop-shadow(0 16px 40px color-mix(in srgb, var(--primary, #ff4f9a) 55%, transparent)); }
-.sp3-shine { position: absolute; inset: 6%; border-radius: 26%; background: linear-gradient(115deg, transparent 38%, rgba(255,255,255,.75) 50%, transparent 62%); background-size: 250% 100%; background-position: 130% 0; mix-blend-mode: screen; }
-#splash.go .sp3-logo { animation: sp3logo 1.1s 1.05s cubic-bezier(.2,1,.3,1) forwards, sp3float 3s 2.2s ease-in-out infinite alternate; }
-#splash.go .sp3-shine { animation: sp3shine 1s 1.9s ease forwards; }
-.sp3-name { display: flex; gap: 8px; margin-top: 26px; font: 900 46px/1 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; color: #fff; letter-spacing: 1px; }
-.sp3-name span { opacity: 0; transform: translateY(26px) scale(.8); filter: blur(10px); }
-#splash.go .sp3-name span { animation: sp3let .75s cubic-bezier(.2,1,.3,1) forwards; }
-#splash.go .sp3-name span:nth-child(1) { animation-delay: 1.45s; } #splash.go .sp3-name span:nth-child(2) { animation-delay: 1.55s; } #splash.go .sp3-name span:nth-child(3) { animation-delay: 1.65s; }
-.sp3-music { display: flex; gap: 10px; margin-top: 10px; font: 700 13px system-ui, sans-serif; color: color-mix(in srgb, var(--primary, #ff4f9a) 65%, #fff); }
-.sp3-music span { opacity: 0; transform: translateX(-8px); }
-#splash.go .sp3-music span { animation: sp3let .5s ease forwards; }
-#splash.go .sp3-music span:nth-child(1) { animation-delay: 1.85s; } #splash.go .sp3-music span:nth-child(2) { animation-delay: 1.9s; } #splash.go .sp3-music span:nth-child(3) { animation-delay: 1.95s; } #splash.go .sp3-music span:nth-child(4) { animation-delay: 2s; } #splash.go .sp3-music span:nth-child(5) { animation-delay: 2.05s; }
-.sp3-by { position: absolute; bottom: calc(8vh + env(safe-area-inset-bottom)); font: 500 13px system-ui, sans-serif; color: rgba(255,255,255,.55); opacity: 0; }
-.sp3-by b { color: #fff; }
-#splash.go .sp3-by { animation: sp3fade .8s 2.2s forwards; }
-#splash.out { opacity: 0 !important; transform: scale(1.1) !important; filter: blur(6px); transition: opacity .6s ease, transform .7s cubic-bezier(.4,0,.2,1), filter .6s !important; }
-@keyframes sp3fade { to { opacity: 1; } }
-@keyframes sp3tw { from { opacity: .35; } to { opacity: 1; } }
-@keyframes sp3fly { 0% { opacity: 0; transform: translateX(-70vmax); } 12% { opacity: 1; } 92% { opacity: 1; } 100% { opacity: 0; transform: translateX(0); } }
-@keyframes sp3flash { 0% { opacity: 0; transform: scale(.2); } 25% { opacity: 1; transform: scale(1); } 100% { opacity: 0; transform: scale(2.6); } }
-@keyframes sp3wave { 0% { opacity: .9; transform: scale(.3); } 100% { opacity: 0; transform: scale(2.4); } }
-@keyframes sp3burst { 0% { opacity: 1; transform: rotate(var(--a)) translateY(0) scaleY(.4); } 60% { opacity: 1; } 100% { opacity: 0; transform: rotate(var(--a)) translateY(-120px) scaleY(1); } }
-@keyframes sp3logo { 0% { opacity: 0; filter: blur(14px) brightness(2.2); transform: scale(.35) rotate(-14deg); clip-path: circle(0% at 50% 50%); }
-  45% { opacity: 1; clip-path: circle(75% at 50% 50%); } 70% { filter: blur(0) brightness(1.15); transform: scale(1.06) rotate(2deg); } 100% { opacity: 1; filter: none; transform: none; clip-path: circle(75% at 50% 50%); } }
-@keyframes sp3float { from { transform: translateY(0); } to { transform: translateY(-6px); } }
-@keyframes sp3shine { to { background-position: -120% 0; } }
-@keyframes sp3spin { to { transform: rotate(360deg); } }
-@keyframes sp3let { to { opacity: 1; transform: none; filter: none; } }
+/* --- заставка 0.18: чёрный фон, логотип плавно проявляется --- */
+#splash { background: #000 !important; display: grid !important; place-items: center; align-content: center; gap: 0 !important; overflow: hidden; }
+#splash > :not([class^="sp4"]) { display: none !important; }
+.sp4-glow { position: absolute; left: 50%; top: 50%; width: 360px; height: 360px; margin: -230px 0 0 -180px; border-radius: 50%; background: radial-gradient(circle, rgba(255,255,255,.14), rgba(255,255,255,.04) 45%, transparent 70%); opacity: 0; transform: scale(.6); }
+.sp4-logo { position: relative; width: 148px; height: 148px; margin-top: -40px; opacity: 0; transform: scale(.82); filter: blur(18px); }
+.sp4-logo img { width: 100%; height: 100%; display: block; filter: drop-shadow(0 24px 48px rgba(255,255,255,.12)); }
+.sp4-shine { position: absolute; inset: 4%; border-radius: 24%; overflow: hidden; background: linear-gradient(115deg, transparent 35%, rgba(255,255,255,.55) 50%, transparent 65%) no-repeat; background-size: 260% 100%; background-position: 140% 0; mix-blend-mode: screen; }
+.sp4-title { margin-top: 30px; font: 800 30px/1 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; color: #fff; letter-spacing: 12px; opacity: 0; transform: translateY(10px); white-space: nowrap; }
+.sp4-title span:last-child { font-weight: 300; color: rgba(255,255,255,.7); }
+.sp4-by { position: absolute; bottom: calc(7vh + env(safe-area-inset-bottom)); font: 400 12px system-ui, sans-serif; letter-spacing: 3px; text-transform: lowercase; color: rgba(255,255,255,.4); opacity: 0; }
+.sp4-by b { color: rgba(255,255,255,.9); font-weight: 700; letter-spacing: 1px; text-transform: none; }
+#splash.go .sp4-glow { animation: sp4glow 2.6s .1s cubic-bezier(.2,.8,.2,1) forwards; }
+#splash.go .sp4-logo { animation: sp4logo 1.3s .15s cubic-bezier(.16,1,.3,1) forwards, sp4breathe 2.4s 1.5s ease-in-out infinite alternate; }
+#splash.go .sp4-shine { animation: sp4shine 1.1s 1.1s cubic-bezier(.4,0,.2,1) forwards; }
+#splash.go .sp4-title { animation: sp4title 1.1s .7s cubic-bezier(.16,1,.3,1) forwards; }
+#splash.go .sp4-by { animation: sp4fade 1s 1.3s ease forwards; }
+#splash.out { opacity: 0 !important; transform: scale(1.04) !important; transition: opacity .55s ease, transform .6s cubic-bezier(.4,0,.2,1) !important; }
+@keyframes sp4glow { 0% { opacity: 0; transform: scale(.6); } 60% { opacity: 1; } 100% { opacity: .8; transform: scale(1); } }
+@keyframes sp4logo { to { opacity: 1; transform: none; filter: none; } }
+@keyframes sp4breathe { from { transform: scale(1); } to { transform: scale(1.025); } }
+@keyframes sp4shine { to { background-position: -60% 0; } }
+@keyframes sp4title { to { opacity: 1; transform: none; letter-spacing: 5px; } }
+@keyframes sp4fade { to { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { #splash * { animation-duration: .01s !important; animation-delay: 0s !important; } }
 
 /* --- экран входа --- */
@@ -291,3 +250,38 @@ button.top-row { display: flex; align-items: center; gap: 12px; width: 100%; pad
 #artist-page.open, #user-page.open { transition-delay: 0s !important; }
 #full-player { transition-timing-function: var(--m3-emph) !important; }
 .track-row, .ach, .stat-card, .lb-row, .up-stat { transition: transform .25s var(--m3-std), background .25s, box-shadow .25s; }
+
+/* 0.18: ничего не должно вылезать по ширине — иначе телефон расширяет экран и нижняя панель уезжает */
+html, body { overflow-x: clip; max-width: 100%; }
+@supports not (overflow: clip) { html, body { overflow-x: hidden; } }
+main, #app, .view { overflow-x: clip; }
+
+/* --- 0.18: текст песни как в Apple Music: текущая строка яркая, будущие размыты --- */
+#fp-lyrics::after { background: linear-gradient(180deg, rgba(6,4,8,.66), rgba(6,4,8,.5) 30%, rgba(6,4,8,.5) 70%, rgba(6,4,8,.7)) !important; }
+#fp-lyrics.ly-synced .ly-line { transition: filter .6s var(--m3-emph, ease), opacity .6s ease, transform .6s var(--m3-emph, ease) !important; transform-origin: left center; }
+#fp-lyrics.ly-synced .ly-line .w { color: #fff !important; opacity: .5; text-shadow: none !important; transition: opacity .25s, color .25s, text-shadow .3s; }
+#fp-lyrics.ly-synced .ly-line.now { opacity: 1 !important; filter: none !important; transform: scale(1.04); }
+#fp-lyrics.ly-synced .ly-line.now .w { opacity: .62; }
+#fp-lyrics.ly-synced .ly-line.now .w.on { opacity: 1; color: color-mix(in srgb, var(--primary) 40%, #fff) !important;
+  text-shadow: 0 0 8px #fff8, 0 0 18px var(--primary), 0 0 36px color-mix(in srgb, var(--primary) 70%, transparent) !important; }
+#fp-lyrics.ly-synced .ly-line.past .w { opacity: .8; color: #fff !important; }
+#fp-lyrics.ly-synced .ly-line.next .w { opacity: .75; }
+.ly-off { display: inline-flex; align-items: center; gap: 2px; margin-left: 6px; padding: 2px; border-radius: 999px; background: rgba(255,255,255,.12); }
+.ly-off button { width: 30px; height: 30px; padding: 0 !important; border-radius: 50% !important; font-size: 18px !important; line-height: 1; background: none !important; }
+.ly-off b { font-size: 12px; font-weight: 600; min-width: 74px; text-align: center; color: #fff; opacity: .85; }
+#fp-lyrics.ly-static .ly-off { display: none; }
+.ly-tools { flex-wrap: wrap; }
+.lowpower #fp-lyrics.ly-synced .ly-line .w.on { text-shadow: none !important; }
+.swatch-row { grid-template-columns: repeat(7, minmax(0, 1fr)) !important; gap: 6px !important; }
+.swatch.mono .sw-prev { background: #000; box-shadow: inset 0 0 0 1px rgba(255,255,255,.22); }
+.swatch.mono .sw-prev i:nth-child(1) { background: #0b0b0b; } .swatch.mono .sw-prev i:nth-child(2) { background: #2a2a2a; } .swatch.mono .sw-prev i:nth-child(3) { background: #f2f2f2; }
+.swatch.mono.active .sw-prev { box-shadow: 0 0 0 3px var(--bg), 0 0 0 5px #9a9a9a; }
+/* «Чёрный»: никаких цветных подсветок */
+:root[data-neutral="1"] .blobs i, :root[data-neutral="1"] #fp-glow i { filter: grayscale(1) blur(60px); }
+@keyframes sp3float { from { transform: translateY(0); } to { transform: translateY(-6px); } }
+@keyframes sp3spin { to { transform: rotate(360deg); } }
+/* голосовое управление */
+.voice-badge { position: fixed; left: 50%; top: calc(14px + env(safe-area-inset-top)); z-index: 300; display: flex; align-items: center; gap: 8px; padding: 10px 16px; border-radius: 999px; background: color-mix(in srgb, var(--surface) 85%, transparent); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); box-shadow: 0 10px 30px rgba(0,0,0,.3); font-weight: 600; transform: translate(-50%, -140%); transition: transform .4s var(--m3-emph, ease); max-width: calc(100vw - 32px); }
+.voice-badge.show { transform: translate(-50%, 0); }
+.voice-badge .mi { color: var(--primary); width: 20px; height: 20px; animation: authGlow .8s ease-in-out infinite alternate; }
+.voice-badge span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

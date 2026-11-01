@@ -1,7 +1,7 @@
 // Фото исполнителя: Deezer напрямую, потом через ваш Worker, потом Википедия. Кэш в браузере на 2 недели.
-import { RECOGNIZE_URL } from './shazam-config.js?v=0.17.0';
+import { RECOGNIZE_URL } from './shazam-config.js?v=0.18.0';
 
-const KEY = 'mkw.artistpic.v1';
+const KEY = 'mkw.artistpic.v2';
 const TTL = 14 * 86400000;
 const mem = new Map();
 let store = null;
@@ -14,8 +14,10 @@ async function getJson(url, ms = 7000) {
   try { const r = await fetch(url, { signal: c.signal }); return r.ok ? await r.json() : null; } catch { return null; } finally { clearTimeout(t); }
 }
 
+import { jsonp } from './jsonp.js?v=0.18.0';
+
 async function fetchInfo(name) {
-  const d = await getJson(`https://api.deezer.com/search/artist?limit=5&q=${encodeURIComponent(name)}`);
+  const d = await jsonp(`https://api.deezer.com/search/artist?limit=5&q=${encodeURIComponent(name)}`);
   const list = (d && d.data) || [];
   const a = list.find((x) => n(x.name) === n(name)) || list.find((x) => n(x.name).includes(n(name)) || n(name).includes(n(x.name)));
   if (a && a.picture_xl && !/\/artist\/\//.test(a.picture_xl)) return { picture: a.picture_xl, fans: a.nb_fan || 0, albums: a.nb_album || 0 };
