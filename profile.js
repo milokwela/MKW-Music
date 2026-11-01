@@ -1,18 +1,18 @@
 // Экран «Профиль»: статистика, достижения, топ исполнителей, тема, версии.
-import { $, $$, h, icon, openSheet, closeSheet, toast, sheetItem } from './ui.js?v=0.13.1';
-import * as store from './store.js?v=0.13.1';
-import { ACCENTS, getTheme, getAccent, getCustomHue, setCustomColor, setTheme, setAccent } from './theme.js?v=0.13.1';
-import { CHANGELOG, VERSION, STAGE, KNOWN_ISSUES } from './changelog.js?v=0.13.1';
-import { plural } from './utils.js?v=0.13.1';
-import { youtubeEnabled, youtubeQuotaOut } from './youtube.js?v=0.13.1';
-import { audiusEnabled } from './audius.js?v=0.13.1';
-import { SOURCE_MODES, getSourceMode, setSourceMode } from './sources.js?v=0.13.1';
-import { gesturesOn, setGestures, showGestureGuide } from './gestures.js?v=0.13.1';
-import { listenerStats } from './stats.js?v=0.13.1';
-import { liveBg, setLiveBg } from './viz.js?v=0.13.1';
-import { lowPower, setLowPower } from './perf.js?v=0.13.1';
-import { bypassOn, setBypass, bypassAvailable } from './bypass.js?v=0.13.1';
-import { logOut, changePassword, authErrorText } from './auth.js?v=0.13.1';
+import { $, $$, h, icon, openSheet, closeSheet, toast, sheetItem } from './ui.js?v=0.13.2';
+import * as store from './store.js?v=0.13.2';
+import { ACCENTS, getTheme, getAccent, getCustomHue, setCustomColor, setTheme, setAccent } from './theme.js?v=0.13.2';
+import { CHANGELOG, VERSION, STAGE, KNOWN_ISSUES } from './changelog.js?v=0.13.2';
+import { plural } from './utils.js?v=0.13.2';
+import { youtubeEnabled, youtubeQuotaOut } from './youtube.js?v=0.13.2';
+import { audiusEnabled } from './audius.js?v=0.13.2';
+import { SOURCE_MODES, getSourceMode, setSourceMode } from './sources.js?v=0.13.2';
+import { gesturesOn, setGestures, showGestureGuide } from './gestures.js?v=0.13.2';
+import { listenerStats } from './stats.js?v=0.13.2';
+import { liveBg, setLiveBg } from './viz.js?v=0.13.2';
+import { lowPower, setLowPower } from './perf.js?v=0.13.2';
+import { bypassOn, setBypass, bypassAvailable, checkBypass } from './bypass.js?v=0.13.2';
+import { logOut, changePassword, authErrorText } from './auth.js?v=0.13.2';
 
 const ACHIEVEMENTS = [
   { id: 'like1', icon: 'heart', title: 'Первый лайк', hint: 'Лайкните любой трек', ok: (s) => s.likes >= 1 },
@@ -122,7 +122,14 @@ export function buildProfile(nick) {
   refs.yt = h('p', { class: 'profile-note' });
   const sw = (on) => h('button', { class: 'switch', type: 'button', role: 'switch', onclick: on }, h('i'));
   refs.livebg = sw(() => { setLiveBg(!liveBg()); syncControls(); });
-  refs.bypass = sw(() => { if (!bypassAvailable()) { toast('Сначала укажите адрес Worker в shazam-config.js'); return; } setBypass(!bypassOn()); syncControls(); toast(bypassOn() ? 'Обход включён: звук идёт через сервер MKW' : 'Обход выключен'); });
+  refs.bypass = sw(async () => {
+    if (bypassOn()) { setBypass(false); syncControls(); toast('Обход выключен'); return; }
+    if (!bypassAvailable()) { toast('Сначала укажите адрес Worker в shazam-config.js'); return; }
+    toast('Проверяю сервер…');
+    const bad = await checkBypass();
+    if (bad) { toast(bad); return; }
+    setBypass(true); syncControls(); toast('Обход включён: звук и обложки идут через сервер MKW');
+  });
   refs.lowp = sw(() => { setLowPower(!lowPower()); syncControls(); });
   refs.gest = sw(async () => { await setGestures(!gesturesOn()); syncControls(); });
   refs.srcnote = h('small', { class: 'src-note' });

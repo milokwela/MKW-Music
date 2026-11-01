@@ -1,5 +1,5 @@
 // «Жидкое стекло» в нижнем меню: подсветка идёт за пальцем, при отпускании выбирает ближайшую вкладку.
-import { $, $$ } from './ui.js?v=0.13.1';
+import { $, $$ } from './ui.js?v=0.13.2';
 
 export function initLiquidNav() {
   const nav = $('#bottom-nav .nav-inner');
@@ -17,9 +17,26 @@ export function initLiquidNav() {
   };
   const activeIndex = () => Math.max(0, btns().findIndex((b) => b.classList.contains('active')));
   const setX = (x) => lens.style.setProperty('--x', `${x}px`);
+  let lastX = null;
+  const stretch = (dist) => {
+    // жидкая «капля»: линза вытягивается в движении и возвращается пружиной
+    if (!lens.animate || document.documentElement.classList.contains('lowpower')) return;
+    const k = Math.min(1.55, 1 + Math.abs(dist) / 260);
+    lens.animate([
+      { scale: '1 1' },
+      { scale: `${k} ${(1 / k) + .04}`, offset: .38 },
+      { scale: `${1 - (k - 1) * .12} ${1 + (k - 1) * .2}`, offset: .72 },
+      { scale: '1 1' },
+    ], { duration: 560, easing: 'cubic-bezier(.34,1.56,.64,1)' });
+    const b = btns()[activeIndex()];
+    const ic = b && b.querySelector('svg');
+    if (ic && ic.animate) ic.animate([{ transform: 'translateY(0) scale(1)' }, { transform: 'translateY(-5px) scale(1.25)', offset: .4 }, { transform: 'translateY(0) scale(1.12)' }], { duration: 520, easing: 'cubic-bezier(.34,1.56,.64,1)' });
+  };
   const rest = () => {
     const g = geom(activeIndex());
     lens.style.width = `${g.w}px`;
+    if (lastX !== null && Math.abs(g.x - lastX) > 4 && !drag) stretch(g.x - lastX);
+    lastX = g.x;
     setX(g.x);
     btns().forEach((b) => { if (b.classList.contains('hot')) b.classList.remove('hot'); });
   };
