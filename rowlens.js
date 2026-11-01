@@ -1,5 +1,5 @@
 // Стеклянная подсветка в списках: зажмите строку и ведите пальцем (мышью — просто наведите), отпустите, чтобы включить.
-import { $ } from './ui.js?v=0.17.0';
+import { $ } from './ui.js?v=0.18.0';
 
 export function initRowLens() {
   let timer = null, active = false, list = null, cur = null, sx = 0, sy = 0, lens = null, swallow = false;

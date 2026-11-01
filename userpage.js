@@ -1,13 +1,13 @@
 // Страница другого слушателя: баннер, фото, статус, значки, статистика, любимые исполнители и треки.
-import { $, h, trackRow, animateIn } from './ui.js?v=0.17.0';
-import * as player from './player.js?v=0.17.0';
-import { openTrackMenu } from './menu.js?v=0.17.0';
-import { getProfile } from './leaders.js?v=0.17.0';
-import { ACH, bannerCss, formatListened } from './profile.js?v=0.17.0';
-import { artistPic } from './artistpic.js?v=0.17.0';
-import { openArtist } from './artist.js?v=0.17.0';
-import { mi } from './icons2.js?v=0.17.0';
-import { plural } from './utils.js?v=0.17.0';
+import { $, h, trackRow, animateIn } from './ui.js?v=0.18.0';
+import * as player from './player.js?v=0.18.0';
+import { openTrackMenu } from './menu.js?v=0.18.0';
+import { getProfile } from './leaders.js?v=0.18.0';
+import { ACH, bannerCss, formatListened } from './profile.js?v=0.18.0';
+import { artistPic } from './artistpic.js?v=0.18.0';
+import { openArtist } from './artist.js?v=0.18.0';
+import { mi } from './icons2.js?v=0.18.0';
+import { plural } from './utils.js?v=0.18.0';
 
 let seq = 0;
 

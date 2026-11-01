@@ -1,8 +1,8 @@
 // Текст песни: синхронный (LRCLIB), слова заливаются цветом акцента, соседние строки размыты. Работает и в «Волне».
 // Если синхронного текста нет, берётся обычный (lyrics.ovh): строки идут равномерно по длине трека (приблизительно).
-import { $, h, toast } from './ui.js?v=0.17.0';
-import * as player from './player.js?v=0.17.0';
-import { RECOGNIZE_URL } from './shazam-config.js?v=0.17.0';
+import { $, h, toast } from './ui.js?v=0.18.0';
+import * as player from './player.js?v=0.18.0';
+import { RECOGNIZE_URL } from './shazam-config.js?v=0.18.0';
 
 const API = 'https://lrclib.net/api';
 const MKEY = 'mkw.lyrics.mode';
@@ -18,6 +18,7 @@ const firstArtist = (s) => String(s || '').split(/,|&|\+| feat\.? | ft\.? | x | 
 const TR = { а: 'a', б: 'b', в: 'v', г: 'g', д: 'd', е: 'e', ё: 'e', ж: 'zh', з: 'z', и: 'i', й: 'y', к: 'k', л: 'l', м: 'm', н: 'n', о: 'o', п: 'p', р: 'r', с: 's', т: 't', у: 'u', ф: 'f', х: 'kh', ц: 'ts', ч: 'ch', ш: 'sh', щ: 'sch', ъ: '', ы: 'y', ь: '', э: 'e', ю: 'yu', я: 'ya' };
 const translit = (s) => String(s || '').toLowerCase().replace(/[а-яё]/g, (c) => TR[c] ?? c);
 const norm = (s) => translit(s).replace(/[^a-z0-9]+/g, '');
+const VARIANT = /slow|sped|speed|nightcore|ускор|замедл|daycore/i;
 const isInstrumental = (t) => /instrumental|инструментал|минус|karaoke|караоке/i.test(`${t.title} ${t.album || ''}`);
 
 // насколько найденный текст похож на нашу песню
@@ -83,11 +84,11 @@ async function load(track, dur) {
   if (cache.has(key)) return cache.get(key);
   let val = null;
   const res = await lrclib(track, dur);
-  if (res && res.syncedLyrics) val = { synced: parseLrc(res.syncedLyrics), plain: res.plainLyrics || '', src: 'LRCLIB' };
+  if (res && res.syncedLyrics) val = { synced: parseLrc(res.syncedLyrics), plain: res.plainLyrics || '', src: 'LRCLIB', dur: Number(res.duration) || 0 };
   let plainFallback = res && res.plainLyrics ? { plain: res.plainLyrics, approx: true, src: 'LRCLIB' } : null;
   if (!val) {
     const w = await viaWorker(track, dur);
-    if (w && w.synced) val = { synced: parseLrc(w.synced), plain: w.plain || '', src: w.source || 'MKW' };
+    if (w && w.synced) val = { synced: parseLrc(w.synced), plain: w.plain || '', src: w.source || 'MKW', dur: Number(w.dur) || 0 };
     else if (w && w.plain && !plainFallback) plainFallback = { plain: w.plain, approx: true, src: w.source || 'MKW' };
   }
   if (!val && !plainFallback) {
@@ -123,26 +124,39 @@ function paintTools() {
 
 function renderBody() {
   const sc = box(); active = -2;
-  if (mode === 'static' || !lines.length) {
+  const preview = player.st.mode === 'preview';
+  if (mode === 'static' || !lines.length || preview) {
     const txt = rawPlain || lines.map((l) => l.text).join('\n');
     $('#fp-lyrics').classList.add('ly-static');
-    sc.replaceChildren(...txt.split('\n').map((t) => h('div', { class: 'ly-line static', text: t || ' ' })));
+    sc.replaceChildren(
+      ...(preview && lines.length ? [h('div', { class: 'ly-msg small', text: 'Сейчас играет 30-секундный фрагмент, поэтому текст показан целиком' })] : []),
+      ...txt.split('\n').map((t) => h('div', { class: 'ly-line static', text: t || ' ' })));
     sc.scrollTop = 0;
   } else {
     $('#fp-lyrics').classList.remove('ly-static');
-    sc.replaceChildren(...lines.map((l, i) => h('div', { class: 'ly-line', 'data-i': String(i), onclick: () => player.seek(Math.max(0, l.t)) },
+    sc.replaceChildren(...lines.map((l, i) => h('div', { class: 'ly-line', 'data-i': String(i), onclick: () => player.seek(Math.max(0, l.t + curOffset())) },
       wordsOf(l.text).map((w, k, a) => h('span', { class: 'w', text: k < a.length - 1 ? `${w} ` : w })))));
     if (approx) sc.appendChild(h('div', { class: 'ly-msg small', text: 'Тайминги приблизительные' }));
     if (source) sc.appendChild(h('div', { class: 'ly-src', text: `Текст: ${source}` }));
   }
   paintTools();
+  paintOffset();
+  $('#fp-lyrics').classList.toggle('ly-synced', mode === 'sync' && lines.length > 0 && !preview);
 }
 
 function render(data) {
   if (!data) { message('Текст для этой песни пока не нашёлся. Мы ищем в LRCLIB, NetEase, Genius и lyrics.ovh'); return; }
   if (data.instrumental) { message('Похоже, это инструментал: слов нет ♪'); return; }
   approx = false; lines = []; rawPlain = ''; source = data.src || '';
-  if (data.synced && data.synced.length) { lines = data.synced; rawPlain = data.plain || ''; }
+  if (data.synced && data.synced.length) {
+    lines = data.synced; rawPlain = data.plain || '';
+    // «slowed / sped up»: текст от оригинала растягиваем или сжимаем под длину этой версии
+    const cur = player.queue.current, D = player.st.duration;
+    if (cur && data.dur > 0 && D > 0 && VARIANT.test(cur.title) && Math.abs(D / data.dur - 1) > 0.03) {
+      const k = D / data.dur;
+      lines = lines.map((l) => ({ ...l, t: l.t * k }));
+    }
+  }
   else if (data.approx && player.st.duration > 20) {
     // строки без таймингов: раскладываем по длине трека пропорционально длине строки
     const rows = String(data.plain).split('\n').map((s) => s.trim()).filter((s) => s && !/^\[.*\]$/.test(s));
@@ -166,17 +180,39 @@ async function refresh() {
   render(data);
 }
 
-function now() { return stamp.t + (player.st.playing ? (performance.now() - stamp.at) / 1000 : 0); }
+// текущее время песни: между обновлениями плеера (раз в 0,5 с) досчитываем сами, но не дальше 0,6 с вперёд
+function now() { return stamp.t + (player.st.playing ? Math.min(0.6, (performance.now() - stamp.at) / 1000) : 0); }
+
+// ручная подстройка: «текст спешит / отстаёт», запоминается для каждого трека
+const OKEY = 'mkw.lyrics.offset';
+let offsets = (() => { try { return JSON.parse(localStorage.getItem(OKEY) || '{}'); } catch { return {}; } })();
+const curOffset = () => { const c = player.queue.current; return c ? Number(offsets[c.id]) || 0 : 0; };
+function shiftOffset(d) {
+  const c = player.queue.current; if (!c) return;
+  const v = Math.round((curOffset() + d) * 10) / 10;
+  if (v) offsets[c.id] = v; else delete offsets[c.id];
+  const keys = Object.keys(offsets); if (keys.length > 300) delete offsets[keys[0]];
+  try { localStorage.setItem(OKEY, JSON.stringify(offsets)); } catch { /* ignore */ }
+  paintOffset(); active = -2;
+}
+function paintOffset() {
+  const el = $('#fp-lyrics .ly-off b'); if (!el) return;
+  const v = curOffset();
+  el.textContent = v === 0 ? 'синхронно' : v > 0 ? `+${v.toFixed(1)} с` : `${v.toFixed(1)} с`;
+}
 
 function styleLines(nodes, i) {
+  const base = Math.max(i, -1);
   for (let k = 0; k < nodes.length; k++) {
-    if (!nodes[k].classList.contains('ly-line')) continue;
-    nodes[k].classList.toggle('past', k < i);
-    nodes[k].classList.toggle('now', k === i);
-    const d = Math.abs(k - Math.max(i, -1));
-    if (k === i) { nodes[k].style.filter = ''; nodes[k].style.opacity = ''; }
-    else if (k < i) { nodes[k].style.filter = `blur(${Math.min(2.2, .6 + d * .4).toFixed(2)}px)`; nodes[k].style.opacity = String(Math.max(.32, .62 - d * .08).toFixed(2)); }
-    else { nodes[k].style.filter = d <= 1 ? 'none' : `blur(${Math.min(3, (d - 1) * .7).toFixed(2)}px)`; nodes[k].style.opacity = String(Math.max(.34, (i < 0 ? .9 : .82) - d * .1).toFixed(2)); }
+    const n = nodes[k];
+    if (!n.classList.contains('ly-line')) continue;
+    n.classList.toggle('past', k < i);
+    n.classList.toggle('now', k === i);
+    n.classList.toggle('next', k === i + 1);
+    const d = Math.abs(k - base);
+    if (k === i) { n.style.filter = ''; n.style.opacity = ''; }
+    else if (k < i) { n.style.filter = `blur(${Math.min(3, 1 + d * .5).toFixed(1)}px)`; n.style.opacity = String(Math.max(.22, .5 - d * .07).toFixed(2)); }
+    else { n.style.filter = `blur(${Math.min(6, (i < 0 ? 0 : 1) + (d - 1) * 1.3).toFixed(1)}px)`; n.style.opacity = String(Math.max(.2, (d === 1 ? .7 : .55) - (d - 1) * .1).toFixed(2)); }
   }
 }
 
@@ -185,7 +221,8 @@ function frame() {
   if (!open) return;
   if (lines.length && mode === 'sync') {
     const sc = box(), nodes = sc.children;
-    const t = now() + 0.15;
+    // смещение > 0 — текст идёт позже (если раньше спешил)
+    const t = now() + 0.1 - curOffset();
     let i = -1;
     for (let k = 0; k < lines.length; k++) { if (lines[k].t <= t) i = k; else break; }
     if (i !== active) {
@@ -228,7 +265,11 @@ export function initLyrics() {
   const root = $('#fp-lyrics');
   const tl = h('div', { class: 'ly-tools', hidden: '' },
     h('button', { type: 'button', 'data-m': 'sync', onclick: () => setMode('sync') }, 'Синхронно'),
-    h('button', { type: 'button', 'data-m': 'static', onclick: () => setMode('static') }, 'Текстом'));
+    h('button', { type: 'button', 'data-m': 'static', onclick: () => setMode('static') }, 'Текстом'),
+    h('span', { class: 'ly-off', title: 'Если текст спешит или отстаёт' },
+      h('button', { type: 'button', 'aria-label': 'Текст раньше', onclick: () => shiftOffset(-0.5) }, '−'),
+      h('b', { text: 'синхронно' }),
+      h('button', { type: 'button', 'aria-label': 'Текст позже', onclick: () => shiftOffset(0.5) }, '+')));
   root.prepend(tl);
   const sc = box();
   for (const ev of ['wheel', 'touchmove', 'pointerdown']) sc.addEventListener(ev, () => { userScrollUntil = Date.now() + 3500; }, { passive: true });

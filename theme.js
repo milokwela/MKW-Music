@@ -5,6 +5,7 @@ export const ACCENTS = [
   { id: 'blue', name: 'Океан', h: 212 },
   { id: 'mint', name: 'Мята', h: 165 },
   { id: 'sun', name: 'Закат', h: 22 },
+  { id: 'mono', name: 'Чёрный', h: 0, mono: true },
 ];
 
 const KEY_T = 'mkw.theme';
@@ -35,7 +36,7 @@ export function setCustomColor(hex) {
   write(KEY_N, sat < 0.14 ? (l < 0.5 ? 'b' : 'w') : '');
   write(KEY_H, String(hexToHue(hex))); write(KEY_A, 'custom'); applyTheme();
 }
-const neutral = () => (getAccent() === 'custom' ? read(KEY_N, '') : '');
+const neutral = () => (getAccent() === 'custom' ? read(KEY_N, '') : getAccent() === 'mono' ? 'b' : '');
 
 export function isDark() {
   const t = document.documentElement.dataset.theme;

@@ -1,5 +1,5 @@
 // Страна, из которой виден ваш интернет. Сначала ваш Worker (Cloudflare знает страну), запасной вариант: api.country.is.
-import { RECOGNIZE_URL } from './shazam-config.js?v=0.17.0';
+import { RECOGNIZE_URL } from './shazam-config.js?v=0.18.0';
 
 function name(code) {
   try { return new Intl.DisplayNames(['ru'], { type: 'region' }).of(code) || code; } catch { return code; }

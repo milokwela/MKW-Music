@@ -4,7 +4,7 @@
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
 import { getAuth } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
 import { getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
-import { firebaseConfig } from './firebase-config.js?v=0.17.0';
+import { firebaseConfig } from './firebase-config.js?v=0.18.0';
 
 export const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);

@@ -1,5 +1,5 @@
 // Рейтинг слушателей: у каждого публичная карточка leaders/{uid} (ник, часы, статус, значки, маленькое фото).
-import { db, auth } from './firebase.js?v=0.17.0';
+import { db, auth } from './firebase.js?v=0.18.0';
 import { doc, getDoc, setDoc, deleteDoc, collection, query, orderBy, limit, getDocs } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
 const KEY = 'mkw.leaders.hide';

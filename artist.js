@@ -1,13 +1,13 @@
 // Страница исполнителя: треки, слушать, перемешать, «не рекомендовать».
-import { searchTracks } from './catalog.js?v=0.17.0';
-import { prefetchYouTubeIds } from './youtube.js?v=0.17.0';
-import { $, h, icon, trackRow, skeleton, animateIn, toast, openSheet, closeSheet, sheetItem } from './ui.js?v=0.17.0';
-import { openTrackMenu } from './menu.js?v=0.17.0';
-import * as player from './player.js?v=0.17.0';
-import { splitArtists, isArtistBlocked, blockArtist, unblockArtist, norm } from './taste.js?v=0.17.0';
-import { shuffled, plural } from './utils.js?v=0.17.0';
-import { artistPic } from './artistpic.js?v=0.17.0';
-import { mi } from './icons2.js?v=0.17.0';
+import { searchTracks } from './catalog.js?v=0.18.0';
+import { prefetchYouTubeIds } from './youtube.js?v=0.18.0';
+import { $, h, icon, trackRow, skeleton, animateIn, toast, openSheet, closeSheet, sheetItem } from './ui.js?v=0.18.0';
+import { openTrackMenu } from './menu.js?v=0.18.0';
+import * as player from './player.js?v=0.18.0';
+import { splitArtists, isArtistBlocked, blockArtist, unblockArtist, norm } from './taste.js?v=0.18.0';
+import { shuffled, plural } from './utils.js?v=0.18.0';
+import { artistPic } from './artistpic.js?v=0.18.0';
+import { mi } from './icons2.js?v=0.18.0';
 
 let seq = 0;
 const infoCache = new Map();
@@ -17,19 +17,24 @@ const MUSIC = /музык|певец|певиц|рэп|реп-|хип-хоп|г�
 async function artistInfo(name) {
   if (infoCache.has(name)) return infoCache.get(name);
   let out = null;
-  for (const lang of ['ru', 'en']) {
-    try {
-      const s = await fetch(`https://${lang}.wikipedia.org/w/rest.php/v1/search/title?q=${encodeURIComponent(name)}&limit=3`).then((r) => r.ok ? r.json() : null);
-      for (const p of (s && s.pages) || []) {
-        const sum = await fetch(`https://${lang}.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(p.key)}`).then((r) => r.ok ? r.json() : null);
-        if (sum && sum.extract && MUSIC.test(`${sum.description || ''} ${sum.extract.slice(0, 220)}`) && norm(sum.title).includes(norm(name).slice(0, 4))) {
-          out = { text: sum.extract, desc: sum.description || '', photo: sum.thumbnail && sum.thumbnail.source, url: sum.content_urls && sum.content_urls.desktop && sum.content_urls.desktop.page };
-          break;
-        }
+  const nn = (x) => String(x || '').toLowerCase().replace(/ё/g, 'е').replace(/[^a-zа-я0-9]+/g, '');
+  const want = nn(name);
+  // только русская Википедия и только если заголовок статьи — это именно этот исполнитель
+  const same = (title) => {
+    const t = nn(String(title).replace(/\s*\(.*\)\s*$/, ''));
+    return t === want || (t.startsWith(want) && t.length - want.length <= 3);
+  };
+  try {
+    const s = await fetch(`https://ru.wikipedia.org/w/rest.php/v1/search/title?q=${encodeURIComponent(name)}&limit=5`).then((r) => r.ok ? r.json() : null);
+    for (const p of (s && s.pages) || []) {
+      if (!same(p.title)) continue;
+      const sum = await fetch(`https://ru.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(p.key)}`).then((r) => r.ok ? r.json() : null);
+      if (sum && sum.type !== 'disambiguation' && sum.extract && MUSIC.test(`${sum.description || ''} ${sum.extract.slice(0, 300)}`)) {
+        out = { text: sum.extract, desc: sum.description || '', photo: sum.thumbnail && sum.thumbnail.source, url: sum.content_urls && sum.content_urls.desktop && sum.content_urls.desktop.page };
+        break;
       }
-    } catch { /* нет сети или CORS */ }
-    if (out) break;
-  }
+    }
+  } catch { /* нет сети */ }
   infoCache.set(name, out);
   return out;
 }
@@ -87,7 +92,7 @@ export async function openArtist(name) {
     h('span', { class: 'chip', text: `${tracks.length} треков в подборке` }),
     ...genres.map((g) => h('span', { class: 'chip', text: g })),
     years.length ? h('span', { class: 'chip', text: Math.min(...years) === Math.max(...years) ? String(years[0]) : `${Math.min(...years)}–${Math.max(...years)}` }) : null);
-  const photo = h('img', { class: 'artist-photo', alt: '' });
+  const photo = h('img', { class: 'ah-img', alt: '' });
   const fans = h('div', { class: 'artist-fans' });
   const bio = h('div', { class: 'artist-bio', hidden: '' });
   const hero = h('div', { class: 'artist-hero' },
