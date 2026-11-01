@@ -53,3 +53,48 @@
 .up-friend { display: inline-flex; align-items: center; gap: 6px; }
 .up-friend .mi { width: 18px; height: 18px; }
 .fr-add .sheet-input { width: auto !important; min-width: 0; }
+.bgc-list { display: grid; gap: 8px; margin: 4px 0 12px; }
+.bgc-row { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border-radius: 16px; background: color-mix(in srgb, var(--error, #e5484d) 12%, transparent); font-size: 14px; line-height: 1.35; }
+.bgc-row.ok { background: color-mix(in srgb, var(--primary) 12%, transparent); }
+.bgc-ic { width: 26px; height: 26px; flex: none; border-radius: 50%; display: grid; place-items: center; background: var(--error, #e5484d); color: #fff; }
+.bgc-row.ok .bgc-ic { background: var(--primary); color: var(--on-primary, #fff); }
+.bgc-ic .mi { width: 17px; height: 17px; }
+.fr-req-btns { display: flex; gap: 6px; flex: none; }
+.fr-req-btns .btn { height: 38px; padding: 0 14px; font-size: 13.5px; }
+/* друзья и топ — в цветах приложения */
+.lb-hic, .lb-hic.fr { background: linear-gradient(135deg, var(--primary), color-mix(in srgb, var(--primary) 50%, #000)) !important; color: var(--on-primary, #fff) !important; box-shadow: 0 8px 20px color-mix(in srgb, var(--primary) 40%, transparent) !important; }
+.lb-row.top1 { background: linear-gradient(90deg, color-mix(in srgb, var(--primary) 30%, var(--surface)), var(--surface) 75%) !important; }
+.lb-row.top2 { background: linear-gradient(90deg, color-mix(in srgb, var(--primary) 20%, var(--surface)), var(--surface) 75%) !important; }
+.lb-row.top3 { background: linear-gradient(90deg, color-mix(in srgb, var(--primary) 12%, var(--surface)), var(--surface) 75%) !important; }
+.lb-row.top1 .lb-rank, .lb-row.top2 .lb-rank, .lb-row.top3 .lb-rank { color: var(--primary) !important; }
+.lb-row.top2 .lb-rank { opacity: .8; } .lb-row.top3 .lb-rank { opacity: .65; }
+.fr-row.online { box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--primary) 60%, transparent) !important; }
+.fs-av { background: conic-gradient(var(--primary), color-mix(in srgb, var(--primary) 40%, #fff), var(--primary)) !important; }
+.lb-me, .lb-status.now { color: var(--primary); }
+
+/* --- престиж разработчика (milokq) --- */
+.dev-badge { display: inline-flex; align-items: center; gap: 6px; margin: 6px 0 2px; padding: 5px 12px 5px 8px; border-radius: 999px; font-size: 13px; color: #1a1205;
+  background: linear-gradient(110deg, #f7d774, #ffb36b 30%, var(--primary) 60%, #f7d774 90%); background-size: 220% 100%; animation: devShine 4s linear infinite;
+  box-shadow: 0 4px 18px rgba(247,215,116,.35), inset 0 1px 0 rgba(255,255,255,.6); }
+.dev-badge .mi { width: 16px; height: 16px; }
+.dev-badge b { font-weight: 800; letter-spacing: .2px; }
+.dev-badge.sm { margin: 0 0 0 6px; padding: 2px 7px 2px 5px; font-size: 10px; gap: 3px; vertical-align: 2px; }
+.dev-badge.sm .mi { width: 12px; height: 12px; }
+@keyframes devShine { to { background-position: -220% 0; } }
+.lb-nick { display: flex; align-items: center; min-width: 0; }
+.lb-nick > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.phero.dev { box-shadow: 0 0 0 2px transparent, 0 18px 50px rgba(247,180,90,.25); position: relative; }
+.phero.dev::before { content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 2px; z-index: 3; pointer-events: none;
+  background: conic-gradient(from var(--dev-a, 0deg), #f7d774, var(--primary), #ffb36b, #f7d774);
+  -webkit-mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0); mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0); animation: devSpin 6s linear infinite; }
+@property --dev-a { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
+@keyframes devSpin { to { --dev-a: 360deg; } }
+.phero.dev .hero-avatar { box-shadow: 0 0 0 3px #f7d774, 0 0 28px rgba(247,215,116,.6) !important; }
+.phero.dev .hero-nick { position: relative; }
+.lb-row.dev { box-shadow: inset 0 0 0 1.5px rgba(247,215,116,.7) !important; background: linear-gradient(90deg, rgba(247,215,116,.16), var(--surface) 70%) !important; }
+.lb-row.dev .lb-av { box-shadow: 0 0 0 2px #f7d774, 0 0 12px rgba(247,215,116,.6); border-radius: 50%; }
+.pbadge.dev-ach { background: linear-gradient(110deg, rgba(247,215,116,.3), color-mix(in srgb, var(--primary) 25%, transparent)); border-color: rgba(247,215,116,.6); }
+.pbadge.dev-ach .mi { color: #f7d774; }
+.ach.dev-ach.on { background: linear-gradient(135deg, rgba(247,215,116,.35), color-mix(in srgb, var(--primary) 30%, var(--surface))) !important; box-shadow: inset 0 0 0 1.5px rgba(247,215,116,.6); }
+.ach.dev-ach.on .ach-ico.m { background: linear-gradient(135deg, #f7d774, #ffb36b) !important; color: #1a1205 !important; }
+.lowpower .dev-badge, .lowpower .phero.dev::before { animation: none; }

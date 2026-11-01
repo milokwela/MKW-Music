@@ -1,10 +1,12 @@
 // Друзья: у каждого открытый список friends/{uid} = { list: [uid…] }.
 // Друг — тот, кого вы добавили; «взаимно» — если и он добавил вас; «заявки» — кто добавил вас, а вы его ещё нет.
-import { db, auth } from './firebase.js?v=0.20.0';
+import { db, auth } from './firebase.js?v=0.21.0';
 import { doc, getDoc, setDoc, collection, query, where, getDocs, limit } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
 let mine = [];
+let declined = [];
 let loaded = false;
+const DKEY = () => `mkw.friends.declined.${me()}`;
 const subs = new Set();
 const me = () => (auth.currentUser && auth.currentUser.uid) || '';
 const emit = () => subs.forEach((f) => { try { f(); } catch { /* ignore */ } });
@@ -17,20 +19,35 @@ export const friendsLoaded = () => loaded;
 export async function loadFriends() {
   const uid = me();
   if (!uid) return [];
-  try { const s = await getDoc(doc(db, 'friends', uid)); mine = (s.exists() && Array.isArray(s.data().list)) ? s.data().list.map(String) : []; }
-  catch { mine = []; }
+  let local = [];
+  try { local = JSON.parse(localStorage.getItem(DKEY()) || '[]'); } catch { /* ignore */ }
+  try {
+    const s = await getDoc(doc(db, 'friends', uid));
+    const d = s.exists() ? s.data() : {};
+    mine = Array.isArray(d.list) ? d.list.map(String) : [];
+    declined = [...new Set([...(Array.isArray(d.declined) ? d.declined.map(String) : []), ...local])];
+  } catch { mine = []; declined = local; }
   loaded = true; emit();
   return mine;
 }
 
 async function save() {
   const uid = me(); if (!uid) return;
-  await setDoc(doc(db, 'friends', uid), { list: mine.slice(0, 200), updatedAt: Date.now() });
+  try { localStorage.setItem(DKEY(), JSON.stringify(declined.slice(-300))); } catch { /* ignore */ }
+  try { await setDoc(doc(db, 'friends', uid), { list: mine.slice(0, 200), declined: declined.slice(-300), updatedAt: Date.now() }); }
+  catch { await setDoc(doc(db, 'friends', uid), { list: mine.slice(0, 200), updatedAt: Date.now() }); } // старые правила
+}
+export const declinedIds = () => declined;
+// Отклонить заявку: человек больше не появится в «Хотят дружить» (сам он об этом не узнает)
+export async function declineRequest(uid) {
+  if (!uid || declined.includes(uid)) return;
+  declined = [...declined, uid]; emit();
+  try { await save(); } catch { /* останется на этом устройстве */ }
 }
 
 export async function addFriend(uid) {
   if (!uid || uid === me() || mine.includes(uid)) return;
-  mine = [uid, ...mine].slice(0, 200); emit();
+  mine = [uid, ...mine].slice(0, 200); declined = declined.filter((x) => x !== uid); emit();
   try { await save(); } catch (e) { mine = mine.filter((x) => x !== uid); emit(); throw e; }
 }
 export async function removeFriend(uid) {

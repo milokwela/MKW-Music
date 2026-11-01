@@ -1,34 +1,36 @@
 // Экран «Профиль»: карточка с баннером, витрина (любимые исполнители и треки), вкладки Обзор / Слушатели / Настройки / О MKW.
-import { $, $$, h, icon, openSheet, closeSheet, toast, sheetItem, trackRow } from './ui.js?v=0.20.0';
-import * as store from './store.js?v=0.20.0';
-import * as player from './player.js?v=0.20.0';
-import { ACCENTS, getTheme, getAccent, getCustomHue, setCustomColor, setTheme, setAccent, hslHex, getNeutral } from './theme.js?v=0.20.0';
-import { CHANGELOG, VERSION, STAGE, KNOWN_ISSUES } from './changelog.js?v=0.20.0';
-import { plural, pickTrack } from './utils.js?v=0.20.0';
-import { youtubeEnabled, youtubeQuotaOut } from './youtube.js?v=0.20.0';
-import { audiusEnabled } from './audius.js?v=0.20.0';
-import { SOURCE_MODES, getSourceMode, setSourceMode } from './sources.js?v=0.20.0';
-import { gesturesOn, setGestures, showGestureGuide } from './gestures.js?v=0.20.0';
-import { listenerStats } from './stats.js?v=0.20.0';
-import { liveBg, setLiveBg } from './viz.js?v=0.20.0';
-import { lowPower, setLowPower } from './perf.js?v=0.20.0';
-import { logOut, changePassword, changeNick, authErrorText } from './auth.js?v=0.20.0';
-import { connectionCountry } from './geo.js?v=0.20.0';
-import { publishCard, publishProfile, myCard, getProfile, topListeners, hiddenFromBoard, setHidden, myUid } from './leaders.js?v=0.20.0';
-import { mi } from './icons2.js?v=0.20.0';
-import { artistPic } from './artistpic.js?v=0.20.0';
-import { openArtist } from './artist.js?v=0.20.0';
-import { openUserPage, favArtistsRow, favTracksList, isOnline } from './userpage.js?v=0.20.0';
-import { voiceOn, setVoice, showVoiceGuide, voiceSupported } from './voice.js?v=0.20.0';
-import { openImage } from './viewer.js?v=0.20.0';
-import { ping } from './leaders.js?v=0.20.0';
-import { streamsOn, setStreams } from './stream.js?v=0.20.0';
-import { loadFriends, friendIds, addFriend, removeFriend, findByNick, followers, friendCards, onFriends } from './friends.js?v=0.20.0';
-import { searchTracks } from './catalog.js?v=0.20.0';
-import { seenText } from './userpage.js?v=0.20.0';
+import { $, $$, h, icon, openSheet, closeSheet, toast, sheetItem, trackRow } from './ui.js?v=0.21.0';
+import * as store from './store.js?v=0.21.0';
+import * as player from './player.js?v=0.21.0';
+import { ACCENTS, getTheme, getAccent, getCustomHue, setCustomColor, setTheme, setAccent, hslHex, getNeutral } from './theme.js?v=0.21.0';
+import { CHANGELOG, VERSION, STAGE, KNOWN_ISSUES } from './changelog.js?v=0.21.0';
+import { plural, pickTrack } from './utils.js?v=0.21.0';
+import { youtubeEnabled, youtubeQuotaOut } from './youtube.js?v=0.21.0';
+import { audiusEnabled } from './audius.js?v=0.21.0';
+import { SOURCE_MODES, getSourceMode, setSourceMode } from './sources.js?v=0.21.0';
+import { gesturesOn, setGestures, showGestureGuide } from './gestures.js?v=0.21.0';
+import { listenerStats } from './stats.js?v=0.21.0';
+import { liveBg, setLiveBg } from './viz.js?v=0.21.0';
+import { lowPower, setLowPower } from './perf.js?v=0.21.0';
+import { logOut, changePassword, changeNick, authErrorText } from './auth.js?v=0.21.0';
+import { connectionCountry } from './geo.js?v=0.21.0';
+import { publishCard, publishProfile, myCard, getProfile, topListeners, hiddenFromBoard, setHidden, myUid } from './leaders.js?v=0.21.0';
+import { mi } from './icons2.js?v=0.21.0';
+import { artistPic } from './artistpic.js?v=0.21.0';
+import { openArtist } from './artist.js?v=0.21.0';
+import { openUserPage, favArtistsRow, favTracksList, isOnline } from './userpage.js?v=0.21.0';
+import { voiceOn, setVoice, showVoiceGuide, voiceSupported } from './voice.js?v=0.21.0';
+import { openImage } from './viewer.js?v=0.21.0';
+import { isDev, devBadge } from './dev.js?v=0.21.0';
+import { ping } from './leaders.js?v=0.21.0';
+import { streamsOn, setStreams, checkBackground } from './stream.js?v=0.21.0';
+import { loadFriends, friendIds, addFriend, removeFriend, findByNick, followers, friendCards, onFriends, declineRequest, declinedIds } from './friends.js?v=0.21.0';
+import { searchTracks } from './catalog.js?v=0.21.0';
+import { seenText } from './userpage.js?v=0.21.0';
 
 // s: sec, likes, playlists, plays, days, artists, night, styled, showcase, rank
 export const ACHIEVEMENTS = [
+  { id: 'dev', i: 'crown', title: 'Создатель MKW', hint: 'Разработчик приложения MKW Music', ok: (s) => s.dev, secret: true },
   { id: 'like1', i: 'heart', title: 'Первый лайк', hint: 'Лайкните любой трек', ok: (s) => s.likes >= 1 },
   { id: 'like10', i: 'hearts', title: 'Коллекционер', hint: '10 лайков', v: (s) => [s.likes, 10] },
   { id: 'like50', i: 'heart-plus', title: 'Сердцеед', hint: '50 лайков', v: (s) => [s.likes, 50] },
@@ -237,7 +239,7 @@ function statsNow() {
     sec: store.listenedTotal(), likes: store.state.likes.length, playlists: store.state.playlists.length,
     plays: Number(p.plays) || store.state.history.length,
     days: created ? Math.max(1, Math.ceil((Date.now() - created) / 86400000)) : 1,
-    artists: seen.size, night, styled: Boolean(c.styled), showcase: Boolean(c.favArtists.length || c.favTracks.length), rank: myRank, friends: friendIds().length,
+    artists: seen.size, night, styled: Boolean(c.styled), showcase: Boolean(c.favArtists.length || c.favTracks.length), rank: myRank, friends: friendIds().length, dev: isDev(curNick),
   };
 }
 
@@ -274,10 +276,12 @@ function paintHero() {
   refs.hero.dataset.shape = c.shape;
   refs.hero.dataset.effect = c.effect;
   refs.nick.dataset.style = c.nickStyle;
+  refs.hero.classList.toggle('dev', isDev(curNick));
+  if (isDev(curNick) && !refs.devB) { refs.devB = devBadge(); refs.nick.after(refs.devB); }
   refs.bio.textContent = c.bio; refs.bio.hidden = !c.bio;
   refs.status.textContent = c.status || 'Добавьте статус — нажмите «Изменить»';
   refs.status.classList.toggle('st-empty', !c.status);
-  refs.heroBadges.replaceChildren(...badgeChips(c.badges).children);
+  refs.heroBadges.replaceChildren(...(isDev(curNick) ? [h('span', { class: 'pbadge dev-ach' }, mi('crown'), h('b', { text: 'Создатель MKW' }))] : []), ...badgeChips(c.badges.filter((b) => b !== 'dev')).children);
   const has = c.favArtists.length || c.favTracks.length;
   refs.showcase.hidden = !has;
   refs.favA.replaceChildren(...(c.favArtists.length ? [h('div', { class: 'section-title', text: 'Любимые исполнители' }), favArtistsRow(c.favArtists)] : []));
@@ -399,11 +403,11 @@ async function loadBoard(force) {
   if (!list.length) { refs.boardList.replaceChildren(h('p', { class: 'profile-note center', text: 'Пока никого нет. Вы будете первым!' })); return; }
   refs.boardList.replaceChildren(...list.map((u, i) => {
     const t = formatListened(Number(u.sec) || 0);
-    return h('button', { type: 'button', class: `lb-row${u.uid === me ? ' me' : ''}${i < 3 ? ` top${i + 1}` : ''}`, style: `--banner:${bannerCss(u.banner === 'img' ? 'accent' : u.banner)};animation-delay:${Math.min(i, 12) * 35}ms`, onclick: () => openUserPage(u.uid, u) },
+    return h('button', { type: 'button', class: `lb-row${u.uid === me ? ' me' : ''}${i < 3 ? ` top${i + 1}` : ''}${isDev(u.nick) ? ' dev' : ''}`, style: `--banner:${bannerCss(u.banner === 'img' ? 'accent' : u.banner)};animation-delay:${Math.min(i, 12) * 35}ms`, onclick: () => openUserPage(u.uid, u) },
       h('span', { class: 'lb-rank' }, i < 3 ? mi('medal') : String(i + 1)),
       h('span', { class: 'lb-av', 'data-frame': u.frame || 'none', 'data-shape': u.shape || 'circle' }, h('img', { src: u.avatar || 'mkw-logo.png', alt: '', loading: 'lazy' }), isOnline(u.seen) ? h('i', { class: 'online-dot' }) : null),
       h('div', { class: 'lb-body' },
-        h('div', { class: 'lb-nick', text: u.uid === me ? `${u.nick} · вы` : u.nick }),
+        h('div', { class: 'lb-nick' }, h('span', { text: u.uid === me ? `${u.nick} · вы` : u.nick }), isDev(u.nick) ? devBadge(true) : null),
         u.now && isOnline(u.seen) ? h('div', { class: 'lb-status now', text: `Слушает: ${u.now}` }) : u.status ? h('div', { class: 'lb-status', text: u.status }) : null,
         (u.badges || []).length ? h('div', { class: 'lb-badges' }, (u.badges || []).filter((id) => ACH[id]).map((id) => mi(ACH[id].i))) : null),
       h('div', { class: 'lb-time' }, h('b', { text: String(t.value) }), h('small', { text: t.unit })),
@@ -412,6 +416,20 @@ async function loadBoard(force) {
   if (myRank) refs.myRank.textContent = `Ваше место: ${myRank} из ${list.length}`;
   else refs.myRank.textContent = hiddenFromBoard() ? 'Вы скрыты из рейтинга' : 'Вас пока нет в топе. Послушайте ещё!';
   updateAch();
+}
+
+async function runBgCheck() {
+  const box = h('div', { class: 'bgc' }, h('p', { class: 'profile-note', text: 'Проверяю… это займёт до 30 секунд' }));
+  openSheet('Проверка фона', box);
+  const cur = player.queue.current;
+  const vid = player.st.vid && /^[\w-]{11}$/.test(player.st.vid) ? player.st.vid : 'kJQP7kiw5Fk';
+  const t = cur && player.st.vid === vid ? cur : { artist: 'Luis Fonsi', title: 'Despacito', duration: 229 };
+  const res = await checkBackground(vid, t);
+  const ok = res.every((r) => r.ok);
+  box.replaceChildren(
+    h('div', { class: 'bgc-list' }, res.map((r) => h('div', { class: `bgc-row${r.ok ? ' ok' : ''}` }, h('span', { class: 'bgc-ic' }, mi(r.ok ? 'check' : 'close')), h('span', { text: r.text })))),
+    h('p', { class: 'profile-note', text: ok ? 'Всё в порядке. Включите «Слушать в фоне», запустите трек и погасите экран.' : 'Фон может не работать. Если вы в России — включите VPN и проверьте ещё раз. Если сервер старый — админу нужно обновить Worker.' }),
+    h('p', { class: 'profile-note', text: `Проверка на треке: ${t.artist} — ${t.title}` }));
 }
 
 // ---------- друзья ----------
@@ -429,11 +447,13 @@ async function addByNick() {
 function friendRow(u, req) {
   const online = Date.now() - (Number(u.seen) || 0) < 6 * 60000;
   const line = u.hidden ? 'скрыл(а) профиль' : online && u.now ? `Слушает: ${u.now}` : seenText(u.seen) || u.status || '';
-  return h('div', { class: `lb-row fr-row${online ? ' online' : ''}`, style: `--banner:${bannerCss(u.banner === 'img' ? 'accent' : u.banner)}` },
+  return h('div', { class: `lb-row fr-row${online ? ' online' : ''}${isDev(u.nick) ? ' dev' : ''}`, style: `--banner:${bannerCss(u.banner === 'img' ? 'accent' : u.banner)}` },
     h('button', { type: 'button', class: 'fr-main', onclick: () => !u.hidden && openUserPage(u.uid, u) },
       h('span', { class: 'lb-av', 'data-frame': u.frame || 'none', 'data-shape': u.shape || 'circle' }, h('img', { src: u.avatar || 'mkw-logo.png', alt: '', loading: 'lazy' }), online ? h('i', { class: 'online-dot' }) : null),
-      h('div', { class: 'lb-body' }, h('div', { class: 'lb-nick', text: u.nick }), h('div', { class: `lb-status${online && u.now ? ' now' : ''}`, text: line }))),
-    req ? h('button', { class: 'btn fr-btn', type: 'button', onclick: async () => { try { await addFriend(u.uid); toast(`Теперь вы друзья с ${u.nick}`); renderFriends(true); } catch { toast('Не получилось'); } } }, 'Принять')
+      h('div', { class: 'lb-body' }, h('div', { class: 'lb-nick' }, h('span', { text: u.nick }), isDev(u.nick) ? devBadge(true) : null), h('div', { class: `lb-status${online && u.now ? ' now' : ''}`, text: line }))),
+    req ? h('div', { class: 'fr-req-btns' },
+      h('button', { class: 'btn fr-btn', type: 'button', onclick: async () => { try { await addFriend(u.uid); toast(`Теперь вы друзья с ${u.nick}`); renderFriends(true); } catch { toast('Не получилось'); } } }, 'Принять'),
+      h('button', { class: 'btn tonal fr-btn', type: 'button', onclick: async () => { await declineRequest(u.uid); toast('Заявка отклонена'); renderFriends(); } }, 'Отклонить'))
       : online && u.now ? h('button', { class: 'icon-btn fr-btn', type: 'button', title: 'Включить то же', 'aria-label': 'Включить то же', onclick: async () => {
         toast(`Включаю: ${u.now}`);
         const f = await searchTracks(u.now).catch(() => []);
@@ -449,7 +469,7 @@ async function renderFriends(force) {
     if (force || !friendIds().length) await loadFriends();
     const ids = friendIds();
     const fol = await followers();
-    const reqIds = fol.filter((x) => !ids.includes(x)).slice(0, 20);
+    const reqIds = fol.filter((x) => !ids.includes(x) && !declinedIds().includes(x)).slice(0, 20);
     const [cards, reqs] = await Promise.all([friendCards(ids.slice(0, 60), force ? 0 : 60000), friendCards(reqIds)]);
     refs.frReq.replaceChildren(...(reqs.length ? [h('div', { class: 'section-title', text: `Хотят дружить · ${reqs.length}` }), h('div', { class: 'lb-list' }, reqs.map((u) => friendRow(u, true)))] : []));
     const on = cards.filter((u) => Date.now() - (Number(u.seen) || 0) < 6 * 60000).length;
@@ -536,7 +556,8 @@ export function buildProfile(nick) {
       h('div', { class: 'set-card', style: 'margin-top:14px' }, row('Показывать меня в рейтинге', 'Ник, фото, баннер, статус, значки, витрина и часы видят другие слушатели', refs.board, null, 'group'))),
     h('div', { class: 'ppane', 'data-pane': 'set', hidden: '' },
       h('div', { class: 'set-group bg-beta' }, h('div', { class: 'set-card' },
-        row('Слушать в фоне с выключенным экраном', 'Бета. Полный трек переключается на звук, когда вы гасите экран или сворачиваете приложение', refs.bgplay, null, 'moon'))),
+        row('Слушать в фоне с выключенным экраном', 'Бета: работает не у всех и не со всеми треками. Полный трек переключается на звук, когда вы гасите экран. Из России — с VPN', refs.bgplay, null, 'moon'),
+        row('Проверить фон', 'Покажет, что работает на вашем телефоне и в вашей сети', h('span', { class: 'chev', text: '›' }), runBgCheck, 'shield'))),
       group('Внешний вид',
         h('div', { class: 'set-block' }, h('b', { text: 'Тема' }),
           h('div', { class: 'theme-cards' }, themeCard('auto', 'Авто'), themeCard('light', 'Светлая'), themeCard('dark', 'Тёмная'), themeCard('black', 'Чёрная'))),
@@ -604,17 +625,18 @@ function setLocal(p) {
 function updateAch() {
   const s = statsNow();
   let got = 0;
-  refs.ach.replaceChildren(...ACHIEVEMENTS.map((a) => {
+  const list = ACHIEVEMENTS.filter((a) => !a.secret || achDone(a, s));
+  refs.ach.replaceChildren(...list.map((a) => {
     const ok = achDone(a, s); if (ok) got += 1;
     const v = a.v ? a.v(s) : null;
     const pr = v ? Math.min(1, v[0] / v[1]) : (ok ? 1 : 0);
-    return h('div', { class: `ach${ok ? ' on' : ''}`, title: a.hint },
+    return h('div', { class: `ach${ok ? ' on' : ''}${a.secret ? ' dev-ach' : ''}`, title: a.hint },
       h('div', { class: 'ach-ico m' }, mi(a.i)),
       h('div', { class: 'ach-t', text: a.title }),
       h('div', { class: 'ach-h', text: ok ? 'Получено' : v ? `${a.hint} · ${Math.min(v[0], v[1])}/${v[1]}` : a.hint }),
       ok ? null : h('div', { class: 'ach-bar' }, h('i', { style: `width:${Math.round(pr * 100)}%` })));
   }));
-  refs.achCount.textContent = `${got} из ${ACHIEVEMENTS.length}`;
+  refs.achCount.textContent = `${got} из ${list.length}`;
 }
 
 export function updateProfile() {

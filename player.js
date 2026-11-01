@@ -1,11 +1,11 @@
 // Движок плеера: очередь, YouTube (полные треки) и превью iTunes (30 сек) как запасной вариант.
-import { audiusStreamUrl } from './audius.js?v=0.20.0';
-import { Queue } from './queue.js?v=0.20.0';
-import { findYouTubeId, peekYouTubeId, loadYouTubeApi, youtubeEnabled } from './youtube.js?v=0.20.0';
-import { logPlay, addListened } from './store.js?v=0.20.0';
-import { artUrl } from './utils.js?v=0.20.0';
-import { proxify } from './bypass.js?v=0.20.0';
-import { resolveStream, peekStream, dropStream, streamsOn } from './stream.js?v=0.20.0';
+import { audiusStreamUrl } from './audius.js?v=0.21.0';
+import { Queue } from './queue.js?v=0.21.0';
+import { findYouTubeId, peekYouTubeId, loadYouTubeApi, youtubeEnabled } from './youtube.js?v=0.21.0';
+import { logPlay, addListened } from './store.js?v=0.21.0';
+import { artUrl } from './utils.js?v=0.21.0';
+import { proxify } from './bypass.js?v=0.21.0';
+import { resolveStream, peekStream, dropStream, streamsOn } from './stream.js?v=0.21.0';
 
 export const queue = new Queue();
 export const st = {
@@ -127,8 +127,8 @@ function prefetchNext() {
   const nxt = queue.items[queue.index + 1];
   if (!nxt) return;
   const known = nxt.ytId || peekYouTubeId(nxt);
-  if (known) { resolveStream(known); return; }
-  findYouTubeId(nxt).then((v) => { if (v) resolveStream(v); }).catch(() => {});
+  if (known) { resolveStream(known, nxt); return; }
+  findYouTubeId(nxt).then((v) => { if (v) resolveStream(v, nxt); }).catch(() => {});
 }
 function findYouTube(t) { findYouTubeId(t).catch(() => {}); }
 
@@ -171,14 +171,21 @@ async function startCurrent() {
     // 1) «Слушать в фоне»: если звук уже найден — сразу им; если приложение свёрнуто — ждём звук (видео в фоне не заиграет)
     if (streamsOn()) {
       let urls = peekStream(vid);
-      if (!urls && document.hidden) urls = await Promise.race([resolveStream(vid), new Promise((r) => setTimeout(() => r(null), 12000))]);
+      if (!urls && document.hidden) urls = await Promise.race([resolveStream(vid, track), new Promise((r) => setTimeout(() => r(null), 12000))]);
       if (id !== loadId) return;
       if (urls && urls.length) { startStream(track, vid, urls, id, 0); return; }
-      resolveStream(vid); // ищем звук, пока играет видео: пригодится, когда выключите экран
+      resolveStream(vid, track); // ищем звук, пока играет видео: пригодится, когда выключите экран
     }
     // 2) видеоплеер YouTube
     if (await startYT(track, vid, id)) return;
     if (id !== loadId) return;
+  }
+  // нет видео YouTube (например, без ключа) — «Слушать в фоне» ищет полный трек по названию
+  if (streamsOn()) {
+    const key = `sc:${track.id}`;
+    const urls = peekStream(key) || await Promise.race([resolveStream(key, track), new Promise((r) => setTimeout(() => r(null), document.hidden ? 12000 : 6000))]);
+    if (id !== loadId) return;
+    if (urls && urls.length) { startStream(track, key, urls, id, 0); return; }
   }
   if (track.previewUrl) startPreview(track, id);
   else unavailable(id);
@@ -189,7 +196,7 @@ async function startYT(track, vid, id, at = 0) {
     const p = yt || await ensureYT();
     if (id !== loadId) return true;
     st.mode = 'yt'; st.full = true;
-    keepOn();
+    if (streamsOn()) armSilent(); else keepOn();
     if (at > 0) p.loadVideoById(vid, at); else p.loadVideoById(vid);
     // Не заиграло само (iPhone просит нажать): не прыгаем на фрагмент, а просим нажать ▶.
     watchdog = setTimeout(() => {
@@ -208,6 +215,18 @@ async function startYT(track, vid, id, at = 0) {
   }
 }
 
+// «Слушать в фоне»: пока играет видео, основной аудиоплеер крутит тишину. Когда гаснет экран,
+// мы просто меняем ему источник на настоящий звук — браузер не считает это новым запуском и не блокирует.
+let silentUrl = null;
+function armSilent() {
+  try {
+    if (!silentUrl) silentUrl = silentWavUrl();
+    audio.loop = true;
+    if (audio.src !== silentUrl) audio.src = silentUrl;
+    audio.play().catch(() => {});
+  } catch { /* ignore */ }
+}
+
 // Полный трек через <audio>. При ошибке пробуем следующую ссылку, потом видеоплеер.
 let streamUrls = [];
 function startStream(track, vid, urls, id, at) {
@@ -216,6 +235,7 @@ function startStream(track, vid, urls, id, at) {
   keepOff();
   streamUrls = [...urls];
   st.mode = 'preview'; st.full = true; st.vid = vid; st.loading = true;
+  audio.loop = false;
   const url = streamUrls[0];
   audio.src = url;
   const go = () => {
@@ -240,8 +260,9 @@ function streamFailed(id) {
   const bad = streamUrls.shift();
   if (st.vid && bad) dropStream(st.vid, bad);
   if (streamUrls.length) { startStream(track, st.vid, streamUrls, id, audio.currentTime || 0); return; }
-  // звук не пошёл ни по одной ссылке — видеоплеер
+  // звук не пошёл ни по одной ссылке — видеоплеер (если видео есть), иначе фрагмент
   st.full = false;
+  if (!/^[\w-]{11}$/.test(st.vid || '')) { fallbackToPreview(); return; }
   const at = st.time || 0;
   startYT(track, st.vid, id, at).then((ok) => { if (!ok && id === loadId) fallbackToPreview(); });
 }
@@ -274,12 +295,13 @@ document.addEventListener('visibilitychange', () => {
     startStream(track, vid, urls, id, pos);
   };
   const ready = peekStream(vid);
-  if (ready) go(ready); else resolveStream(vid).then(go);
+  if (ready) go(ready); else resolveStream(vid, track).then(go);
 });
 
 function startPreview(track, id) {
   if (id !== loadId) return;
   st.mode = 'preview'; st.full = false;
+  audio.loop = false;
   st.loading = true;
   audio.src = track.auId ? audiusStreamUrl(track.auId) : proxify(track.previewUrl);
   audio.play().then(() => { logPlay(track); prefetchNext(); }).catch((e) => {
@@ -384,7 +406,7 @@ export function toggle() {
   if (!queue.current) return;
   if (!st.mode) { if (!st.loading) startCurrent(); return; }
   if (st.mode === 'yt' && yt) {
-    if (st.playing) { userPaused = true; keepOff(); yt.pauseVideo(); } else { userPaused = false; keepOn(); yt.playVideo(); }
+    if (st.playing) { userPaused = true; keepOff(); yt.pauseVideo(); try { audio.pause(); } catch { /* ignore */ } } else { userPaused = false; if (streamsOn()) armSilent(); else keepOn(); yt.playVideo(); }
   } else if (audio.paused) {
     userPaused = false;
     audio.play().catch(() => {});
@@ -397,7 +419,7 @@ export function toggle() {
 export function pause() {
   userPaused = true;
   keepOff();
-  if (st.mode === 'yt' && yt) { try { yt.pauseVideo(); } catch { /* ignore */ } }
+  if (st.mode === 'yt' && yt) { try { yt.pauseVideo(); } catch { /* ignore */ } try { audio.pause(); } catch { /* ignore */ } }
   else if (st.mode === 'preview') audio.pause();
 }
 
