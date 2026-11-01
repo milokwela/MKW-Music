@@ -8,18 +8,38 @@
 <link rel="icon" type="image/png" href="mkw-favicon.png?v=5">
 <link rel="apple-touch-icon" href="ic4-180.png">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="stylesheet" href="variables.css?v=0.18.0">
-<link rel="stylesheet" href="global.css?v=0.18.0">
-<link rel="stylesheet" href="auth.css?v=0.18.0">
-<link rel="stylesheet" href="search.css?v=0.18.0">
-<link rel="stylesheet" href="library.css?v=0.18.0">
-<link rel="stylesheet" href="player.css?v=0.18.0">
-<link rel="stylesheet" href="polish.css?v=0.18.0">
-<link rel="stylesheet" href="glow.css?v=0.18.0">
-<link rel="stylesheet" href="perf.css?v=0.18.0">
-<link rel="stylesheet" href="glass2.css?v=0.18.0">
-<link rel="stylesheet" href="profile2.css?v=0.18.0">
-<link rel="stylesheet" href="v17.css?v=0.18.0">
+<link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://firestore.googleapis.com" crossorigin>
+<link rel="preconnect" href="https://itunes.apple.com" crossorigin>
+<link rel="preconnect" href="https://is1-ssl.mzstatic.com">
+<link rel="dns-prefetch" href="https://www.youtube.com">
+<link rel="dns-prefetch" href="https://i.ytimg.com">
+<link rel="dns-prefetch" href="https://api.deezer.com">
+<script>
+/* Подстройка под браузер и устройство: классы на <html>, которые подхватывают стили */
+(function(){var d=document.documentElement,u=navigator.userAgent,c=[];
+if(/YaBrowser|YaSearchBrowser/.test(u))c.push('b-yandex');else if(/SamsungBrowser/.test(u))c.push('b-samsung');else if(/Firefox|FxiOS/.test(u))c.push('b-firefox');else if(/Edg\//.test(u))c.push('b-edge');else if(/OPR\//.test(u))c.push('b-opera');else if(/Chrome|CriOS/.test(u))c.push('b-chrome');else if(/Safari/.test(u))c.push('b-safari');
+if(/iPhone|iPad|iPod/.test(u)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1))c.push('os-ios');else if(/Android/.test(u))c.push('os-android');else c.push('os-desktop');
+if(matchMedia('(display-mode: standalone)').matches||navigator.standalone)c.push('pwa');
+if(matchMedia('(pointer: coarse)').matches)c.push('touch-dev');
+var mem=navigator.deviceMemory||8,cpu=navigator.hardwareConcurrency||8;
+if(mem<=2||cpu<=4&&/Android/.test(u)){c.push('weak');try{if(localStorage.getItem('mkw.lowpower')===null)localStorage.setItem('mkw.lowpower','1')}catch(e){}}
+if(!CSS.supports('backdrop-filter','blur(1px)')&&!CSS.supports('-webkit-backdrop-filter','blur(1px)'))c.push('no-blur');
+d.className+=' '+c.join(' ');})();
+</script>
+<link rel="stylesheet" href="variables.css?v=0.19.0">
+<link rel="stylesheet" href="global.css?v=0.19.0">
+<link rel="stylesheet" href="auth.css?v=0.19.0">
+<link rel="stylesheet" href="search.css?v=0.19.0">
+<link rel="stylesheet" href="library.css?v=0.19.0">
+<link rel="stylesheet" href="player.css?v=0.19.0">
+<link rel="stylesheet" href="polish.css?v=0.19.0">
+<link rel="stylesheet" href="glow.css?v=0.19.0">
+<link rel="stylesheet" href="perf.css?v=0.19.0">
+<link rel="stylesheet" href="glass2.css?v=0.19.0">
+<link rel="stylesheet" href="profile2.css?v=0.19.0">
+<link rel="stylesheet" href="v17.css?v=0.19.0">
+<link rel="stylesheet" href="v19.css?v=0.19.0">
 </head>
 <body>
 <script>
@@ -232,6 +252,6 @@ document.addEventListener('click',function(){var e=s();if(e&&e.parentNode)e.pare
 <audio id="preview-player" preload="none"></audio>
 <div id="yt-holder" style="position:fixed;width:1px;height:1px;left:-10px;top:-10px;overflow:hidden;opacity:0;pointer-events:none"><div id="yt-target"></div></div>
 
-<script type="module" src="app.js?v=0.18.0"></script>
+<script type="module" src="app.js?v=0.19.0"></script>
 </body>
 </html>

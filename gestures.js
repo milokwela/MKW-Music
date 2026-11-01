@@ -1,11 +1,11 @@
 // Управление жестами через камеру (MediaPipe GestureRecognizer, модель грузится с CDN).
 // Два пальца: следующий. Рок: предыдущий. Большой вверх: лайк. Средний палец: снять лайк. Большой вниз: дизлайк.
 // Ладонь: пауза. Палец вверх: продолжить. Кулак: тише. Три пальца: громче.
-import { h, toast, openSheet, closeSheet } from './ui.js?v=0.18.0';
-import { mi } from './icons2.js?v=0.18.0';
-import * as player from './player.js?v=0.18.0';
-import * as store from './store.js?v=0.18.0';
-import { dislike } from './wave.js?v=0.18.0';
+import { h, toast, openSheet, closeSheet } from './ui.js?v=0.19.0';
+import { mi } from './icons2.js?v=0.19.0';
+import * as player from './player.js?v=0.19.0';
+import * as store from './store.js?v=0.19.0';
+import { dislike } from './wave.js?v=0.19.0';
 
 const KEY = 'mkw.gestures';
 const LIB = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14';

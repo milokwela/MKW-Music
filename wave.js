@@ -4,15 +4,18 @@
 //  • «похожие» берутся из графа связанных исполнителей Deezer (JSONP, без ключа);
 //  • баланс «знакомое / новое» меняется на лету: много пропусков — больше любимого, дослушиваете — больше открытий;
 //  • учитывает привычки: язык (кириллица / латиница), любите ли вы версии slowed / sped up;
-//  • не повторяет песню в другой версии, не ставит одного исполнителя чаще раза в 3 трека.
-import { searchTracks } from './catalog.js?v=0.18.0';
-import { peekYouTubeId, prefetchYouTubeIds } from './youtube.js?v=0.18.0';
-import * as player from './player.js?v=0.18.0';
-import * as store from './store.js?v=0.18.0';
-import { $, toast } from './ui.js?v=0.18.0';
-import { shuffled } from './utils.js?v=0.18.0';
-import { norm, isArtistBlocked, blockedArtists, dislikedTracks, dislikeTrack, splitArtists } from './taste.js?v=0.18.0';
-import { jsonp } from './jsonp.js?v=0.18.0';
+//  • не повторяет песню в другой версии, не ставит одного исполнителя чаще раза в 3 трека;
+//  • помнит жанры, время суток (утро / вечер), быстрые пропуски конкретных песен;
+//  • «радио по треку»: соседи текущего исполнителя; плюс вкусы людей с похожими любимыми исполнителями.
+import { searchTracks } from './catalog.js?v=0.19.0';
+import { peekYouTubeId, prefetchYouTubeIds } from './youtube.js?v=0.19.0';
+import * as player from './player.js?v=0.19.0';
+import * as store from './store.js?v=0.19.0';
+import { $, toast } from './ui.js?v=0.19.0';
+import { shuffled } from './utils.js?v=0.19.0';
+import { norm, isArtistBlocked, blockedArtists, dislikedTracks, dislikeTrack, splitArtists } from './taste.js?v=0.19.0';
+import { jsonp } from './jsonp.js?v=0.19.0';
+import { communityTaste } from './leaders.js?v=0.19.0';
 
 const SKEY = 'mkw.wave2';
 const RKEY = 'mkw.wave.related';
@@ -25,6 +28,12 @@ let played = new Set();  // id и «отпечатки» песен, уже бы
 let streak = 0;          // подряд пропусков
 let explore = 0.35;      // доля открытий, меняется от реакции
 let prefs = { cyr: 0.5, variant: 0 };
+let genre = {};          // жанр → вес
+let hourArt = {};        // исполнители, которых вы слушаете в это время суток
+let community = {};      // исполнители, которых любят люди с похожим вкусом
+const SKIPKEY = 'mkw.wave.skips';
+let skips = (() => { try { return JSON.parse(localStorage.getItem(SKIPKEY) || '{}'); } catch { return {}; } })();
+const part = (h) => (h < 6 ? 0 : h < 12 ? 1 : h < 18 ? 2 : 3); // ночь / утро / день / вечер
 
 const VARIANT = /slow|sped|speed|nightcore|reverb|ускор|замедл|remix|ремикс/i;
 const CYR = /[а-яё]/i;
@@ -44,6 +53,15 @@ function seedScores() {
     const saved = JSON.parse(localStorage.getItem(SKEY) || '{}');
     for (const [a, w] of Object.entries(saved)) score[a] = (score[a] || 0) + w * 0.85; // старые реакции понемногу забываются
   } catch { /* ignore */ }
+  // жанры и время суток
+  genre = {}; hourArt = {};
+  const nowPart = part(new Date().getHours());
+  for (const t of store.state.likes) if (t.genre) genre[norm(t.genre)] = (genre[norm(t.genre)] || 0) + 1;
+  for (const t of store.state.history.slice(0, 120)) {
+    if (t.genre) genre[norm(t.genre)] = (genre[norm(t.genre)] || 0) + 0.5;
+    if (t.playedAt && part(new Date(Number(t.playedAt)).getHours()) === nowPart) for (const a of artistsOf(t)) hourArt[a] = (hourArt[a] || 0) + 1;
+  }
+  try { const g = JSON.parse(localStorage.getItem(`${SKEY}.g`) || '{}'); for (const [k, w] of Object.entries(g)) genre[k] = (genre[k] || 0) + w; } catch { /* ignore */ }
   // привычки
   const sample = [...store.state.likes, ...store.state.history.slice(0, 60)];
   if (sample.length) {
@@ -52,6 +70,8 @@ function seedScores() {
   }
 }
 function persist() {
+  try { localStorage.setItem(`${SKEY}.g`, JSON.stringify(Object.fromEntries(Object.entries(genre).filter(([, w]) => Math.abs(w) > 0.5).slice(0, 40)))); } catch { /* ignore */ }
+  try { const e = Object.entries(skips).sort((a, b) => b[1].at - a[1].at).slice(0, 300); skips = Object.fromEntries(e); localStorage.setItem(SKIPKEY, JSON.stringify(skips)); } catch { /* ignore */ }
   try {
     const keep = Object.fromEntries(Object.entries(score).filter(([, w]) => Math.abs(w) >= 0.8).sort((a, b) => Math.abs(b[1]) - Math.abs(a[1])).slice(0, 120));
     localStorage.setItem(SKEY, JSON.stringify(keep));
@@ -68,6 +88,19 @@ function pickArtist(exclude = new Set()) {
   let r = Math.random() * ws.reduce((x, y) => x + y, 0);
   for (let i = 0; i < entries.length; i++) { r -= ws[i]; if (r <= 0) return entries[i]; }
   return entries[0];
+}
+
+// люди, у которых в любимых есть ваши исполнители, часто любят и других — берём их
+async function loadCommunity() {
+  community = {};
+  const lists = await communityTaste().catch(() => []);
+  const mine = new Set(Object.entries(score).filter(([, w]) => w > 1).map(([a]) => a));
+  for (const l of lists) {
+    const ns = l.map(norm);
+    const overlap = ns.filter((a) => mine.has(a)).length;
+    if (!overlap) continue;
+    for (const a of ns) if (!mine.has(a)) community[a] = (community[a] || 0) + overlap;
+  }
 }
 
 // ---------- похожие исполнители (Deezer) ----------
@@ -93,8 +126,12 @@ async function related(artist) {
 async function discoverArtists(n) {
   // берём 2–3 любимых исполнителя и их «соседей», которых вы ещё не слушали
   const seeds = new Set();
-  for (let k = 0; k < 3; k++) { const a = pickArtist(seeds); if (a) seeds.add(a); }
+  // «радио по треку»: соседи текущего исполнителя важнее всего
+  const cur = player.queue.current;
+  if (cur && Math.random() < 0.6) for (const a of artistsOf(cur).slice(0, 1)) if (weight(a) > -1) seeds.add(a);
+  for (let k = seeds.size; k < 3; k++) { const a = pickArtist(seeds); if (a) seeds.add(a); }
   const cand = new Map();
+  for (const [a, w] of Object.entries(community)) if (!isArtistBlocked(a) && (score[a] || 0) <= 1.5 && (score[a] || 0) > -1) cand.set(a, 0.6 + Math.min(1.5, w * 0.4));
   for (const s of seeds) {
     const rel = await related(s);
     rel.forEach((x, i) => {
@@ -160,6 +197,10 @@ function rate(t, liked) {
   const cyr = CYR.test(`${t.artist} ${t.title}`);
   s += (cyr ? prefs.cyr - 0.5 : 0.5 - prefs.cyr) * 1.2;
   if (t._src === 'new') s += explore * 1.5;
+  if (t.genre) s += Math.max(-1.5, Math.min(1.5, (genre[norm(t.genre)] || 0) * 0.12));
+  s += Math.min(1, as.reduce((m, a) => Math.max(m, hourArt[a] || 0), 0) * 0.15);
+  s += Math.min(0.8, as.reduce((m, a) => Math.max(m, community[a] || 0), 0) * 0.2);
+  const sk = skips[t.id]; if (sk) s -= sk.n * 1.5;
   if (peekYouTubeId(t)) s += 0.5; // полный трек точно доступен
   return s;
 }
@@ -193,7 +234,7 @@ async function refill(n = 10) {
       const perArtist = {};
       let pool = (await gather(round)).filter((t) => {
         const f = fp(t);
-        if (!t.id || dis.has(t.id) || have.has(t.id) || have.has(f) || seen.has(f) || artistsOf(t).some((a) => weight(a) <= -1.5 || isArtistBlocked(a))) return false;
+        if (!t.id || dis.has(t.id) || (skips[t.id] && skips[t.id].n >= 2) || have.has(t.id) || have.has(f) || seen.has(f) || artistsOf(t).some((a) => weight(a) <= -1.5 || isArtistBlocked(a))) return false;
         if (strict && (played.has(t.id) || played.has(f) || recent.has(t.id) || recent.has(f))) return false;
         seen.add(f);
         return true;
@@ -235,10 +276,13 @@ function react(kind) {
     // быстрый пропуск — сильный сигнал, поздний — слабый
     const w = last.time < 10 ? 1.4 : 0.8;
     for (const a of as) { score[a] = (score[a] || 0) - w; fresh[a] = (fresh[a] || 0) - w; }
+    if (last.track.genre) genre[norm(last.track.genre)] = (genre[norm(last.track.genre)] || 0) - 0.4;
+    if (last.time < 15) { const k = last.track.id; skips[k] = { n: ((skips[k] && skips[k].n) || 0) + 1, at: Date.now() }; }
     streak += 1;
     if (last.track.waveNew) explore = Math.max(0.15, explore - 0.06); else explore = Math.min(0.6, explore + 0.03);
   } else if (kind === 'done' || frac > 0.7) {
     for (const a of as) { score[a] = (score[a] || 0) + 1; fresh[a] = (fresh[a] || 0) + 1.2; }
+    if (last.track.genre) genre[norm(last.track.genre)] = (genre[norm(last.track.genre)] || 0) + 0.3;
     streak = 0;
     if (last.track.waveNew) explore = Math.min(0.6, explore + 0.05);
   }
@@ -273,6 +317,7 @@ export async function startWave() {
   played = new Set();
   streak = 0;
   explore = 0.35;
+  loadCommunity();
   setActive(true);
   const sub = $('#wave-sub');
   if (sub) sub.textContent = 'Подбираю…';

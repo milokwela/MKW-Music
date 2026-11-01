@@ -152,6 +152,59 @@ async function artist(request) {
   return out;
 }
 
+// ---------- Полный трек звуком (для фона): ищем рабочее зеркало YouTube ----------
+const INV_FALLBACK = ['https://inv.nadeko.net', 'https://invidious.nerdvpn.de', 'https://yewtu.be', 'https://invidious.f5.si', 'https://iv.melmac.space', 'https://invidious.privacyredirect.com', 'https://inv.tux.pizza', 'https://invidious.jing.rocks'];
+const PIPED_API = ['https://pipedapi.kavin.rocks', 'https://pipedapi.adminforge.de', 'https://api.piped.private.coffee'];
+async function invInstances() {
+  const cache = caches.default, key = new Request('https://yt.cache/instances');
+  const hit = await cache.match(key);
+  if (hit) return hit.json();
+  let list = INV_FALLBACK;
+  try {
+    const j = await (await fetch('https://api.invidious.io/instances.json?sort_by=health', { headers: { 'User-Agent': UA } })).json();
+    const fresh = j.filter(([, i]) => i && i.type === 'https' && i.api && (!i.monitor || !i.monitor.down)).map(([, i]) => i.uri).slice(0, 14);
+    if (fresh.length) list = [...new Set([...fresh, ...INV_FALLBACK])];
+  } catch { /* берём запасной список */ }
+  await cache.put(key, new Response(JSON.stringify(list), { headers: { 'Cache-Control': 'max-age=21600' } }));
+  return list;
+}
+const timed = (p, ms) => Promise.race([p, new Promise((_, r) => setTimeout(() => r(new Error('timeout')), ms))]);
+async function playable(url) {
+  const r = await timed(fetch(url, { headers: { Range: 'bytes=0-1', 'User-Agent': UA } }), 5000);
+  if (!(r.status === 206 || r.status === 200)) throw new Error(String(r.status));
+  return url;
+}
+async function ytAudio(request) {
+  const id = new URL(request.url).searchParams.get('id') || '';
+  const head = { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'public, max-age=1800' };
+  if (!/^[\w-]{11}$/.test(id)) return new Response('{}', { status: 400, headers: head });
+  const cache = caches.default, key = new Request(`https://yt.cache/a/${id}`);
+  const hit = await cache.match(key);
+  if (hit) return hit;
+  const rank = (fm) => fm.sort((a, b) => ((/mp4|m4a/.test(b.t) ? 1e7 : 0) + b.b) - ((/mp4|m4a/.test(a.t) ? 1e7 : 0) + a.b)).map((f) => f.u);
+  const inv = (await invInstances()).slice(0, 10).map((inst) => timed((async () => {
+    const j = await (await fetch(`${inst}/api/v1/videos/${id}?local=true&fields=adaptiveFormats`, { headers: { 'User-Agent': UA } })).json();
+    const fm = (j.adaptiveFormats || []).filter((f) => String(f.type || '').startsWith('audio/') && f.url).map((f) => ({ t: f.type, b: Number(f.bitrate) || 0, u: f.url.startsWith('http') ? f.url : `${inst}${f.url}` }));
+    if (!fm.length) throw new Error('нет');
+    const urls = rank(fm);
+    await playable(urls[0]);
+    return urls;
+  })(), 9000));
+  const piped = PIPED_API.map((api) => timed((async () => {
+    const j = await (await fetch(`${api}/streams/${id}`, { headers: { 'User-Agent': UA } })).json();
+    const fm = (j.audioStreams || []).filter((f) => f.url).map((f) => ({ t: f.mimeType || '', b: Number(f.bitrate) || 0, u: f.url }));
+    if (!fm.length) throw new Error('нет');
+    const urls = rank(fm);
+    await playable(urls[0]);
+    return urls;
+  })(), 9000));
+  let urls = [];
+  try { urls = await Promise.any([...inv, ...piped]); } catch { /* ничего не нашлось */ }
+  const out = new Response(JSON.stringify({ urls }), { headers: head });
+  if (urls.length) await cache.put(key, out.clone());
+  return out;
+}
+
 export default {
   async fetch(request, env) {
     const path = new URL(request.url).pathname;
@@ -160,6 +213,7 @@ export default {
     if (request.method === 'GET' && path === '/proxy') return proxy(request, env);
     if (request.method === 'GET' && path === '/lyrics') return lyrics(request);
     if (request.method === 'GET' && path === '/artist') return artist(request);
+    if (request.method === 'GET' && path === '/yt') return ytAudio(request);
     const origin = request.headers.get('Origin') || '';
     const list = String(env.ALLOWED_ORIGIN || '').split(',').map((s) => s.trim()).filter(Boolean);
     const ok = list.includes(origin) || origin.startsWith('http://localhost');
