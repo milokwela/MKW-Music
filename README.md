@@ -8,7 +8,7 @@
 
 [![Открыть](https://img.shields.io/badge/Открыть-mkwmusic.ru-ec6aa0?style=for-the-badge)](https://mkwmusic.ru)
 [![О проекте](https://img.shields.io/badge/О_проекте-мквмузыка.рус-8f6bff?style=for-the-badge)](https://xn--80adpkcic0dzd.xn--p1acf)
-![Версия](https://img.shields.io/badge/версия-0.21.0_beta-f4a58a?style=for-the-badge)
+![Версия](https://img.shields.io/badge/версия-0.22.0_beta-f4a58a?style=for-the-badge)
 ![Платформы](https://img.shields.io/badge/Android_·_iPhone_·_ПК-приложение-3ec97a?style=for-the-badge)
 
 <br>

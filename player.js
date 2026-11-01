@@ -1,11 +1,11 @@
 // Движок плеера: очередь, YouTube (полные треки) и превью iTunes (30 сек) как запасной вариант.
-import { audiusStreamUrl } from './audius.js?v=0.21.0';
-import { Queue } from './queue.js?v=0.21.0';
-import { findYouTubeId, peekYouTubeId, loadYouTubeApi, youtubeEnabled } from './youtube.js?v=0.21.0';
-import { logPlay, addListened } from './store.js?v=0.21.0';
-import { artUrl } from './utils.js?v=0.21.0';
-import { proxify } from './bypass.js?v=0.21.0';
-import { resolveStream, peekStream, dropStream, streamsOn } from './stream.js?v=0.21.0';
+import { audiusStreamUrl } from './audius.js?v=0.22.0';
+import { Queue } from './queue.js?v=0.22.0';
+import { findYouTubeId, peekYouTubeId, loadYouTubeApi, youtubeEnabled } from './youtube.js?v=0.22.0';
+import { logPlay, addListened } from './store.js?v=0.22.0';
+import { artUrl } from './utils.js?v=0.22.0';
+import { proxify } from './bypass.js?v=0.22.0';
+import { resolveStream, peekStream, dropStream, streamsOn, markWrong, streamInfo } from './stream.js?v=0.22.0';
 
 export const queue = new Queue();
 export const st = {
@@ -278,6 +278,23 @@ function unlockAudio() {
   } catch { /* ignore */ }
 }
 document.addEventListener('pointerdown', unlockAudio, true);
+
+// Что сейчас играет в фоне (источник и запись) — для подписи в плеере
+export function currentStreamInfo() {
+  if (!(st.mode === 'preview' && st.full)) return null;
+  return streamInfo(streamUrls[0]) || { src: 'mirror', label: '' };
+}
+// «Не та песня»: отклоняем эту запись и берём следующую; если вариантов нет — видеоплеер
+export function wrongVersion() {
+  if (!(st.mode === 'preview' && st.full)) return false;
+  const track = queue.current, id = loadId;
+  const rest = markWrong(track && track.id, st.vid, streamUrls[0]);
+  if (rest.length) { startStream(track, st.vid, rest, id, 0); return true; }
+  st.full = false;
+  if (/^[\w-]{11}$/.test(st.vid || '')) startYT(track, st.vid, id, 0).then((ok) => { if (!ok && id === loadId) fallbackToPreview(); });
+  else fallbackToPreview();
+  return true;
+}
 
 // Свернули приложение или выключили экран во время видео: переключаемся на звук с того же места.
 // Если звук ещё ищется — дожидаемся и включаем, как только найдётся.

@@ -51,7 +51,7 @@ async function viaAudd(file, env) {
 }
 
 // Прокси для «Обхода РФ»: только превью и обложки с iTunes и Deezer. Любые другие адреса запрещены.
-const PROXY_HOSTS = /(^|\.)(mzstatic\.com|itunes\.apple\.com|dzcdn\.net|deezer\.com|sndcdn\.com)$/i;
+const PROXY_HOSTS = /(^|\.)(mzstatic\.com|itunes\.apple\.com|dzcdn\.net|deezer\.com|sndcdn\.com|audius\.co|audius\.org)$/i;
 async function proxy(request, env) {
   const list = String(env.ALLOWED_ORIGIN || '').split(',').map((s) => s.trim()).filter(Boolean);
   const ref = request.headers.get('Referer') || request.headers.get('Origin') || '';
@@ -267,60 +267,124 @@ async function scClientId(force) {
   }
   return '';
 }
-async function soundcloud(artist, title, dur, origin) {
-  if (!title) return [];
+// Эталон трека из Deezer: точная длительность и ISRC (международный код записи) — по нему находим ту самую версию
+async function deezerRef(artist, title) {
+  try {
+    const q = `artist:"${artist}" track:"${title}"`;
+    const j = await (await timed(fetch(`https://api.deezer.com/search?limit=5&q=${encodeURIComponent(q)}`), 5000)).json();
+    const hit = ((j && j.data) || []).find((t) => like(t.title, title) && like(t.artist && t.artist.name, artist));
+    if (!hit) return null;
+    const t = await (await timed(fetch(`https://api.deezer.com/track/${hit.id}`), 5000)).json();
+    return { isrc: String(t.isrc || '').toUpperCase(), dur: Number(t.duration) || 0 };
+  } catch { return null; }
+}
+
+const VARIANT = /remix|ремикс|cover|кавер|live|лайв|slowed|sped|speed ?up|nightcore|reverb|караоке|karaoke|minus|минус|instrumental|инструментал|bass ?boost|mashup|мэшап|edit|version|версия|phonk|фонк|type beat|prod\.?|акустик|acoustic|8d|tiktok/i;
+const words = (s) => nrm(String(s || '').replace(/\s*[(\[].*?[)\]]/g, ''));
+// насколько уверенно кандидат — это та же песня (0…100)
+function confidence({ title: ct, by, dur: cd, isrc: ci }, want) {
+  if (want.isrc && ci && want.isrc === ci) return 100;
+  const T = words(want.title), C = words(ct);
+  if (!T || !C) return 0;
+  let sc = 0;
+  if (C === T || C.endsWith(T) || C.startsWith(T)) sc += 45; else if (C.includes(T)) sc += 30; else return 0;
+  const A = nrm(want.artist);
+  if (A && (nrm(by).includes(A) || A.includes(nrm(by)) || nrm(ct).includes(A))) sc += 30;
+  const wantVar = VARIANT.test(want.title);
+  if (!wantVar && VARIANT.test(ct)) sc -= 50;
+  const D = want.refDur || want.dur;
+  if (D && cd) { const d = Math.abs(cd - D); sc += d <= 2 ? 25 : d <= 5 ? 15 : d <= 9 ? 0 : -60; }
+  return sc;
+}
+
+async function soundcloud(want, origin) {
+  if (!want.title) return [];
   let cid = await scClientId();
   if (!cid) return [];
-  const q = `${artist} ${title}`.trim();
-  let r = await fetch(`https://api-v2.soundcloud.com/search/tracks?q=${encodeURIComponent(q)}&client_id=${cid}&limit=12`, { headers: { 'User-Agent': UA } });
-  if (r.status === 401 || r.status === 403) { cid = await scClientId(true); r = await fetch(`https://api-v2.soundcloud.com/search/tracks?q=${encodeURIComponent(q)}&client_id=${cid}&limit=12`, { headers: { 'User-Agent': UA } }); }
-  const j = await r.json();
-  const bad = /remix|ремикс|cover|кавер|live|slowed|sped|speed up|nightcore|караоке|karaoke|minus|минус|instrumental/i;
-  const wantBad = bad.test(title);
-  const list = (j.collection || []).filter((t) => t.streamable !== false && t.policy !== 'SNIP' && t.policy !== 'BLOCK' && (t.full_duration || t.duration) > 40000)
+  const search = async (q) => {
+    let r = await fetch(`https://api-v2.soundcloud.com/search/tracks?q=${encodeURIComponent(q)}&client_id=${cid}&limit=20`, { headers: { 'User-Agent': UA } });
+    if (r.status === 401 || r.status === 403) { cid = await scClientId(true); r = await fetch(`https://api-v2.soundcloud.com/search/tracks?q=${encodeURIComponent(q)}&client_id=${cid}&limit=20`, { headers: { 'User-Agent': UA } }); }
+    return ((await r.json()).collection) || [];
+  };
+  const qs = [`${want.artist} ${want.title}`.trim()];
+  if (want.isrc) qs.unshift(want.isrc);
+  const seen = new Set(), all = [];
+  for (const q of qs) for (const t of await search(q).catch(() => [])) if (!seen.has(t.id)) { seen.add(t.id); all.push(t); }
+  const cands = all.filter((t) => t.streamable !== false && t.policy !== 'SNIP' && t.policy !== 'BLOCK' && (t.full_duration || t.duration) > 40000)
     .map((t) => {
-      const name = `${t.user && t.user.username} ${t.title}`;
-      let sc = (like(t.title, title) ? 3 : 0) + (like(name, artist) ? 2 : 0) + (t.publisher_metadata && like(t.publisher_metadata.artist, artist) ? 2 : 0);
-      if (dur) { const d = Math.abs((t.full_duration || t.duration) / 1000 - dur); sc += d < 3 ? 3 : d < 8 ? 1 : d > 25 ? -4 : -1; }
-      if (!wantBad && bad.test(t.title)) sc -= 4;
-      return { t, sc };
-    }).filter((x) => x.sc >= 4).sort((a, b) => b.sc - a.sc);
-  for (const { t } of list.slice(0, 3)) {
+      const pm = t.publisher_metadata || {};
+      const c = { title: t.title, by: pm.artist || (t.user && t.user.username) || '', dur: Math.round((t.full_duration || t.duration) / 1000), isrc: String(pm.isrc || '').toUpperCase() };
+      let conf = confidence(c, want);
+      if (pm.artist && like(pm.artist, want.artist)) conf += 5;           // официальная загрузка от лейбла
+      return { t, c, conf: Math.min(100, conf) };
+    }).filter((x) => x.conf >= 70).sort((a, b) => b.conf - a.conf || (b.t.playback_count || 0) - (a.t.playback_count || 0));
+  const out = [];
+  for (const { t, c, conf } of cands.slice(0, 3)) {
     const tr = ((t.media && t.media.transcodings) || []).find((x) => x.format && x.format.protocol === 'progressive');
     if (!tr) continue;
     const auth = t.track_authorization ? `&track_authorization=${t.track_authorization}` : '';
-    const s = await (await fetch(`${tr.url}?client_id=${cid}${auth}`, { headers: { 'User-Agent': UA } })).json();
-    if (s && s.url) return [s.url, `${origin}/proxy?u=${encodeURIComponent(s.url)}`];
+    try {
+      const s = await (await fetch(`${tr.url}?client_id=${cid}${auth}`, { headers: { 'User-Agent': UA } })).json();
+      if (s && s.url) out.push({ urls: [s.url, `${origin}/proxy?u=${encodeURIComponent(s.url)}`], src: 'soundcloud', conf, label: `${c.by} — ${c.title}`, id: `sc${t.id}` });
+    } catch { /* следующий */ }
   }
-  return [];
+  return out;
 }
 
-// Всё сразу: YouTube напрямую, SoundCloud, зеркала. Побеждает первый, кто нашёл звук.
+// Audius: открытая музыкальная сеть с полными треками (без ключа)
+async function audiusSearch(want) {
+  try {
+    const host = (await (await timed(fetch('https://api.audius.co'), 4000)).json()).data[0];
+    const j = await (await timed(fetch(`${host}/v1/tracks/search?query=${encodeURIComponent(`${want.artist} ${want.title}`)}&app_name=MKW`), 6000)).json();
+    return ((j && j.data) || []).map((t) => ({ t, conf: confidence({ title: t.title, by: t.user && t.user.name, dur: t.duration }, want) }))
+      .filter((x) => x.conf >= 75).slice(0, 2)
+      .map(({ t, conf }) => ({ urls: [`${host}/v1/tracks/${t.id}/stream?app_name=MKW`], src: 'audius', conf, label: `${t.user && t.user.name} — ${t.title}`, id: `au${t.id}` }));
+  } catch { return []; }
+}
+
+// cobalt: открытые сервисы скачивания звука с YouTube (запасной путь, если YouTube не отвечает Worker)
+const COBALT = ['https://cobalt-api.meowing.de', 'https://cobalt-backend.canine.tools', 'https://capi.3kh0.net', 'https://cobalt-api.kwiatekmiki.com'];
+async function cobalt(id) {
+  const tries = COBALT.map((api) => timed((async () => {
+    const r = await fetch(`${api}/`, { method: 'POST', headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'User-Agent': UA }, body: JSON.stringify({ url: `https://www.youtube.com/watch?v=${id}`, downloadMode: 'audio', audioFormat: 'mp3' }) });
+    const j = await r.json();
+    if (!j || !j.url || !/tunnel|redirect/.test(j.status)) throw new Error('нет');
+    return j.url;
+  })(), 9000));
+  try { return [await Promise.any(tries)]; } catch { return []; }
+}
+
+// Всё сразу: YouTube напрямую, SoundCloud, Audius, зеркала, cobalt. Выбираем не первого, а самого точного.
 async function bgAudio(request) {
   const u = new URL(request.url);
   const id = u.searchParams.get('yt') || '', artist = u.searchParams.get('artist') || '', title = u.searchParams.get('title') || '', dur = Number(u.searchParams.get('dur') || 0);
   const head = { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'public, max-age=1800' };
-  const cache = caches.default, key = new Request(`https://bg.cache/${encodeURIComponent(`${id}|${artist}|${title}`)}`);
+  const cache = caches.default, key = new Request(`https://bg3.cache/${encodeURIComponent(`${id}|${artist}|${title}|${dur}`)}`);
   const hit = await cache.match(key);
   if (hit) return hit;
   const origin = u.origin;
-  const tries = [];
-  if (/^[\w-]{11}$/.test(id)) {
-    tries.push(timed(innertube(id, origin).then((l) => { if (!l.length) throw new Error('нет'); return { urls: l, src: 'youtube' }; }), 15000));
-    tries.push(timed(ytAudio(new Request(`${origin}/yt?id=${id}&mirrors=1`)).then((r) => r.json()).then((j) => { if (!j.urls || !j.urls.length) throw new Error('нет'); return { urls: j.urls, src: 'mirror' }; }), 16000));
-  }
-  tries.push(timed(soundcloud(artist, title, dur, origin).then((l) => { if (!l.length) throw new Error('нет'); return { urls: l, src: 'soundcloud' }; }), 12000));
-  let res = { urls: [], src: '' };
-  try { res = await Promise.any(tries); } catch { /* ничего не нашлось */ }
+  const ref = await deezerRef(artist, title);
+  const want = { artist, title, dur, refDur: ref && ref.dur, isrc: ref && ref.isrc };
+  const yt = /^[\w-]{11}$/.test(id);
+  // видео YouTube клиент уже подобрал по длительности — это та же песня
+  const jobs = [
+    yt ? timed(innertube(id, origin), 14000).then((l) => (l.length ? [{ urls: l, src: 'youtube', conf: 95, label: 'YouTube', id: `yt${id}` }] : [])).catch(() => []) : Promise.resolve([]),
+    yt ? timed(ytAudio(new Request(`${origin}/yt?id=${id}&mirrors=1`)).then((r) => r.json()), 14000).then((j) => (j.urls && j.urls.length ? [{ urls: j.urls, src: 'mirror', conf: 94, label: 'зеркало YouTube', id: `yt${id}` }] : [])).catch(() => []) : Promise.resolve([]),
+    yt ? timed(cobalt(id), 12000).then((l) => (l.length ? [{ urls: l, src: 'cobalt', conf: 93, label: 'YouTube (cobalt)', id: `yt${id}` }] : [])).catch(() => []) : Promise.resolve([]),
+    timed(soundcloud(want, origin), 13000).catch(() => []),
+    timed(audiusSearch(want), 10000).catch(() => []),
+  ];
+  const cands = (await Promise.all(jobs)).flat().sort((a, b) => b.conf - a.conf);
+  const res = { urls: cands.length ? cands[0].urls : [], src: cands.length ? cands[0].src : '', cands, isrc: want.isrc || '' };
   const out = new Response(JSON.stringify(res), { headers: head });
-  if (res.urls.length) await cache.put(key, out.clone());
+  if (cands.length) await cache.put(key, out.clone());
   return out;
 }
 
 export default {
   async fetch(request, env) {
     const path = new URL(request.url).pathname;
-    if (request.method === 'GET' && path === '/ping') return new Response(JSON.stringify({ ok: true, proxy: true, lyrics: true, bg: 2 }), { headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
+    if (request.method === 'GET' && path === '/ping') return new Response(JSON.stringify({ ok: true, proxy: true, lyrics: true, bg: 3 }), { headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
     if (request.method === 'GET' && path === '/geo') return new Response(JSON.stringify({ country: (request.cf && request.cf.country) || '' }), { headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'no-store' } });
     if (request.method === 'GET' && path === '/proxy') return proxy(request, env);
     if (request.method === 'GET' && path === '/lyrics') return lyrics(request);

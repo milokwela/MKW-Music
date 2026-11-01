@@ -1,12 +1,12 @@
 // Интерфейс плеера: мини-плеер, большой плеер, очередь, таймер сна.
-import { $, h, icon, setIcon, artEl, trackRow, openSheet, closeSheet, sheetItem, highlightCurrent, toast, emptyState } from './ui.js?v=0.21.0';
-import { openArtistFor } from './artist.js?v=0.21.0';
-import { renderCarousel, initCarousel } from './carousel.js?v=0.21.0';
-import * as player from './player.js?v=0.21.0';
-import * as store from './store.js?v=0.21.0';
-import { likeToggle, openTrackMenu } from './menu.js?v=0.21.0';
-import { formatTime } from './utils.js?v=0.21.0';
-import { youtubeEnabled } from './youtube.js?v=0.21.0';
+import { $, h, icon, setIcon, artEl, trackRow, openSheet, closeSheet, sheetItem, highlightCurrent, toast, emptyState } from './ui.js?v=0.22.0';
+import { openArtistFor } from './artist.js?v=0.22.0';
+import { renderCarousel, initCarousel } from './carousel.js?v=0.22.0';
+import * as player from './player.js?v=0.22.0';
+import * as store from './store.js?v=0.22.0';
+import { likeToggle, openTrackMenu } from './menu.js?v=0.22.0';
+import { formatTime } from './utils.js?v=0.22.0';
+import { youtubeEnabled } from './youtube.js?v=0.22.0';
 
 const { queue, st } = player;
 let seeking = false;
@@ -133,6 +133,16 @@ function renderState() {
   const badge = $('#fp-badge');
   badge.textContent = queue.current?.wave ? 'MKW Волна' : st.mode === 'yt' ? 'MKW' : st.mode === 'preview' ? (st.full ? 'MKW · фон' : queue.current?.auId ? 'MKW · Audius' : 'MKW · фрагмент') : st.loading ? 'Загрузка…' : '';
   badge.classList.toggle('yt', st.mode === 'yt' || st.full);
+  // откуда звук в фоне + «не та песня»
+  let src = $('#fp-src');
+  if (!src) { src = h('div', { id: 'fp-src', class: 'fp-src', hidden: '' }); $('#fp-note').after(src); }
+  const info = player.currentStreamInfo();
+  if (info) {
+    const names = { youtube: 'YouTube', soundcloud: 'SoundCloud', audius: 'Audius', cobalt: 'YouTube', mirror: 'YouTube' };
+    src.hidden = false;
+    src.replaceChildren(h('span', { text: `Фон: ${names[info.src] || 'YouTube'}${info.label && info.src !== 'youtube' && info.src !== 'mirror' && info.src !== 'cobalt' ? ` · ${info.label}` : ''}` }),
+      h('button', { type: 'button', class: 'fp-wrong', onclick: () => { if (player.wrongVersion()) toast('Ищу правильную версию…'); } }, 'Не та песня?'));
+  } else src.hidden = true;
   $('#fp-note').textContent = st.message || (st.mode === 'preview' && !st.full && !youtubeEnabled() ? 'Полные треки появятся после подключения YouTube-ключа' : '');
   $('#fp-shuffle').classList.toggle('on', queue.shuffle);
   $('#fp-repeat').classList.toggle('on', queue.repeat !== 'off');
