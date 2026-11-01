@@ -45,8 +45,9 @@ service cloud.firestore {
       allow read: if request.auth != null;
       allow delete: if request.auth != null && request.auth.uid == uid;
       allow create, update: if request.auth != null && request.auth.uid == uid
-        && request.resource.data.keys().hasOnly(['list', 'updatedAt'])
-        && request.resource.data.list is list && request.resource.data.list.size() <= 200;
+        && request.resource.data.keys().hasOnly(['list', 'declined', 'updatedAt'])
+        && request.resource.data.list is list && request.resource.data.list.size() <= 200
+        && (!('declined' in request.resource.data) || (request.resource.data.declined is list && request.resource.data.declined.size() <= 300));
     }
     match /joined/{uid} {
       allow read: if request.auth != null;

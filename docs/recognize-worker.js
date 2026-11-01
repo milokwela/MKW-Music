@@ -51,7 +51,7 @@ async function viaAudd(file, env) {
 }
 
 // Прокси для «Обхода РФ»: только превью и обложки с iTunes и Deezer. Любые другие адреса запрещены.
-const PROXY_HOSTS = /(^|\.)(mzstatic\.com|itunes\.apple\.com|dzcdn\.net|deezer\.com)$/i;
+const PROXY_HOSTS = /(^|\.)(mzstatic\.com|itunes\.apple\.com|dzcdn\.net|deezer\.com|sndcdn\.com)$/i;
 async function proxy(request, env) {
   const list = String(env.ALLOWED_ORIGIN || '').split(',').map((s) => s.trim()).filter(Boolean);
   const ref = request.headers.get('Referer') || request.headers.get('Origin') || '';
@@ -224,7 +224,7 @@ async function ytAudio(request) {
   const id = new URL(request.url).searchParams.get('id') || '';
   const head = { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'public, max-age=1800' };
   if (!/^[\w-]{11}$/.test(id)) return new Response('{}', { status: 400, headers: head });
-  const cache = caches.default, key = new Request(`https://yt.cache/a/${id}`);
+  const cache = caches.default, key = new Request(`https://yt.cache/a/${id}${new URL(request.url).searchParams.get('mirrors') === '1' ? 'm' : ''}`);
   const hit = await cache.match(key);
   if (hit) return hit;
   const rank = (fm) => fm.sort((a, b) => ((/mp4|m4a/.test(b.t) ? 1e7 : 0) + b.b) - ((/mp4|m4a/.test(a.t) ? 1e7 : 0) + a.b)).map((f) => f.u);
@@ -246,23 +246,88 @@ async function ytAudio(request) {
   })(), 9000));
   let urls = [];
   const origin = new URL(request.url).origin;
-  try { urls = await Promise.any([timed(innertube(id, origin).then((l) => { if (!l.length) throw new Error('нет'); return l; }), 15000), ...inv, ...piped]); } catch { /* ничего не нашлось */ }
+  const onlyMirrors = new URL(request.url).searchParams.get('mirrors') === '1';
+  try { urls = await Promise.any([...(onlyMirrors ? [] : [timed(innertube(id, origin).then((l) => { if (!l.length) throw new Error('нет'); return l; }), 15000)]), ...inv, ...piped]); } catch { /* ничего не нашлось */ }
   const out = new Response(JSON.stringify({ urls }), { headers: head });
   if (urls.length) await cache.put(key, out.clone());
   return out;
 }
 
 
+// ---------- SoundCloud: полные треки обычным mp3 (огромный каталог, в т.ч. русский рэп и фонк) ----------
+async function scClientId(force) {
+  const cache = caches.default, key = new Request('https://sc.cache/cid');
+  if (!force) { const hit = await cache.match(key); if (hit) return hit.text(); }
+  const html = await (await fetch('https://soundcloud.com/', { headers: { 'User-Agent': UA } })).text();
+  const scripts = [...html.matchAll(/<script crossorigin src="(https:\/\/a-v2\.sndcdn\.com\/assets\/[^"]+\.js)"/g)].map((m) => m[1]).reverse();
+  for (const src of scripts.slice(0, 8)) {
+    const js = await (await fetch(src, { headers: { 'User-Agent': UA } })).text();
+    const m = js.match(/client_id\s*[:=]\s*"([a-zA-Z0-9]{32})"/);
+    if (m) { await cache.put(key, new Response(m[1], { headers: { 'Cache-Control': 'max-age=43200' } })); return m[1]; }
+  }
+  return '';
+}
+async function soundcloud(artist, title, dur, origin) {
+  if (!title) return [];
+  let cid = await scClientId();
+  if (!cid) return [];
+  const q = `${artist} ${title}`.trim();
+  let r = await fetch(`https://api-v2.soundcloud.com/search/tracks?q=${encodeURIComponent(q)}&client_id=${cid}&limit=12`, { headers: { 'User-Agent': UA } });
+  if (r.status === 401 || r.status === 403) { cid = await scClientId(true); r = await fetch(`https://api-v2.soundcloud.com/search/tracks?q=${encodeURIComponent(q)}&client_id=${cid}&limit=12`, { headers: { 'User-Agent': UA } }); }
+  const j = await r.json();
+  const bad = /remix|ремикс|cover|кавер|live|slowed|sped|speed up|nightcore|караоке|karaoke|minus|минус|instrumental/i;
+  const wantBad = bad.test(title);
+  const list = (j.collection || []).filter((t) => t.streamable !== false && t.policy !== 'SNIP' && t.policy !== 'BLOCK' && (t.full_duration || t.duration) > 40000)
+    .map((t) => {
+      const name = `${t.user && t.user.username} ${t.title}`;
+      let sc = (like(t.title, title) ? 3 : 0) + (like(name, artist) ? 2 : 0) + (t.publisher_metadata && like(t.publisher_metadata.artist, artist) ? 2 : 0);
+      if (dur) { const d = Math.abs((t.full_duration || t.duration) / 1000 - dur); sc += d < 3 ? 3 : d < 8 ? 1 : d > 25 ? -4 : -1; }
+      if (!wantBad && bad.test(t.title)) sc -= 4;
+      return { t, sc };
+    }).filter((x) => x.sc >= 4).sort((a, b) => b.sc - a.sc);
+  for (const { t } of list.slice(0, 3)) {
+    const tr = ((t.media && t.media.transcodings) || []).find((x) => x.format && x.format.protocol === 'progressive');
+    if (!tr) continue;
+    const auth = t.track_authorization ? `&track_authorization=${t.track_authorization}` : '';
+    const s = await (await fetch(`${tr.url}?client_id=${cid}${auth}`, { headers: { 'User-Agent': UA } })).json();
+    if (s && s.url) return [s.url, `${origin}/proxy?u=${encodeURIComponent(s.url)}`];
+  }
+  return [];
+}
+
+// Всё сразу: YouTube напрямую, SoundCloud, зеркала. Побеждает первый, кто нашёл звук.
+async function bgAudio(request) {
+  const u = new URL(request.url);
+  const id = u.searchParams.get('yt') || '', artist = u.searchParams.get('artist') || '', title = u.searchParams.get('title') || '', dur = Number(u.searchParams.get('dur') || 0);
+  const head = { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'public, max-age=1800' };
+  const cache = caches.default, key = new Request(`https://bg.cache/${encodeURIComponent(`${id}|${artist}|${title}`)}`);
+  const hit = await cache.match(key);
+  if (hit) return hit;
+  const origin = u.origin;
+  const tries = [];
+  if (/^[\w-]{11}$/.test(id)) {
+    tries.push(timed(innertube(id, origin).then((l) => { if (!l.length) throw new Error('нет'); return { urls: l, src: 'youtube' }; }), 15000));
+    tries.push(timed(ytAudio(new Request(`${origin}/yt?id=${id}&mirrors=1`)).then((r) => r.json()).then((j) => { if (!j.urls || !j.urls.length) throw new Error('нет'); return { urls: j.urls, src: 'mirror' }; }), 16000));
+  }
+  tries.push(timed(soundcloud(artist, title, dur, origin).then((l) => { if (!l.length) throw new Error('нет'); return { urls: l, src: 'soundcloud' }; }), 12000));
+  let res = { urls: [], src: '' };
+  try { res = await Promise.any(tries); } catch { /* ничего не нашлось */ }
+  const out = new Response(JSON.stringify(res), { headers: head });
+  if (res.urls.length) await cache.put(key, out.clone());
+  return out;
+}
+
 export default {
   async fetch(request, env) {
     const path = new URL(request.url).pathname;
-    if (request.method === 'GET' && path === '/ping') return new Response(JSON.stringify({ ok: true, proxy: true, lyrics: true }), { headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
+    if (request.method === 'GET' && path === '/ping') return new Response(JSON.stringify({ ok: true, proxy: true, lyrics: true, bg: 2 }), { headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
     if (request.method === 'GET' && path === '/geo') return new Response(JSON.stringify({ country: (request.cf && request.cf.country) || '' }), { headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'no-store' } });
     if (request.method === 'GET' && path === '/proxy') return proxy(request, env);
     if (request.method === 'GET' && path === '/lyrics') return lyrics(request);
     if (request.method === 'GET' && path === '/artist') return artist(request);
     if (request.method === 'GET' && path === '/yt') return ytAudio(request);
     if (request.method === 'GET' && path === '/ytp') return ytProxy(request);
+    if (request.method === 'GET' && path === '/bg') return bgAudio(request);
     const origin = request.headers.get('Origin') || '';
     const list = String(env.ALLOWED_ORIGIN || '').split(',').map((s) => s.trim()).filter(Boolean);
     const ok = list.includes(origin) || origin.startsWith('http://localhost');

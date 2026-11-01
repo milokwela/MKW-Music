@@ -1,6 +1,6 @@
 // «Обход РФ»: если включено, превью и обложки идут через ваш Cloudflare Worker (адрес берётся из shazam-config.js).
 // По умолчанию выключено: тогда всё работает напрямую, как обычно.
-import { RECOGNIZE_URL } from './shazam-config.js?v=0.20.0';
+import { RECOGNIZE_URL } from './shazam-config.js?v=0.21.0';
 
 const KEY = 'mkw.bypass';
 const HOSTS = /(^|\.)(mzstatic\.com|itunes\.apple\.com|dzcdn\.net|deezer\.com)$/i;

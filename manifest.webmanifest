@@ -11,19 +11,19 @@
   "lang": "ru",
   "icons": [
     {
-      "src": "ic4-192.png",
+      "src": "ic5-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "ic4-512.png",
+      "src": "ic5-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "ic4-maskable-512.png",
+      "src": "ic5-maskable-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"

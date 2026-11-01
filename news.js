@@ -1,7 +1,7 @@
 // Окно «Вышло крупное обновление»: картинки вместо текста, кнопки «Ого!» и «Пропустить». Показывается один раз.
-import { h } from './ui.js?v=0.20.0';
-import { mi } from './icons2.js?v=0.20.0';
-import { VERSION } from './changelog.js?v=0.20.0';
+import { h } from './ui.js?v=0.21.0';
+import { mi } from './icons2.js?v=0.21.0';
+import { VERSION } from './changelog.js?v=0.21.0';
 
 const KEY = 'mkw.news';
 const SLIDES = [
@@ -13,7 +13,7 @@ const SLIDES = [
 ];
 
 export function showNews() {
-  const ver = VERSION.split('.').slice(0, 2).join('.');
+  const ver = '0.20'; // окно новостей показываем для 0.20 (мелкие обновления его не повторяют)
   try { if (localStorage.getItem(KEY) === ver) return; } catch { return; }
   let i = 0;
   const done = () => { try { localStorage.setItem(KEY, ver); } catch { /* ignore */ } box.classList.add('out'); setTimeout(() => box.remove(), 350); };
