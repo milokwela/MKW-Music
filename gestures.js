@@ -1,28 +1,29 @@
 // Управление жестами через камеру (MediaPipe GestureRecognizer, модель грузится с CDN).
 // Два пальца: следующий. Рок: предыдущий. Большой вверх: лайк. Средний палец: снять лайк. Большой вниз: дизлайк.
 // Ладонь: пауза. Палец вверх: продолжить. Кулак: тише. Три пальца: громче.
-import { h, toast, openSheet, closeSheet } from './ui.js?v=0.16.0';
-import * as player from './player.js?v=0.16.0';
-import * as store from './store.js?v=0.16.0';
-import { dislike } from './wave.js?v=0.16.0';
+import { h, toast, openSheet, closeSheet } from './ui.js?v=0.17.0';
+import { mi } from './icons2.js?v=0.17.0';
+import * as player from './player.js?v=0.17.0';
+import * as store from './store.js?v=0.17.0';
+import { dislike } from './wave.js?v=0.17.0';
 
 const KEY = 'mkw.gestures';
 const LIB = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14';
 const MODEL = 'https://storage.googleapis.com/mediapipe-models/gesture_recognizer/gesture_recognizer/float16/1/gesture_recognizer.task';
 export const GESTURES = [
-  ['✌️', 'Два пальца', 'Следующий трек'],
-  ['🤟', 'Большой, указательный и мизинец', 'Предыдущий трек'],
-  ['👍', 'Большой палец вверх', 'Лайк'],
-  ['🖕', 'Средний палец', 'Снять лайк'],
-  ['👎', 'Большой палец вниз', 'Дизлайк и следующий'],
-  ['✋', 'Открытая ладонь', 'Пауза'],
-  ['☝️', 'Указательный вверх', 'Продолжить'],
-  ['✊', 'Кулак', 'Тише'],
-  ['3️⃣', 'Три пальца: указательный, средний, безымянный', 'Громче'],
+  ['hand-peace', 'Два пальца', 'Следующий трек'],
+  ['hand-rock', 'Большой, указательный и мизинец', 'Предыдущий трек'],
+  ['thumb-up', 'Большой палец вверх', 'Лайк'],
+  ['hand-middle', 'Средний палец', 'Снять лайк'],
+  ['thumb-down', 'Большой палец вниз', 'Дизлайк и следующий'],
+  ['hand-open', 'Открытая ладонь', 'Пауза'],
+  ['hand-point', 'Указательный вверх', 'Продолжить'],
+  ['hand-fist', 'Кулак', 'Тише'],
+  ['hand-three', 'Три пальца: указательный, средний, безымянный', 'Громче'],
 ];
 export function gestureList() {
   return h('div', { class: 'gest-list' }, GESTURES.map(([e, how, what]) => h('div', { class: 'gest-item' },
-    h('span', { class: 'ge', text: e }), h('div', {}, h('b', { text: what }), h('small', { text: how })))));
+    h('span', { class: 'ge' }, mi(e)), h('div', {}, h('b', { text: what }), h('small', { text: how })))));
 }
 export function showGestureGuide() {
   openSheet('Жесты', h('div', {}, gestureList(), h('p', { class: 'profile-note', text: 'Держите жест около секунды на расстоянии вытянутой руки, чтобы рука была видна целиком. Должно быть светло.' })));

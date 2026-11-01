@@ -1,11 +1,13 @@
 // Страница исполнителя: треки, слушать, перемешать, «не рекомендовать».
-import { searchTracks } from './catalog.js?v=0.16.0';
-import { prefetchYouTubeIds } from './youtube.js?v=0.16.0';
-import { $, h, icon, trackRow, skeleton, animateIn, toast, openSheet, closeSheet, sheetItem } from './ui.js?v=0.16.0';
-import { openTrackMenu } from './menu.js?v=0.16.0';
-import * as player from './player.js?v=0.16.0';
-import { splitArtists, isArtistBlocked, blockArtist, unblockArtist, norm } from './taste.js?v=0.16.0';
-import { shuffled } from './utils.js?v=0.16.0';
+import { searchTracks } from './catalog.js?v=0.17.0';
+import { prefetchYouTubeIds } from './youtube.js?v=0.17.0';
+import { $, h, icon, trackRow, skeleton, animateIn, toast, openSheet, closeSheet, sheetItem } from './ui.js?v=0.17.0';
+import { openTrackMenu } from './menu.js?v=0.17.0';
+import * as player from './player.js?v=0.17.0';
+import { splitArtists, isArtistBlocked, blockArtist, unblockArtist, norm } from './taste.js?v=0.17.0';
+import { shuffled, plural } from './utils.js?v=0.17.0';
+import { artistPic } from './artistpic.js?v=0.17.0';
+import { mi } from './icons2.js?v=0.17.0';
 
 let seq = 0;
 const infoCache = new Map();
@@ -85,23 +87,40 @@ export async function openArtist(name) {
     h('span', { class: 'chip', text: `${tracks.length} треков в подборке` }),
     ...genres.map((g) => h('span', { class: 'chip', text: g })),
     years.length ? h('span', { class: 'chip', text: Math.min(...years) === Math.max(...years) ? String(years[0]) : `${Math.min(...years)}–${Math.max(...years)}` }) : null);
-  const photo = h('img', { class: 'artist-photo', alt: '', hidden: '' });
+  const photo = h('img', { class: 'artist-photo', alt: '' });
+  const fans = h('div', { class: 'artist-fans' });
   const bio = h('div', { class: 'artist-bio', hidden: '' });
-  const headBox = h('div', { class: 'artist-head' }, photo, h('div', {}, h('h1', { class: 'artist-name', text: name }), meta));
+  const hero = h('div', { class: 'artist-hero' },
+    h('div', { class: 'ah-bg' }),
+    h('div', { class: 'ah-photo' }, photo, h('span', { class: 'ah-ph' }, mi('person'))),
+    h('div', { class: 'ah-txt' }, h('div', { class: 'ah-kind' }, mi('verified'), 'Исполнитель'), h('h1', { class: 'artist-name', text: name }), fans, meta));
+  const headBox = hero;
+  const setPhoto = (url) => {
+    if (!url || mine !== seq) return;
+    const img = new Image();
+    img.onload = () => { if (mine !== seq) return; photo.src = url; hero.style.setProperty('--ah-img', `url("${url}")`); hero.classList.add('has-photo'); };
+    img.src = url;
+  };
+  artistPic(name).then((p) => {
+    if (mine !== seq) return;
+    if (p && p.picture) setPhoto(p.picture);
+    else if (tracks[0] && tracks[0].artwork) setPhoto(tracks[0].artwork);
+    if (p && p.fans) fans.textContent = `${p.fans.toLocaleString('ru-RU')} ${plural(p.fans, 'поклонник', 'поклонника', 'поклонников')} на Deezer`;
+  });
   artistInfo(name).then((info) => {
     if (mine !== seq || !info) return;
-    if (info.photo) { photo.src = info.photo; photo.hidden = false; }
+    if (info.photo && !hero.classList.contains('has-photo')) setPhoto(info.photo);
+    if (info.desc) { const d = h('span', { class: 'chip', text: info.desc.length > 40 ? `${info.desc.slice(0, 40)}…` : info.desc }); meta.prepend(d); }
     const short = info.text.length > 280 ? `${info.text.slice(0, 280).replace(/\s+\S*$/, '')}…` : info.text;
     const txt = h('span', { text: short });
-    bio.append(txt);
+    bio.append(h('b', { class: 'bio-h', text: 'Об исполнителе' }), txt);
     if (short !== info.text) { const more = h('button', { class: 'more', type: 'button', text: 'Ещё' }); more.addEventListener('click', () => { txt.textContent = info.text; more.remove(); }); bio.append(more); }
     if (info.url) bio.append(h('div', { style: 'margin-top:8px;font-size:12px' }, 'Источник: ', h('a', { href: info.url, target: '_blank', rel: 'noopener', text: 'Википедия' })));
     bio.hidden = false;
   });
   body.replaceChildren(
-    headBox, bio,
+    headBox, bar, bio,
     h('div', { class: 'section-title', text: tracks.length ? `Популярное · ${tracks.length}` : '' }),
-    bar,
     tracks.length ? list : h('div', { class: 'empty' }, h('div', { text: 'Треков не нашлось' })));
   if (tracks.length) { animateIn(list); prefetchYouTubeIds(tracks); }
 }
