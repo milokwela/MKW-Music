@@ -1,18 +1,19 @@
 // Экран «Профиль»: статистика, достижения, топ исполнителей, тема, версии.
-import { $, $$, h, icon, openSheet, closeSheet, toast, sheetItem } from './ui.js?v=0.13.2';
-import * as store from './store.js?v=0.13.2';
-import { ACCENTS, getTheme, getAccent, getCustomHue, setCustomColor, setTheme, setAccent } from './theme.js?v=0.13.2';
-import { CHANGELOG, VERSION, STAGE, KNOWN_ISSUES } from './changelog.js?v=0.13.2';
-import { plural } from './utils.js?v=0.13.2';
-import { youtubeEnabled, youtubeQuotaOut } from './youtube.js?v=0.13.2';
-import { audiusEnabled } from './audius.js?v=0.13.2';
-import { SOURCE_MODES, getSourceMode, setSourceMode } from './sources.js?v=0.13.2';
-import { gesturesOn, setGestures, showGestureGuide } from './gestures.js?v=0.13.2';
-import { listenerStats } from './stats.js?v=0.13.2';
-import { liveBg, setLiveBg } from './viz.js?v=0.13.2';
-import { lowPower, setLowPower } from './perf.js?v=0.13.2';
-import { bypassOn, setBypass, bypassAvailable, checkBypass } from './bypass.js?v=0.13.2';
-import { logOut, changePassword, authErrorText } from './auth.js?v=0.13.2';
+import { $, $$, h, icon, openSheet, closeSheet, toast, sheetItem } from './ui.js?v=0.15.0';
+import * as store from './store.js?v=0.15.0';
+import { ACCENTS, getTheme, getAccent, getCustomHue, setCustomColor, setTheme, setAccent } from './theme.js?v=0.15.0';
+import { CHANGELOG, VERSION, STAGE, KNOWN_ISSUES } from './changelog.js?v=0.15.0';
+import { plural } from './utils.js?v=0.15.0';
+import { youtubeEnabled, youtubeQuotaOut } from './youtube.js?v=0.15.0';
+import { audiusEnabled } from './audius.js?v=0.15.0';
+import { SOURCE_MODES, getSourceMode, setSourceMode } from './sources.js?v=0.15.0';
+import { gesturesOn, setGestures, showGestureGuide } from './gestures.js?v=0.15.0';
+import { listenerStats } from './stats.js?v=0.15.0';
+import { liveBg, setLiveBg } from './viz.js?v=0.15.0';
+import { lowPower, setLowPower } from './perf.js?v=0.15.0';
+import { bypassOn, setBypass, bypassAvailable, checkBypass } from './bypass.js?v=0.15.0';
+import { logOut, changePassword, changeNick, authErrorText } from './auth.js?v=0.15.0';
+import { connectionCountry } from './geo.js?v=0.15.0';
 
 const ACHIEVEMENTS = [
   { id: 'like1', icon: 'heart', title: 'Первый лайк', hint: 'Лайкните любой трек', ok: (s) => s.likes >= 1 },
@@ -130,6 +131,7 @@ export function buildProfile(nick) {
     if (bad) { toast(bad); return; }
     setBypass(true); syncControls(); toast('Обход включён: звук и обложки идут через сервер MKW');
   });
+  connectionCountry().then((c) => { if (refs.country) refs.country.textContent = c || 'не удалось определить'; });
   refs.lowp = sw(() => { setLowPower(!lowPower()); syncControls(); });
   refs.gest = sw(async () => { await setGestures(!gesturesOn()); syncControls(); });
   refs.srcnote = h('small', { class: 'src-note' });
@@ -165,6 +167,7 @@ export function buildProfile(nick) {
       h('div', { class: 'set-block' }, h('b', { text: 'Где искать музыку' }),
         h('div', { class: 'src-row' }, SOURCE_MODES.map((m) => h('button', { class: 'chip src-chip', type: 'button', 'data-id': m.id, onclick: () => { setSourceMode(m.id); syncControls(); } }, m.name))),
         refs.srcnote),
+      row('Страна подключения', 'Откуда видно ваше соединение. С VPN покажет страну VPN', refs.country = h('span', { class: 'conn-country', text: '…' })),
       row('Обход РФ', 'Если без VPN нет звука: превью и обложки идут через сервер MKW. YouTube не затрагивает', refs.bypass),
       row('Оптимизация для слабых устройств', 'Отключает размытие и тяжёлые анимации. Для старых телефонов', refs.lowp),
       row('Жесты (бета)', 'Управление рукой через камеру: треки, лайки, пауза, громкость', refs.gest),
@@ -172,6 +175,7 @@ export function buildProfile(nick) {
 
     h('div', { class: 'section-title', text: 'Аккаунт' }),
     h('div', { class: 'set-card' },
+      row('Сменить ник', 'Имя в приложении и вход', h('span', { class: 'chev' }, icon('back')), openNickSheet),
       row('Сменить пароль', '', h('span', { class: 'chev' }, icon('back')), openPasswordSheet),
       row('Выйти', '', h('span', { class: 'chev' }, icon('logout')), () => logOut())),
 
@@ -268,4 +272,24 @@ function openPasswordSheet() {
     } finally { btn.disabled = false; }
   });
   openSheet('Смена пароля', h('div', { class: 'pw-form' }, cur, nxt, err, btn));
+}
+
+function openNickSheet() {
+  const nk = h('input', { type: 'text', placeholder: 'Новый ник (латиница и цифры)', autocomplete: 'off', autocapitalize: 'none', class: 'sheet-input' });
+  const pw = h('input', { type: 'password', placeholder: 'Текущий пароль', autocomplete: 'current-password', class: 'sheet-input' });
+  const err = h('div', { class: 'sheet-note' });
+  const btn = h('button', { class: 'btn', type: 'button' }, 'Сохранить');
+  btn.addEventListener('click', async () => {
+    err.textContent = '';
+    btn.disabled = true;
+    try {
+      const r = await changeNick(nk.value, pw.value);
+      closeSheet();
+      toast(r.loginChanged ? 'Ник изменён. Входите по новому нику' : 'Имя изменено. Вход остаётся по прежнему нику');
+      setTimeout(() => location.reload(), 1200);
+    } catch (e) {
+      err.textContent = e.userText || authErrorText(e);
+    } finally { btn.disabled = false; }
+  });
+  openSheet('Смена ника', h('div', { class: 'pw-form' }, nk, pw, err, btn));
 }

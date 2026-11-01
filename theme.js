@@ -1,10 +1,16 @@
 // Тема (авто/светлая/тёмная) и цвет акцента. Палитра считается из одного числа (оттенка).
 export const ACCENTS = [
   { id: 'pink', name: 'Розовый', h: 335 },
-  { id: 'violet', name: 'Сирень', h: 275 },
-  { id: 'blue', name: 'Океан', h: 212 },
-  { id: 'mint', name: 'Мята', h: 165 },
+  { id: 'rose', name: 'Роза', h: 352 },
   { id: 'sun', name: 'Закат', h: 22 },
+  { id: 'amber', name: 'Янтарь', h: 42 },
+  { id: 'lime', name: 'Лайм', h: 95 },
+  { id: 'mint', name: 'Мята', h: 165 },
+  { id: 'teal', name: 'Бирюза', h: 188 },
+  { id: 'blue', name: 'Океан', h: 212 },
+  { id: 'indigo', name: 'Индиго', h: 245 },
+  { id: 'violet', name: 'Сирень', h: 275 },
+  { id: 'magenta', name: 'Орхидея', h: 305 },
 ];
 
 const KEY_T = 'mkw.theme';

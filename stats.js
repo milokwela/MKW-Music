@@ -1,5 +1,5 @@
 // Счётчик слушателей: у каждого пользователя один маркер joined/{uid} с месяцем регистрации.
-import { db, auth } from './firebase.js?v=0.13.2';
+import { db, auth } from './firebase.js?v=0.15.0';
 import { doc, getDoc, setDoc, collection, query, where, getCountFromServer } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
 const ym = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;

@@ -1,0 +1,91 @@
+/* ===== 0.15: прозрачное жидкое стекло, заставка, текст песни, ПК ===== */
+#dock { --gl-edge: rgba(255,255,255,.55); }
+#bottom-nav, #mini-player { position: relative; isolation: isolate; background: color-mix(in srgb, var(--surface, #fff) 6%, transparent) !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important;
+  border: 0 !important; box-shadow: 0 10px 34px rgba(0,0,0,.16), inset 0 1px 0 rgba(255,255,255,.35); }
+#bottom-nav::before, #mini-player::before { content: ""; position: absolute; inset: 0; border-radius: inherit; z-index: -2; padding: 14px; pointer-events: none;
+  background: rgba(255,255,255,.04); backdrop-filter: blur(18px) saturate(1.6); -webkit-backdrop-filter: blur(18px) saturate(1.6);
+  -webkit-mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0); mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0); }
+#bottom-nav::after, #mini-player::after { content: ""; position: absolute; inset: 0; border-radius: inherit; z-index: -1; pointer-events: none;
+  backdrop-filter: blur(2px) saturate(1.25); -webkit-backdrop-filter: blur(2px) saturate(1.25);
+  box-shadow: inset 0 0 0 1px var(--gl-edge), inset 0 0 22px rgba(255,255,255,.12); }
+#bottom-nav > *, #mini-player > * { position: relative; z-index: 1; }
+#mini-player #mini-progress { position: absolute; }
+#bottom-nav .nav-lens { background: rgba(255,255,255,.22) !important; box-shadow: inset 0 0 0 1px rgba(255,255,255,.5), inset 0 8px 14px rgba(255,255,255,.18) !important; backdrop-filter: blur(3px) brightness(1.15); transition: transform .45s cubic-bezier(.2,.9,.25,1), width .45s cubic-bezier(.2,.9,.25,1) !important; }
+#bottom-nav .nav-btn.active, #bottom-nav .nav-btn.on { color: var(--primary); }
+.lowpower #bottom-nav::before, .lowpower #mini-player::before, .lowpower #bottom-nav::after, .lowpower #mini-player::after { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
+.lowpower #bottom-nav, .lowpower #mini-player { background: color-mix(in srgb, var(--surface, #fff) 82%, transparent) !important; }
+
+/* заставка */
+#splash { background: radial-gradient(120% 90% at 50% 30%, #2a0f22, #0b0710 70%); overflow: hidden; display: grid; place-items: center; align-content: center; }
+#splash .sp-stars, #splash .sp-spark, #splash .sp-burst, #splash .sp-cat, #splash .sp-name, #splash .sp-by, #splash .sp-author { display: none; }
+.sp2-aurora { position: absolute; inset: -20%; background: radial-gradient(40% 40% at 30% 35%, color-mix(in srgb, var(--primary, #ec4f8f) 60%, transparent), transparent), radial-gradient(35% 35% at 72% 60%, rgba(120,90,255,.45), transparent); filter: blur(40px); opacity: 0; animation: sp2a 2.4s ease forwards; }
+.sp2-stars { position: absolute; inset: 0; background-image: radial-gradient(1.5px 1.5px at 20% 30%, #fff, transparent), radial-gradient(1px 1px at 70% 20%, #fff, transparent), radial-gradient(1.5px 1.5px at 85% 70%, #fff, transparent), radial-gradient(1px 1px at 35% 80%, #fff, transparent), radial-gradient(1px 1px at 55% 55%, #fff, transparent); opacity: 0; animation: sp2s 2s .2s ease forwards; }
+.sp2-stage { position: relative; width: 190px; height: 190px; display: grid; place-items: center; }
+.sp2-ring { position: absolute; border-radius: 50%; border: 1.5px solid color-mix(in srgb, var(--primary, #ec4f8f) 70%, #fff); opacity: 0; transform: scale(.4); }
+.sp2-ring.r1 { inset: -10px; } .sp2-ring.r2 { inset: -34px; } .sp2-ring.r3 { inset: -64px; }
+.sp2-sweep { position: absolute; inset: -30px; border-radius: 50%; background: conic-gradient(from 0deg, transparent 0 70%, color-mix(in srgb, var(--primary, #ec4f8f) 80%, #fff) 100%); -webkit-mask: radial-gradient(circle, transparent 62%, #000 63% 66%, transparent 67%); mask: radial-gradient(circle, transparent 62%, #000 63% 66%, transparent 67%); opacity: 0; }
+.sp2-logo { position: relative; width: 132px; height: 132px; border-radius: 34px; overflow: hidden; opacity: 0; transform: scale(.55) rotate(-8deg); box-shadow: 0 0 60px color-mix(in srgb, var(--primary, #ec4f8f) 60%, transparent); }
+.sp2-logo img { width: 100%; height: 100%; display: block; object-fit: cover; }
+.sp2-shine { position: absolute; inset: 0; background: linear-gradient(110deg, transparent 35%, rgba(255,255,255,.7) 50%, transparent 65%); transform: translateX(-120%); }
+.sp2-name { margin-top: 30px; display: flex; gap: 6px; font: 900 44px/1 system-ui, sans-serif; color: #fff; letter-spacing: 2px; }
+.sp2-name span { opacity: 0; transform: translateY(18px); filter: blur(8px); }
+.sp2-music { margin-top: 8px; font: 700 13px system-ui, sans-serif; letter-spacing: 9px; color: color-mix(in srgb, var(--primary, #ec4f8f) 70%, #fff); opacity: 0; }
+.sp2-by { position: absolute; bottom: 9vh; font: 500 13px system-ui, sans-serif; color: rgba(255,255,255,.6); opacity: 0; }
+.sp2-by b { color: #fff; font-weight: 700; }
+#splash.go .sp2-logo { animation: sp2logo 1s .15s cubic-bezier(.2,1.2,.3,1) forwards; }
+#splash.go .sp2-shine { animation: sp2shine 1.1s 1s ease forwards; }
+#splash.go .sp2-ring { animation: sp2ring 1.8s ease-out forwards; }
+#splash.go .sp2-ring.r2 { animation-delay: .25s; } #splash.go .sp2-ring.r3 { animation-delay: .5s; }
+#splash.go .sp2-sweep { animation: sp2sweep 2s .2s ease-out forwards; }
+#splash.go .sp2-name span { animation: sp2let .7s cubic-bezier(.2,.9,.3,1) forwards; }
+#splash.go .sp2-name span:nth-child(1) { animation-delay: .7s; } #splash.go .sp2-name span:nth-child(2) { animation-delay: .8s; } #splash.go .sp2-name span:nth-child(3) { animation-delay: .9s; }
+#splash.go .sp2-music { animation: sp2fade .8s 1.2s ease forwards; }
+#splash.go .sp2-by { animation: sp2fade .8s 1.5s ease forwards; }
+@keyframes sp2a { to { opacity: 1; } } @keyframes sp2s { to { opacity: .8; } } @keyframes sp2fade { to { opacity: 1; } }
+@keyframes sp2logo { to { opacity: 1; transform: none; } }
+@keyframes sp2shine { to { transform: translateX(120%); } }
+@keyframes sp2ring { 0% { opacity: .9; transform: scale(.5); } 100% { opacity: 0; transform: scale(1.25); } }
+@keyframes sp2sweep { 0% { opacity: 1; transform: rotate(0); } 100% { opacity: 0; transform: rotate(540deg); } }
+@keyframes sp2let { to { opacity: 1; transform: none; filter: none; } }
+
+/* палитра */
+.accent-row { display: grid !important; grid-template-columns: repeat(6, 1fr); gap: 12px; justify-items: center; padding: 16px 4px 4px; }
+.accent-dot { width: 42px; height: 42px; background: radial-gradient(circle at 30% 25%, rgba(255,255,255,.55), transparent 55%), var(--dot) !important; box-shadow: 0 4px 12px color-mix(in srgb, var(--dot) 45%, transparent); }
+.accent-dot.active { transform: scale(1.12); box-shadow: 0 0 0 3px var(--bg), 0 0 0 5px var(--dot), 0 6px 16px color-mix(in srgb, var(--dot) 50%, transparent) !important; }
+.accent-dot.active::after { content: "✓"; color: #fff; font-weight: 900; display: grid; place-items: center; height: 100%; text-shadow: 0 1px 3px rgba(0,0,0,.4); }
+.accent-dot.custom.active::after { content: none; }
+
+/* текст песни */
+#fp-lyrics { max-width: 560px; height: auto; flex: 1 1 auto; min-height: 44vh; max-height: 62vh; margin: 4px auto 10px; display: flex; flex-direction: column; }
+#fp-lyrics .ly-scroll { flex: 1; padding: 22vh 10px; }
+.ly-tools { display: flex; gap: 8px; justify-content: center; padding: 6px 0 2px; position: relative; z-index: 2; }
+.ly-tools[hidden] { display: none; }
+.ly-tools button { border: 0; border-radius: 999px; padding: 6px 14px; font: 600 13px inherit; background: rgba(128,128,128,.18); color: inherit; transition: background .2s, color .2s; }
+.ly-tools button.on { background: var(--primary); color: #fff; }
+.ly-line { font-size: clamp(24px, 6.4vw, 32px) !important; line-height: 1.25; font-weight: 800; transform-origin: left center; cursor: pointer; }
+.ly-line.static { font-size: 18px !important; font-weight: 600; opacity: .92; filter: none !important; cursor: default; }
+.ly-line.now .w { color: color-mix(in srgb, var(--primary) 45%, currentColor); }
+.ly-line.now .w.on { color: var(--primary); }
+.ly-msg.small { font-size: 12px; padding: 14px 0; opacity: .6; }
+#full-player.wave-mode #fp-lyrics { color: #fff; }
+#full-player.wave-mode .ly-line.now .w.on { color: #fff; text-shadow: 0 0 22px var(--primary); }
+
+/* домашний низ */
+#search-more .chip, #search-recs .chip { border-radius: 999px; padding: 10px 22px; background: color-mix(in srgb, var(--primary) 14%, transparent); color: var(--primary); font-weight: 700; border: 1px solid color-mix(in srgb, var(--primary) 30%, transparent); }
+.home-logo { margin: 36px auto 120px; padding-top: 26px; }
+
+/* компьютер */
+@media (min-width: 900px) {
+  body::before { content: ""; position: fixed; inset: -20%; z-index: -1; pointer-events: none; background: radial-gradient(35% 35% at 20% 25%, color-mix(in srgb, var(--primary) 22%, transparent), transparent), radial-gradient(30% 30% at 80% 70%, color-mix(in srgb, var(--primary) 14%, transparent), transparent); animation: pcdrift 22s ease-in-out infinite alternate; }
+  .lowpower body::before { animation: none; }
+  .track-row, .pl-card { transition: transform .25s cubic-bezier(.2,.8,.2,1), box-shadow .25s, background .2s; }
+  .track-row:hover, .pl-card:hover { transform: translateY(-2px); box-shadow: 0 10px 28px rgba(0,0,0,.14); }
+  .track-row img, .pl-card img { transition: transform .4s cubic-bezier(.2,.8,.2,1); }
+  .track-row:hover img, .pl-card:hover img { transform: scale(1.06); }
+  #full-player.lyrics-on .fp-inner { max-width: 1040px; display: grid; grid-template-columns: minmax(300px, 420px) 1fr; column-gap: 48px; align-content: center; }
+  #full-player.lyrics-on .fp-top { grid-column: 1 / -1; }
+  #full-player.lyrics-on #fp-art { display: block; grid-column: 1; grid-row: 2; width: min(100%, 380px); max-width: 380px; justify-self: center; }
+  #full-player.lyrics-on #fp-lyrics { grid-column: 2; grid-row: 2 / span 4; max-height: 74vh; height: 74vh; margin: 0; }
+  #full-player.lyrics-on .fp-meta, #full-player.lyrics-on .fp-seek, #full-player.lyrics-on .fp-controls, #full-player.lyrics-on .fp-extra, #full-player.lyrics-on .fp-times { grid-column: 1; }
+}
+@keyframes pcdrift { to { transform: translate(4%, 3%) scale(1.08); } }

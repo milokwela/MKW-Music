@@ -1,9 +1,9 @@
 // Экран «Библиотека»: лайки, плейлисты, история.
-import { $, $$, h, icon, trackRow, emptyState, askText, toast, openSheet, closeSheet, sheetItem, animateIn } from './ui.js?v=0.13.2';
-import * as store from './store.js?v=0.13.2';
-import * as player from './player.js?v=0.13.2';
-import { openTrackMenu } from './menu.js?v=0.13.2';
-import { tracksWord, timeAgo, artUrl } from './utils.js?v=0.13.2';
+import { $, $$, h, icon, trackRow, emptyState, askText, toast, openSheet, closeSheet, sheetItem, animateIn } from './ui.js?v=0.15.0';
+import * as store from './store.js?v=0.15.0';
+import * as player from './player.js?v=0.15.0';
+import { openTrackMenu } from './menu.js?v=0.15.0';
+import { tracksWord, timeAgo, artUrl } from './utils.js?v=0.15.0';
 
 let tab = 'likes';
 let openPid = null;

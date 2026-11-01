@@ -1,10 +1,10 @@
-import { auth, db } from './firebase.js?v=0.13.2';
+import { auth, db } from './firebase.js?v=0.15.0';
 import {
   onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut,
-  updatePassword, reauthenticateWithCredential, EmailAuthProvider,
+  updatePassword, reauthenticateWithCredential, EmailAuthProvider, updateEmail,
 } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
-import { doc, setDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
-import { normalizeNick, isValidNick, nickToEmail, emailToNick } from './utils.js?v=0.13.2';
+import { doc, setDoc, getDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+import { normalizeNick, isValidNick, nickToEmail, emailToNick } from './utils.js?v=0.15.0';
 
 const ERRORS = {
   'auth/invalid-credential': 'Неверный ник или пароль',
@@ -51,7 +51,37 @@ export function logOut() {
 
 // Колбэк получает { uid, nick } или null.
 export function watchAuth(cb) {
-  return onAuthStateChanged(auth, (u) => cb(u ? { uid: u.uid, nick: emailToNick(u.email) } : null));
+  return onAuthStateChanged(auth, async (u) => {
+    if (!u) { cb(null); return; }
+    let nick = emailToNick(u.email);
+    try {
+      // имя из профиля (если ник менялся только в приложении), с ограничением по времени
+      const snap = await Promise.race([getDoc(doc(db, 'users', u.uid)), new Promise((_, rej) => setTimeout(rej, 2500))]);
+      const n = snap && snap.exists() ? snap.data().nick : '';
+      if (n && isValidNick(normalizeNick(n))) nick = normalizeNick(n);
+    } catch { /* остаётся ник из входа */ }
+    cb({ uid: u.uid, nick });
+  });
+}
+
+// Смена ника. Пробуем сменить и вход (почта Firebase), если сервер не разрешает, меняем только имя в приложении.
+export async function changeNick(nickRaw, pass) {
+  const user = auth.currentUser;
+  if (!user) throw Object.assign(new Error('nouser'), { userText: 'Сначала войдите' });
+  const nick = normalizeNick(nickRaw);
+  if (!isValidNick(nick)) throw Object.assign(new Error('nick'), { userText: 'Ник: только латиница и цифры, 3–20 символов' });
+  if (!pass) throw Object.assign(new Error('pass'), { userText: 'Введите текущий пароль' });
+  await reauthenticateWithCredential(user, EmailAuthProvider.credential(user.email, pass));
+  let loginChanged = false;
+  try {
+    await updateEmail(user, nickToEmail(nick));
+    loginChanged = true;
+  } catch (e) {
+    if (e.code === 'auth/email-already-in-use') throw e;
+    console.warn('Вход не сменён, меняем только имя', e);
+  }
+  await setDoc(doc(db, 'users', user.uid), { nick }, { merge: true });
+  return { nick, loginChanged };
 }
 
 // Смена пароля. Если текущий пароль указан, подтверждаем им; если нет, пробуем без него (работает, пока вход свежий).

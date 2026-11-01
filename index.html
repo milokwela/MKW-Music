@@ -8,15 +8,16 @@
 <link rel="icon" type="image/png" href="mkw-favicon.png">
 <link rel="apple-touch-icon" href="mkw-180.png">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="stylesheet" href="variables.css?v=0.13.2">
-<link rel="stylesheet" href="global.css?v=0.13.2">
-<link rel="stylesheet" href="auth.css?v=0.13.2">
-<link rel="stylesheet" href="search.css?v=0.13.2">
-<link rel="stylesheet" href="library.css?v=0.13.2">
-<link rel="stylesheet" href="player.css?v=0.13.2">
-<link rel="stylesheet" href="polish.css?v=0.13.2">
-<link rel="stylesheet" href="glow.css?v=0.13.2">
-<link rel="stylesheet" href="perf.css?v=0.13.2">
+<link rel="stylesheet" href="variables.css?v=0.15.0">
+<link rel="stylesheet" href="global.css?v=0.15.0">
+<link rel="stylesheet" href="auth.css?v=0.15.0">
+<link rel="stylesheet" href="search.css?v=0.15.0">
+<link rel="stylesheet" href="library.css?v=0.15.0">
+<link rel="stylesheet" href="player.css?v=0.15.0">
+<link rel="stylesheet" href="polish.css?v=0.15.0">
+<link rel="stylesheet" href="glow.css?v=0.15.0">
+<link rel="stylesheet" href="perf.css?v=0.15.0">
+<link rel="stylesheet" href="glass2.css?v=0.15.0">
 </head>
 <body>
 <script>
@@ -28,13 +29,14 @@ setTimeout(function(){var e=s();if(e&&e.parentNode)e.parentNode.removeChild(e)},
 document.addEventListener('click',function(){var e=s();if(e&&e.parentNode)e.parentNode.removeChild(e)});})();
 </script>
 <div id="splash" aria-hidden="true">
-  <div class="sp-stars"></div>
-  <div class="sp-spark"></div>
-  <div class="sp-burst"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
-  <img class="sp-cat" src="mkw-logo.png" alt="">
-  <div class="sp-name">MKW</div>
-  <div class="sp-by">Создатель</div>
-  <div class="sp-author">MiloKwel</div>
+  <div class="sp2-aurora"></div><div class="sp2-stars"></div>
+  <div class="sp2-stage">
+    <i class="sp2-ring r1"></i><i class="sp2-ring r2"></i><i class="sp2-ring r3"></i><i class="sp2-sweep"></i>
+    <div class="sp2-logo"><img src="mkw-512.png" alt=""><i class="sp2-shine"></i></div>
+  </div>
+  <div class="sp2-name"><span>M</span><span>K</span><span>W</span></div>
+  <div class="sp2-music">MUSIC</div>
+  <div class="sp2-by">создатель <b>MiloKwel</b></div>
 </div>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -173,6 +175,7 @@ document.addEventListener('click',function(){var e=s();if(e&&e.parentNode)e.pare
       <button class="icon-btn" id="fp-close" type="button" aria-label="Свернуть"><svg class="icon"><use href="#i-chevron-down"/></svg></button>
       <span class="fp-badge" id="fp-badge"></span>
       <span class="fp-brand"><img src="mkw-favicon.png" alt="">MKW Волна</span>
+      <button class="icon-btn" id="fp-lyrics-btn" type="button" aria-label="Текст песни"><svg class="icon"><use href="#i-lyrics"/></svg></button>
       <button class="icon-btn" id="fp-more" type="button" aria-label="Ещё"><svg class="icon"><use href="#i-more"/></svg></button>
     </div>
     <div id="fp-art"></div>
@@ -194,7 +197,6 @@ document.addEventListener('click',function(){var e=s();if(e&&e.parentNode)e.pare
       <button class="icon-btn" id="fp-repeat" type="button" aria-label="Повтор"><svg class="icon"><use href="#i-repeat"/></svg></button>
     </div>
     <div class="fp-extra">
-      <button class="icon-btn" id="fp-lyrics-btn" type="button" aria-label="Текст песни"><svg class="icon"><use href="#i-lyrics"/></svg></button>
       <button class="icon-btn" id="fp-queue" type="button" aria-label="Очередь"><svg class="icon"><use href="#i-queue"/></svg></button>
       <button class="icon-btn" id="fp-sleep" type="button" aria-label="Таймер сна"><svg class="icon"><use href="#i-timer"/></svg></button>
     </div>
@@ -216,6 +218,6 @@ document.addEventListener('click',function(){var e=s();if(e&&e.parentNode)e.pare
 <audio id="preview-player" preload="none"></audio>
 <div id="yt-holder" style="position:fixed;width:1px;height:1px;left:-10px;top:-10px;overflow:hidden;opacity:0;pointer-events:none"><div id="yt-target"></div></div>
 
-<script type="module" src="app.js?v=0.13.2"></script>
+<script type="module" src="app.js?v=0.15.0"></script>
 </body>
 </html>

@@ -1,5 +1,5 @@
 // Предложение установить приложение (Chrome/Android — родное окно, iPhone — подсказка).
-import { h, openSheet, closeSheet } from './ui.js?v=0.13.2';
+import { h, openSheet, closeSheet } from './ui.js?v=0.15.0';
 
 let deferred = null;
 const standalone = () => window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
