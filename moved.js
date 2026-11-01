@@ -1,5 +1,5 @@
 // Разовое сообщение о переезде на новый домен.
-import { h, openSheet, closeSheet } from './ui.js?v=0.15.0';
+import { h, openSheet, closeSheet } from './ui.js?v=0.16.0';
 
 const KEY = 'mkw.moved.v1';
 
@@ -13,12 +13,14 @@ export function showMoved() {
 }
 
 // Новая иконка: у установленного приложения значок на телефоне сам не меняется, предлагаем переустановить.
-const IKEY = 'mkw.icon.v4';
+const IKEY = 'mkw.icon.v5';
 export function showIconUpdate() {
   const installed = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
   if (!installed) return;
   try { if (localStorage.getItem(IKEY)) return; } catch { /* ignore */ }
   const ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  // Android (Chrome/Яндекс) обновляет значок сам по manifest в течение суток, напоминание нужно только на iPhone
+  if (!ios) return;
   const ok = h('button', { class: 'btn', type: 'button' }, 'Понятно');
   ok.addEventListener('click', () => { try { localStorage.setItem(IKEY, '1'); } catch { /* ignore */ } closeSheet(); });
   const later = h('button', { class: 'btn tonal', type: 'button' }, 'Напомнить позже');

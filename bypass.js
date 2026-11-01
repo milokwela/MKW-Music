@@ -1,12 +1,14 @@
 // «Обход РФ»: если включено, превью и обложки идут через ваш Cloudflare Worker (адрес берётся из shazam-config.js).
 // По умолчанию выключено: тогда всё работает напрямую, как обычно.
-import { RECOGNIZE_URL } from './shazam-config.js?v=0.15.0';
+import { RECOGNIZE_URL } from './shazam-config.js?v=0.16.0';
 
 const KEY = 'mkw.bypass';
 const HOSTS = /(^|\.)(mzstatic\.com|itunes\.apple\.com|dzcdn\.net|deezer\.com)$/i;
 
 export const bypassAvailable = () => Boolean(RECOGNIZE_URL);
-export const bypassOn = () => { try { return localStorage.getItem(KEY) === '1' && bypassAvailable(); } catch { return false; } };
+// Функция убрана в 0.16: провайдеры блокируют workers.dev. Всегда выключено.
+export const bypassOn = () => false;
+try { localStorage.removeItem(KEY); } catch { /* ignore */ }
 export function setBypass(v) { try { localStorage.setItem(KEY, v ? '1' : '0'); } catch { /* ignore */ } }
 
 export function proxify(url) {

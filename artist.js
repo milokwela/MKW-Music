@@ -1,11 +1,11 @@
 // Страница исполнителя: треки, слушать, перемешать, «не рекомендовать».
-import { searchTracks } from './catalog.js?v=0.15.0';
-import { prefetchYouTubeIds } from './youtube.js?v=0.15.0';
-import { $, h, icon, trackRow, skeleton, animateIn, toast, openSheet, closeSheet, sheetItem } from './ui.js?v=0.15.0';
-import { openTrackMenu } from './menu.js?v=0.15.0';
-import * as player from './player.js?v=0.15.0';
-import { splitArtists, isArtistBlocked, blockArtist, unblockArtist, norm } from './taste.js?v=0.15.0';
-import { shuffled } from './utils.js?v=0.15.0';
+import { searchTracks } from './catalog.js?v=0.16.0';
+import { prefetchYouTubeIds } from './youtube.js?v=0.16.0';
+import { $, h, icon, trackRow, skeleton, animateIn, toast, openSheet, closeSheet, sheetItem } from './ui.js?v=0.16.0';
+import { openTrackMenu } from './menu.js?v=0.16.0';
+import * as player from './player.js?v=0.16.0';
+import { splitArtists, isArtistBlocked, blockArtist, unblockArtist, norm } from './taste.js?v=0.16.0';
+import { shuffled } from './utils.js?v=0.16.0';
 
 let seq = 0;
 const infoCache = new Map();
