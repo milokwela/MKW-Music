@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://mkwmusic.ru/sitemap.xml

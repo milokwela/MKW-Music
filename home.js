@@ -1,14 +1,14 @@
 // Главная: «Друзья в сети» и умные миксы, которые собираются из вашей музыки, времени суток и друзей.
-import { $, h, toast } from './ui.js?v=0.22.0';
-import * as store from './store.js?v=0.22.0';
-import * as player from './player.js?v=0.22.0';
-import { searchTracks } from './catalog.js?v=0.22.0';
-import { shuffled } from './utils.js?v=0.22.0';
-import { splitArtists, norm } from './taste.js?v=0.22.0';
-import { mi } from './icons2.js?v=0.22.0';
-import { loadFriends, friendIds, friendCards, onFriends } from './friends.js?v=0.22.0';
-import { getProfile, communityTaste } from './leaders.js?v=0.22.0';
-import { openUserPage, isOnline } from './userpage.js?v=0.22.0';
+import { $, h, toast } from './ui.js?v=0.22.1';
+import * as store from './store.js?v=0.22.1';
+import * as player from './player.js?v=0.22.1';
+import { searchTracks } from './catalog.js?v=0.22.1';
+import { shuffled } from './utils.js?v=0.22.1';
+import { splitArtists, norm } from './taste.js?v=0.22.1';
+import { mi } from './icons2.js?v=0.22.1';
+import { loadFriends, friendIds, friendCards, onFriends } from './friends.js?v=0.22.1';
+import { getProfile, communityTaste } from './leaders.js?v=0.22.1';
+import { openUserPage, isOnline } from './userpage.js?v=0.22.1';
 
 const part = () => { const hr = new Date().getHours(); return hr < 6 ? 0 : hr < 12 ? 1 : hr < 18 ? 2 : 3; };
 const PARTS = [
