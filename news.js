@@ -1,15 +1,15 @@
 // Окно «Вышло крупное обновление»: картинки вместо текста, кнопки «Ого!» и «Пропустить». Показывается один раз.
-import { h } from './ui.js?v=0.19.0';
-import { mi } from './icons2.js?v=0.19.0';
-import { VERSION } from './changelog.js?v=0.19.0';
+import { h } from './ui.js?v=0.20.0';
+import { mi } from './icons2.js?v=0.20.0';
+import { VERSION } from './changelog.js?v=0.20.0';
 
 const KEY = 'mkw.news';
 const SLIDES = [
-  { tag: 'MKW Волна', title: 'Волна стала умнее', text: 'Чувствует настроение, время суток и вкусы похожих слушателей', icon: 'sparkle', orbit: ['headphones', 'heart', 'globe'], hue: 300 },
+  { tag: 'Новое', title: 'Друзья', text: 'Добавляйте друзей, смотрите, кто в сети и что слушает', icon: 'group', orbit: ['heart', 'note', 'play-circle'], hue: 150 },
+  { tag: 'Главная', title: 'Умные миксы', text: 'Микс дня, под время суток, забытые лайки, друзья слушают', icon: 'sparkle', orbit: ['moon', 'fire', 'heart'], hue: 300 },
+  { tag: 'Бета', title: 'Слушать в фоне', text: 'Включите в Настройках — музыка играет и с выключенным экраном', icon: 'headphones', orbit: ['moon', 'note', 'play-circle'], hue: 260 },
+  { tag: 'MKW Волна', title: 'Волна стала умнее', text: 'Чувствует настроение, время суток и вкусы друзей', icon: 'star', orbit: ['headphones', 'heart', 'globe'], hue: 330 },
   { tag: 'Бета', title: 'Управляйте голосом', text: '«MKW, следующая», «громче», «лайк» — края экрана засветятся', icon: 'mic', orbit: ['play-circle', 'heart', 'note'], hue: 200, glow: true },
-  { tag: 'Фон', title: 'Музыка в фоне', text: 'Полные треки играют при выключенном экране', icon: 'headphones', orbit: ['moon', 'note', 'play-circle'], hue: 260 },
-  { tag: 'Профиль', title: 'Профиль — как вы', text: 'О себе, стиль ника, эффекты, «в сети» и что слушает друг', icon: 'person', orbit: ['star', 'image', 'palette'], hue: 335 },
-  { tag: 'Плеер', title: 'Живой фон', text: 'Цвета обложки переливаются в темп песни', icon: 'palette', orbit: ['fire', 'sparkle', 'note'], hue: 25 },
 ];
 
 export function showNews() {

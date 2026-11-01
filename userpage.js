@@ -1,14 +1,17 @@
 // Страница другого слушателя: баннер, фото, статус, значки, статистика, любимые исполнители и треки.
-import { $, h, trackRow, animateIn } from './ui.js?v=0.19.0';
-import * as player from './player.js?v=0.19.0';
-import { openTrackMenu } from './menu.js?v=0.19.0';
-import { getProfile } from './leaders.js?v=0.19.0';
-import { ACH, bannerCss, formatListened } from './profile.js?v=0.19.0';
-import { artistPic } from './artistpic.js?v=0.19.0';
-import { openArtist } from './artist.js?v=0.19.0';
-import { mi } from './icons2.js?v=0.19.0';
-import { plural } from './utils.js?v=0.19.0';
-import { openImage } from './viewer.js?v=0.19.0';
+import { $, h, trackRow, animateIn } from './ui.js?v=0.20.0';
+import * as player from './player.js?v=0.20.0';
+import { openTrackMenu } from './menu.js?v=0.20.0';
+import { getProfile } from './leaders.js?v=0.20.0';
+import { ACH, bannerCss, formatListened } from './profile.js?v=0.20.0';
+import { artistPic } from './artistpic.js?v=0.20.0';
+import { openArtist } from './artist.js?v=0.20.0';
+import { mi } from './icons2.js?v=0.20.0';
+import { plural } from './utils.js?v=0.20.0';
+import { openImage } from './viewer.js?v=0.20.0';
+import { isFriend, addFriend, removeFriend, loadFriends, friendsLoaded } from './friends.js?v=0.20.0';
+import { toast } from './ui.js?v=0.20.0';
+import { searchTracks } from './catalog.js?v=0.20.0';
 
 export function seenText(seen) {
   const t = Number(seen) || 0;
@@ -60,6 +63,22 @@ function render(u, isMe) {
         u.now && isOnline(u.seen) ? h('div', { class: 'hero-now' }, mi('note'), h('span', { text: `Слушает: ${u.now}` })) : null,
         u.days ? h('div', { class: 'hero-since', text: `С MKW ${u.days} ${plural(u.days, 'день', 'дня', 'дней')}` }) : null,
         h('div', { class: 'pbadges' }, (u.badges || []).filter((id) => ACH[id]).map((id) => h('span', { class: 'pbadge' }, mi(ACH[id].i), h('b', { text: ACH[id].title })))))),
+    !isMe && u.uid ? (() => {
+      const btn = h('button', { class: 'btn up-friend', type: 'button' });
+      const paint = () => { const f = isFriend(u.uid); btn.classList.toggle('tonal', f); btn.replaceChildren(mi(f ? 'check' : 'add'), f ? ' В друзьях' : ' Добавить в друзья'); };
+      btn.addEventListener('click', async () => {
+        try { if (isFriend(u.uid)) { await removeFriend(u.uid); toast('Убрано из друзей'); } else { await addFriend(u.uid); toast(`${u.nick} теперь у вас в друзьях`); } }
+        catch { toast('Не получилось. Админу нужно обновить правила Firestore'); }
+        paint();
+      });
+      if (!friendsLoaded()) loadFriends().then(paint);
+      paint();
+      const play = u.now && isOnline(u.seen) ? h('button', { class: 'btn tonal up-friend', type: 'button', onclick: async () => {
+        const f = await searchTracks(u.now).catch(() => []);
+        if (f.length) player.playTracks(f.slice(0, 10), 0); else toast('Не нашла этот трек');
+      } }, mi('play-circle'), ' Слушать то же') : null;
+      return h('div', { class: 'up-actions' }, btn, play);
+    })() : null,
     h('div', { class: 'up-stats' },
       stat('timer', t.value, t.unit), stat('play-circle', u.plays || 0, 'треков'), stat('heart', u.likes || 0, 'лайков'),
       u.achCount != null ? stat('medal', u.achCount, 'наград') : null),
@@ -76,6 +95,7 @@ function render(u, isMe) {
 }
 
 export async function openUserPage(uid, basic, isMe = false) {
+  if (basic && !basic.uid) basic = { ...basic, uid };
   const page = $('#user-page'), body = $('#user-body');
   const mine = ++seq;
   page.classList.add('open');
@@ -83,7 +103,7 @@ export async function openUserPage(uid, basic, isMe = false) {
   body.replaceChildren(...(basic ? render(basic, isMe) : [h('div', { class: 'phero up-hero sk' })]));
   const full = uid ? await getProfile(uid) : null;
   if (mine !== seq) return;
-  if (full) body.replaceChildren(...render({ ...(basic || {}), ...full, full: true }, isMe));
+  if (full) body.replaceChildren(...render({ ...(basic || {}), ...full, uid, full: true }, isMe));
   else if (!basic) body.replaceChildren(h('p', { class: 'profile-note center', text: isMe ? 'Профиль ещё не опубликован. Подождите несколько секунд и откройте снова.' : 'Профиль скрыт или недоступен.' }));
 }
 
