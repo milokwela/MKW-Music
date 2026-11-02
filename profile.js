@@ -1,38 +1,38 @@
 // Экран «Профиль»: карточка с баннером, витрина (любимые исполнители и треки), вкладки Обзор / Слушатели / Настройки / О MKW.
-import { $, $$, h, icon, openSheet, closeSheet, toast, sheetItem, trackRow } from './ui.js?v=0.29.1';
-import * as store from './store.js?v=0.29.1';
-import * as player from './player.js?v=0.29.1';
-import { ACCENTS, getTheme, getAccent, getCustomHue, setCustomColor, setTheme, setAccent, hslHex, getNeutral } from './theme.js?v=0.29.1';
-import { CHANGELOG, VERSION, STAGE, KNOWN_ISSUES } from './changelog.js?v=0.29.1';
-import { plural, pickTrack, safeUrl } from './utils.js?v=0.29.1';
-import { youtubeEnabled, youtubeQuotaOut } from './youtube.js?v=0.29.1';
-import { audiusEnabled } from './audius.js?v=0.29.1';
-import { SOURCE_MODES, getSourceMode, setSourceMode } from './sources.js?v=0.29.1';
-import { gesturesOn, setGestures, showGestureGuide } from './gestures.js?v=0.29.1';
-import { listenerStats } from './stats.js?v=0.29.1';
-import { liveBg, setLiveBg } from './viz.js?v=0.29.1';
-import { lowPower, setLowPower } from './perf.js?v=0.29.1';
-import { logOut, changePassword, changeNick, authErrorText } from './auth.js?v=0.29.1';
-import { connectionCountry } from './geo.js?v=0.29.1';
-import { goOffline, publishCard, publishProfile, myCard, getProfile, topListeners, hiddenFromBoard, setHidden, myUid } from './leaders.js?v=0.29.1';
-import { mi } from './icons2.js?v=0.29.1';
-import { artistPic } from './artistpic.js?v=0.29.1';
-import { openArtist } from './artist.js?v=0.29.1';
-import { openUserPage, favArtistsRow, favTracksList, isOnline } from './userpage.js?v=0.29.1';
-import { voiceOn, setVoice, showVoiceGuide, voiceSupported } from './voice.js?v=0.29.1';
-import { openImage } from './viewer.js?v=0.29.1';
-import { isDev, devBadge, fanBadge, nickMarks } from './dev.js?v=0.29.1';
-import { fanNumber, restoreFan, becomeFan } from './fans.js?v=0.29.1';
-import { ping } from './leaders.js?v=0.29.1';
-import { streamsOn, setStreams, checkBackground } from './stream.js?v=0.29.1';
-import { DEF_AV, avSrc, isDefAv } from './avatar.js?v=0.29.1';
-import { ONLINE_MS, loadFriends, friendIds, addFriend, removeFriend, findByNick, friendCards, onFriends, declineRequest, acceptRequest, requestIds, sentIds, friendState, friendsLoaded } from './friends.js?v=0.29.1';
-import { openChat, chatWith, isUnread, onChats } from './chat.js?v=0.29.1';
-import { notifyOn, setNotify } from './notify.js?v=0.29.1';
-import { openInstall, standalone } from './install.js?v=0.29.1';
-import { getRingtone, clearRingtone } from './ringtone.js?v=0.29.1';
-import { searchTracks } from './catalog.js?v=0.29.1';
-import { seenText } from './userpage.js?v=0.29.1';
+import { $, $$, h, icon, openSheet, closeSheet, toast, sheetItem, trackRow } from './ui.js?v=0.29.2';
+import * as store from './store.js?v=0.29.2';
+import * as player from './player.js?v=0.29.2';
+import { ACCENTS, getTheme, getAccent, getCustomHue, setCustomColor, setTheme, setAccent, hslHex, getNeutral } from './theme.js?v=0.29.2';
+import { CHANGELOG, VERSION, STAGE, KNOWN_ISSUES } from './changelog.js?v=0.29.2';
+import { plural, pickTrack, safeUrl } from './utils.js?v=0.29.2';
+import { youtubeEnabled, youtubeQuotaOut } from './youtube.js?v=0.29.2';
+import { audiusEnabled } from './audius.js?v=0.29.2';
+import { SOURCE_MODES, getSourceMode, setSourceMode } from './sources.js?v=0.29.2';
+import { gesturesOn, setGestures, showGestureGuide } from './gestures.js?v=0.29.2';
+import { listenerStats } from './stats.js?v=0.29.2';
+import { liveBg, setLiveBg } from './viz.js?v=0.29.2';
+import { lowPower, setLowPower } from './perf.js?v=0.29.2';
+import { logOut, changePassword, changeNick, authErrorText } from './auth.js?v=0.29.2';
+import { connectionCountry } from './geo.js?v=0.29.2';
+import { goOffline, publishCard, publishProfile, myCard, getProfile, topListeners, hiddenFromBoard, setHidden, myUid } from './leaders.js?v=0.29.2';
+import { mi } from './icons2.js?v=0.29.2';
+import { artistPic } from './artistpic.js?v=0.29.2';
+import { openArtist } from './artist.js?v=0.29.2';
+import { openUserPage, favArtistsRow, favTracksList, isOnline } from './userpage.js?v=0.29.2';
+import { voiceOn, setVoice, showVoiceGuide, voiceSupported } from './voice.js?v=0.29.2';
+import { openImage } from './viewer.js?v=0.29.2';
+import { isDev, devBadge, fanBadge, nickMarks } from './dev.js?v=0.29.2';
+import { fanNumber, restoreFan, becomeFan } from './fans.js?v=0.29.2';
+import { ping } from './leaders.js?v=0.29.2';
+import { streamsOn, setStreams, checkBackground } from './stream.js?v=0.29.2';
+import { DEF_AV, avSrc, isDefAv } from './avatar.js?v=0.29.2';
+import { ONLINE_MS, loadFriends, friendIds, addFriend, removeFriend, findByNick, friendCards, onFriends, declineRequest, acceptRequest, requestIds, sentIds, friendState, friendsLoaded } from './friends.js?v=0.29.2';
+import { openChat, chatWith, isUnread, onChats } from './chat.js?v=0.29.2';
+import { notifyOn, setNotify } from './notify.js?v=0.29.2';
+import { openInstall, standalone } from './install.js?v=0.29.2';
+import { getRingtone, clearRingtone } from './ringtone.js?v=0.29.2';
+import { searchTracks } from './catalog.js?v=0.29.2';
+import { seenText } from './userpage.js?v=0.29.2';
 
 // s: sec, likes, playlists, plays, days, artists, night, styled, showcase, rank
 export const ACHIEVEMENTS = [
@@ -551,11 +551,18 @@ function editProfile() {
   const view = h('div', { class: 'pe-view' }, track);
   const seg = h('div', { class: 'pe-tabs' }, h('i', { class: 'pe-lens' }));
   let curI = 0;
-  const fit = () => { const p = panes[curI]; view.style.height = `${p.offsetHeight}px`; };
+  // высота: сразу растём, сжимаемся только после переезда — без анимации высоты (она и давала мигание)
+  let fitT = 0;
+  const fit = () => {
+    const want = panes[curI].offsetHeight, cur = view.offsetHeight;
+    clearTimeout(fitT);
+    if (!cur || want >= cur) view.style.height = `${want}px`;
+    else fitT = setTimeout(() => { view.style.height = `${panes[curI].offsetHeight}px`; }, 440);
+  };
   const go = (i, smooth = true) => {
     curI = Math.max(0, Math.min(IDS.length - 1, i));
     track.style.transition = smooth ? '' : 'none';
-    track.style.transform = `translateX(${-curI * 100}%)`;
+    track.style.transform = `translate3d(${-curI * 100}%,0,0)`;
     seg.style.setProperty('--i', String(curI));
     seg.querySelectorAll('button').forEach((b, k) => b.classList.toggle('on', k === curI));
     panes.forEach((p, k) => p.setAttribute('aria-hidden', String(k !== curI)));
@@ -569,14 +576,15 @@ function editProfile() {
     if (drag === -1) return;
     const mx = e.touches[0].clientX - sx, my = e.touches[0].clientY - sy;
     if (drag === 0) { if (Math.abs(mx) > 10 && Math.abs(mx) > Math.abs(my) * 1.3) drag = 1; else if (Math.abs(my) > 10) { drag = -1; return; } else return; }
-    dx = mx; track.style.transition = 'none';
+    dx = mx; track.style.transition = 'none'; form.classList.add('dragging');
     const edge = (curI === 0 && dx > 0) || (curI === IDS.length - 1 && dx < 0) ? 0.3 : 1;
-    track.style.transform = `translateX(calc(${-curI * 100}% + ${dx * edge}px))`;
+    track.style.transform = `translate3d(calc(${-curI * 100}% + ${dx * edge}px),0,0)`;
   }, { passive: true });
-  view.addEventListener('touchend', () => { if (drag === 1) { track.style.transition = ''; go(curI + (dx < -60 ? 1 : dx > 60 ? -1 : 0)); } drag = 0; });
+  view.addEventListener('touchend', () => { form.classList.remove('dragging'); if (drag === 1) { track.style.transition = ''; go(curI + (dx < -60 ? 1 : dx > 60 ? -1 : 0)); } drag = 0; });
   const ro = window.ResizeObserver ? new ResizeObserver(fit) : null;
   if (ro) panes.forEach((p) => ro.observe(p));
-  openSheet('Мой профиль', h('div', { class: 'pw-form pe pe2' }, upl, h('div', { class: 'pe-side' }, live), h('div', { class: 'pe-main' }, seg, view), h('div', { class: 'pe-save' }, save)));
+  const form = h('div', { class: 'pw-form pe pe2' }, upl, h('div', { class: 'pe-side' }, live), h('div', { class: 'pe-main' }, seg, view), h('div', { class: 'pe-save' }, save));
+  openSheet('Мой профиль', form);
   go(0, false);
   setTimeout(fit, 50);
 }

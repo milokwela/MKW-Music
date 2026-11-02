@@ -1,20 +1,20 @@
 // Чат с друзьями. Писать можно только взаимным друзьям (проверяют и приложение, и правила Firestore).
 //   chats/{a_b}            — { members: [a, b], last: { from, text, at }, at, read: { uid: время } }   (a < b)
 //   chats/{a_b}/msgs/{id}  — { from, text, at, track? }
-import { safeUrl } from './utils.js?v=0.29.1';
-import { db } from './firebase.js?v=0.29.1';
+import { safeUrl } from './utils.js?v=0.29.2';
+import { db } from './firebase.js?v=0.29.2';
 import { doc, setDoc, addDoc, collection, query, where, orderBy, limit, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
-import { h, toast, openSheet, closeSheet } from './ui.js?v=0.29.1';
-import { openImage } from './viewer.js?v=0.29.1';
-import { mi } from './icons2.js?v=0.29.1';
-import * as player from './player.js?v=0.29.1';
-import { searchTracks } from './catalog.js?v=0.29.1';
-import { me, isFriend, cardOf, friendIds, friendCards, loadFriends, friendsLoaded } from './friends.js?v=0.29.1';
-import { avSrc } from './avatar.js?v=0.29.1';
-import { seenText, isOnline } from './userpage.js?v=0.29.1';
-import { startCall, warmCalls } from './call.js?v=0.29.1';
-import { streakOf, streakPatch, fireIcon, openStreak } from './streak.js?v=0.29.1';
-import { pushTo, myNick } from './push.js?v=0.29.1';
+import { h, toast, openSheet, closeSheet } from './ui.js?v=0.29.2';
+import { openImage } from './viewer.js?v=0.29.2';
+import { mi } from './icons2.js?v=0.29.2';
+import * as player from './player.js?v=0.29.2';
+import { searchTracks } from './catalog.js?v=0.29.2';
+import { me, isFriend, cardOf, friendIds, friendCards, loadFriends, friendsLoaded } from './friends.js?v=0.29.2';
+import { avSrc } from './avatar.js?v=0.29.2';
+import { seenText, isOnline } from './userpage.js?v=0.29.2';
+import { startCall, warmCalls } from './call.js?v=0.29.2';
+import { streakOf, streakPatch, fireIcon, openStreak } from './streak.js?v=0.29.2';
+import { pushTo, myNick } from './push.js?v=0.29.2';
 
 export const chatId = (a, b) => [a, b].sort().join('_');
 
