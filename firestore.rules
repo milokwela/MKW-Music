@@ -19,7 +19,7 @@ service cloud.firestore {
       allow read: if request.auth != null;
       allow delete: if request.auth != null && request.auth.uid == uid;
       allow create, update: if request.auth != null && request.auth.uid == uid
-        && request.resource.data.keys().hasOnly(['nick', 'sec', 'plays', 'likes', 'status', 'banner', 'frame', 'badges', 'avatar', 'shape', 'now', 'seen', 'updatedAt'])
+        && request.resource.data.keys().hasOnly(['nick', 'sec', 'plays', 'likes', 'status', 'banner', 'frame', 'badges', 'avatar', 'shape', 'now', 'seen', 'fan', 'devOff', 'updatedAt'])
         && request.resource.data.nick is string && request.resource.data.nick.size() <= 32
         && request.resource.data.sec is number && request.resource.data.plays is number && request.resource.data.likes is number
         && request.resource.data.status is string && request.resource.data.status.size() <= 60
@@ -32,7 +32,7 @@ service cloud.firestore {
       allow read: if request.auth != null;
       allow delete: if request.auth != null && request.auth.uid == uid;
       allow create, update: if request.auth != null && request.auth.uid == uid
-        && request.resource.data.keys().hasOnly(['nick', 'status', 'banner', 'bannerImg', 'avatar', 'frame', 'badges', 'bio', 'nickStyle', 'shape', 'effect', 'now', 'seen', 'favArtists', 'favTracks', 'sec', 'plays', 'likes', 'days', 'achCount', 'updatedAt'])
+        && request.resource.data.keys().hasOnly(['nick', 'status', 'banner', 'bannerImg', 'avatar', 'frame', 'badges', 'bio', 'nickStyle', 'shape', 'effect', 'now', 'seen', 'favArtists', 'favTracks', 'sec', 'plays', 'likes', 'days', 'achCount', 'fan', 'devOff', 'updatedAt'])
         && request.resource.data.nick is string && request.resource.data.nick.size() <= 32
         && request.resource.data.status is string && request.resource.data.status.size() <= 60
         && request.resource.data.bannerImg is string && request.resource.data.bannerImg.size() <= 300000
@@ -73,12 +73,37 @@ service cloud.firestore {
         allow read: if request.auth != null && request.auth.uid in cid.split('_');
         allow create: if request.auth != null && request.auth.uid in cid.split('_')
           && request.resource.data.from == request.auth.uid
-          && request.resource.data.keys().hasOnly(['from', 'text', 'at', 'track'])
+          && request.resource.data.keys().hasOnly(['from', 'text', 'at', 'track', 'img'])
           && request.resource.data.text is string && request.resource.data.text.size() <= 500
+          && (!('img' in request.resource.data) || (request.resource.data.img is string && request.resource.data.img.size() <= 400000))
           && request.resource.data.at is number
           && mutual(cid.split('_')[0], cid.split('_')[1]);
         allow update, delete: if false;
       }
+    }
+    // «Мне нравится MKW»: номер фаната по порядку. Счётчик и номер пишутся одной транзакцией,
+    // каждый может получить номер один раз. Разработчик — №1, первый фанат — №2.
+    match /fans/{uid} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['n', 'at'])
+        && request.resource.data.n is int
+        && getAfter(/databases/$(database)/documents/meta/fans).data.count == request.resource.data.n;
+      allow update, delete: if false;
+    }
+    match /meta/fans {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null
+        && request.resource.data.keys().hasOnly(['count'])
+        && request.resource.data.count == 2
+        && !exists(/databases/$(database)/documents/fans/$(request.auth.uid))
+        && getAfter(/databases/$(database)/documents/fans/$(request.auth.uid)).data.n == 2;
+      allow update: if request.auth != null
+        && request.resource.data.keys().hasOnly(['count'])
+        && request.resource.data.count == resource.data.count + 1
+        && !exists(/databases/$(database)/documents/fans/$(request.auth.uid))
+        && getAfter(/databases/$(database)/documents/fans/$(request.auth.uid)).data.n == request.resource.data.count;
+      allow delete: if false;
     }
     match /joined/{uid} {
       allow read: if request.auth != null;

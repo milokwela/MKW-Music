@@ -1,7 +1,7 @@
 // Окно «Вышло крупное обновление»: картинки вместо текста, кнопки «Ого!» и «Пропустить». Показывается один раз.
-import { h } from './ui.js?v=0.23.0';
-import { mi } from './icons2.js?v=0.23.0';
-import { VERSION } from './changelog.js?v=0.23.0';
+import { h } from './ui.js?v=0.24.0';
+import { mi } from './icons2.js?v=0.24.0';
+import { VERSION } from './changelog.js?v=0.24.0';
 
 const KEY = 'mkw.news';
 const SLIDES = [

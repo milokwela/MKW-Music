@@ -1,11 +1,11 @@
 // Управление жестами через камеру (MediaPipe GestureRecognizer, модель грузится с CDN).
 // Два пальца: следующий. Рок: предыдущий. Большой вверх: лайк. Средний палец: снять лайк. Большой вниз: дизлайк.
 // Ладонь: пауза. Палец вверх: продолжить. Кулак: тише. Три пальца: громче.
-import { h, toast, openSheet, closeSheet } from './ui.js?v=0.23.0';
-import { mi } from './icons2.js?v=0.23.0';
-import * as player from './player.js?v=0.23.0';
-import * as store from './store.js?v=0.23.0';
-import { dislike } from './wave.js?v=0.23.0';
+import { h, toast, openSheet, closeSheet } from './ui.js?v=0.24.0';
+import { mi } from './icons2.js?v=0.24.0';
+import * as player from './player.js?v=0.24.0';
+import * as store from './store.js?v=0.24.0';
+import { dislike } from './wave.js?v=0.24.0';
 
 const KEY = 'mkw.gestures';
 const LIB = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14';
@@ -87,16 +87,19 @@ function palmPoint(lm) {
   return { x, y, open };
 }
 function detectSwipe(now) {
-  while (track.length && now - track[0].t > 650) track.shift();
+  while (track.length && now - track[0].t > 900) track.shift();
   if (track.length < 3) return '';
   const last = track[track.length - 1];
-  // ищем точку не раньше 550 мс назад, от которой рука проехала больше всего
+  // ищем точку не раньше 800 мс назад, от которой ладонь проехала дальше всего по горизонтали
   let best = null;
-  for (const p of track) { if (last.t - p.t < 120 || last.t - p.t > 550) continue; const dx = last.x - p.x; if (!best || Math.abs(dx) > Math.abs(best.dx)) best = { dx, dy: last.y - p.y }; }
+  for (const p of track) { const dt = last.t - p.t; if (dt < 90 || dt > 800) continue; const dx = last.x - p.x; if (!best || Math.abs(dx) > Math.abs(best.dx)) best = { dx, dy: last.y - p.y, dt }; }
   if (!best) return '';
+  // ладонь раскрыта хотя бы в трети кадров (при быстром движении пальцы смазываются)
   const opens = track.filter((p) => p.open).length;
-  if (opens < Math.ceil(track.length * 0.5)) return '';
-  if (Math.abs(best.dx) < 0.2 || Math.abs(best.dy) > Math.abs(best.dx) * 0.75) return '';
+  if (opens < Math.max(2, Math.ceil(track.length * 0.34))) return '';
+  // достаточно пятой части ширины кадра, движение больше горизонтальное, чем вертикальное
+  if (Math.abs(best.dx) < 0.17 || Math.abs(best.dy) > Math.abs(best.dx) * 0.9) return '';
+  if (Math.abs(best.dx) / best.dt * 1000 < 0.4) return ''; // слишком медленно — это не взмах, а рука просто сдвинулась
   return best.dx < 0 ? 'swipe-next' : 'swipe-prev';
 }
 // рука почти не двигается последние 0.35 с — тогда ладонь означает «пауза», а не начало взмаха
@@ -169,7 +172,7 @@ function loop() {
       if (best && best[1] >= (best[0] === 'Open_Palm' ? 4 : 5)) { act(best[0]); win.length = 0; }
     }
   } catch (e) { console.error(e); }
-  timer = setTimeout(loop, STEP_MS);
+  timer = setTimeout(loop, track.length && performance.now() - track[track.length - 1].t < 600 ? 45 : STEP_MS);
 }
 
 async function start() {

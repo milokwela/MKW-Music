@@ -1,5 +1,5 @@
 // Рейтинг слушателей: у каждого публичная карточка leaders/{uid} (ник, часы, статус, значки, маленькое фото).
-import { db, auth } from './firebase.js?v=0.23.0';
+import { db, auth } from './firebase.js?v=0.24.0';
 import { doc, getDoc, setDoc, deleteDoc, collection, query, orderBy, limit, getDocs, where } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
 const KEY = 'mkw.leaders.hide';
@@ -40,13 +40,15 @@ export async function publishCard(card) {
     avatar: card.avatar && card.avatar.length < 20000 ? card.avatar : '',
     shape: String(card.shape || 'circle').slice(0, 12),
     now: String(card.now || '').slice(0, 120),
+    fan: Math.max(0, Math.floor(Number(card.fan) || 0)),
+    devOff: Boolean(card.devOff),
   };
   const sig = JSON.stringify(data);
   if (sig === lastSent) return;
   try { await setDoc(doc(db, 'leaders', uid), { ...data, seen: Date.now(), updatedAt: Date.now() }); lastSent = sig; lastSeenAt = Date.now(); }
   catch (e) {
     // старые правила Firestore не знают новых полей — пишем в прежнем виде, пока админ не обновит правила
-    const { shape, now, ...old } = data;
+    const { shape, now, fan, devOff, ...old } = data;
     try { await setDoc(doc(db, 'leaders', uid), { ...old, updatedAt: Date.now() }); lastSent = sig; } catch (e2) { console.warn('leaders', e2); }
   }
 }
@@ -87,12 +89,13 @@ export async function publishProfile(p) {
     favTracks: (p.favTracks || []).slice(0, 10),
     sec: Math.floor(Number(p.sec) || 0), plays: Math.floor(Number(p.plays) || 0), likes: Math.floor(Number(p.likes) || 0),
     days: Math.floor(Number(p.days) || 0), achCount: Math.floor(Number(p.achCount) || 0),
+    fan: Math.max(0, Math.floor(Number(p.fan) || 0)), devOff: Boolean(p.devOff),
   };
   const sig = JSON.stringify(data);
   if (sig === lastPub) return;
   try { await setDoc(doc(db, 'profiles', uid), { ...data, seen: Date.now(), updatedAt: Date.now() }); lastPub = sig; }
   catch (e) {
-    const { bio, nickStyle, shape, effect, now, ...old } = data;
+    const { bio, nickStyle, shape, effect, now, fan, devOff, ...old } = data;
     if (old.avatar.length > 60000) old.avatar = '';
     try { await setDoc(doc(db, 'profiles', uid), { ...old, updatedAt: Date.now() }); lastPub = sig; } catch (e2) { console.warn('profiles', e2); }
   }
@@ -115,6 +118,25 @@ export async function communityTaste() {
     const s = await getDocs(query(collection(db, 'profiles'), limit(80)));
     v = s.docs.map((d) => (d.data().favArtists || []).map(String)).filter((x) => x.length > 1);
   } catch { return []; }
+  try { localStorage.setItem(KEY, JSON.stringify({ v, at: Date.now() })); } catch { /* ignore */ }
+  return v;
+}
+
+// «Сейчас слушают в MKW»: любимые треки из открытых профилей слушателей. Кэш на 6 часов, чтобы беречь лимит.
+export async function communityTracks() {
+  const KEY = 'mkw.community.tracks.v1';
+  try { const c = JSON.parse(localStorage.getItem(KEY) || 'null'); if (c && Date.now() - c.at < 6 * 3600000 && c.v.length) return c.v; } catch { /* ignore */ }
+  let v = [];
+  try {
+    const s = await getDocs(query(collection(db, 'profiles'), limit(80)));
+    const seen = new Set();
+    const rows = s.docs.map((d) => d.data()).sort((a, b) => (Number(b.sec) || 0) - (Number(a.sec) || 0));
+    for (const p of rows) for (const t of (p.favTracks || [])) {
+      const k = `${String(t.title || '').toLowerCase()}|${String(t.artist || '').toLowerCase()}`;
+      if (!t || !t.title || seen.has(k)) continue; seen.add(k); v.push({ ...t, by: p.nick || '' });
+    }
+  } catch { return []; }
+  v = v.slice(0, 60);
   try { localStorage.setItem(KEY, JSON.stringify({ v, at: Date.now() })); } catch { /* ignore */ }
   return v;
 }

@@ -1,15 +1,15 @@
 // Главная: «Друзья в сети» и умные миксы, которые собираются из вашей музыки, времени суток и друзей.
-import { $, h, toast } from './ui.js?v=0.23.0';
-import * as store from './store.js?v=0.23.0';
-import * as player from './player.js?v=0.23.0';
-import { searchTracks } from './catalog.js?v=0.23.0';
-import { shuffled } from './utils.js?v=0.23.0';
-import { splitArtists, norm } from './taste.js?v=0.23.0';
-import { mi } from './icons2.js?v=0.23.0';
-import { avSrc } from './avatar.js?v=0.23.0';
-import { loadFriends, friendIds, friendCards, onFriends } from './friends.js?v=0.23.0';
-import { getProfile, communityTaste } from './leaders.js?v=0.23.0';
-import { openUserPage, isOnline } from './userpage.js?v=0.23.0';
+import { $, h, toast } from './ui.js?v=0.24.0';
+import * as store from './store.js?v=0.24.0';
+import * as player from './player.js?v=0.24.0';
+import { searchTracks } from './catalog.js?v=0.24.0';
+import { shuffled } from './utils.js?v=0.24.0';
+import { splitArtists, norm } from './taste.js?v=0.24.0';
+import { mi } from './icons2.js?v=0.24.0';
+import { avSrc } from './avatar.js?v=0.24.0';
+import { loadFriends, friendIds, friendCards, onFriends } from './friends.js?v=0.24.0';
+import { getProfile, communityTaste, communityTracks } from './leaders.js?v=0.24.0';
+import { openUserPage, isOnline } from './userpage.js?v=0.24.0';
 
 const part = () => { const hr = new Date().getHours(); return hr < 6 ? 0 : hr < 12 ? 1 : hr < 18 ? 2 : 3; };
 const PARTS = [
@@ -93,6 +93,26 @@ function renderMixes() {
     h('b', { text: m.title }), h('small', { text: m.sub })))));
 }
 
+// «Сейчас слушают в MKW»: любимые треки других слушателей. Новичку сразу есть что включить.
+async function renderPopular() {
+  const box = $('#popular');
+  if (!box) return;
+  const all = await communityTracks().catch(() => []);
+  const mineIds = new Set(store.state.likes.map((t) => t.id));
+  const list = shuffled(all.filter((t) => !mineIds.has(t.id))).slice(0, 16);
+  if (list.length < 3) { box.hidden = true; return; }
+  const fresh = !store.state.likes.length && !store.state.history.length;
+  box.hidden = false;
+  box.replaceChildren(
+    h('div', { class: 'section-title', text: fresh ? 'Начните с того, что слушают в MKW' : 'Сейчас слушают в MKW' }),
+    h('div', { class: 'pop-row' }, list.map((t, i) => h('button', { type: 'button', class: 'pop-card', style: `animation-delay:${Math.min(i, 8) * 45}ms`, onclick: () => player.playTracks(list, i) },
+      h('span', { class: 'pop-art' }, h('img', { src: t.artwork || 'mkw-logo.png', alt: '', loading: 'lazy' }), h('i', {}, mi('play-circle'))),
+      h('b', { text: t.title }), h('small', { text: t.artist })))));
+  // новичку — сразу под Волной, остальным — после миксов
+  const mixes = $('#smart-mixes');
+  if (fresh && mixes && mixes.parentNode) mixes.parentNode.insertBefore(box, mixes);
+}
+
 let stripTimer = 0;
 async function renderStrip() {
   const box = $('#friends-strip');
@@ -113,6 +133,7 @@ async function renderStrip() {
 let inited = false, mixT = 0;
 export function initHome() {
   renderMixes();
+  renderPopular();
   if (!inited) {
     inited = true;
     store.onStore((w) => { if (w === 'likes' || w === 'history') { clearTimeout(mixT); mixT = setTimeout(renderMixes, 1500); } });

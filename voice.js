@@ -1,12 +1,12 @@
 // Голосовое управление (бета): «MKW, следующая», «MKW, громче», «Музыка, лайк», «MKW, включи Баста».
 // Работает через распознавание речи браузера (Chrome, Яндекс Браузер, Edge, Safari). Слушает, пока вкладка открыта.
-import { toast, openSheet, h } from './ui.js?v=0.23.0';
-import * as player from './player.js?v=0.23.0';
-import * as store from './store.js?v=0.23.0';
-import { dislike, startWave, waveActive } from './wave.js?v=0.23.0';
-import { searchTracks } from './catalog.js?v=0.23.0';
-import { mi } from './icons2.js?v=0.23.0';
-import { openFull, closeFull, isFullOpen } from './playerui.js?v=0.23.0';
+import { toast, openSheet, h } from './ui.js?v=0.24.0';
+import * as player from './player.js?v=0.24.0';
+import * as store from './store.js?v=0.24.0';
+import { dislike, startWave, waveActive } from './wave.js?v=0.24.0';
+import { searchTracks } from './catalog.js?v=0.24.0';
+import { mi } from './icons2.js?v=0.24.0';
+import { openFull, closeFull, isFullOpen } from './playerui.js?v=0.24.0';
 
 const KEY = 'mkw.voice';
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -17,7 +17,7 @@ export const voiceSupported = () => Boolean(SR);
 export const voiceOn = () => on;
 
 // как браузер может услышать «MKW»: эм кей дабл ю, мкв, эмкейви, эм ка вэ, эмкавэ, а также просто «музыка»
-const WAKE = /(?:^|\s)(?:эй\s+|окей\s+|ok\s+|hey\s+)?(?:mkw|m\s?k\s?w|мкв[а-яa-z]*|м\s?к\s?в|мк\s?в|м\s?кв|мкб|мкф|нкв|эм\s?к[эеа]\s?в[эеиа]?|эм\s?ка\s?в[эеиа]|эмкав[а-яa-z]*|эмкэв[а-яa-z]*|эм\s?кв|эмка|макв[а-яa-z]*|мк\s?ви|эм\s?кей(?:\s?(?:дабл\s?(?:ю|в|ви)|ви|в|вэ))?|эмк[эе]й[а-яa-z]*|music|музык(?:а|у|ой|е)?|музычк[а-я]*)(?=\s|$)\s*/
+const WAKE = /(?:^|\s)(?:эй\s+|окей\s+|ok\s+|hey\s+)?(?:mkw|m\s?k\s?w|мкв[а-яa-z]*|м\s?к\s?в|мк\s?в|м\s?кв|мкб|мкф|нкв|эм\s?к[эеа]\s?в[эеиа]?|эм\s?ка\s?в[эеиа]|эмкав[а-яa-z]*|эмкв[а-яa-z]*|эм\s?кв[эеа]|м\s?кв[эеа]|мкве|эмк\s?вэ|эмкэв[а-яa-z]*|эм\s?кв|эмка|макв[а-яa-z]*|мк\s?ви|эм\s?кей(?:\s?(?:дабл\s?(?:ю|в|ви)|ви|в|вэ))?|эмк[эе]й[а-яa-z]*|music|музык(?:а|у|ой|е)?|музычк[а-я]*)(?=\s|$)\s*/
 
 export const VOICE_COMMANDS = [
   ['Следующая · дальше · пропусти · другую', 'следующий трек'],
@@ -50,8 +50,45 @@ function num(t) {
   return any ? sum : null;
 }
 
+// ---------- «умное» узнавание: похожие слова тоже считаются ----------
+function lev(a, b) {
+  if (a === b) return 0;
+  const m = a.length, n = b.length; if (!m || !n) return m || n;
+  let prev = Array.from({ length: n + 1 }, (_, j) => j);
+  for (let i = 1; i <= m; i++) {
+    const cur = [i];
+    for (let j = 1; j <= n; j++) cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+    prev = cur;
+  }
+  return prev[n];
+}
+const near = (w, v) => { const d = lev(w, v); return v.length <= 3 ? d === 0 : v.length <= 5 ? d <= 1 : d <= 2; };
+// как может прозвучать «МКВ» и «Музыка» (слитно, без пробелов)
+const WAKE_WORDS = ['мкв', 'мква', 'мкве', 'эмкв', 'эмквэ', 'эмкве', 'эмкава', 'эмкавэ', 'эмкаве', 'эмкэвэ', 'эмкувэ', 'эмкейдаблю', 'эмкейви', 'mkw', 'эмкаву', 'музыка', 'музыку', 'музыке', 'музычка'];
+// ищем слово-сигнал в любом месте фразы, склеивая до трёх соседних слов («эм ка вэ» → «эмкавэ»)
+function fuzzyWake(t) {
+  const w = t.split(' ');
+  for (let i = 0; i < w.length; i++) {
+    let glued = '';
+    for (let k = 0; k < 3 && i + k < w.length; k++) {
+      glued += w[i + k];
+      if (glued.length >= 3 && WAKE_WORDS.some((v) => near(glued, v))) return { rest: w.slice(i + k + 1).join(' ') };
+    }
+  }
+  return null;
+}
+// словарь команд: опечатки распознавания («следуюшая», «гормче») исправляем до ближайшего слова
+const VOCAB = ['следующая', 'следующий', 'следующую', 'дальше', 'пропусти', 'предыдущая', 'предыдущий', 'назад', 'верни', 'пауза', 'стоп', 'замолчи', 'играй', 'продолжи', 'включи', 'громче', 'тише', 'погромче', 'потише', 'громкость', 'лайк', 'дизлайк', 'нравится', 'перемешай', 'повтор', 'волна', 'волну', 'текст', 'слова', 'сначала', 'заново', 'таймер', 'открой', 'закрой', 'плеер', 'лайки', 'играет'];
+function fixWords(t) { return t.split(' ').map((w) => (w.length < 4 || VOCAB.includes(w) ? w : VOCAB.find((v) => near(w, v)) || w)).join(' '); }
+
 const norm = (x) => String(x || '').toLowerCase().replace(/ё/g, 'е').replace(/[-–—_.,!?:;«»"()]/g, ' ').replace(/\s+/g, ' ').trim();
 function parse(text) {
+  const p = parse0(text);
+  if (p) return p;
+  const fixed = fixWords(norm(text));
+  return fixed !== norm(text) ? parse0(fixed) : null;
+}
+function parse0(text) {
   const t = norm(text);
   if (!t) return null;
   if (/(убер|убра|сним|снят|удали|отмен)[а-яa-z]*\s+(мой\s+|этот\s+)?лайк/.test(t)) return { cmd: 'unlike' };
@@ -180,6 +217,7 @@ function onResult(e) {
     const alts = [...res].map((a) => norm(a.transcript)).filter(Boolean);
     let rest = null;
     for (const text of alts) { const m = text.match(WAKE); if (m) { rest = text.slice(m.index + m[0].length).trim(); break; } }
+    if (rest == null) for (const text of alts) { const f = fuzzyWake(text); if (f) { rest = f.rest; break; } }
     const armed = Date.now() < armedUntil;
     if (rest == null && !armed) continue;
     if (rest != null && !armed) { arm(7000); duck(); showBadge('Слушаю…'); }
