@@ -1,5 +1,5 @@
 // Просмотр фото на весь экран (аватар, баннер). Закрывается касанием, свайпом вниз или Esc.
-import { h } from './ui.js?v=0.27.5';
+import { h } from './ui.js?v=0.27.6';
 
 export function openImage(src, caption = '') {
   if (!src) return;

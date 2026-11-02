@@ -1,8 +1,9 @@
 // Текст песни: синхронный (LRCLIB), слова заливаются цветом акцента, соседние строки размыты. Работает и в «Волне».
 // Если синхронного текста нет, берётся обычный (lyrics.ovh): строки идут равномерно по длине трека (приблизительно).
-import { $, h, toast } from './ui.js?v=0.27.5';
-import * as player from './player.js?v=0.27.5';
-import { RECOGNIZE_URL } from './shazam-config.js?v=0.27.5';
+import { safeUrl } from './utils.js?v=0.27.6';
+import { $, h, toast } from './ui.js?v=0.27.6';
+import * as player from './player.js?v=0.27.6';
+import { RECOGNIZE_URL } from './shazam-config.js?v=0.27.6';
 
 const API = 'https://lrclib.net/api';
 const MKEY = 'mkw.lyrics.mode';
@@ -250,7 +251,7 @@ function setOpen(v) {
   $('#fp-lyrics-btn').classList.toggle('on', v);
   if (v) {
     const t = player.queue.current;
-    $('#fp-lyrics').style.setProperty('--ly-art', t && t.artwork ? `url("${t.artwork}")` : 'none');
+    $('#fp-lyrics').style.setProperty('--ly-art', t && safeUrl(t.artwork) ? `url("${safeUrl(t.artwork)}")` : 'none');
     refresh(); if (!raf) raf = requestAnimationFrame(frame);
   } else { token += 1; cancelAnimationFrame(raf); raf = 0; }
 }
@@ -278,7 +279,7 @@ export function initLyrics() {
     if (ev === 'time' || ev === 'state') stamp = { t: player.st.time, at: performance.now() };
     if (ev === 'track' && open) {
       if (!player.queue.current) { setOpen(false); return; }
-      root.style.setProperty('--ly-art', player.queue.current.artwork ? `url("${player.queue.current.artwork}")` : 'none');
+      root.style.setProperty('--ly-art', safeUrl(player.queue.current.artwork) ? `url("${safeUrl(player.queue.current.artwork)}")` : 'none');
       refresh();
     }
   });

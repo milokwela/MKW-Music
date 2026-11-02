@@ -1,18 +1,19 @@
 // Чат с друзьями. Писать можно только взаимным друзьям (проверяют и приложение, и правила Firestore).
 //   chats/{a_b}            — { members: [a, b], last: { from, text, at }, at, read: { uid: время } }   (a < b)
 //   chats/{a_b}/msgs/{id}  — { from, text, at, track? }
-import { db } from './firebase.js?v=0.27.5';
+import { safeUrl } from './utils.js?v=0.27.6';
+import { db } from './firebase.js?v=0.27.6';
 import { doc, setDoc, addDoc, collection, query, where, orderBy, limit, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
-import { h, toast, openSheet, closeSheet } from './ui.js?v=0.27.5';
-import { openImage } from './viewer.js?v=0.27.5';
-import { mi } from './icons2.js?v=0.27.5';
-import * as player from './player.js?v=0.27.5';
-import { searchTracks } from './catalog.js?v=0.27.5';
-import { me, isFriend, cardOf, friendIds, friendCards, loadFriends, friendsLoaded } from './friends.js?v=0.27.5';
-import { avSrc } from './avatar.js?v=0.27.5';
-import { seenText, isOnline } from './userpage.js?v=0.27.5';
-import { startCall, warmCalls } from './call.js?v=0.27.5';
-import { pushTo, myNick } from './push.js?v=0.27.5';
+import { h, toast, openSheet, closeSheet } from './ui.js?v=0.27.6';
+import { openImage } from './viewer.js?v=0.27.6';
+import { mi } from './icons2.js?v=0.27.6';
+import * as player from './player.js?v=0.27.6';
+import { searchTracks } from './catalog.js?v=0.27.6';
+import { me, isFriend, cardOf, friendIds, friendCards, loadFriends, friendsLoaded } from './friends.js?v=0.27.6';
+import { avSrc } from './avatar.js?v=0.27.6';
+import { seenText, isOnline } from './userpage.js?v=0.27.6';
+import { startCall, warmCalls } from './call.js?v=0.27.6';
+import { pushTo, myNick } from './push.js?v=0.27.6';
 
 export const chatId = (a, b) => [a, b].sort().join('_');
 const other = (c) => (c.members || []).find((x) => x !== me()) || '';
@@ -97,7 +98,7 @@ const BGKEY = (cid) => `mkw.chatbg.${cid}`;
 function bgOf(cid) { try { return localStorage.getItem(BGKEY(cid)) || 'none'; } catch { return 'none'; } }
 function paintBg(list, cid) {
   const v = bgOf(cid);
-  const css = v.startsWith('data:') ? `linear-gradient(rgba(0,0,0,.35), rgba(0,0,0,.35)), center / cover no-repeat url("${v}")` : (BGS.find((b) => b.id === v) || BGS[0]).css;
+  const css = v.startsWith('data:') && safeUrl(v) ? `linear-gradient(rgba(0,0,0,.35), rgba(0,0,0,.35)), center / cover no-repeat url("${safeUrl(v)}")` : (BGS.find((b) => b.id === v) || BGS[0]).css;
   list.style.background = css || '';
   list.style.backgroundAttachment = 'local';
 }
@@ -239,7 +240,7 @@ export async function openChat(uid, card) {
         if (!el) {
           const mineMsg = m.from === me();
           const photoOnly = m.img && !m.text && !m.track;
-          const img = m.img ? h('img', { class: 'ch-img', src: m.img, alt: 'Фото', decoding: 'async', onclick: () => openImage(m.img, '') }) : null;
+          const img = m.img && safeUrl(m.img).startsWith('data:image/') ? h('img', { class: 'ch-img', src: m.img, alt: 'Фото', decoding: 'async', onclick: () => openImage(m.img, '') }) : null;
           if (img) img.addEventListener('load', () => { if (list.scrollHeight - list.scrollTop - list.clientHeight < 400) list.scrollTop = list.scrollHeight; }, { once: true });
           el = h('div', { class: `ch-msg${mineMsg ? ' me' : ''}${m.img ? ' has-img' : ''}${photoOnly ? ' photo' : ''}${first ? '' : ' new'}` },
             m.track ? h('button', { class: 'ch-track', type: 'button', onclick: () => playTrack(m.track) }, mi('play-circle'), h('span', {}, h('b', { text: m.track.title }), h('small', { text: m.track.artist }))) : null,

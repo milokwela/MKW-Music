@@ -1,7 +1,7 @@
 // Полный трек обычным аудиопотоком вместо видеоплеера YouTube.
 // Зачем: видео браузер ставит на паузу, когда экран выключен или приложение свёрнуто, а обычный звук играет дальше.
 // Откуда: ваш Cloudflare Worker (/bg: YouTube напрямую, SoundCloud, зеркала) и открытые зеркала YouTube (Invidious, Piped).
-import { RECOGNIZE_URL } from './shazam-config.js?v=0.27.5';
+import { RECOGNIZE_URL } from './shazam-config.js?v=0.27.6';
 
 const KEY = 'mkw.bgplay'; // «Слушать в фоне с выключенным экраном» — бета, по умолчанию выключено
 const GKEY = 'mkw.stream.good';
