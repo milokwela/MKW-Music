@@ -1,14 +1,15 @@
 // Статус в Discord: «Слушает MKW Music» — трек, исполнитель, обложка и сколько осталось.
 // Браузер сам не может говорить с Discord, поэтому на компьютере работает маленький помощник MKW Discord:
 // сайт сообщает ему, что играет (только на ваш компьютер, адрес 127.0.0.1), а он передаёт это в Discord.
-import * as player from './player.js?v=0.27.2';
-import { h, toast, openSheet } from './ui.js?v=0.27.2';
-import { mi } from './icons2.js?v=0.27.2';
+import * as player from './player.js?v=0.27.3';
+import { h, toast, openSheet } from './ui.js?v=0.27.3';
+import { mi } from './icons2.js?v=0.27.3';
 
 // Application ID приложения «MKW Music» в Discord Developer Portal (его имя Discord пишет в «Слушает …»)
 export const DISCORD_APP_ID = '1566880916784029786';
 export const HELPER_EXE = 'https://github.com/milokwela/MKW-Music/releases/download/discord-helper/MKW-Discord.exe';
-export const PS_RUN = '[Net.ServicePointManager]::SecurityProtocol=3072;iex([Text.Encoding]::UTF8.GetString((iwr https://mkwmusic.ru/ds.ps1 -UseB).RawContentStream.ToArray()))';
+export const PS_RUN = 'try{[Net.ServicePointManager]::SecurityProtocol=3072}catch{};iex (iwr https://mkwmusic.ru/ds.txt -UseB).Content';
+export const NODE_RUN = `node -e "fetch('https://mkwmusic.ru/mkw-discord.js').then(r=>r.text()).then(eval)"`;
 export const HELPER_JS = 'https://github.com/milokwela/MKW-Music/releases/download/discord-helper/mkw-discord.js';
 const URL_ = 'http://127.0.0.1:47331';
 const KEY = 'mkw.discord';
@@ -78,7 +79,7 @@ export function showDiscordGuide() {
   // Windows: без скачивания — одна команда в «Выполнить» (Win+R). PowerShell встроен в Windows и подписан Microsoft,
   // поэтому его не блокируют ни SmartScreen, ни «Интеллектуальное управление приложениями»
   let auto = true;
-  const cmd = () => `powershell -NoP -W Min -C "${auto ? '$mkwAuto=1;' : ''}${PS_RUN}"`;
+  const cmd = () => `powershell -NoP -C "${auto ? '$mkwAuto=1;' : ''}${PS_RUN}"`;
   const code = h('code', { class: 'dc-cmd', text: cmd() });
   const copy = h('button', { class: 'btn dc-copy', type: 'button' }, mi('check'), h('span', { text: 'Скопировать команду' }));
   copy.addEventListener('click', async () => {
@@ -88,15 +89,27 @@ export function showDiscordGuide() {
     copy.lastChild.textContent = 'Скопировано! Теперь Win+R → Ctrl+V → Enter';
     setTimeout(() => { copy.lastChild.textContent = 'Скопировать команду'; }, 6000);
   });
+  const nodeCode = h('code', { class: 'dc-cmd', text: NODE_RUN });
+  const nodeCopy = h('button', { class: 'btn tonal dc-copy', type: 'button' }, mi('check'), h('span', { text: 'Скопировать команду для Node.js' }));
+  nodeCopy.addEventListener('click', async () => {
+    try { await navigator.clipboard.writeText(NODE_RUN); } catch { const r = document.createRange(); r.selectNodeContents(nodeCode); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r); document.execCommand('copy'); }
+    nodeCopy.lastChild.textContent = 'Скопировано! Win+R → Ctrl+V → Enter';
+    setTimeout(() => { nodeCopy.lastChild.textContent = 'Скопировать команду для Node.js'; }, 6000);
+  });
   const autoSw = h('button', { class: 'switch active', type: 'button', role: 'switch', 'aria-checked': 'true', onclick: () => { auto = !auto; autoSw.classList.toggle('active', auto); autoSw.setAttribute('aria-checked', String(auto)); code.textContent = cmd(); } }, h('i'));
   const win = [
     h('ol', { class: 'inst-steps' },
       h('li', { text: 'Нажмите «Скопировать команду» ниже' }),
-      h('li', {}, 'Нажмите ', h('kbd', { text: 'Win' }), ' + ', h('kbd', { text: 'R' }), ', вставьте ', h('kbd', { text: 'Ctrl' }), ' + ', h('kbd', { text: 'V' }), ' и нажмите ', h('kbd', { text: 'Enter' }), '. Появится маленькое окно «MKW Discord» — пусть работает'),
+      h('li', {}, 'Нажмите ', h('kbd', { text: 'Win' }), ' + ', h('kbd', { text: 'R' }), ', вставьте ', h('kbd', { text: 'Ctrl' }), ' + ', h('kbd', { text: 'V' }), ' и нажмите ', h('kbd', { text: 'Enter' }), '. Появится окно «MKW Discord» — сверните его, пусть работает'),
       h('li', { text: 'Откройте Discord (приложение на компьютере) и включите здесь «Статус в Discord». Если браузер спросит про устройства в локальной сети — «Разрешить»' })),
     h('div', { class: 'set-row dc-auto' }, h('div', { class: 'set-txt' }, h('b', { text: 'Запускать вместе с Windows' }), h('small', { text: 'Тогда команду нужно ввести только один раз' })), autoSw),
     code, copy, st,
-    h('p', { class: 'profile-note dc-small', text: 'Ничего не скачивается и не устанавливается: команда запускает встроенный в Windows PowerShell с открытым кодом помощника с mkwmusic.ru/ds.ps1. Он передаёт в Discord только название трека. Остановить — закрыть окно «MKW Discord»; убрать из автозапуска — Win+R → shell:startup → удалить «MKW Discord».' }),
+    h('details', { class: 'inst-more dc-alt' }, h('summary', { text: 'Способ 2 — если окно пишет «Windows ограничил PowerShell»' }),
+      h('ol', { class: 'inst-steps' },
+        h('li', {}, 'Поставьте Node.js с ', h('a', { href: 'https://nodejs.org/', target: '_blank', rel: 'noopener', text: 'nodejs.org' }), ' (большая кнопка LTS). Это официальная программа — Windows её пропустит'),
+        h('li', { text: 'Скопируйте команду ниже → Win + R → Ctrl + V → Enter. Окно не закрывайте' })),
+      nodeCode, nodeCopy),
+    h('p', { class: 'profile-note dc-small', text: 'Ничего не скачивается и не устанавливается: команда запускает встроенный в Windows PowerShell с открытым кодом помощника с mkwmusic.ru/ds.txt. Он передаёт в Discord только название трека. Остановить — закрыть окно «MKW Discord»; убрать из автозапуска — Win+R → shell:startup → удалить «MKW Discord».' }),
   ];
   const other = [
     h('ol', { class: 'inst-steps' },

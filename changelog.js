@@ -1,8 +1,14 @@
 // История версий. Новые записи добавляйте сверху.
-export const VERSION = '0.27.2';
+export const VERSION = '0.27.3';
 export const STAGE = 'beta';
 
 export const CHANGELOG = [
+  {
+    version: '0.27.3',
+    date: '3 ноября 2026',
+    new: ['Статус в Discord: способ 2 через Node.js — для компьютеров, где Windows ограничивает PowerShell'],
+    fixed: [],
+  },
   {
     version: '0.27.2',
     date: '3 ноября 2026',
