@@ -1,5 +1,5 @@
 // «Жидкое стекло» в нижнем меню: подсветка идёт за пальцем, при отпускании выбирает ближайшую вкладку.
-import { $, $$ } from './ui.js?v=0.29.1';
+import { $, $$ } from './ui.js?v=0.29.2';
 
 export function initLiquidNav() {
   const nav = $('#bottom-nav .nav-inner');

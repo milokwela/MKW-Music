@@ -187,3 +187,14 @@
 .pe2 .pe-add { min-width: 0; }
 .pe2 .pe-add .sheet-input { min-width: 0; width: auto; }
 .pe2 .pe-add .btn { flex: none; }
+
+/* 0.29.2: без мигания на телефонах — фон редактора не анимируется, лента едет на своём слое */
+#sheet:has(.pe2) { animation: none !important; background-color: #0a0a10 !important; overscroll-behavior: contain; }
+.pe2.pe::before { animation: none !important; opacity: .55; }
+.pe2 .pe-view { transition: none !important; contain: layout paint; transform: translateZ(0); }
+.pe2 .pe-rail { will-change: auto; backface-visibility: hidden; }
+.pe2 .pe-pane { transition: none !important; }
+.pe2 .pe-pane[aria-hidden="true"] { opacity: 1; visibility: hidden; transition: visibility 0s .42s !important; }
+.pe2 .pe-pane[aria-hidden="false"] { visibility: visible; }
+.pe2.dragging .pe-pane { visibility: visible !important; transition: none !important; }
+.pe-side { background: #0a0a10 !important; }

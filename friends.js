@@ -2,7 +2,7 @@
 // Друзья — только взаимно: я есть в его списке, а он в моём. То есть дружба начинается, когда второй нажал «Принять».
 //   заявка ко мне  — он добавил меня, я его ещё нет;
 //   моя заявка     — я добавил его, он меня ещё нет.
-import { db, auth } from './firebase.js?v=0.29.1';
+import { db, auth } from './firebase.js?v=0.29.2';
 import { doc, getDoc, setDoc, collection, query, where, getDocs, limit, onSnapshot, documentId } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
 // «В сети»: отметка свежее 3.5 минуты (пинг раз в 2 минуты, при уходе из приложения — сразу «не в сети»)

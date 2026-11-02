@@ -1,5 +1,5 @@
 // Разовое сообщение о переезде на новый домен.
-import { h, openSheet, closeSheet } from './ui.js?v=0.29.1';
+import { h, openSheet, closeSheet } from './ui.js?v=0.29.2';
 
 const KEY = 'mkw.moved.v1';
 
