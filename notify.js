@@ -1,10 +1,10 @@
 // Уведомления: заявки в друзья, принятые заявки, новые сообщения.
 // Внутри приложения — всплывашка и счётчик на вкладке «Профиль». Если приложение свёрнуто и вы разрешили —
 // системное уведомление телефона/компьютера (работает, пока приложение открыто в фоне).
-import { h, toast } from './ui.js?v=0.24.0';
-import { avSrc } from './avatar.js?v=0.24.0';
-import { watchFriends, stopWatchFriends, requestIds, onFriends, cardOf } from './friends.js?v=0.24.0';
-import { watchChats, stopChats, unreadCount, onChats, openChat, chatOpen } from './chat.js?v=0.24.0';
+import { h, toast } from './ui.js?v=0.25.0';
+import { avSrc } from './avatar.js?v=0.25.0';
+import { watchFriends, stopWatchFriends, requestIds, onFriends, cardOf } from './friends.js?v=0.25.0';
+import { watchChats, stopChats, unreadCount, onChats, openChat, chatOpen } from './chat.js?v=0.25.0';
 
 const KEY = 'mkw.notify';
 export const notifyOn = () => { try { return localStorage.getItem(KEY) !== '0'; } catch { return true; } };
@@ -31,11 +31,12 @@ async function system(title, body, tag, onClick) {
 
 // счётчик на вкладке «Профиль» и на «Друзья» внутри профиля
 function paint() {
-  const n = requestIds().length + unreadCount();
-  const nav = document.querySelector('#bottom-nav .nav-btn[data-view="profile"]');
-  if (nav) { if (n) nav.dataset.badge = n > 9 ? '9+' : String(n); else delete nav.dataset.badge; }
-  const tab = document.querySelector('.ptab[data-tab="friends"]');
-  if (tab) { if (n) tab.dataset.badge = n > 9 ? '9+' : String(n); else delete tab.dataset.badge; }
+  const req = requestIds().length, msg = unreadCount();
+  const set = (el, n) => { if (!el) return; if (n) el.dataset.badge = n > 9 ? '9+' : String(n); else delete el.dataset.badge; };
+  // сообщения — на «Чатах», заявки в друзья — на «Профиле»
+  set(document.querySelector('#bottom-nav .nav-btn[data-view="chats"]'), msg);
+  set(document.querySelector('#bottom-nav .nav-btn[data-view="profile"]'), req);
+  set(document.querySelector('.ptab[data-tab="friends"]'), req);
   window.dispatchEvent(new CustomEvent('mkw-notify'));
 }
 

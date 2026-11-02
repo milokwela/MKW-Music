@@ -1,19 +1,20 @@
 // Чат с друзьями. Писать можно только взаимным друзьям (проверяют и приложение, и правила Firestore).
 //   chats/{a_b}            — { members: [a, b], last: { from, text, at }, at, read: { uid: время } }   (a < b)
 //   chats/{a_b}/msgs/{id}  — { from, text, at, track? }
-import { db } from './firebase.js?v=0.24.0';
+import { db } from './firebase.js?v=0.25.0';
 import { doc, setDoc, addDoc, collection, query, where, orderBy, limit, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
-import { h, toast, openSheet, closeSheet } from './ui.js?v=0.24.0';
-import { openImage } from './viewer.js?v=0.24.0';
-import { mi } from './icons2.js?v=0.24.0';
-import * as player from './player.js?v=0.24.0';
-import { searchTracks } from './catalog.js?v=0.24.0';
-import { me, isFriend, cardOf, friendIds, friendCards, loadFriends, friendsLoaded } from './friends.js?v=0.24.0';
-import { avSrc } from './avatar.js?v=0.24.0';
-import { seenText, isOnline } from './userpage.js?v=0.24.0';
+import { h, toast, openSheet, closeSheet } from './ui.js?v=0.25.0';
+import { openImage } from './viewer.js?v=0.25.0';
+import { mi } from './icons2.js?v=0.25.0';
+import * as player from './player.js?v=0.25.0';
+import { searchTracks } from './catalog.js?v=0.25.0';
+import { me, isFriend, cardOf, friendIds, friendCards, loadFriends, friendsLoaded } from './friends.js?v=0.25.0';
+import { avSrc } from './avatar.js?v=0.25.0';
+import { seenText, isOnline } from './userpage.js?v=0.25.0';
 
 export const chatId = (a, b) => [a, b].sort().join('_');
 const other = (c) => (c.members || []).find((x) => x !== me()) || '';
+export const otherOf = other;
 
 // ---------- список чатов и непрочитанные ----------
 let chats = [];
@@ -203,23 +204,35 @@ export async function openChat(uid, card) {
   requestAnimationFrame(() => p.classList.add('open'));
 
   if (unsubMsgs) unsubMsgs();
+  const drawn = new Map(); let first = true;
   list.replaceChildren(h('p', { class: 'ch-empty', text: 'Загрузка…' }));
   try {
     unsubMsgs = onSnapshot(query(collection(db, 'chats', cid, 'msgs'), orderBy('at', 'desc'), limit(80)), (s) => {
-      const msgs = s.docs.map((d) => d.data()).reverse();
+      const msgs = s.docs;
       const atBottom = list.scrollHeight - list.scrollTop - list.clientHeight < 80;
       if (!msgs.length) { list.replaceChildren(h('p', { class: 'ch-empty', text: `Напишите ${u.nick || 'другу'} первым. Можно отправить трек, который сейчас играет — кнопка с нотой.` })); return; }
       let day = '';
       const nodes = [];
-      msgs.forEach((m) => {
+      s.docs.slice().reverse().forEach((d) => {
+        const m = d.data();
         const dd = dayOf(m.at); if (dd !== day) { day = dd; nodes.push(h('div', { class: 'ch-day', text: dd })); }
-        const mineMsg = m.from === me();
-        nodes.push(h('div', { class: `ch-msg${mineMsg ? ' me' : ''}` },
-          m.track ? h('button', { class: 'ch-track', type: 'button', onclick: () => playTrack(m.track) }, mi('play-circle'), h('span', {}, h('b', { text: m.track.title }), h('small', { text: m.track.artist }))) : null,
-          m.img ? h('img', { class: 'ch-img', src: m.img, alt: 'Фото', loading: 'lazy', onclick: () => openImage(m.img, '') }) : null,
-          m.text ? h('div', { class: 'ch-text', text: m.text }) : null,
-          h('time', { text: timeOf(m.at) })));
+        // уже нарисованные сообщения не пересоздаём — фото не мигают и не грузятся заново
+        let el = drawn.get(d.id);
+        if (!el) {
+          const mineMsg = m.from === me();
+          const photoOnly = m.img && !m.text && !m.track;
+          const img = m.img ? h('img', { class: 'ch-img', src: m.img, alt: 'Фото', decoding: 'async', onclick: () => openImage(m.img, '') }) : null;
+          if (img) img.addEventListener('load', () => { if (list.scrollHeight - list.scrollTop - list.clientHeight < 400) list.scrollTop = list.scrollHeight; }, { once: true });
+          el = h('div', { class: `ch-msg${mineMsg ? ' me' : ''}${m.img ? ' has-img' : ''}${photoOnly ? ' photo' : ''}${first ? '' : ' new'}` },
+            m.track ? h('button', { class: 'ch-track', type: 'button', onclick: () => playTrack(m.track) }, mi('play-circle'), h('span', {}, h('b', { text: m.track.title }), h('small', { text: m.track.artist }))) : null,
+            img,
+            m.text ? h('div', { class: 'ch-text', text: m.text }) : null,
+            h('time', { text: timeOf(m.at) }));
+          drawn.set(d.id, el);
+        }
+        nodes.push(el);
       });
+      first = false;
       list.replaceChildren(...nodes);
       if (atBottom || list.dataset.first !== '1') { list.scrollTop = list.scrollHeight; list.dataset.first = '1'; }
       if (chatWith(uid)) markRead(cid);

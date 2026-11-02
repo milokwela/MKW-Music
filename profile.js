@@ -1,36 +1,36 @@
 // Экран «Профиль»: карточка с баннером, витрина (любимые исполнители и треки), вкладки Обзор / Слушатели / Настройки / О MKW.
-import { $, $$, h, icon, openSheet, closeSheet, toast, sheetItem, trackRow } from './ui.js?v=0.24.0';
-import * as store from './store.js?v=0.24.0';
-import * as player from './player.js?v=0.24.0';
-import { ACCENTS, getTheme, getAccent, getCustomHue, setCustomColor, setTheme, setAccent, hslHex, getNeutral } from './theme.js?v=0.24.0';
-import { CHANGELOG, VERSION, STAGE, KNOWN_ISSUES } from './changelog.js?v=0.24.0';
-import { plural, pickTrack } from './utils.js?v=0.24.0';
-import { youtubeEnabled, youtubeQuotaOut } from './youtube.js?v=0.24.0';
-import { audiusEnabled } from './audius.js?v=0.24.0';
-import { SOURCE_MODES, getSourceMode, setSourceMode } from './sources.js?v=0.24.0';
-import { gesturesOn, setGestures, showGestureGuide } from './gestures.js?v=0.24.0';
-import { listenerStats } from './stats.js?v=0.24.0';
-import { liveBg, setLiveBg } from './viz.js?v=0.24.0';
-import { lowPower, setLowPower } from './perf.js?v=0.24.0';
-import { logOut, changePassword, changeNick, authErrorText } from './auth.js?v=0.24.0';
-import { connectionCountry } from './geo.js?v=0.24.0';
-import { publishCard, publishProfile, myCard, getProfile, topListeners, hiddenFromBoard, setHidden, myUid } from './leaders.js?v=0.24.0';
-import { mi } from './icons2.js?v=0.24.0';
-import { artistPic } from './artistpic.js?v=0.24.0';
-import { openArtist } from './artist.js?v=0.24.0';
-import { openUserPage, favArtistsRow, favTracksList, isOnline } from './userpage.js?v=0.24.0';
-import { voiceOn, setVoice, showVoiceGuide, voiceSupported } from './voice.js?v=0.24.0';
-import { openImage } from './viewer.js?v=0.24.0';
-import { isDev, devBadge, fanBadge, nickMarks } from './dev.js?v=0.24.0';
-import { fanNumber, restoreFan, becomeFan } from './fans.js?v=0.24.0';
-import { ping } from './leaders.js?v=0.24.0';
-import { streamsOn, setStreams, checkBackground } from './stream.js?v=0.24.0';
-import { DEF_AV, avSrc, isDefAv } from './avatar.js?v=0.24.0';
-import { loadFriends, friendIds, addFriend, removeFriend, findByNick, friendCards, onFriends, declineRequest, acceptRequest, requestIds, sentIds, friendState, friendsLoaded } from './friends.js?v=0.24.0';
-import { openChat, chatWith, isUnread, onChats } from './chat.js?v=0.24.0';
-import { notifyOn, setNotify } from './notify.js?v=0.24.0';
-import { searchTracks } from './catalog.js?v=0.24.0';
-import { seenText } from './userpage.js?v=0.24.0';
+import { $, $$, h, icon, openSheet, closeSheet, toast, sheetItem, trackRow } from './ui.js?v=0.25.0';
+import * as store from './store.js?v=0.25.0';
+import * as player from './player.js?v=0.25.0';
+import { ACCENTS, getTheme, getAccent, getCustomHue, setCustomColor, setTheme, setAccent, hslHex, getNeutral } from './theme.js?v=0.25.0';
+import { CHANGELOG, VERSION, STAGE, KNOWN_ISSUES } from './changelog.js?v=0.25.0';
+import { plural, pickTrack } from './utils.js?v=0.25.0';
+import { youtubeEnabled, youtubeQuotaOut } from './youtube.js?v=0.25.0';
+import { audiusEnabled } from './audius.js?v=0.25.0';
+import { SOURCE_MODES, getSourceMode, setSourceMode } from './sources.js?v=0.25.0';
+import { gesturesOn, setGestures, showGestureGuide } from './gestures.js?v=0.25.0';
+import { listenerStats } from './stats.js?v=0.25.0';
+import { liveBg, setLiveBg } from './viz.js?v=0.25.0';
+import { lowPower, setLowPower } from './perf.js?v=0.25.0';
+import { logOut, changePassword, changeNick, authErrorText } from './auth.js?v=0.25.0';
+import { connectionCountry } from './geo.js?v=0.25.0';
+import { publishCard, publishProfile, myCard, getProfile, topListeners, hiddenFromBoard, setHidden, myUid } from './leaders.js?v=0.25.0';
+import { mi } from './icons2.js?v=0.25.0';
+import { artistPic } from './artistpic.js?v=0.25.0';
+import { openArtist } from './artist.js?v=0.25.0';
+import { openUserPage, favArtistsRow, favTracksList, isOnline } from './userpage.js?v=0.25.0';
+import { voiceOn, setVoice, showVoiceGuide, voiceSupported } from './voice.js?v=0.25.0';
+import { openImage } from './viewer.js?v=0.25.0';
+import { isDev, devBadge, fanBadge, nickMarks } from './dev.js?v=0.25.0';
+import { fanNumber, restoreFan, becomeFan } from './fans.js?v=0.25.0';
+import { ping } from './leaders.js?v=0.25.0';
+import { streamsOn, setStreams, checkBackground } from './stream.js?v=0.25.0';
+import { DEF_AV, avSrc, isDefAv } from './avatar.js?v=0.25.0';
+import { loadFriends, friendIds, addFriend, removeFriend, findByNick, friendCards, onFriends, declineRequest, acceptRequest, requestIds, sentIds, friendState, friendsLoaded } from './friends.js?v=0.25.0';
+import { openChat, chatWith, isUnread, onChats } from './chat.js?v=0.25.0';
+import { notifyOn, setNotify } from './notify.js?v=0.25.0';
+import { searchTracks } from './catalog.js?v=0.25.0';
+import { seenText } from './userpage.js?v=0.25.0';
 
 // s: sec, likes, playlists, plays, days, artists, night, styled, showcase, rank
 export const ACHIEVEMENTS = [
@@ -302,6 +302,7 @@ function paintHero() {
   if (!refs.hero) return;
   const c = getCustom();
   refs.hero.style.setProperty('--banner', bannerCss(c.banner, c.bannerImg));
+  refs.hero.dataset.bimg = c.bannerImg ? '1' : '';
   refs.hero.dataset.frame = c.frame;
   refs.hero.dataset.shape = c.shape;
   refs.hero.dataset.effect = c.effect;
@@ -326,6 +327,57 @@ function topArtists(n = 12) {
   return [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, n).map((x) => x[0]);
 }
 
+// Баннер: выбираете, какая часть фото попадёт в полосу 3:1 — тянете пальцем и приближаете ползунком
+function cropBanner(src) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      let zoom = 1, ox = 0, oy = 0; // смещение в долях от свободного места (-1…1)
+      const frame = h('div', { class: 'bc-frame' });
+      const pic = h('img', { class: 'bc-img', src, alt: '', draggable: 'false' });
+      frame.appendChild(pic);
+      const range = h('input', { type: 'range', min: '1', max: '3', step: '0.01', value: '1', class: 'bc-zoom', 'aria-label': 'Приблизить' });
+      const layout = () => {
+        const fw = frame.clientWidth, fh = frame.clientHeight;
+        const base = Math.max(fw / img.width, fh / img.height), sc = base * zoom;
+        const w = img.width * sc, hh = img.height * sc, freeX = (w - fw) / 2, freeY = (hh - fh) / 2;
+        ox = Math.max(-1, Math.min(1, ox)); oy = Math.max(-1, Math.min(1, oy));
+        pic.style.width = `${w}px`; pic.style.height = `${hh}px`;
+        pic.style.transform = `translate(${-freeX - ox * freeX}px, ${-freeY - oy * freeY}px)`;
+        return { sc, freeX, freeY, fw, fh };
+      };
+      let drag = null;
+      frame.addEventListener('pointerdown', (e) => { drag = { x: e.clientX, y: e.clientY, ox, oy, g: layout() }; frame.setPointerCapture(e.pointerId); });
+      frame.addEventListener('pointermove', (e) => {
+        if (!drag) return;
+        const { freeX, freeY } = drag.g;
+        ox = drag.ox - (freeX ? (e.clientX - drag.x) / freeX : 0); oy = drag.oy - (freeY ? (e.clientY - drag.y) / freeY : 0); layout();
+      });
+      frame.addEventListener('pointerup', () => { drag = null; });
+      range.addEventListener('input', () => { zoom = Number(range.value); layout(); });
+      const done = (ok) => {
+        if (!ok) { box.remove(); resolve(''); return; }
+        const g = layout();
+        // какая часть исходного фото видна в рамке
+        const sx = (g.freeX + ox * g.freeX) / g.sc, sy = (g.freeY + oy * g.freeY) / g.sc, sw = g.fw / g.sc, sh = g.fh / g.sc;
+        const out = (W, q) => { const c = document.createElement('canvas'); c.width = W; c.height = Math.round(W / 3); const x = c.getContext('2d'); x.imageSmoothingQuality = 'high'; x.drawImage(img, sx, sy, sw, sh, 0, 0, c.width, c.height); return c.toDataURL('image/jpeg', q); };
+        let d = out(1200, 0.84); if (d.length > 290000) d = out(1200, 0.72); if (d.length > 290000) d = out(1000, 0.66); if (d.length > 290000) d = out(900, 0.6);
+        box.remove(); resolve(d);
+      };
+      const box = h('div', { class: 'bc' },
+        h('div', { class: 'bc-card' },
+          h('b', { class: 'bc-title', text: 'Баннер профиля' }),
+          h('small', { class: 'bc-hint', text: 'Перетащите фото и приблизите ползунком — так он будет выглядеть в профиле' }),
+          frame, range,
+          h('div', { class: 'bc-btns' }, h('button', { class: 'btn tonal', type: 'button', onclick: () => done(false) }, 'Отмена'), h('button', { class: 'btn', type: 'button', onclick: () => done(true) }, 'Готово'))));
+      document.body.appendChild(box);
+      requestAnimationFrame(layout);
+    };
+    img.onerror = () => resolve('');
+    img.src = src;
+  });
+}
+
 function editProfile() {
   const c = getCustom();
   let banner = c.banner, bannerImg = c.bannerImg, frame = c.frame, badges = [...c.badges], favA = [...c.favArtists], favT = [...c.favTracks];
@@ -336,7 +388,8 @@ function editProfile() {
   const upl = h('input', { type: 'file', accept: 'image/*', hidden: '' });
   upl.addEventListener('change', async () => {
     const f = upl.files && upl.files[0]; if (!f) return;
-    try { bannerImg = await imageTo(await fileToDataUrl(f), 900, 300, 0.72); paintPrev(); paintB(); } catch { toast('Не получилось загрузить картинку'); }
+    upl.value = '';
+    try { const out = await cropBanner(await fileToDataUrl(f)); if (out) { bannerImg = out; paintPrev(); paintB(); } } catch { toast('Не получилось загрузить картинку'); }
   });
   const bWrap = h('div', { class: 'pe-banners' });
   const paintB = () => bWrap.replaceChildren(
