@@ -1,13 +1,13 @@
 // Раздел «Чаты» в нижнем меню: все переписки с друзьями, как в мессенджере.
 // Сверху — недавние и непрочитанные, ниже — друзья, с которыми ещё не переписывались.
-import { $, h } from './ui.js?v=0.27.3';
-import { mi } from './icons2.js?v=0.27.3';
-import { chatList, isUnread, onChats, openChat, otherOf } from './chat.js?v=0.27.3';
-import { me, friendIds, friendCards, loadFriends, friendsLoaded, onFriends, requestIds } from './friends.js?v=0.27.3';
-import { avSrc } from './avatar.js?v=0.27.3';
-import { nickMarks } from './dev.js?v=0.27.3';
-import { seenText, isOnline } from './userpage.js?v=0.27.3';
-import { pickAndCall } from './call.js?v=0.27.3';
+import { $, h } from './ui.js?v=0.27.4';
+import { mi } from './icons2.js?v=0.27.4';
+import { chatList, isUnread, onChats, openChat, otherOf } from './chat.js?v=0.27.4';
+import { me, friendIds, friendCards, loadFriends, friendsLoaded, onFriends, requestIds } from './friends.js?v=0.27.4';
+import { avSrc } from './avatar.js?v=0.27.4';
+import { nickMarks } from './dev.js?v=0.27.4';
+import { seenText, isOnline } from './userpage.js?v=0.27.4';
+import { pickAndCall } from './call.js?v=0.27.4';
 
 let watching = false, filter = '', busy = false, again = false;
 
