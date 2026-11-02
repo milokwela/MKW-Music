@@ -1,15 +1,16 @@
 // Чат с друзьями. Писать можно только взаимным друзьям (проверяют и приложение, и правила Firestore).
 //   chats/{a_b}            — { members: [a, b], last: { from, text, at }, at, read: { uid: время } }   (a < b)
 //   chats/{a_b}/msgs/{id}  — { from, text, at, track? }
-import { db } from './firebase.js?v=0.23.0';
+import { db } from './firebase.js?v=0.24.0';
 import { doc, setDoc, addDoc, collection, query, where, orderBy, limit, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
-import { h, toast } from './ui.js?v=0.23.0';
-import { mi } from './icons2.js?v=0.23.0';
-import * as player from './player.js?v=0.23.0';
-import { searchTracks } from './catalog.js?v=0.23.0';
-import { me, isFriend, cardOf } from './friends.js?v=0.23.0';
-import { avSrc } from './avatar.js?v=0.23.0';
-import { seenText, isOnline } from './userpage.js?v=0.23.0';
+import { h, toast, openSheet, closeSheet } from './ui.js?v=0.24.0';
+import { openImage } from './viewer.js?v=0.24.0';
+import { mi } from './icons2.js?v=0.24.0';
+import * as player from './player.js?v=0.24.0';
+import { searchTracks } from './catalog.js?v=0.24.0';
+import { me, isFriend, cardOf, friendIds, friendCards, loadFriends, friendsLoaded } from './friends.js?v=0.24.0';
+import { avSrc } from './avatar.js?v=0.24.0';
+import { seenText, isOnline } from './userpage.js?v=0.24.0';
 
 export const chatId = (a, b) => [a, b].sort().join('_');
 const other = (c) => (c.members || []).find((x) => x !== me()) || '';
@@ -47,12 +48,85 @@ function markRead(cid) {
   subs.forEach((f) => { try { f(); } catch { /* ignore */ } });
 }
 
-async function send(cid, text, track) {
+async function send(cid, text, track, img) {
   const at = Date.now(), from = me();
   const msg = { from, text: text.slice(0, 500), at };
   if (track) msg.track = { title: String(track.title).slice(0, 120), artist: String(track.artist).slice(0, 120) };
+  if (img) msg.img = img;
   await addDoc(collection(db, 'chats', cid, 'msgs'), msg);
-  await setDoc(doc(db, 'chats', cid), { members: cid.split('_'), last: { from, text: msg.text.slice(0, 140), at }, at, read: { [from]: at } }, { merge: true });
+  await setDoc(doc(db, 'chats', cid), { members: cid.split('_'), last: { from, text: (img && !msg.text ? 'Фото' : track && !msg.text ? `♪ ${msg.track.artist} — ${msg.track.title}` : msg.text).slice(0, 140), at }, at, read: { [from]: at } }, { merge: true });
+}
+
+// фото: сжимаем до ~800 px JPEG, чтобы влезло в документ Firestore (без платного хранилища)
+function shrink(file, max = 820, q = 0.72) {
+  return new Promise((resolve, reject) => {
+    const img = new Image(), url = URL.createObjectURL(file);
+    img.onload = () => {
+      const k = Math.min(1, max / Math.max(img.width, img.height));
+      const c = document.createElement('canvas'); c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(url);
+      let d = c.toDataURL('image/jpeg', q);
+      if (d.length > 380000) d = c.toDataURL('image/jpeg', 0.5);
+      if (d.length > 380000) { const c2 = document.createElement('canvas'); c2.width = Math.round(c.width * 0.65); c2.height = Math.round(c.height * 0.65); c2.getContext('2d').drawImage(c, 0, 0, c2.width, c2.height); d = c2.toDataURL('image/jpeg', 0.55); }
+      resolve(d);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('img')); };
+    img.src = url;
+  });
+}
+
+// фон чата: у каждого свой, хранится на этом устройстве
+const BGS = [
+  { id: 'none', name: 'Обычный', css: '' },
+  { id: 'night', name: 'Ночь', css: 'linear-gradient(160deg, #0b0b1e, #1a1035 60%, #000)' },
+  { id: 'sunset', name: 'Закат', css: 'linear-gradient(160deg, #3b0f2e, #7a2b3f 50%, #1a0b12)' },
+  { id: 'ocean', name: 'Океан', css: 'linear-gradient(160deg, #021b2e, #063a5a 50%, #020c16)' },
+  { id: 'aurora', name: 'Сияние', css: 'radial-gradient(120% 80% at 20% 0%, rgba(67,233,123,.35), transparent 60%), radial-gradient(120% 80% at 90% 30%, rgba(106,92,255,.4), transparent 60%), #05060a' },
+  { id: 'black', name: 'Чёрный', css: '#000' },
+  { id: 'accent', name: 'Цвет приложения', css: 'radial-gradient(120% 90% at 50% 0%, color-mix(in srgb, var(--primary) 35%, transparent), transparent 70%), var(--bg)' },
+];
+const BGKEY = (cid) => `mkw.chatbg.${cid}`;
+function bgOf(cid) { try { return localStorage.getItem(BGKEY(cid)) || 'none'; } catch { return 'none'; } }
+function paintBg(list, cid) {
+  const v = bgOf(cid);
+  const css = v.startsWith('data:') ? `linear-gradient(rgba(0,0,0,.35), rgba(0,0,0,.35)), center / cover no-repeat url("${v}")` : (BGS.find((b) => b.id === v) || BGS[0]).css;
+  list.style.background = css || '';
+  list.style.backgroundAttachment = 'local';
+}
+function bgMenu(list, cid) {
+  const upl = h('input', { type: 'file', accept: 'image/*', hidden: '' });
+  upl.addEventListener('change', async () => {
+    const f = upl.files && upl.files[0]; if (!f) return;
+    try { const d = await shrink(f, 1100, 0.7); localStorage.setItem(BGKEY(cid), d); paintBg(list, cid); closeSheet(); toast('Фон чата обновлён'); }
+    catch { toast('Картинка слишком большая'); }
+  });
+  const set = (id) => { try { localStorage.setItem(BGKEY(cid), id); } catch { /* ignore */ } paintBg(list, cid); closeSheet(); };
+  openSheet('Фон чата', h('div', {}, upl,
+    h('div', { class: 'chbg-grid' },
+      h('button', { type: 'button', class: 'chbg own', onclick: () => upl.click() }, mi('image'), h('span', { text: 'Своё фото' })),
+      ...BGS.map((b) => h('button', { type: 'button', class: `chbg${bgOf(cid) === b.id ? ' on' : ''}`, style: `--b:${b.css || 'var(--bg)'}`, onclick: () => set(b.id) }, h('span', { text: b.name })))),
+    h('p', { class: 'profile-note', text: 'Фон видите только вы, на этом устройстве.' })));
+}
+
+// ---------- отправить песню другу (из меню трека) ----------
+export async function sendTrackTo(uid, track, text = 'Послушай') {
+  if (!isFriend(uid)) throw new Error('не друг');
+  await send(chatId(me(), uid), text, track);
+}
+export async function pickFriendFor(track) {
+  if (!friendsLoaded()) await loadFriends();
+  const ids = friendIds();
+  if (!ids.length) { openSheet('Отправить другу', h('p', { class: 'profile-note', text: 'Пока нет друзей. Добавьте друга в Профиль → Друзья: когда он примет заявку, сюда можно будет отправлять песни.' })); return; }
+  const list = h('div', { class: 'lb-list' }, h('p', { class: 'profile-note', text: 'Загрузка…' }));
+  openSheet('Отправить другу', h('div', {}, h('div', { class: 'sheet-note', text: `${track.title} — ${track.artist}` }), list));
+  const cards = await friendCards(ids.slice(0, 60));
+  list.replaceChildren(...cards.map((u) => h('button', { type: 'button', class: 'lb-row fr-pick', onclick: async (e) => {
+    const b = e.currentTarget; b.disabled = true;
+    try { await sendTrackTo(u.uid, track); closeSheet(); toast(`Отправлено ${u.nick}`); }
+    catch { toast('Не отправилось. Админу нужно обновить правила Firestore'); b.disabled = false; }
+  } }, h('span', { class: 'lb-av' }, h('img', { src: avSrc(u.avatar), alt: '', loading: 'lazy' }), isOnline(u.seen) ? h('i', { class: 'online-dot' }) : null),
+    h('div', { class: 'lb-body' }, h('div', { class: 'lb-nick' }, h('span', { text: u.nick })), h('div', { class: 'lb-status', text: isOnline(u.seen) ? 'в сети' : seenText(u.seen) })),
+    h('span', { class: 'fr-send' }, mi('send')))));
 }
 
 // ---------- окно чата ----------
@@ -97,6 +171,14 @@ export async function openChat(uid, card) {
   const input = h('textarea', { class: 'ch-input', rows: '1', placeholder: 'Сообщение', maxlength: '500', enterkeyhint: 'send' });
   const sendBtn = h('button', { class: 'ch-send', type: 'button', 'aria-label': 'Отправить' }, mi('send'));
   const shareBtn = h('button', { class: 'ch-share', type: 'button', title: 'Отправить трек, который играет', 'aria-label': 'Отправить текущий трек' }, mi('note'));
+  const photoIn = h('input', { type: 'file', accept: 'image/*', hidden: '' });
+  const photoBtn = h('button', { class: 'ch-share', type: 'button', title: 'Отправить фото', 'aria-label': 'Отправить фото', onclick: () => photoIn.click() }, mi('image'));
+  photoIn.addEventListener('change', async () => {
+    const f = photoIn.files && photoIn.files[0]; photoIn.value = ''; if (!f) return;
+    toast('Отправляю фото…');
+    try { const d = await shrink(f); await send(cid, input.value.trim(), null, d); input.value = ''; }
+    catch { toast('Фото не отправилось. Админу нужно обновить правила Firestore'); }
+  });
   const doSend = async (track) => {
     const text = input.value.trim();
     if (!text && !track) return;
@@ -113,9 +195,11 @@ export async function openChat(uid, card) {
     h('header', { class: 'ch-head' },
       h('button', { class: 'icon-btn', type: 'button', 'aria-label': 'Назад', onclick: closeChat }, mi('close')),
       h('span', { class: 'ch-av' }, h('img', { src: avSrc(u.avatar), alt: '' }), isOnline(u.seen) ? h('i', { class: 'online-dot' }) : null),
-      h('div', { class: 'ch-who' }, h('b', { text: u.nick || 'друг' }), h('small', { text: isOnline(u.seen) && u.now ? `Слушает: ${u.now}` : seenText(u.seen) || '' }))),
+      h('div', { class: 'ch-who' }, h('b', { text: u.nick || 'друг' }), h('small', { text: isOnline(u.seen) && u.now ? `Слушает: ${u.now}` : seenText(u.seen) || '' })),
+      h('button', { class: 'icon-btn ch-bgbtn', type: 'button', 'aria-label': 'Фон чата', title: 'Фон чата', onclick: () => bgMenu(list, cid) }, mi('palette'))),
     list,
-    h('div', { class: 'ch-bar' }, shareBtn, input, sendBtn));
+    h('div', { class: 'ch-bar' }, photoIn, photoBtn, shareBtn, input, sendBtn));
+  paintBg(list, cid);
   requestAnimationFrame(() => p.classList.add('open'));
 
   if (unsubMsgs) unsubMsgs();
@@ -132,6 +216,7 @@ export async function openChat(uid, card) {
         const mineMsg = m.from === me();
         nodes.push(h('div', { class: `ch-msg${mineMsg ? ' me' : ''}` },
           m.track ? h('button', { class: 'ch-track', type: 'button', onclick: () => playTrack(m.track) }, mi('play-circle'), h('span', {}, h('b', { text: m.track.title }), h('small', { text: m.track.artist }))) : null,
+          m.img ? h('img', { class: 'ch-img', src: m.img, alt: 'Фото', loading: 'lazy', onclick: () => openImage(m.img, '') }) : null,
           m.text ? h('div', { class: 'ch-text', text: m.text }) : null,
           h('time', { text: timeOf(m.at) })));
       });

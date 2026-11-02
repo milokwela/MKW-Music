@@ -1,35 +1,36 @@
 // Экран «Профиль»: карточка с баннером, витрина (любимые исполнители и треки), вкладки Обзор / Слушатели / Настройки / О MKW.
-import { $, $$, h, icon, openSheet, closeSheet, toast, sheetItem, trackRow } from './ui.js?v=0.23.0';
-import * as store from './store.js?v=0.23.0';
-import * as player from './player.js?v=0.23.0';
-import { ACCENTS, getTheme, getAccent, getCustomHue, setCustomColor, setTheme, setAccent, hslHex, getNeutral } from './theme.js?v=0.23.0';
-import { CHANGELOG, VERSION, STAGE, KNOWN_ISSUES } from './changelog.js?v=0.23.0';
-import { plural, pickTrack } from './utils.js?v=0.23.0';
-import { youtubeEnabled, youtubeQuotaOut } from './youtube.js?v=0.23.0';
-import { audiusEnabled } from './audius.js?v=0.23.0';
-import { SOURCE_MODES, getSourceMode, setSourceMode } from './sources.js?v=0.23.0';
-import { gesturesOn, setGestures, showGestureGuide } from './gestures.js?v=0.23.0';
-import { listenerStats } from './stats.js?v=0.23.0';
-import { liveBg, setLiveBg } from './viz.js?v=0.23.0';
-import { lowPower, setLowPower } from './perf.js?v=0.23.0';
-import { logOut, changePassword, changeNick, authErrorText } from './auth.js?v=0.23.0';
-import { connectionCountry } from './geo.js?v=0.23.0';
-import { publishCard, publishProfile, myCard, getProfile, topListeners, hiddenFromBoard, setHidden, myUid } from './leaders.js?v=0.23.0';
-import { mi } from './icons2.js?v=0.23.0';
-import { artistPic } from './artistpic.js?v=0.23.0';
-import { openArtist } from './artist.js?v=0.23.0';
-import { openUserPage, favArtistsRow, favTracksList, isOnline } from './userpage.js?v=0.23.0';
-import { voiceOn, setVoice, showVoiceGuide, voiceSupported } from './voice.js?v=0.23.0';
-import { openImage } from './viewer.js?v=0.23.0';
-import { isDev, devBadge } from './dev.js?v=0.23.0';
-import { ping } from './leaders.js?v=0.23.0';
-import { streamsOn, setStreams, checkBackground } from './stream.js?v=0.23.0';
-import { DEF_AV, avSrc, isDefAv } from './avatar.js?v=0.23.0';
-import { loadFriends, friendIds, addFriend, removeFriend, findByNick, friendCards, onFriends, declineRequest, acceptRequest, requestIds, sentIds, friendState, friendsLoaded } from './friends.js?v=0.23.0';
-import { openChat, chatWith, isUnread, onChats } from './chat.js?v=0.23.0';
-import { notifyOn, setNotify } from './notify.js?v=0.23.0';
-import { searchTracks } from './catalog.js?v=0.23.0';
-import { seenText } from './userpage.js?v=0.23.0';
+import { $, $$, h, icon, openSheet, closeSheet, toast, sheetItem, trackRow } from './ui.js?v=0.24.0';
+import * as store from './store.js?v=0.24.0';
+import * as player from './player.js?v=0.24.0';
+import { ACCENTS, getTheme, getAccent, getCustomHue, setCustomColor, setTheme, setAccent, hslHex, getNeutral } from './theme.js?v=0.24.0';
+import { CHANGELOG, VERSION, STAGE, KNOWN_ISSUES } from './changelog.js?v=0.24.0';
+import { plural, pickTrack } from './utils.js?v=0.24.0';
+import { youtubeEnabled, youtubeQuotaOut } from './youtube.js?v=0.24.0';
+import { audiusEnabled } from './audius.js?v=0.24.0';
+import { SOURCE_MODES, getSourceMode, setSourceMode } from './sources.js?v=0.24.0';
+import { gesturesOn, setGestures, showGestureGuide } from './gestures.js?v=0.24.0';
+import { listenerStats } from './stats.js?v=0.24.0';
+import { liveBg, setLiveBg } from './viz.js?v=0.24.0';
+import { lowPower, setLowPower } from './perf.js?v=0.24.0';
+import { logOut, changePassword, changeNick, authErrorText } from './auth.js?v=0.24.0';
+import { connectionCountry } from './geo.js?v=0.24.0';
+import { publishCard, publishProfile, myCard, getProfile, topListeners, hiddenFromBoard, setHidden, myUid } from './leaders.js?v=0.24.0';
+import { mi } from './icons2.js?v=0.24.0';
+import { artistPic } from './artistpic.js?v=0.24.0';
+import { openArtist } from './artist.js?v=0.24.0';
+import { openUserPage, favArtistsRow, favTracksList, isOnline } from './userpage.js?v=0.24.0';
+import { voiceOn, setVoice, showVoiceGuide, voiceSupported } from './voice.js?v=0.24.0';
+import { openImage } from './viewer.js?v=0.24.0';
+import { isDev, devBadge, fanBadge, nickMarks } from './dev.js?v=0.24.0';
+import { fanNumber, restoreFan, becomeFan } from './fans.js?v=0.24.0';
+import { ping } from './leaders.js?v=0.24.0';
+import { streamsOn, setStreams, checkBackground } from './stream.js?v=0.24.0';
+import { DEF_AV, avSrc, isDefAv } from './avatar.js?v=0.24.0';
+import { loadFriends, friendIds, addFriend, removeFriend, findByNick, friendCards, onFriends, declineRequest, acceptRequest, requestIds, sentIds, friendState, friendsLoaded } from './friends.js?v=0.24.0';
+import { openChat, chatWith, isUnread, onChats } from './chat.js?v=0.24.0';
+import { notifyOn, setNotify } from './notify.js?v=0.24.0';
+import { searchTracks } from './catalog.js?v=0.24.0';
+import { seenText } from './userpage.js?v=0.24.0';
 
 // s: sec, likes, playlists, plays, days, artists, night, styled, showcase, rank
 export const ACHIEVEMENTS = [
@@ -71,9 +72,14 @@ export const BANNERS = [
   { id: 'night', name: 'Ночь', css: 'linear-gradient(135deg, #232526, #414345 50%, #1a1035)' },
   { id: 'candy', name: 'Конфета', css: 'linear-gradient(135deg, #f6a5ff, #a0c4ff)' },
   { id: 'mono', name: 'Графит', css: 'linear-gradient(135deg, #3a3a3a, #0d0d0d)' },
+  { id: 'black', name: 'Чёрный', css: 'radial-gradient(120% 140% at 80% 0%, #2a2a2a, #000 60%)' },
+  { id: 'cosmos', name: 'Космос', css: 'radial-gradient(circle at 20% 30%, rgba(255,255,255,.8) 0 1px, transparent 2px), radial-gradient(circle at 70% 60%, rgba(255,255,255,.7) 0 1px, transparent 2px), radial-gradient(circle at 45% 80%, rgba(255,255,255,.6) 0 1px, transparent 2px), linear-gradient(135deg, #0b0b2b, #2b0b3f 50%, #000)' },
+  { id: 'sakura', name: 'Сакура', css: 'linear-gradient(135deg, #ffd1e8, #ff8fc7 45%, #b04a8a)' },
+  { id: 'lime', name: 'Лайм', css: 'linear-gradient(135deg, #d4fc79, #37c978)' },
 ];
 export const FRAMES = [
   { id: 'none', name: 'Без рамки' }, { id: 'glow', name: 'Свечение' }, { id: 'rainbow', name: 'Радуга' }, { id: 'gold', name: 'Золото' }, { id: 'neon', name: 'Неон' },
+  { id: 'black', name: 'Чёрный глянец' }, { id: 'silver', name: 'Серебро' }, { id: 'fire', name: 'Огонь' },
 ];
 export const bannerCss = (id, img) => (img ? `center / cover no-repeat url("${img}")` : (BANNERS.find((b) => b.id === id) || BANNERS[0]).css);
 
@@ -81,10 +87,10 @@ let built = false, curNick = '', boardLoaded = 0, myRank = 0, restored = false;
 const refs = {};
 
 const CKEY = (n) => `mkw.pcustom.${n}`;
-const DEF = { status: '', banner: 'accent', bannerImg: '', frame: 'glow', badges: [], favArtists: [], favTracks: [], bio: '', nickStyle: 'plain', shape: 'circle', effect: 'none', showNow: true };
-export const NICK_STYLES = [{ id: 'plain', name: 'Обычный' }, { id: 'accent', name: 'Цвет акцента' }, { id: 'gradient', name: 'Градиент' }, { id: 'rainbow', name: 'Радуга' }, { id: 'glow', name: 'Неон' }];
+const DEF = { status: '', banner: 'accent', bannerImg: '', frame: 'glow', badges: [], favArtists: [], favTracks: [], bio: '', nickStyle: 'plain', shape: 'circle', effect: 'none', showNow: true, devBadge: true, fanBadge: true };
+export const NICK_STYLES = [{ id: 'plain', name: 'Обычный' }, { id: 'accent', name: 'Цвет акцента' }, { id: 'gradient', name: 'Градиент' }, { id: 'rainbow', name: 'Радуга' }, { id: 'glow', name: 'Неон' }, { id: 'gold', name: 'Золото' }, { id: 'silver', name: 'Серебро' }, { id: 'fire', name: 'Огонь' }, { id: 'outline', name: 'Контур' }];
 export const SHAPES = [{ id: 'circle', name: 'Круг' }, { id: 'squircle', name: 'Скруглённый' }, { id: 'flower', name: 'Цветок' }];
-export const EFFECTS = [{ id: 'none', name: 'Без эффекта' }, { id: 'stars', name: 'Звёзды' }, { id: 'aurora', name: 'Сияние' }, { id: 'snow', name: 'Снег' }, { id: 'waves', name: 'Волны' }];
+export const EFFECTS = [{ id: 'none', name: 'Без эффекта' }, { id: 'stars', name: 'Звёзды' }, { id: 'aurora', name: 'Сияние' }, { id: 'snow', name: 'Снег' }, { id: 'waves', name: 'Волны' }, { id: 'hearts', name: 'Сердечки' }, { id: 'fireflies', name: 'Светлячки' }];
 const nowPlaying = () => { const c = getCustom(), t = player.queue.current; return c.showNow !== false && t && player.st.playing ? `${t.artist} — ${t.title}` : ''; };
 function getCustom() {
   try { return { ...DEF, ...JSON.parse(localStorage.getItem(CKEY(curNick)) || '{}') }; } catch { return { ...DEF }; }
@@ -257,16 +263,35 @@ function pushCard(full) {
   pushTimer = setTimeout(async () => {
     const c = getCustom(), s = statsNow(), av = getAvatar(curNick);
     const small = await imageTo(av, 72, 72, 0.7);
-    publishCard({ nick: curNick, sec: s.sec, plays: s.plays, likes: s.likes, status: c.status, banner: c.bannerImg ? 'img' : c.banner, frame: c.frame, badges: c.badges, avatar: small, shape: c.shape, now: nowPlaying() });
+    publishCard({ nick: curNick, sec: s.sec, plays: s.plays, likes: s.likes, status: c.status, banner: c.bannerImg ? 'img' : c.banner, frame: c.frame, badges: c.badges, avatar: small, shape: c.shape, now: nowPlaying(), ...marksOut(c) });
     if (full !== false) {
       publishProfile({
         nick: curNick, status: c.status, banner: c.banner, bannerImg: c.bannerImg, frame: c.frame, badges: c.badges,
         avatar: await imageTo(av, 360, 360, 0.8), favArtists: c.favArtists, favTracks: c.favTracks.map(pickTrack),
         bio: c.bio, nickStyle: c.nickStyle, shape: c.shape, effect: c.effect, now: nowPlaying(),
-        sec: s.sec, plays: s.plays, likes: s.likes, days: s.days, achCount: ACHIEVEMENTS.filter((a) => achDone(a, s)).length,
+        sec: s.sec, plays: s.plays, likes: s.likes, days: s.days, achCount: ACHIEVEMENTS.filter((a) => achDone(a, s)).length, ...marksOut(c),
       });
     }
   }, 1500);
+}
+
+// значки у ника, которые видят другие
+const marksOut = (c) => ({ fan: c.fanBadge !== false ? fanNumber(curNick) : 0, devOff: isDev(curNick) && c.devBadge === false });
+function paintMarks(c) {
+  if (!refs.marks) return;
+  const n = fanNumber(curNick);
+  refs.marks.replaceChildren(...[isDev(curNick) && c.devBadge !== false ? devBadge() : null, n && c.fanBadge !== false ? fanBadge(n) : null].filter(Boolean));
+  refs.marks.hidden = !refs.marks.children.length;
+  if (refs.fanCard) refs.fanCard.hidden = Boolean(n);
+}
+async function likeMkw(btn) {
+  if (btn) btn.disabled = true;
+  try {
+    const n = await becomeFan(curNick);
+    setCustom({ fanBadge: true });
+    toast(`Спасибо! Ваш значок фаната: MKW #${n}`);
+    paintHero(); pushCard(true);
+  } catch { toast('Не получилось. Админу нужно обновить правила Firestore'); if (btn) btn.disabled = false; }
 }
 
 function badgeChips(ids) {
@@ -281,8 +306,8 @@ function paintHero() {
   refs.hero.dataset.shape = c.shape;
   refs.hero.dataset.effect = c.effect;
   refs.nick.dataset.style = c.nickStyle;
-  refs.hero.classList.toggle('dev', isDev(curNick));
-  if (isDev(curNick) && !refs.devB) { refs.devB = devBadge(); refs.nick.after(refs.devB); }
+  refs.hero.classList.toggle('dev', isDev(curNick) && c.devBadge !== false);
+  paintMarks(c);
   refs.bio.textContent = c.bio; refs.bio.hidden = !c.bio;
   refs.status.textContent = c.status || 'Добавьте статус — нажмите «Изменить»';
   refs.status.classList.toggle('st-empty', !c.status);
@@ -374,8 +399,19 @@ function editProfile() {
   const shWrap = chips(SHAPES, () => shape, (v) => { shape = v; });
   const efWrap = chips(EFFECTS, () => effect, (v) => { effect = v; });
   const nowSw = h('button', { class: `switch${showNow ? ' active' : ''}`, type: 'button', role: 'switch', onclick: () => { showNow = !showNow; nowSw.classList.toggle('active', showNow); } }, h('i'));
+  // значки у ника: «Разработчик MKW» (только у создателя) и «MKW #N» (у фанатов) — можно спрятать
+  let devB = c.devBadge !== false, fanB = c.fanBadge !== false;
+  const marksBox = () => {
+    const n = fanNumber(curNick);
+    const swb = (get, set) => { const b = h('button', { class: `switch${get() ? ' active' : ''}`, type: 'button', role: 'switch', onclick: () => { set(!get()); b.classList.toggle('active', get()); } }, h('i')); return b; };
+    const rows = [];
+    if (isDev(curNick)) rows.push(h('div', { class: 'set-row pe-row' }, h('div', { class: 'set-txt' }, devBadge(), h('small', { text: 'Значок создателя MKW рядом с ником' })), swb(() => devB, (v) => { devB = v; })));
+    if (n) rows.push(h('div', { class: 'set-row pe-row' }, h('div', { class: 'set-txt' }, fanBadge(n), h('small', { text: 'Ваш номер фаната MKW' })), swb(() => fanB, (v) => { fanB = v; })));
+    else rows.push(h('button', { class: 'btn tonal', type: 'button', onclick: (e) => { likeMkw(e.currentTarget).then(() => { closeSheet(); editProfile(); }); } }, mi('heart'), ' Мне нравится MKW — получить значок'));
+    return h('div', {}, h('div', { class: 'pe-h' }, mi('verified'), 'Значки у ника'), ...rows);
+  };
   const save = h('button', { class: 'btn', type: 'button', onclick: () => {
-    setCustom({ status: st.value.trim(), banner, bannerImg, frame, badges, favArtists: favA, favTracks: favT, bio: bio.value.trim(), nickStyle, shape, effect, showNow });
+    setCustom({ devBadge: devB, fanBadge: fanB, status: st.value.trim(), banner, bannerImg, frame, badges, favArtists: favA, favTracks: favT, bio: bio.value.trim(), nickStyle, shape, effect, showNow });
     closeSheet(); toast('Профиль обновлён'); updateProfile();
   } }, 'Сохранить');
   openSheet('Мой профиль', h('div', { class: 'pw-form pe' }, upl,
@@ -389,6 +425,7 @@ function editProfile() {
     h('div', { class: 'pe-h' }, mi('image'), 'Форма фото'), shWrap,
     h('div', { class: 'pe-h' }, mi('star'), 'Эффект на карточке'), efWrap,
     h('div', { class: 'set-row pe-row' }, h('div', { class: 'set-txt' }, h('b', { text: 'Показывать, что я слушаю' }), h('small', { text: 'Другие увидят текущий трек, пока вы в сети' })), nowSw),
+    marksBox(),
     h('div', { class: 'pe-h' }, mi('medal'), 'Значки в профиле (до 3)'), aWrap,
     h('div', { class: 'pe-h' }, mi('mic'), 'Любимые исполнители (до 4)'), artWrap, artAdd,
     h('div', { class: 'pe-h' }, mi('star'), 'Любимые треки (до 10)'), trWrap,
@@ -412,7 +449,7 @@ async function loadBoard(force) {
       h('span', { class: 'lb-rank' }, i < 3 ? mi('medal') : String(i + 1)),
       h('span', { class: 'lb-av', 'data-frame': u.frame || 'none', 'data-shape': u.shape || 'circle' }, h('img', { src: avSrc(u.avatar), alt: '', loading: 'lazy' }), isOnline(u.seen) ? h('i', { class: 'online-dot' }) : null),
       h('div', { class: 'lb-body' },
-        h('div', { class: 'lb-nick' }, h('span', { text: u.uid === me ? `${u.nick} · вы` : u.nick }), isDev(u.nick) ? devBadge(true) : null),
+        h('div', { class: 'lb-nick' }, h('span', { text: u.uid === me ? `${u.nick} · вы` : u.nick }), ...nickMarks(u)),
         u.now && isOnline(u.seen) ? h('div', { class: 'lb-status now', text: `Слушает: ${u.now}` }) : u.status ? h('div', { class: 'lb-status', text: u.status }) : null,
         (u.badges || []).length ? h('div', { class: 'lb-badges' }, (u.badges || []).filter((id) => ACH[id]).map((id) => mi(ACH[id].i))) : null),
       h('div', { class: 'lb-time' }, h('b', { text: String(t.value) }), h('small', { text: t.unit })),
@@ -480,7 +517,7 @@ function friendRow(u, kind) {
   return h('div', { class: `lb-row fr-row${online ? ' online' : ''}${isDev(u.nick) ? ' dev' : ''}${kind === 'sent' ? ' sent' : ''}`, style: `--banner:${bannerCss(u.banner === 'img' ? 'accent' : u.banner)}` },
     h('button', { type: 'button', class: 'fr-main', onclick: () => !u.hidden && openUserPage(u.uid, u) },
       h('span', { class: 'lb-av', 'data-frame': u.frame || 'none', 'data-shape': u.shape || 'circle' }, h('img', { src: avSrc(u.avatar), alt: '', loading: 'lazy' }), online ? h('i', { class: 'online-dot' }) : null),
-      h('div', { class: 'lb-body' }, h('div', { class: 'lb-nick' }, h('span', { text: u.nick }), isDev(u.nick) ? devBadge(true) : null), h('div', { class: `lb-status${online && u.now && kind === 'friend' && !unread ? ' now' : ''}${unread ? ' unread' : ''}`, text: line }))),
+      h('div', { class: 'lb-body' }, h('div', { class: 'lb-nick' }, h('span', { text: u.nick }), ...nickMarks(u)), h('div', { class: `lb-status${online && u.now && kind === 'friend' && !unread ? ' now' : ''}${unread ? ' unread' : ''}`, text: line }))),
     btns.length ? h('div', { class: 'fr-req-btns' }, ...btns) : null);
 }
 
@@ -565,9 +602,10 @@ export function buildProfile(nick) {
         h('button', { class: 'btn tonal phero-edit', type: 'button', onclick: () => openUserPage(myUid(), null, true), title: 'Как видят другие' }, mi('person')),
         h('button', { class: 'btn tonal phero-edit', type: 'button', onclick: editProfile }, mi('edit'), ' Изменить'))),
     h('div', { class: 'phero-fx' }, h('i'), h('i'), h('i'), h('i'), h('i'), h('i')),
-    h('div', { class: 'phero-info' }, refs.nick, refs.avHint = h('button', { class: 'av-hint', type: 'button', hidden: '', onclick: () => avatarMenu(nick) }, mi('edit'), h('span', { text: 'Поставьте своё фото — нажмите на аватар' })), refs.status, refs.bio, refs.since, refs.heroBadges));
+    h('div', { class: 'phero-info' }, refs.nick, refs.marks = h('div', { class: 'nick-marks' }), refs.avHint = h('button', { class: 'av-hint', type: 'button', hidden: '', onclick: () => avatarMenu(nick) }, mi('edit'), h('span', { text: 'Поставьте своё фото — нажмите на аватар' })), refs.status, refs.bio, refs.since, refs.heroBadges));
 
   paintAvHint();
+  restoreFan(nick).then(() => { paintMarks(getCustom()); });
   const tabBtn = (id, label, ic) => h('button', { class: 'ptab', type: 'button', 'data-tab': id, onclick: () => setTab(id) }, mi(ic), h('span', { text: label }));
   refs.tabs = h('div', { class: 'ptabs' }, h('i', { class: 'ptab-lens' }), tabBtn('main', 'Обзор', 'person'), tabBtn('friends', 'Друзья', 'group'), tabBtn('board', 'Топ', 'trophy'), tabBtn('set', 'Настройки', 'palette'), tabBtn('about', 'О MKW', 'note'));
 
@@ -575,6 +613,10 @@ export function buildProfile(nick) {
     h('div', { class: 'p-side' }, refs.hero, refs.tabs),
     h('div', { class: 'p-main' },
     h('div', { class: 'ppane', 'data-pane': 'main' },
+      refs.fanCard = h('div', { class: 'fan-card', hidden: '' },
+        h('img', { class: 'fan-star', src: 'mkw-star.png', alt: '' }),
+        h('div', { class: 'fan-txt' }, h('b', { text: 'Нравится MKW?' }), h('small', { text: 'Нажмите — и получите значок фаната со своим номером. Его увидят все рядом с вашим ником' })),
+        h('button', { class: 'btn', type: 'button', onclick: (e) => likeMkw(e.currentTarget) }, mi('heart'), ' Мне нравится MKW')),
       h('div', { class: 'stats-grid' },
         statCard('time', 'Прослушано', 'timer'), statCard('plays', 'Треков сыграно', 'play-circle'),
         statCard('likes', 'В избранном', 'heart'), statCard('playlists', 'Плейлистов', 'playlist')),

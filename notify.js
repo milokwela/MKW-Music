@@ -1,10 +1,10 @@
 // Уведомления: заявки в друзья, принятые заявки, новые сообщения.
 // Внутри приложения — всплывашка и счётчик на вкладке «Профиль». Если приложение свёрнуто и вы разрешили —
 // системное уведомление телефона/компьютера (работает, пока приложение открыто в фоне).
-import { h, toast } from './ui.js?v=0.23.0';
-import { avSrc } from './avatar.js?v=0.23.0';
-import { watchFriends, stopWatchFriends, requestIds, onFriends, cardOf } from './friends.js?v=0.23.0';
-import { watchChats, stopChats, unreadCount, onChats, openChat, chatOpen } from './chat.js?v=0.23.0';
+import { h, toast } from './ui.js?v=0.24.0';
+import { avSrc } from './avatar.js?v=0.24.0';
+import { watchFriends, stopWatchFriends, requestIds, onFriends, cardOf } from './friends.js?v=0.24.0';
+import { watchChats, stopChats, unreadCount, onChats, openChat, chatOpen } from './chat.js?v=0.24.0';
 
 const KEY = 'mkw.notify';
 export const notifyOn = () => { try { return localStorage.getItem(KEY) !== '0'; } catch { return true; } };
