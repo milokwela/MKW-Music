@@ -70,10 +70,10 @@ if ($mode -eq 'workflow_dispatch') {
   # 2) PowerShell, ограниченный Windows (как при «Интеллектуальном управлении приложениями»): должна быть понятная подсказка
   $out2 = Join-Path $env:RUNNER_TEMP 'clm.log'
   $in = Join-Path $env:RUNNER_TEMP 'empty.txt'; Set-Content $in ''
-  $env:__PSLockdownPolicy = '4'
+  [Environment]::SetEnvironmentVariable('__PSLockdownPolicy', '4', 'Machine')
   $p2 = Start-Process powershell -ArgumentList '-NoProfile', '-Command', ('$ExecutionContext.SessionState.LanguageMode;' + $cmd) -PassThru -RedirectStandardOutput $out2 -RedirectStandardError ($out2 + '.err') -RedirectStandardInput $in -WindowStyle Hidden
-  Remove-Item Env:__PSLockdownPolicy
   Start-Sleep -Seconds 8
+  [Environment]::SetEnvironmentVariable('__PSLockdownPolicy', $null, 'Machine')
   try { Stop-Process -Id $p2.Id -Force } catch {}
   Write-Host '--- [ограниченный PowerShell] вывод:'; Get-Content $out2 -Encoding UTF8; Get-Content ($out2 + '.err') -ErrorAction SilentlyContinue
   $t2 = [IO.File]::ReadAllText($out2, [Text.Encoding]::UTF8)
