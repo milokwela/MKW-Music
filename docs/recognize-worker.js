@@ -423,6 +423,14 @@ async function turn(env) {
       if (j && j.iceServers) ice.push(...[].concat(j.iceServers));
     } catch { /* без TURN */ }
   }
+  // запасной бесплатный TURN без карты: Metered (metered.ca) — METERED_APP (имя приложения) и METERED_KEY (API key)
+  if (env.METERED_APP && env.METERED_KEY && ice.length === 1) {
+    try {
+      const r = await timed(fetch(`https://${env.METERED_APP}.metered.live/api/v1/turn/credentials?apiKey=${encodeURIComponent(env.METERED_KEY)}`), 6000);
+      const j = await r.json();
+      if (Array.isArray(j)) ice.push(...j);
+    } catch { /* без TURN */ }
+  }
   return new Response(JSON.stringify({ iceServers: ice }), { headers: head });
 }
 
