@@ -1,32 +1,35 @@
 // Экран «Профиль»: карточка с баннером, витрина (любимые исполнители и треки), вкладки Обзор / Слушатели / Настройки / О MKW.
-import { $, $$, h, icon, openSheet, closeSheet, toast, sheetItem, trackRow } from './ui.js?v=0.22.1';
-import * as store from './store.js?v=0.22.1';
-import * as player from './player.js?v=0.22.1';
-import { ACCENTS, getTheme, getAccent, getCustomHue, setCustomColor, setTheme, setAccent, hslHex, getNeutral } from './theme.js?v=0.22.1';
-import { CHANGELOG, VERSION, STAGE, KNOWN_ISSUES } from './changelog.js?v=0.22.1';
-import { plural, pickTrack } from './utils.js?v=0.22.1';
-import { youtubeEnabled, youtubeQuotaOut } from './youtube.js?v=0.22.1';
-import { audiusEnabled } from './audius.js?v=0.22.1';
-import { SOURCE_MODES, getSourceMode, setSourceMode } from './sources.js?v=0.22.1';
-import { gesturesOn, setGestures, showGestureGuide } from './gestures.js?v=0.22.1';
-import { listenerStats } from './stats.js?v=0.22.1';
-import { liveBg, setLiveBg } from './viz.js?v=0.22.1';
-import { lowPower, setLowPower } from './perf.js?v=0.22.1';
-import { logOut, changePassword, changeNick, authErrorText } from './auth.js?v=0.22.1';
-import { connectionCountry } from './geo.js?v=0.22.1';
-import { publishCard, publishProfile, myCard, getProfile, topListeners, hiddenFromBoard, setHidden, myUid } from './leaders.js?v=0.22.1';
-import { mi } from './icons2.js?v=0.22.1';
-import { artistPic } from './artistpic.js?v=0.22.1';
-import { openArtist } from './artist.js?v=0.22.1';
-import { openUserPage, favArtistsRow, favTracksList, isOnline } from './userpage.js?v=0.22.1';
-import { voiceOn, setVoice, showVoiceGuide, voiceSupported } from './voice.js?v=0.22.1';
-import { openImage } from './viewer.js?v=0.22.1';
-import { isDev, devBadge } from './dev.js?v=0.22.1';
-import { ping } from './leaders.js?v=0.22.1';
-import { streamsOn, setStreams, checkBackground } from './stream.js?v=0.22.1';
-import { loadFriends, friendIds, addFriend, removeFriend, findByNick, followers, friendCards, onFriends, declineRequest, declinedIds } from './friends.js?v=0.22.1';
-import { searchTracks } from './catalog.js?v=0.22.1';
-import { seenText } from './userpage.js?v=0.22.1';
+import { $, $$, h, icon, openSheet, closeSheet, toast, sheetItem, trackRow } from './ui.js?v=0.23.0';
+import * as store from './store.js?v=0.23.0';
+import * as player from './player.js?v=0.23.0';
+import { ACCENTS, getTheme, getAccent, getCustomHue, setCustomColor, setTheme, setAccent, hslHex, getNeutral } from './theme.js?v=0.23.0';
+import { CHANGELOG, VERSION, STAGE, KNOWN_ISSUES } from './changelog.js?v=0.23.0';
+import { plural, pickTrack } from './utils.js?v=0.23.0';
+import { youtubeEnabled, youtubeQuotaOut } from './youtube.js?v=0.23.0';
+import { audiusEnabled } from './audius.js?v=0.23.0';
+import { SOURCE_MODES, getSourceMode, setSourceMode } from './sources.js?v=0.23.0';
+import { gesturesOn, setGestures, showGestureGuide } from './gestures.js?v=0.23.0';
+import { listenerStats } from './stats.js?v=0.23.0';
+import { liveBg, setLiveBg } from './viz.js?v=0.23.0';
+import { lowPower, setLowPower } from './perf.js?v=0.23.0';
+import { logOut, changePassword, changeNick, authErrorText } from './auth.js?v=0.23.0';
+import { connectionCountry } from './geo.js?v=0.23.0';
+import { publishCard, publishProfile, myCard, getProfile, topListeners, hiddenFromBoard, setHidden, myUid } from './leaders.js?v=0.23.0';
+import { mi } from './icons2.js?v=0.23.0';
+import { artistPic } from './artistpic.js?v=0.23.0';
+import { openArtist } from './artist.js?v=0.23.0';
+import { openUserPage, favArtistsRow, favTracksList, isOnline } from './userpage.js?v=0.23.0';
+import { voiceOn, setVoice, showVoiceGuide, voiceSupported } from './voice.js?v=0.23.0';
+import { openImage } from './viewer.js?v=0.23.0';
+import { isDev, devBadge } from './dev.js?v=0.23.0';
+import { ping } from './leaders.js?v=0.23.0';
+import { streamsOn, setStreams, checkBackground } from './stream.js?v=0.23.0';
+import { DEF_AV, avSrc, isDefAv } from './avatar.js?v=0.23.0';
+import { loadFriends, friendIds, addFriend, removeFriend, findByNick, friendCards, onFriends, declineRequest, acceptRequest, requestIds, sentIds, friendState, friendsLoaded } from './friends.js?v=0.23.0';
+import { openChat, chatWith, isUnread, onChats } from './chat.js?v=0.23.0';
+import { notifyOn, setNotify } from './notify.js?v=0.23.0';
+import { searchTracks } from './catalog.js?v=0.23.0';
+import { seenText } from './userpage.js?v=0.23.0';
 
 // s: sec, likes, playlists, plays, days, artists, night, styled, showcase, rank
 export const ACHIEVEMENTS = [
@@ -137,7 +140,7 @@ function syncControls() {
   $$('.src-chip').forEach((c) => c.classList.toggle('active', c.dataset.id === getSourceMode()));
   if (refs.srcnote) refs.srcnote.textContent = `iTunes: работает · YouTube: ${!youtubeEnabled() ? 'нет ключа' : youtubeQuotaOut() ? 'лимит на сегодня исчерпан' : 'работает'} · Audius: ${audiusEnabled() ? 'работает' : 'нет ключа'}`;
   const tog = (el, v) => { if (el) { el.classList.toggle('active', v); el.setAttribute('aria-checked', String(v)); } };
-  tog(refs.gest, gesturesOn()); tog(refs.voice, voiceOn()); tog(refs.bgplay, streamsOn()); tog(refs.lowp, lowPower()); tog(refs.livebg, liveBg()); tog(refs.board, !hiddenFromBoard());
+  tog(refs.gest, gesturesOn()); tog(refs.voice, voiceOn()); tog(refs.notify, notifyOn()); tog(refs.bgplay, streamsOn()); tog(refs.lowp, lowPower()); tog(refs.livebg, liveBg()); tog(refs.board, !hiddenFromBoard());
   $$('.swatch').forEach((c) => c.classList.toggle('active', c.dataset.id === getAccent()));
   if (refs.customSw) {
     const nt = getNeutral();
@@ -183,7 +186,9 @@ function changelogEntry(entry, open) {
 }
 
 const AV = (n) => `mkw.avatar.${n}`;
-export function getAvatar(nick) { try { return localStorage.getItem(AV(nick)) || 'mkw-logo.png'; } catch { return 'mkw-logo.png'; } }
+// подсказка «поставьте своё фото», пока стоит человечек по умолчанию
+function paintAvHint() { if (refs.avHint) refs.avHint.hidden = !isDefAv(refs.avatar && refs.avatar.getAttribute('src')); }
+export function getAvatar(nick) { try { return avSrc(localStorage.getItem(AV(nick))); } catch { return DEF_AV; } }
 function resizeToDataUrl(file, size = 320) {
   return new Promise((resolve, reject) => {
     const img = new Image(), url = URL.createObjectURL(file);
@@ -201,13 +206,13 @@ function avatarMenu(nick) {
   const inp = h('input', { type: 'file', accept: 'image/*', hidden: '' });
   inp.addEventListener('change', async () => {
     const f = inp.files && inp.files[0]; if (!f) return;
-    try { const d = await resizeToDataUrl(f); localStorage.setItem(AV(nick), d); refs.avatar.src = d; closeSheet(); toast('Фото обновлено'); pushCard(true); }
+    try { const d = await resizeToDataUrl(f); localStorage.setItem(AV(nick), d); refs.avatar.src = d; paintAvHint(); closeSheet(); toast('Фото обновлено'); pushCard(true); }
     catch { toast('Не получилось загрузить фото'); }
   });
   openSheet('Фото профиля', h('div', {}, inp,
     sheetItem('user', 'Посмотреть фото', () => { closeSheet(); openImage(getAvatar(nick), nick); }),
     sheetItem('user', 'Выбрать фото из галереи', () => inp.click()),
-    sheetItem('close', 'Вернуть логотип MKW', () => { try { localStorage.removeItem(AV(nick)); } catch { /* ignore */ } refs.avatar.src = 'mkw-logo.png'; closeSheet(); pushCard(true); }, true),
+    sheetItem('close', 'Убрать фото', () => { try { localStorage.removeItem(AV(nick)); } catch { /* ignore */ } refs.avatar.src = DEF_AV; paintAvHint(); closeSheet(); pushCard(true); }, true),
     h('p', { class: 'profile-note', text: 'Фото видно другим слушателям в рейтинге и в вашем профиле (если вы не скрыли себя во вкладке «Слушатели»).' })));
 }
 
@@ -405,7 +410,7 @@ async function loadBoard(force) {
     const t = formatListened(Number(u.sec) || 0);
     return h('button', { type: 'button', class: `lb-row${u.uid === me ? ' me' : ''}${i < 3 ? ` top${i + 1}` : ''}${isDev(u.nick) ? ' dev' : ''}`, style: `--banner:${bannerCss(u.banner === 'img' ? 'accent' : u.banner)};animation-delay:${Math.min(i, 12) * 35}ms`, onclick: () => openUserPage(u.uid, u) },
       h('span', { class: 'lb-rank' }, i < 3 ? mi('medal') : String(i + 1)),
-      h('span', { class: 'lb-av', 'data-frame': u.frame || 'none', 'data-shape': u.shape || 'circle' }, h('img', { src: u.avatar || 'mkw-logo.png', alt: '', loading: 'lazy' }), isOnline(u.seen) ? h('i', { class: 'online-dot' }) : null),
+      h('span', { class: 'lb-av', 'data-frame': u.frame || 'none', 'data-shape': u.shape || 'circle' }, h('img', { src: avSrc(u.avatar), alt: '', loading: 'lazy' }), isOnline(u.seen) ? h('i', { class: 'online-dot' }) : null),
       h('div', { class: 'lb-body' },
         h('div', { class: 'lb-nick' }, h('span', { text: u.uid === me ? `${u.nick} · вы` : u.nick }), isDev(u.nick) ? devBadge(true) : null),
         u.now && isOnline(u.seen) ? h('div', { class: 'lb-status now', text: `Слушает: ${u.now}` }) : u.status ? h('div', { class: 'lb-status', text: u.status }) : null,
@@ -433,6 +438,7 @@ async function runBgCheck() {
 }
 
 // ---------- друзья ----------
+// Друг — только взаимно: вы отправили заявку, он нажал «Принять» (или наоборот).
 async function addByNick() {
   const nick = refs.frInput.value.trim();
   if (!nick) return;
@@ -440,43 +446,71 @@ async function addByNick() {
   toast('Ищу…');
   const u = await findByNick(nick);
   if (!u) { toast('Не нашла такого слушателя. Он должен быть в рейтинге (Профиль → Топ)'); return; }
-  try { await addFriend(u.uid); refs.frInput.value = ''; toast(`${u.nick} теперь у вас в друзьях`); renderFriends(true); }
-  catch { toast('Не получилось. Админу нужно обновить правила Firestore'); }
+  const st = friendState(u.uid);
+  if (st === 'friend') { toast(`${u.nick} уже у вас в друзьях`); return; }
+  if (st === 'sent') { toast(`Заявка для ${u.nick} уже отправлена`); return; }
+  try {
+    await addFriend(u.uid); refs.frInput.value = '';
+    toast(st === 'incoming' ? `Теперь вы друзья с ${u.nick}` : `Заявка отправлена. ${u.nick} станет другом, когда примет её`);
+    renderFriends(true);
+  } catch { toast('Не получилось. Админу нужно обновить правила Firestore'); }
 }
 
-function friendRow(u, req) {
+function friendRow(u, kind) {
   const online = Date.now() - (Number(u.seen) || 0) < 6 * 60000;
-  const line = u.hidden ? 'скрыл(а) профиль' : online && u.now ? `Слушает: ${u.now}` : seenText(u.seen) || u.status || '';
-  return h('div', { class: `lb-row fr-row${online ? ' online' : ''}${isDev(u.nick) ? ' dev' : ''}`, style: `--banner:${bannerCss(u.banner === 'img' ? 'accent' : u.banner)}` },
+  const c = kind === 'friend' ? chatWith(u.uid) : null;
+  const unread = c && isUnread(c);
+  const line = kind === 'sent' ? 'Ждёт, когда примут заявку'
+    : unread && c.last ? `Новое: ${c.last.text}`
+    : u.hidden ? 'скрыл(а) профиль' : online && u.now ? `Слушает: ${u.now}` : seenText(u.seen) || u.status || '';
+  const btns = [];
+  if (kind === 'req') {
+    btns.push(h('button', { class: 'btn fr-btn', type: 'button', onclick: async () => { try { await acceptRequest(u.uid); toast(`Теперь вы друзья с ${u.nick}`); renderFriends(true); } catch { toast('Не получилось'); } } }, 'Принять'),
+      h('button', { class: 'btn tonal fr-btn', type: 'button', onclick: async () => { await declineRequest(u.uid); toast('Заявка отклонена'); renderFriends(); } }, 'Отклонить'));
+  } else if (kind === 'sent') {
+    btns.push(h('button', { class: 'btn tonal fr-btn', type: 'button', onclick: async () => { await removeFriend(u.uid); toast('Заявка отменена'); renderFriends(); } }, 'Отменить'));
+  } else {
+    if (online && u.now) btns.push(h('button', { class: 'icon-btn fr-btn', type: 'button', title: 'Включить то же', 'aria-label': 'Включить то же', onclick: async () => {
+      toast(`Включаю: ${u.now}`);
+      const f = await searchTracks(u.now).catch(() => []);
+      if (f.length) player.playTracks(f.slice(0, 10), 0); else toast('Не нашла этот трек');
+    } }, mi('play-circle')));
+    btns.push(h('button', { class: `icon-btn fr-btn fr-chat${unread ? ' unread' : ''}`, type: 'button', title: 'Написать', 'aria-label': `Написать ${u.nick}`, onclick: () => openChat(u.uid, u) }, mi('chat')));
+  }
+  return h('div', { class: `lb-row fr-row${online ? ' online' : ''}${isDev(u.nick) ? ' dev' : ''}${kind === 'sent' ? ' sent' : ''}`, style: `--banner:${bannerCss(u.banner === 'img' ? 'accent' : u.banner)}` },
     h('button', { type: 'button', class: 'fr-main', onclick: () => !u.hidden && openUserPage(u.uid, u) },
-      h('span', { class: 'lb-av', 'data-frame': u.frame || 'none', 'data-shape': u.shape || 'circle' }, h('img', { src: u.avatar || 'mkw-logo.png', alt: '', loading: 'lazy' }), online ? h('i', { class: 'online-dot' }) : null),
-      h('div', { class: 'lb-body' }, h('div', { class: 'lb-nick' }, h('span', { text: u.nick }), isDev(u.nick) ? devBadge(true) : null), h('div', { class: `lb-status${online && u.now ? ' now' : ''}`, text: line }))),
-    req ? h('div', { class: 'fr-req-btns' },
-      h('button', { class: 'btn fr-btn', type: 'button', onclick: async () => { try { await addFriend(u.uid); toast(`Теперь вы друзья с ${u.nick}`); renderFriends(true); } catch { toast('Не получилось'); } } }, 'Принять'),
-      h('button', { class: 'btn tonal fr-btn', type: 'button', onclick: async () => { await declineRequest(u.uid); toast('Заявка отклонена'); renderFriends(); } }, 'Отклонить'))
-      : online && u.now ? h('button', { class: 'icon-btn fr-btn', type: 'button', title: 'Включить то же', 'aria-label': 'Включить то же', onclick: async () => {
-        toast(`Включаю: ${u.now}`);
-        const f = await searchTracks(u.now).catch(() => []);
-        if (f.length) player.playTracks(f.slice(0, 10), 0); else toast('Не нашла этот трек');
-      } }, mi('play-circle')) : null);
+      h('span', { class: 'lb-av', 'data-frame': u.frame || 'none', 'data-shape': u.shape || 'circle' }, h('img', { src: avSrc(u.avatar), alt: '', loading: 'lazy' }), online ? h('i', { class: 'online-dot' }) : null),
+      h('div', { class: 'lb-body' }, h('div', { class: 'lb-nick' }, h('span', { text: u.nick }), isDev(u.nick) ? devBadge(true) : null), h('div', { class: `lb-status${online && u.now && kind === 'friend' && !unread ? ' now' : ''}${unread ? ' unread' : ''}`, text: line }))),
+    btns.length ? h('div', { class: 'fr-req-btns' }, ...btns) : null);
 }
 
-let frBusy = false;
+let frBusy = false, frAgain = false;
 async function renderFriends(force) {
-  if (!refs.frList || frBusy) return;
+  if (!refs.frList) return;
+  if (frBusy) { frAgain = true; return; }
   frBusy = true;
   try {
-    if (force || !friendIds().length) await loadFriends();
-    const ids = friendIds();
-    const fol = await followers();
-    const reqIds = fol.filter((x) => !ids.includes(x) && !declinedIds().includes(x)).slice(0, 20);
-    const [cards, reqs] = await Promise.all([friendCards(ids.slice(0, 60), force ? 0 : 60000), friendCards(reqIds)]);
-    refs.frReq.replaceChildren(...(reqs.length ? [h('div', { class: 'section-title', text: `Хотят дружить · ${reqs.length}` }), h('div', { class: 'lb-list' }, reqs.map((u) => friendRow(u, true)))] : []));
+    if (force || !friendsLoaded()) await loadFriends();
+    const ids = friendIds(), reqIds = requestIds().slice(0, 20), sent = sentIds().slice(0, 30);
+    const [cards, reqs, sents] = await Promise.all([friendCards(ids.slice(0, 60), force ? 0 : 60000), friendCards(reqIds), friendCards(sent, 300000)]);
+    // сначала те, с кем есть непрочитанные, потом недавние чаты, потом кто в сети
+    const lastAt = (u) => { const c = chatWith(u.uid); return c ? (isUnread(c) ? 1e15 : 0) + (Number(c.at) || 0) : 0; };
+    cards.sort((a, b) => lastAt(b) - lastAt(a));
+    refs.frReq.replaceChildren(...(reqs.length ? [h('div', { class: 'section-title', text: `Хотят дружить · ${reqs.length}` }), h('div', { class: 'lb-list' }, reqs.map((u) => friendRow(u, 'req')))] : []));
     const on = cards.filter((u) => Date.now() - (Number(u.seen) || 0) < 6 * 60000).length;
-    refs.frList.replaceChildren(...(cards.length ? [h('div', { class: 'section-title', text: `Друзья · ${cards.length}${on ? ` · в сети ${on}` : ''}` }), ...cards.map((u) => friendRow(u, false))]
-      : [h('p', { class: 'profile-note center', text: 'Пока никого. Впишите ник друга выше или откройте человека во вкладке «Топ» и нажмите «Добавить в друзья».' })]));
+    refs.frList.replaceChildren(
+      ...(cards.length ? [h('div', { class: 'section-title', text: `Друзья · ${cards.length}${on ? ` · в сети ${on}` : ''}` }), ...cards.map((u) => friendRow(u, 'friend'))]
+        : [h('p', { class: 'profile-note center', text: 'Пока никого. Впишите ник друга выше — он получит заявку и станет другом, когда нажмёт «Принять».' })]),
+      ...(sents.length ? [h('div', { class: 'section-title', text: `Отправленные заявки · ${sents.length}` }), ...sents.map((u) => friendRow(u, 'sent'))] : []));
     updateAch();
-  } finally { frBusy = false; }
+  } finally { frBusy = false; if (frAgain) { frAgain = false; renderFriends(); } }
+}
+// заявки и сообщения приходят вживую — перерисовываем вкладку, если она открыта
+let frWatch = false;
+function watchFriendsTab() {
+  if (frWatch) return; frWatch = true;
+  const re = () => { if (refs.tab === 'friends') renderFriends(); };
+  onFriends(re); onChats(re);
 }
 
 function setTab(name) {
@@ -485,7 +519,7 @@ function setTab(name) {
   $$('.ppane').forEach((p) => { p.hidden = p.dataset.pane !== name; });
   refs.tabs.style.setProperty('--i', String(['main', 'friends', 'board', 'set', 'about'].indexOf(name)));
   if (name === 'board') loadBoard();
-  if (name === 'friends') renderFriends();
+  if (name === 'friends') { watchFriendsTab(); renderFriends(); }
 }
 
 export function buildProfile(nick) {
@@ -506,6 +540,7 @@ export function buildProfile(nick) {
   refs.lowp = sw(() => { setLowPower(!lowPower()); syncControls(); });
   refs.gest = sw(async () => { await setGestures(!gesturesOn()); syncControls(); });
   refs.voice = sw(() => { setVoice(!voiceOn()); syncControls(); });
+  refs.notify = sw(async () => { await setNotify(!notifyOn()); syncControls(); });
   refs.bgplay = sw(() => { setStreams(!streamsOn()); syncControls(); toast(streamsOn() ? 'Готово: выключите экран — музыка продолжит играть' : 'Фоновый режим выключен'); });
   refs.board = sw(async () => { await setHidden(!hiddenFromBoard()); syncControls(); if (!hiddenFromBoard()) pushCard(true); setTimeout(() => loadBoard(true), 1800); });
   refs.boardList = h('div', { class: 'lb-list' });
@@ -523,13 +558,16 @@ export function buildProfile(nick) {
   refs.hero = h('div', { class: 'phero' },
     h('div', { class: 'phero-banner' }),
     h('div', { class: 'phero-row' },
-      h('button', { class: 'hero-avatar', type: 'button', 'aria-label': 'Сменить фото', onclick: () => avatarMenu(nick) }, refs.avatar = h('img', { src: getAvatar(nick), alt: '' })),
+      h('div', { class: 'av-wrap' },
+        h('button', { class: 'hero-avatar', type: 'button', 'aria-label': 'Сменить фото', onclick: () => avatarMenu(nick) }, refs.avatar = h('img', { src: getAvatar(nick), alt: '' })),
+        h('button', { class: 'av-pen', type: 'button', 'aria-label': 'Сменить фото', title: 'Сменить фото', onclick: () => avatarMenu(nick) }, mi('edit'))),
       h('div', { class: 'phero-btns' },
         h('button', { class: 'btn tonal phero-edit', type: 'button', onclick: () => openUserPage(myUid(), null, true), title: 'Как видят другие' }, mi('person')),
         h('button', { class: 'btn tonal phero-edit', type: 'button', onclick: editProfile }, mi('edit'), ' Изменить'))),
     h('div', { class: 'phero-fx' }, h('i'), h('i'), h('i'), h('i'), h('i'), h('i')),
-    h('div', { class: 'phero-info' }, refs.nick, refs.status, refs.bio, refs.since, refs.heroBadges));
+    h('div', { class: 'phero-info' }, refs.nick, refs.avHint = h('button', { class: 'av-hint', type: 'button', hidden: '', onclick: () => avatarMenu(nick) }, mi('edit'), h('span', { text: 'Поставьте своё фото — нажмите на аватар' })), refs.status, refs.bio, refs.since, refs.heroBadges));
 
+  paintAvHint();
   const tabBtn = (id, label, ic) => h('button', { class: 'ptab', type: 'button', 'data-tab': id, onclick: () => setTab(id) }, mi(ic), h('span', { text: label }));
   refs.tabs = h('div', { class: 'ptabs' }, h('i', { class: 'ptab-lens' }), tabBtn('main', 'Обзор', 'person'), tabBtn('friends', 'Друзья', 'group'), tabBtn('board', 'Топ', 'trophy'), tabBtn('set', 'Настройки', 'palette'), tabBtn('about', 'О MKW', 'note'));
 
@@ -574,9 +612,10 @@ export function buildProfile(nick) {
         h('div', { class: 'vpn-note' }, h('span', { class: 'set-ic' }, mi('shield')), h('div', {}, h('b', { text: 'Нет звука или обложек из России?' }), h('small', { text: 'Провайдеры блокируют часть музыкальных серверов. Включите любой VPN, и всё заработает.' })))),
       group('Устройство',
         row('Оптимизация для слабых устройств', 'Отключает размытие и тяжёлые анимации', refs.lowp, null, 'rocket'),
-        row('Жесты (бета)', 'Управление рукой через камеру', refs.gest, null, 'hand-open'),
+        row('Жесты (бета)', 'Управление рукой через камеру, взмах ладонью — сменить трек', refs.gest, null, 'hand-open'),
+        row('Уведомления', 'Заявки в друзья и сообщения. Если приложение свёрнуто — уведомлением телефона', refs.notify, null, 'bell'),
         row('Какие жесты показывать', 'Список жестов и что они делают', chev(), showGestureGuide, 'hand-peace'),
-        row('Голосовое управление (бета)', voiceSupported() ? '«MKW, следующая», «MKW, громче», «MKW, лайк»' : 'Этот браузер не поддерживает', refs.voice, null, 'mic'),
+        row('Голосовое управление', voiceSupported() ? 'Скажите «МКВ» или «Музыка», потом команду: «МКВ, следующая»' : 'Этот браузер не поддерживает', refs.voice, null, 'mic'),
         row('Какие команды говорить', 'Все голосовые команды', chev(), showVoiceGuide, 'note')),
       group('Аккаунт',
         row('Изменить профиль', 'Фото, баннер, статус, витрина', chev(), editProfile, 'edit'),
@@ -611,7 +650,7 @@ export function buildProfile(nick) {
       getProfile(myUid()).then((p) => {
         if (!p) return myCard().then((c) => c && setLocal(c));
         setLocal(p);
-        if (p.avatar && getAvatar(curNick).startsWith('')) { try { localStorage.setItem(AV(curNick), p.avatar); refs.avatar.src = p.avatar; } catch { /* ignore */ } }
+        if (p.avatar && !isDefAv(p.avatar) && isDefAv(getAvatar(curNick))) { try { localStorage.setItem(AV(curNick), p.avatar); refs.avatar.src = p.avatar; paintAvHint(); } catch { /* ignore */ } }
         return null;
       });
     }

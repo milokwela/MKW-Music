@@ -1,12 +1,12 @@
 // Голосовое управление (бета): «MKW, следующая», «MKW, громче», «Музыка, лайк», «MKW, включи Баста».
 // Работает через распознавание речи браузера (Chrome, Яндекс Браузер, Edge, Safari). Слушает, пока вкладка открыта.
-import { toast, openSheet, h } from './ui.js?v=0.22.1';
-import * as player from './player.js?v=0.22.1';
-import * as store from './store.js?v=0.22.1';
-import { dislike, startWave, waveActive } from './wave.js?v=0.22.1';
-import { searchTracks } from './catalog.js?v=0.22.1';
-import { mi } from './icons2.js?v=0.22.1';
-import { openFull, closeFull, isFullOpen } from './playerui.js?v=0.22.1';
+import { toast, openSheet, h } from './ui.js?v=0.23.0';
+import * as player from './player.js?v=0.23.0';
+import * as store from './store.js?v=0.23.0';
+import { dislike, startWave, waveActive } from './wave.js?v=0.23.0';
+import { searchTracks } from './catalog.js?v=0.23.0';
+import { mi } from './icons2.js?v=0.23.0';
+import { openFull, closeFull, isFullOpen } from './playerui.js?v=0.23.0';
 
 const KEY = 'mkw.voice';
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -17,7 +17,7 @@ export const voiceSupported = () => Boolean(SR);
 export const voiceOn = () => on;
 
 // как браузер может услышать «MKW»: эм кей дабл ю, мкв, эмкейви, эм ка вэ, эмкавэ, а также просто «музыка»
-const WAKE = /(?:^|\s)(?:эй\s+|окей\s+|ok\s+)?(?:mkw|m\.?\s?k\.?\s?w|мкв|м\s?к\s?в|эм\s?к[эеа]й(?:\s?(?:дабл\s?(?:ю|в|ви)|ви|в|вэ))?|эмк[эе]й\w*|эм\s?ка\s?в[эеи]|эмкав\w*|эм\s?кв|эмка|макв\w*|мкф|мк\s?ви|music|музыка|музыку|музычка)[\s,.!:?-]*/i;
+const WAKE = /(?:^|\s)(?:эй\s+|окей\s+|ok\s+|hey\s+)?(?:mkw|m\s?k\s?w|мкв[а-яa-z]*|м\s?к\s?в|мк\s?в|м\s?кв|мкб|мкф|нкв|эм\s?к[эеа]\s?в[эеиа]?|эм\s?ка\s?в[эеиа]|эмкав[а-яa-z]*|эмкэв[а-яa-z]*|эм\s?кв|эмка|макв[а-яa-z]*|мк\s?ви|эм\s?кей(?:\s?(?:дабл\s?(?:ю|в|ви)|ви|в|вэ))?|эмк[эе]й[а-яa-z]*|music|музык(?:а|у|ой|е)?|музычк[а-я]*)(?=\s|$)\s*/
 
 export const VOICE_COMMANDS = [
   ['Следующая · дальше · пропусти · другую', 'следующий трек'],
@@ -50,10 +50,11 @@ function num(t) {
   return any ? sum : null;
 }
 
+const norm = (x) => String(x || '').toLowerCase().replace(/ё/g, 'е').replace(/[-–—_.,!?:;«»"()]/g, ' ').replace(/\s+/g, ' ').trim();
 function parse(text) {
-  const t = text.toLowerCase().replace(/ё/g, 'е').trim();
+  const t = norm(text);
   if (!t) return null;
-  if (/(убер|убра|сним|снят|удали|отмен)\w*\s+(мой\s+|этот\s+)?лайк/.test(t)) return { cmd: 'unlike' };
+  if (/(убер|убра|сним|снят|удали|отмен)[а-яa-z]*\s+(мой\s+|этот\s+)?лайк/.test(t)) return { cmd: 'unlike' };
   if (/дизлайк|не нрав|не то|фу\b/.test(t)) return { cmd: 'dislike' };
   if (/(выключи|останови|стоп)\s+волн/.test(t)) return { cmd: 'wave-off' };
   if (/волн/.test(t)) return { cmd: 'wave' };
@@ -94,7 +95,7 @@ function say(text) {
   try {
     if (!('speechSynthesis' in window)) return;
     const u = new SpeechSynthesisUtterance(text); u.lang = 'ru-RU'; u.rate = 1.05;
-    speechSynthesis.cancel(); speechSynthesis.speak(u);
+    u.onend = () => { speakingUntil = Date.now() + 700; }; speakingUntil = Date.now() + 4000; speechSynthesis.cancel(); speechSynthesis.speak(u);
   } catch { /* ignore */ }
 }
 
@@ -138,7 +139,7 @@ function arm(ms = 5000) {
   armedUntil = Date.now() + ms;
   document.documentElement.classList.add('voice-listen');
   clearTimeout(armTimer);
-  armTimer = setTimeout(() => document.documentElement.classList.remove('voice-listen'), ms);
+  armTimer = setTimeout(() => { document.documentElement.classList.remove('voice-listen'); unduck(); }, ms);
 }
 function disarm(ok) {
   armedUntil = 0;
@@ -154,60 +155,91 @@ function showBadge(txt) {
   clearTimeout(badge._t); badge._t = setTimeout(() => badge.classList.remove('show'), 2200);
 }
 
+// Музыка мешает услышать команду: пока MKW слушает, делаем тише и возвращаем громкость после команды
+let duckVol = null;
+function duck() { if (duckVol == null) { duckVol = player.getVolume(); if (duckVol > 0.3) player.setVolume(0.3); } }
+function unduck() { if (duckVol != null) { player.setVolume(duckVol); duckVol = null; } }
+
+let speakingUntil = 0;
+function notUnderstood(heard) {
+  showBadge(heard ? `Не поняла: «${heard}»` : 'Я вас не поняла');
+  toast('Я вас не поняла. Скажите, например: «МКВ, следующая»');
+  unduck(); disarm(false);
+  document.documentElement.classList.add('voice-no'); setTimeout(() => document.documentElement.classList.remove('voice-no'), 700);
+  say('Я вас не поняла');
+}
+
 function onResult(e) {
+  if (Date.now() < speakingUntil || (window.speechSynthesis && speechSynthesis.speaking)) return; // не слушаем самих себя
+  lastHeard = Date.now();
   for (let i = e.resultIndex; i < e.results.length; i++) {
     const res = e.results[i];
     const key = `${sessionId}:${i}`;
     if (handled.has(key)) continue;
     // берём все варианты распознавания, а не только первый — так слышит лучше
-    const alts = [...res].map((a) => a.transcript.trim()).filter(Boolean);
+    const alts = [...res].map((a) => norm(a.transcript)).filter(Boolean);
     let rest = null;
-    for (const text of alts) { const m = text.match(WAKE); if (m) { rest = text.slice(m.index + m[0].length); break; } }
+    for (const text of alts) { const m = text.match(WAKE); if (m) { rest = text.slice(m.index + m[0].length).trim(); break; } }
     const armed = Date.now() < armedUntil;
     if (rest == null && !armed) continue;
-    if (rest != null) arm();
-    const tries = rest != null ? [rest, ...alts.map((x) => x.replace(WAKE, ' '))] : alts;
+    if (rest != null && !armed) { arm(7000); duck(); showBadge('Слушаю…'); }
+    else if (rest != null) arm(7000);
+    const tries = rest != null ? [rest, ...alts.map((x) => x.replace(WAKE, ' ').trim())] : alts;
     let p = null;
-    for (const x of tries) { p = parse(x); if (p) break; }
+    for (const x of tries) { if (x) { p = parse(x); if (p) break; } }
     if (p && p.cmd === 'search' && !res.isFinal) { showBadge(rest || alts[0]); continue; } // название дослушиваем до конца
-    if (!p) { if (res.isFinal && rest) showBadge(`Не поняла: «${rest}»`); else if (rest) showBadge(rest || 'Слушаю…'); continue; }
+    if (!p) {
+      if (!res.isFinal) { if (rest) showBadge(rest); continue; }
+      const heard = rest != null ? rest : alts[0];
+      if (heard) { handled.add(key); notUnderstood(heard); } // сказали что-то, но не команду
+      continue; // только «МКВ» — ждём команду, края светятся
+    }
     if (Date.now() - lastCmd < 900) continue;
     handled.add(key);
     lastCmd = Date.now();
     showBadge(rest || alts[0]);
+    unduck();
     disarm(true);
     run(p);
   }
 }
 
-let sessionId = 0;
+let sessionId = 0, running = false, lastHeard = 0, watchdog = 0;
 function start() {
+  if (rec) { rec.onend = null; try { rec.abort(); } catch { /* ignore */ } }
   rec = new SR();
   rec.lang = 'ru-RU';
   rec.continuous = true;
   rec.interimResults = true;
   rec.maxAlternatives = 5;
   rec.onresult = onResult;
-  rec.onstart = () => { sessionId += 1; handled.clear(); };
+  rec.onstart = () => { running = true; sessionId += 1; handled.clear(); };
   rec.onerror = (e) => {
     if (e.error === 'not-allowed' || e.error === 'service-not-allowed') { toast('Нет доступа к микрофону. Разрешите его в настройках сайта'); setVoice(false); }
-    if (e.error === 'network') toast('Распознавание речи без интернета не работает');
+    else if (e.error === 'network') toast('Распознавание речи без интернета не работает');
+    // no-speech, aborted, audio-capture — просто перезапускаемся в onend
   };
-  // браузер сам останавливает распознавание через какое-то время — перезапускаем
-  rec.onend = () => { if (on) { clearTimeout(restartTimer); restartTimer = setTimeout(() => { try { rec.start(); } catch { /* уже запущено */ } }, 300); } };
+  // браузер сам останавливает распознавание (тишина, минута работы) — сразу запускаем снова
+  rec.onend = () => { running = false; if (on) { clearTimeout(restartTimer); restartTimer = setTimeout(restart, 150); } };
   rec.start();
 }
+function restart() { if (!on || running || document.hidden) return; try { rec.start(); } catch { try { start(); } catch { /* ignore */ } } }
 
 export function setVoice(v) {
   if (v && !SR) { toast('Этот браузер не умеет распознавать речь. Попробуйте Chrome или Яндекс Браузер'); return false; }
   on = Boolean(v);
   try { localStorage.setItem(KEY, on ? '1' : '0'); } catch { /* ignore */ }
   if (on) {
-    try { start(); toast('Скажите: «MKW, следующая»'); document.documentElement.classList.add('voice-on'); }
+    try {
+      start(); toast('Скажите: «МКВ, следующая» или «Музыка, громче»'); document.documentElement.classList.add('voice-on');
+      // сторож: если распознавание тихо умерло — поднимаем снова
+      clearInterval(watchdog); watchdog = setInterval(() => { if (on && !running) restart(); }, 4000);
+    }
     catch { on = false; toast('Не получилось включить микрофон'); }
   } else {
-    clearTimeout(restartTimer);
+    clearTimeout(restartTimer); clearInterval(watchdog); unduck();
     if (rec) { rec.onend = null; try { rec.stop(); } catch { /* ignore */ } rec = null; }
+    running = false;
     document.documentElement.classList.remove('voice-on');
   }
   return on;
@@ -215,12 +247,15 @@ export function setVoice(v) {
 
 export function showVoiceGuide() {
   openSheet('Голосовое управление', h('div', {},
-    h('p', { class: 'profile-note', text: 'Скажите «MKW» или «Музыка» — края экрана засветятся, значит я слушаю. Потом команду: «следующая», «громче», «включи Баста». Можно сразу одной фразой: «MKW, лайк».' }),
+    h('p', { class: 'profile-note', text: 'Скажите «МКВ» или «Музыка» — края экрана засветятся цветом приложения, музыка станет тише: значит, я слушаю. Потом команду: «следующая», «громче», «включи Баста». Можно сразу одной фразой: «МКВ, лайк». Если команда незнакомая — отвечу «Я вас не поняла».' }),
     h('div', { class: 'gest-list' }, VOICE_COMMANDS.map(([words, what]) => h('div', { class: 'gest-item' }, h('span', { class: 'ge' }, mi('mic')), h('div', {}, h('b', { text: words }), h('small', { text: what }))))),
-    h('p', { class: 'profile-note', text: 'Бета: работает, пока сайт открыт. Речь распознаёт браузер (в Chrome — сервис Google). Лучше всего слышит, когда музыка не слишком громкая.' })));
+    h('p', { class: 'profile-note', text: 'Работает, пока приложение открыто. Речь распознаёт браузер (в Chrome — сервис Google). Говорите чётко: «эм-ка-вэ» или «музыка».' })));
 }
 
 export function initVoice() {
   // после перезагрузки браузер снова спросит разрешение — включаем только по нажатию пользователя
   try { localStorage.setItem(KEY, '0'); } catch { /* ignore */ }
 }
+
+// вернулись в приложение — микрофон снова слушает
+document.addEventListener('visibilitychange', () => { if (!document.hidden) restart(); });
