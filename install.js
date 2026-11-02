@@ -1,8 +1,8 @@
 // Установить MKW Music как приложение: своя иконка, отдельное окно, запуск без браузера.
 // Chrome / Edge / Яндекс Браузер на компьютере и Android — родное окно установки в один клик (если браузер его даёт),
 // иначе — пошаговая подсказка для вашего браузера и живая демонстрация, куда нажимать.
-import { h, openSheet, closeSheet, isSheetOpen, toast } from './ui.js?v=0.27.4';
-import { mi } from './icons2.js?v=0.27.4';
+import { h, openSheet, closeSheet, isSheetOpen, toast } from './ui.js?v=0.27.5';
+import { mi } from './icons2.js?v=0.27.5';
 
 let deferred = null;
 export const standalone = () => window.matchMedia('(display-mode: standalone)').matches || window.matchMedia('(display-mode: window-controls-overlay)').matches || navigator.standalone === true;
@@ -111,7 +111,7 @@ export function openInstall(first) {
 export function offerInstall() {
   if (standalone()) return;
   // поверх другого окна не показываем — попробуем чуть позже
-  if (isSheetOpen() || document.querySelector('.nw:not(.out), .upd, .call-in')) { setTimeout(offerInstall, 12000); return; }
+  if (isSheetOpen() || document.querySelector('.nw:not(.out), .upd, .call-in, .inc')) { setTimeout(offerInstall, 12000); return; }
   let asked = '';
   try { asked = localStorage.getItem(ASK) || ''; } catch { /* ignore */ }
   if (asked !== ASK_V) {
