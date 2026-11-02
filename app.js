@@ -1,32 +1,32 @@
 // Точка входа: вход в аккаунт, навигация, тема, профиль.
-import { initLyrics } from './lyrics.js?v=0.27.5';
-import { initPerf } from './perf.js?v=0.27.5';
-import { watchAuth, signIn, signUp, authErrorText } from './auth.js?v=0.27.5';
-import { startStore, stopStore, onStore, flushListened } from './store.js?v=0.27.5';
-import { initSearch, setSearchUser } from './search.js?v=0.27.5';
-import { initLibrary, render as renderLibrary, resetLibrary } from './library.js?v=0.27.5';
-import { initPlayerUI, resetPlayerUI, closeFull } from './playerui.js?v=0.27.5';
-import { buildProfile, updateProfile, resetProfile } from './profile.js?v=0.27.5';
-import { initArtist, closeArtist } from './artist.js?v=0.27.5';
-import { initUserPage, closeUserPage } from './userpage.js?v=0.27.5';
-import { initMotion, viewDirection, animateView } from './motion.js?v=0.27.5';
-import { initLiquidNav } from './glassnav.js?v=0.27.5';
-import { initRowLens } from './rowlens.js?v=0.27.5';
-import { readIncoming, showIncoming } from './share.js?v=0.27.5';
-import { registerListener } from './stats.js?v=0.27.5';
-import { offerInstall } from './install.js?v=0.27.5';
-import { showIncident } from './incident.js?v=0.27.5';
-import { showMoved, showIconUpdate } from './moved.js?v=0.27.5';
-import { showNews } from './news.js?v=0.27.5';
-import { initHome } from './home.js?v=0.27.5';
-import { startNotify, stopNotify } from './notify.js?v=0.27.5';
-import { renderChats } from './chats.js?v=0.27.5';
-import { startUpdateWatch } from './update.js?v=0.27.5';
-import { initViz } from './viz.js?v=0.27.5';
-import { initWave } from './wave.js?v=0.27.5';
-import { initTheme } from './theme.js?v=0.27.5';
-import * as player from './player.js?v=0.27.5';
-import { $, $$ } from './ui.js?v=0.27.5';
+import { initLyrics } from './lyrics.js?v=0.27.6';
+import { initPerf } from './perf.js?v=0.27.6';
+import { watchAuth, signIn, signUp, authErrorText } from './auth.js?v=0.27.6';
+import { startStore, stopStore, onStore, flushListened } from './store.js?v=0.27.6';
+import { initSearch, setSearchUser } from './search.js?v=0.27.6';
+import { initLibrary, render as renderLibrary, resetLibrary } from './library.js?v=0.27.6';
+import { initPlayerUI, resetPlayerUI, closeFull } from './playerui.js?v=0.27.6';
+import { buildProfile, updateProfile, resetProfile } from './profile.js?v=0.27.6';
+import { initArtist, closeArtist } from './artist.js?v=0.27.6';
+import { initUserPage, closeUserPage } from './userpage.js?v=0.27.6';
+import { initMotion, viewDirection, animateView } from './motion.js?v=0.27.6';
+import { initLiquidNav } from './glassnav.js?v=0.27.6';
+import { initRowLens } from './rowlens.js?v=0.27.6';
+import { readIncoming, showIncoming } from './share.js?v=0.27.6';
+import { registerListener } from './stats.js?v=0.27.6';
+import { offerInstall } from './install.js?v=0.27.6';
+import { showIncident, showFounderNote } from './incident.js?v=0.27.6';
+import { showMoved, showIconUpdate } from './moved.js?v=0.27.6';
+import { showNews } from './news.js?v=0.27.6';
+import { initHome } from './home.js?v=0.27.6';
+import { startNotify, stopNotify } from './notify.js?v=0.27.6';
+import { renderChats } from './chats.js?v=0.27.6';
+import { startUpdateWatch } from './update.js?v=0.27.6';
+import { initViz } from './viz.js?v=0.27.6';
+import { initWave } from './wave.js?v=0.27.6';
+import { initTheme } from './theme.js?v=0.27.6';
+import * as player from './player.js?v=0.27.6';
+import { $, $$ } from './ui.js?v=0.27.6';
 
 // ---------- вход ----------
 let authMode = 'login';
@@ -138,6 +138,7 @@ function onUser(user) {
     setTimeout(showNews, 3700);
     setTimeout(offerInstall, 9000);
     setTimeout(showIncident, 2200);
+    setTimeout(() => showFounderNote(user.nick), 3200);
   } else {
     flushListened();
     stopNotify();

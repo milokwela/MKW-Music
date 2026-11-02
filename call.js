@@ -5,15 +5,15 @@
 // Каждый с каждым соединяется напрямую (при 4 людях — 6 соединений).
 // Чтобы звонок подключался сразу: звонящий готовит соединение заранее, пока у друга звонит телефон,
 // поэтому после «Принять» остаётся один короткий ответ.
-import { db } from './firebase.js?v=0.27.5';
+import { db } from './firebase.js?v=0.27.6';
 import { doc, setDoc, updateDoc, deleteDoc, addDoc, collection, query, where, limit, onSnapshot, arrayUnion, arrayRemove } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
-import { h, toast, openSheet, closeSheet } from './ui.js?v=0.27.5';
-import { mi } from './icons2.js?v=0.27.5';
-import { me, isFriend, friendIds, friendCards, cardOf } from './friends.js?v=0.27.5';
-import { avSrc } from './avatar.js?v=0.27.5';
-import { RECOGNIZE_URL } from './shazam-config.js?v=0.27.5';
-import { pushTo, myNick } from './push.js?v=0.27.5';
-import * as player from './player.js?v=0.27.5';
+import { h, toast, openSheet, closeSheet } from './ui.js?v=0.27.6';
+import { mi } from './icons2.js?v=0.27.6';
+import { me, isFriend, friendIds, friendCards, cardOf } from './friends.js?v=0.27.6';
+import { avSrc } from './avatar.js?v=0.27.6';
+import { RECOGNIZE_URL } from './shazam-config.js?v=0.27.6';
+import { pushTo, myNick } from './push.js?v=0.27.6';
+import * as player from './player.js?v=0.27.6';
 
 const MAX = 4;
 let ice = null, iceP = null;
@@ -21,7 +21,7 @@ function iceServers() {
   if (ice) return Promise.resolve(ice);
   if (iceP) return iceP;
   iceP = (async () => {
-    let list = [{ urls: ['stun:stun.cloudflare.com:3478', 'stun:stun.l.google.com:19302'] }];
+    let list = [{ urls: ['stun:stun.cloudflare.com:3478', 'stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302', 'stun:stun.services.mozilla.com:3478'] }];
     const w = String(RECOGNIZE_URL || '').replace(/\/$/, '');
     if (w) {
       try {
@@ -52,7 +52,7 @@ function gathered(pc) {
   return new Promise((res) => {
     let done = false, quick = 0;
     const fin = () => { if (done) return; done = true; clearTimeout(slow); clearTimeout(quick); res(); };
-    const slow = setTimeout(fin, 2000);
+    const slow = setTimeout(fin, hasTurn() ? 2500 : 4000);
     const want = hasTurn() ? / typ relay / : / typ (srflx|relay) /;
     pc.addEventListener('icecandidate', (e) => { if (!e.candidate) fin(); else if (!quick && want.test(` ${e.candidate.candidate} `)) quick = setTimeout(fin, 250); });
     pc.addEventListener('icegatheringstatechange', () => { if (pc.iceGatheringState === 'complete') fin(); });
@@ -99,6 +99,7 @@ async function newPeer(uid, sid) {
     const st = pc.connectionState;
     if (st === 'connected') {
       clearTimeout(entry.lost);
+      if (cur.tries) cur.tries[uid] = 0;
       if (!entry.ready) {
         entry.ready = true;
         // показ экрана включили, пока соединялись, — досылаем
@@ -114,6 +115,13 @@ async function newPeer(uid, sid) {
 // связь пропала — переподключаемся (начинает тот же, кто начинал)
 function reconnect(uid) {
   if (!cur || !(cur.data.in || []).includes(uid)) return;
+  cur.tries = cur.tries || {};
+  const n = (cur.tries[uid] = (cur.tries[uid] || 0) + 1);
+  if (n > 3) {
+    // три попытки не помогли: напрямую между этими сетями не соединиться (мобильный интернет, строгий роутер)
+    if (!cur.tooHard) { cur.tooHard = true; toast(hasTurn() ? 'Не получается соединиться. Проверьте интернет у обоих' : 'Не получается соединиться напрямую: ваши сети не пускают звонок. Попробуйте через Wi‑Fi'); }
+    return;
+  }
   if (offerer(me(), uid) === me()) { toast('Связь пропала — переподключаю…'); offerTo(uid, true).catch(() => {}); }
 }
 function dropPeer(uid) {
@@ -160,7 +168,7 @@ async function onSig(m) {
       if (cur && cur.pcs.get(m.from) === e) await sendSig(m.from, 'answer', e.sid, pc.localDescription.sdp);
     } else if (m.kind === 'answer') {
       const e = cur.pcs.get(m.from);
-      if (e && e.sid === m.sid && e.pc.signalingState === 'have-local-offer') await e.pc.setRemoteDescription({ type: 'answer', sdp: m.sdp });
+      if (e && (e.sid === m.sid || !m.sid) && e.pc.signalingState === 'have-local-offer') await e.pc.setRemoteDescription({ type: 'answer', sdp: m.sdp });
     }
   } catch (err) { console.warn('call sig', err); }
 }

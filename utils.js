@@ -1,10 +1,20 @@
-import { proxify } from './bypass.js?v=0.27.5';
+import { proxify } from './bypass.js?v=0.27.6';
 // Мелкие чистые функции. Здесь нет обращений к DOM, поэтому их можно проверять без браузера.
 
 const ESC = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
 
 // Экранирование текста для вставки в HTML-строку.
 // В самом приложении текст вставляется через textContent, эта функция нужна как страховка.
+// Адрес картинки из чужих данных (профили, чаты, витрины): только data:image или https без кавычек и скобок.
+// Иначе через баннер или обложку можно было бы подсунуть свой CSS или следящую картинку.
+export function safeUrl(u) {
+  const s = String(u || '');
+  if (/^data:image\/(png|jpe?g|webp|gif|svg\+xml);base64,[A-Za-z0-9+/=]+$/.test(s)) return s;
+  if (/^https:\/\/[^\s"'()\\<>]+$/.test(s) && s.length < 2000) return s;
+  if (/^(assets\/)?[a-z0-9._-]+\.(png|jpe?g|svg|webp)$/i.test(s)) return s; // свои картинки сайта
+  return '';
+}
+
 export function escapeHTML(value) {
   return String(value ?? '').replace(/[&<>"']/g, (ch) => ESC[ch]);
 }

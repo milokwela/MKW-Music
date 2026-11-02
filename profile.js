@@ -1,41 +1,42 @@
 // Экран «Профиль»: карточка с баннером, витрина (любимые исполнители и треки), вкладки Обзор / Слушатели / Настройки / О MKW.
-import { $, $$, h, icon, openSheet, closeSheet, toast, sheetItem, trackRow } from './ui.js?v=0.27.5';
-import * as store from './store.js?v=0.27.5';
-import * as player from './player.js?v=0.27.5';
-import { ACCENTS, getTheme, getAccent, getCustomHue, setCustomColor, setTheme, setAccent, hslHex, getNeutral } from './theme.js?v=0.27.5';
-import { CHANGELOG, VERSION, STAGE, KNOWN_ISSUES } from './changelog.js?v=0.27.5';
-import { plural, pickTrack } from './utils.js?v=0.27.5';
-import { youtubeEnabled, youtubeQuotaOut } from './youtube.js?v=0.27.5';
-import { audiusEnabled } from './audius.js?v=0.27.5';
-import { SOURCE_MODES, getSourceMode, setSourceMode } from './sources.js?v=0.27.5';
-import { gesturesOn, setGestures, showGestureGuide } from './gestures.js?v=0.27.5';
-import { listenerStats } from './stats.js?v=0.27.5';
-import { liveBg, setLiveBg } from './viz.js?v=0.27.5';
-import { lowPower, setLowPower } from './perf.js?v=0.27.5';
-import { logOut, changePassword, changeNick, authErrorText } from './auth.js?v=0.27.5';
-import { connectionCountry } from './geo.js?v=0.27.5';
-import { goOffline, publishCard, publishProfile, myCard, getProfile, topListeners, hiddenFromBoard, setHidden, myUid } from './leaders.js?v=0.27.5';
-import { mi } from './icons2.js?v=0.27.5';
-import { artistPic } from './artistpic.js?v=0.27.5';
-import { openArtist } from './artist.js?v=0.27.5';
-import { openUserPage, favArtistsRow, favTracksList, isOnline } from './userpage.js?v=0.27.5';
-import { voiceOn, setVoice, showVoiceGuide, voiceSupported } from './voice.js?v=0.27.5';
-import { openImage } from './viewer.js?v=0.27.5';
-import { isDev, devBadge, fanBadge, nickMarks } from './dev.js?v=0.27.5';
-import { fanNumber, restoreFan, becomeFan } from './fans.js?v=0.27.5';
-import { ping } from './leaders.js?v=0.27.5';
-import { streamsOn, setStreams, checkBackground } from './stream.js?v=0.27.5';
-import { DEF_AV, avSrc, isDefAv } from './avatar.js?v=0.27.5';
-import { ONLINE_MS, loadFriends, friendIds, addFriend, removeFriend, findByNick, friendCards, onFriends, declineRequest, acceptRequest, requestIds, sentIds, friendState, friendsLoaded } from './friends.js?v=0.27.5';
-import { openChat, chatWith, isUnread, onChats } from './chat.js?v=0.27.5';
-import { notifyOn, setNotify } from './notify.js?v=0.27.5';
-import { openInstall, standalone } from './install.js?v=0.27.5';
-import { searchTracks } from './catalog.js?v=0.27.5';
-import { seenText } from './userpage.js?v=0.27.5';
+import { $, $$, h, icon, openSheet, closeSheet, toast, sheetItem, trackRow } from './ui.js?v=0.27.6';
+import * as store from './store.js?v=0.27.6';
+import * as player from './player.js?v=0.27.6';
+import { ACCENTS, getTheme, getAccent, getCustomHue, setCustomColor, setTheme, setAccent, hslHex, getNeutral } from './theme.js?v=0.27.6';
+import { CHANGELOG, VERSION, STAGE, KNOWN_ISSUES } from './changelog.js?v=0.27.6';
+import { plural, pickTrack, safeUrl } from './utils.js?v=0.27.6';
+import { youtubeEnabled, youtubeQuotaOut } from './youtube.js?v=0.27.6';
+import { audiusEnabled } from './audius.js?v=0.27.6';
+import { SOURCE_MODES, getSourceMode, setSourceMode } from './sources.js?v=0.27.6';
+import { gesturesOn, setGestures, showGestureGuide } from './gestures.js?v=0.27.6';
+import { listenerStats } from './stats.js?v=0.27.6';
+import { liveBg, setLiveBg } from './viz.js?v=0.27.6';
+import { lowPower, setLowPower } from './perf.js?v=0.27.6';
+import { logOut, changePassword, changeNick, authErrorText } from './auth.js?v=0.27.6';
+import { connectionCountry } from './geo.js?v=0.27.6';
+import { goOffline, publishCard, publishProfile, myCard, getProfile, topListeners, hiddenFromBoard, setHidden, myUid } from './leaders.js?v=0.27.6';
+import { mi } from './icons2.js?v=0.27.6';
+import { artistPic } from './artistpic.js?v=0.27.6';
+import { openArtist } from './artist.js?v=0.27.6';
+import { openUserPage, favArtistsRow, favTracksList, isOnline } from './userpage.js?v=0.27.6';
+import { voiceOn, setVoice, showVoiceGuide, voiceSupported } from './voice.js?v=0.27.6';
+import { openImage } from './viewer.js?v=0.27.6';
+import { isDev, devBadge, fanBadge, nickMarks } from './dev.js?v=0.27.6';
+import { fanNumber, restoreFan, becomeFan } from './fans.js?v=0.27.6';
+import { ping } from './leaders.js?v=0.27.6';
+import { streamsOn, setStreams, checkBackground } from './stream.js?v=0.27.6';
+import { DEF_AV, avSrc, isDefAv } from './avatar.js?v=0.27.6';
+import { ONLINE_MS, loadFriends, friendIds, addFriend, removeFriend, findByNick, friendCards, onFriends, declineRequest, acceptRequest, requestIds, sentIds, friendState, friendsLoaded } from './friends.js?v=0.27.6';
+import { openChat, chatWith, isUnread, onChats } from './chat.js?v=0.27.6';
+import { notifyOn, setNotify } from './notify.js?v=0.27.6';
+import { openInstall, standalone } from './install.js?v=0.27.6';
+import { searchTracks } from './catalog.js?v=0.27.6';
+import { seenText } from './userpage.js?v=0.27.6';
 
 // s: sec, likes, playlists, plays, days, artists, night, styled, showcase, rank
 export const ACHIEVEMENTS = [
   { id: 'dev', i: 'crown', title: 'Создатель MKW', hint: 'Разработчик приложения MKW Music', ok: (s) => s.dev, secret: true },
+  { id: 'crash0', i: 'fire', title: 'Основатель сбоя', hint: 'Лимитированный значок: такой один на весь MKW. Спасибо за идею самой масштабной ошибки', ok: (s) => s.founder, secret: true, cls: 'ach-crash' },
   { id: 'dark1', i: 'shield', title: 'Пережил тёмное время бана', hint: 'Был с MKW, когда сайт по ошибке пометили как опасный (ноябрь 2026). Значок в знак извинения', ok: (s) => s.darkBan, cls: 'ach-dark' },
   { id: 'like1', i: 'heart', title: 'Первый лайк', hint: 'Лайкните любой трек', ok: (s) => s.likes >= 1 },
   { id: 'like10', i: 'hearts', title: 'Коллекционер', hint: '10 лайков', v: (s) => [s.likes, 10] },
@@ -63,6 +64,7 @@ export const ACHIEVEMENTS = [
   { id: 'fr3', i: 'group', title: 'Душа компании', hint: 'Добавьте 3 друзей', v: (s) => [s.friends, 3] },
 ];
 export const DARK_UNTIL = Date.UTC(2026, 10, 10);
+export const FOUNDER = 'motrahka'; // «Основатель сбоя» — лимитированный значок только у него
 const achDone = (a, s) => (a.ok ? a.ok(s) : a.v(s)[0] >= a.v(s)[1]);
 export const ACH = Object.fromEntries(ACHIEVEMENTS.map((a) => [a.id, a]));
 
@@ -84,7 +86,7 @@ export const FRAMES = [
   { id: 'none', name: 'Без рамки' }, { id: 'glow', name: 'Свечение' }, { id: 'rainbow', name: 'Радуга' }, { id: 'gold', name: 'Золото' }, { id: 'neon', name: 'Неон' },
   { id: 'black', name: 'Чёрный глянец' }, { id: 'silver', name: 'Серебро' }, { id: 'fire', name: 'Огонь' },
 ];
-export const bannerCss = (id, img) => (img ? `center / cover no-repeat url("${img}")` : (BANNERS.find((b) => b.id === id) || BANNERS[0]).css);
+export const bannerCss = (id, img) => (safeUrl(img) ? `center / cover no-repeat url("${safeUrl(img)}")` : (BANNERS.find((b) => b.id === id) || BANNERS[0]).css);
 
 let built = false, curNick = '', boardLoaded = 0, myRank = 0, restored = false;
 const refs = {};
@@ -255,6 +257,7 @@ function statsNow() {
     days: created ? Math.max(1, Math.ceil((Date.now() - created) / 86400000)) : 1,
     artists: seen.size, night, styled: Boolean(c.styled), showcase: Boolean(c.favArtists.length || c.favTracks.length), rank: myRank, friends: friendIds().length, dev: isDev(curNick),
     // значок «Пережил тёмное время бана»: у всех, кто был с MKW до 10 ноября 2026
+    founder: String(curNick).toLowerCase() === FOUNDER,
     darkBan: Date.now() < DARK_UNTIL || (created > 0 && created < DARK_UNTIL) || c.badges.includes('dark1'),
   };
 }
@@ -301,11 +304,13 @@ async function likeMkw(btn) {
 
 // значок «Пережил тёмное время бана» сам закрепляется в профиле первым (поменять можно в «Изменить» → «Ник»)
 function pinDarkBadge() {
-  const k = `mkw.dark1.pinned.${curNick}`;
+  const k = `mkw.dark2.pinned.${curNick}`;
   try { if (localStorage.getItem(k)) return; localStorage.setItem(k, '1'); } catch { return; }
-  if (!ACHIEVEMENTS.find((a) => a.id === 'dark1').ok(statsNow())) return;
+  const st = statsNow();
+  if (!st.darkBan && !st.founder) return;
   const c = getCustom();
-  if (!c.badges.includes('dark1')) setCustom({ badges: ['dark1', ...c.badges].slice(0, 3) }); // мест три — значок встаёт первым
+  const add = [...(String(curNick).toLowerCase() === FOUNDER ? ['crash0'] : []), 'dark1'].filter((x) => !c.badges.includes(x));
+  if (add.length) setCustom({ badges: [...add, ...c.badges].slice(0, 3) }); // мест три — новые значки встают первыми
 }
 
 function badgeChips(ids) {

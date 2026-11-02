@@ -1,14 +1,14 @@
 // Страница исполнителя: треки, слушать, перемешать, «не рекомендовать».
-import { searchTracks, mapItunes, mapDeezer } from './catalog.js?v=0.27.5';
-import { jsonp } from './jsonp.js?v=0.27.5';
-import { prefetchYouTubeIds } from './youtube.js?v=0.27.5';
-import { $, h, icon, trackRow, skeleton, animateIn, toast, openSheet, closeSheet, sheetItem } from './ui.js?v=0.27.5';
-import { openTrackMenu } from './menu.js?v=0.27.5';
-import * as player from './player.js?v=0.27.5';
-import { splitArtists, isArtistBlocked, blockArtist, unblockArtist, norm } from './taste.js?v=0.27.5';
-import { shuffled, plural } from './utils.js?v=0.27.5';
-import { artistPic } from './artistpic.js?v=0.27.5';
-import { mi } from './icons2.js?v=0.27.5';
+import { searchTracks, mapItunes, mapDeezer } from './catalog.js?v=0.27.6';
+import { jsonp } from './jsonp.js?v=0.27.6';
+import { prefetchYouTubeIds } from './youtube.js?v=0.27.6';
+import { $, h, icon, trackRow, skeleton, animateIn, toast, openSheet, closeSheet, sheetItem } from './ui.js?v=0.27.6';
+import { openTrackMenu } from './menu.js?v=0.27.6';
+import * as player from './player.js?v=0.27.6';
+import { splitArtists, isArtistBlocked, blockArtist, unblockArtist, norm } from './taste.js?v=0.27.6';
+import { shuffled, plural, safeUrl } from './utils.js?v=0.27.6';
+import { artistPic } from './artistpic.js?v=0.27.6';
+import { mi } from './icons2.js?v=0.27.6';
 
 let seq = 0;
 const infoCache = new Map();
@@ -181,7 +181,7 @@ export async function openArtist(name) {
   const setPhoto = (url) => {
     if (!url || mine !== seq) return;
     const img = new Image();
-    img.onload = () => { if (mine !== seq) return; photo.src = url; hero.style.setProperty('--ah-img', `url("${url}")`); hero.classList.add('has-photo'); };
+    img.onload = () => { if (mine !== seq) return; photo.src = url; hero.style.setProperty('--ah-img', safeUrl(url) ? `url("${safeUrl(url)}")` : 'none'); hero.classList.add('has-photo'); };
     img.src = url;
   };
   if (dz && dz.picture_xl && !/\/artist\/\//.test(dz.picture_xl)) setPhoto(dz.picture_xl);
