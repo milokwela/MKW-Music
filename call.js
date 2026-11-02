@@ -5,15 +5,16 @@
 // Каждый с каждым соединяется напрямую (при 4 людях — 6 соединений).
 // Чтобы звонок подключался сразу: звонящий готовит соединение заранее, пока у друга звонит телефон,
 // поэтому после «Принять» остаётся один короткий ответ.
-import { db } from './firebase.js?v=0.27.6';
+import { db } from './firebase.js?v=0.27.7';
 import { doc, setDoc, updateDoc, deleteDoc, addDoc, collection, query, where, limit, onSnapshot, arrayUnion, arrayRemove } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
-import { h, toast, openSheet, closeSheet } from './ui.js?v=0.27.6';
-import { mi } from './icons2.js?v=0.27.6';
-import { me, isFriend, friendIds, friendCards, cardOf } from './friends.js?v=0.27.6';
-import { avSrc } from './avatar.js?v=0.27.6';
-import { RECOGNIZE_URL } from './shazam-config.js?v=0.27.6';
-import { pushTo, myNick } from './push.js?v=0.27.6';
-import * as player from './player.js?v=0.27.6';
+import { h, toast, openSheet, closeSheet } from './ui.js?v=0.27.7';
+import { mi } from './icons2.js?v=0.27.7';
+import { me, isFriend, friendIds, friendCards, cardOf } from './friends.js?v=0.27.7';
+import { avSrc } from './avatar.js?v=0.27.7';
+import { RECOGNIZE_URL } from './shazam-config.js?v=0.27.7';
+import { pushTo, myNick } from './push.js?v=0.27.7';
+import * as player from './player.js?v=0.27.7';
+import { getRingtone } from './ringtone.js?v=0.27.7';
 
 const MAX = 4;
 let ice = null, iceP = null;
@@ -134,7 +135,8 @@ function dropPeer(uid) {
 }
 
 async function sendSig(to, kind, sid, sdp) {
-  await addDoc(collection(db, 'calls', cur.id, 'sig'), { from: me(), to, kind, sid, sdp, at: Date.now() });
+  // номер соединения кладём прямо в kind («offer|abc»): так подходят и старые правила базы, где нет поля sid
+  await addDoc(collection(db, 'calls', cur.id, 'sig'), { from: me(), to, kind: `${kind}|${sid}`, sdp, at: Date.now() });
 }
 async function offerTo(uid, fresh) {
   if (!cur || cur.offering.has(uid)) return;
@@ -153,6 +155,8 @@ async function offerTo(uid, fresh) {
 }
 async function onSig(m) {
   if (!cur || m.to !== me()) return;
+  const [kind, sidK] = String(m.kind || '').split('|');
+  m = { ...m, kind, sid: m.sid || sidK || '' };
   try {
     if (m.kind === 'offer') {
       let e = cur.pcs.get(m.from);
@@ -223,7 +227,8 @@ const timer = () => { const s = Math.floor((Date.now() - (cur.t0 || Date.now()))
 function paintScreen() {
   if (!cur || !cur.ui) return;
   const area = cur.ui.screen;
-  const who = cur.data && cur.data.screen;
+  let who = cur.data && cur.data.screen;
+  if (!who || who === me()) { for (const [uid, e] of cur.pcs) { if (e.video && e.video.getVideoTracks().some((t) => t.readyState === 'live' && !t.muted)) { who = uid; break; } } }
   if (cur.screen) {
     area.hidden = false; cur.ui.box.classList.add('has-screen', 'me-share');
     if (!area.querySelector('.cs-mine')) area.replaceChildren(h('div', { class: 'cs-mine' }, mi('screen'), h('span', { text: 'Вы показываете экран' }), h('button', { class: 'btn tonal', type: 'button', onclick: stopShare }, 'Остановить')));
@@ -521,9 +526,20 @@ export function stopCalls() { if (unsubIn) { unsubIn(); unsubIn = null; } stopRi
 
 // мелодия звонка без файлов: два коротких гудка каждые 2 секунды
 let ringTimer = 0;
+let ringAudio = null;
 function ringtone(on) {
   clearInterval(ringTimer);
+  if (ringAudio) { try { ringAudio.pause(); } catch { /* ignore */ } ringAudio = null; }
   if (!on) return;
+  const rt = getRingtone();
+  if (rt && rt.url) {
+    ringAudio = new Audio(rt.url); ringAudio.loop = true; ringAudio.volume = 0.9;
+    ringAudio.play().then(() => { if (navigator.vibrate) navigator.vibrate([300, 200, 300, 200, 300]); }).catch(() => { ringAudio = null; ringtoneBeep(); });
+    return;
+  }
+  ringtoneBeep();
+}
+function ringtoneBeep() {
   const beep = () => {
     try {
       actx = actx || new (window.AudioContext || window.webkitAudioContext)();

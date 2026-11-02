@@ -1,12 +1,12 @@
 // Уведомления: заявки в друзья, принятые заявки, новые сообщения.
 // Внутри приложения — всплывашка и счётчик на вкладке «Профиль». Если приложение свёрнуто и вы разрешили —
 // системное уведомление телефона/компьютера (работает, пока приложение открыто в фоне).
-import { h, toast } from './ui.js?v=0.27.6';
-import { avSrc } from './avatar.js?v=0.27.6';
-import { watchFriends, stopWatchFriends, requestIds, onFriends, cardOf, watchPresence, stopPresence, friendsLoaded, loadFriends } from './friends.js?v=0.27.6';
-import { watchCalls, stopCalls, warmCalls } from './call.js?v=0.27.6';
-import { enablePush, disablePush, pushSupported } from './push.js?v=0.27.6';
-import { watchChats, stopChats, unreadCount, onChats, openChat, chatOpen } from './chat.js?v=0.27.6';
+import { h, toast } from './ui.js?v=0.27.7';
+import { avSrc } from './avatar.js?v=0.27.7';
+import { watchFriends, stopWatchFriends, requestIds, onFriends, cardOf, watchPresence, stopPresence, friendsLoaded, loadFriends } from './friends.js?v=0.27.7';
+import { watchCalls, stopCalls, warmCalls } from './call.js?v=0.27.7';
+import { enablePush, disablePush, pushSupported } from './push.js?v=0.27.7';
+import { watchChats, stopChats, unreadCount, onChats, openChat, chatOpen } from './chat.js?v=0.27.7';
 
 const KEY = 'mkw.notify';
 export const notifyOn = () => { try { return localStorage.getItem(KEY) !== '0'; } catch { return true; } };
@@ -23,8 +23,8 @@ export async function setNotify(v) {
   return v;
 }
 
-async function system(title, body, tag, onClick) {
-  if (!notifyOn() || !systemAllowed() || !document.hidden) return;
+async function system(title, body, tag, onClick, always) {
+  if ((!notifyOn() && !always) || !systemAllowed() || !document.hidden) return;
   const opt = { body, tag, icon: 'ic5-192.png', badge: 'fav-96.png', renotify: true };
   try {
     const reg = navigator.serviceWorker && await navigator.serviceWorker.getRegistration();
@@ -64,9 +64,10 @@ export function startNotify() {
     system(nick, text, `chat-${c.id}`, () => openChat(uid, u));
   });
   // входящие звонки — слушаем всегда (это важнее настройки уведомлений)
-  (friendsLoaded() ? Promise.resolve() : loadFriends()).catch(() => {}).then(() => watchCalls((nick, many, id) => system(many ? 'Общий звонок' : 'Входящий звонок', `${nick} звонит вам в MKW`, `call-${id}`)));
+  (friendsLoaded() ? Promise.resolve() : loadFriends()).catch(() => {}).then(() => watchCalls((nick, many, id) => system(many ? 'Общий звонок' : 'Входящий звонок', `${nick} звонит вам в MKW`, `call-${id}`, null, true)));
   // пуш на это устройство (если уведомления разрешены)
-  if (notifyOn() && systemAllowed() && pushSupported()) setTimeout(() => enablePush(), 4000);
+  // пуш нужен для звонков всегда, если браузер разрешил уведомления
+  if (systemAllowed() && pushSupported()) setTimeout(() => enablePush(), 4000);
   warmCalls();
   openFromLink(location.hash);
   paint();

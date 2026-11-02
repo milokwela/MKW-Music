@@ -1,5 +1,5 @@
 // Общие кирпичики интерфейса: создание элементов, иконки, уведомления, нижние шторки, строка трека.
-import { artUrl } from './utils.js?v=0.27.6';
+import { artUrl } from './utils.js?v=0.27.7';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
