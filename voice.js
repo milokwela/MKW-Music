@@ -1,19 +1,28 @@
 // Голосовое управление (бета): «MKW, следующая», «MKW, громче», «Музыка, лайк», «MKW, включи Баста».
 // Работает через распознавание речи браузера (Chrome, Яндекс Браузер, Edge, Safari). Слушает, пока вкладка открыта.
-import { toast, openSheet, h } from './ui.js?v=0.26.0';
-import * as player from './player.js?v=0.26.0';
-import * as store from './store.js?v=0.26.0';
-import { dislike, startWave, waveActive } from './wave.js?v=0.26.0';
-import { searchTracks } from './catalog.js?v=0.26.0';
-import { mi } from './icons2.js?v=0.26.0';
-import { openFull, closeFull, isFullOpen } from './playerui.js?v=0.26.0';
+import { toast, openSheet, h } from './ui.js?v=0.27.0';
+import * as player from './player.js?v=0.27.0';
+import * as store from './store.js?v=0.27.0';
+import { dislike, startWave, waveActive } from './wave.js?v=0.27.0';
+import { searchTracks } from './catalog.js?v=0.27.0';
+import { mi } from './icons2.js?v=0.27.0';
+import { openFull, closeFull, isFullOpen } from './playerui.js?v=0.27.0';
+import { startCloud, stopCloud, cloudSttPossible } from './stt.js?v=0.27.0';
+import { friendIds, friendCards, loadFriends, friendsLoaded } from './friends.js?v=0.27.0';
+import { startCall } from './call.js?v=0.27.0';
+import { avSrc } from './avatar.js?v=0.27.0';
+import { closeSheet } from './ui.js?v=0.27.0';
 
 const KEY = 'mkw.voice';
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 let rec = null, on = false, restartTimer = 0, lastCmd = 0, badge = null, armedUntil = 0, armTimer = 0;
 const handled = new Set();
 
-export const voiceSupported = () => Boolean(SR);
+// 'browser' — распознавание самого браузера (Chrome, Edge, Safari), 'cloud' — через сервер MKW (Яндекс Браузер, Opera, Firefox)
+const EKEY = 'mkw.voice.engine';
+let engine = 'browser';
+const preferCloud = () => { try { return localStorage.getItem(EKEY) === 'cloud'; } catch { return false; } };
+export const voiceSupported = () => Boolean(SR) || cloudSttPossible();
 export const voiceOn = () => on;
 
 // как браузер может услышать «MKW»: эм кей дабл ю, мкв, эмкейви, эм ка вэ, эмкавэ, а также просто «музыка»
@@ -38,6 +47,8 @@ export const VOICE_COMMANDS = [
   ['Волна · выключи волну', 'MKW Волна'],
   ['Мои лайки', 'включить лайки'],
   ['Включи Баста · поставь Луна', 'найти и включить'],
+  ['Включить Баста · включить Луна Знаешь', 'найти и сразу включить песню или исполнителя'],
+  ['Позвони Лере · позвонить', 'звонок другу. Без имени — покажу список, скажите номер: «два» или «второй»'],
   ['Поиск, Библиотека, Профиль', 'переход по разделам'],
 ];
 
@@ -91,6 +102,8 @@ function parse(text) {
 function parse0(text) {
   const t = norm(text);
   if (!t) return null;
+  const call = t.match(/(?:^|\s)(?:позвон[а-я]*|набер[а-я]*|набрать|созвон[а-я]*|звякн[а-я]*|сделай\s+звонок|звонок)(?:\s+(.*))?$/);
+  if (call) return { cmd: 'call', q: (call[1] || '').replace(/^(?:другу|подруге|мне|пожалуйста)\s*/g, '').trim() };
   if (/(убер|убра|сним|снят|удали|отмен)[а-яa-z]*\s+(мой\s+|этот\s+)?лайк/.test(t)) return { cmd: 'unlike' };
   if (/дизлайк|не нрав|не то|фу\b/.test(t)) return { cmd: 'dislike' };
   if (/(выключи|останови|стоп)\s+волн/.test(t)) return { cmd: 'wave-off' };
@@ -121,8 +134,9 @@ function parse0(text) {
   if (/^(открой\s+)?библиотек/.test(t)) return { cmd: 'nav', v: 'library' };
   if (/^(открой\s+)?профил/.test(t)) return { cmd: 'nav', v: 'profile' };
   if (/пауз|стоп|останов|замолч|выключи музыку|pause|stop|тихо/.test(t)) return { cmd: 'pause' };
-  const m = t.match(/(?:включи|поставь|найди|запусти|хочу|play)\s+(?:песню\s+|трек\s+|мне\s+)?(.{2,})$/);
-  if (m && !/^(музыку|музыка|песню|трек|дальше|звук|плеер)$/.test(m[1].trim())) return { cmd: 'search', q: m[1].trim() };
+  // «включи / включить / вруби / поставь / найди / сыграй / хочу послушать» + название или исполнитель
+  const m = t.match(/(?:^|\s)(?:включи(?:те|ть)?|вруби(?:те|ть)?|поставь(?:те)?|поставить|найди(?:те)?|найти|запусти(?:те|ть)?|сыграй(?:те)?|воспроизведи|хочу(?:\s+послушать)?|давай|послушать|play)\s+(?:мне\s+|пожалуйста\s+|песню\s+|песня\s+|трек\s+|исполнителя\s+|группу\s+|что\s+нибудь\s+(?:от|из|у)?\s*|альбом\s+)*(.{2,})$/);
+  if (m && !/^(музыку|музыка|песню|трек|дальше|звук|плеер|обратно|снова|еще|ещё|ее|её|его|это|эту)$/.test(m[1].trim())) return { cmd: 'search', q: m[1].trim() };
   if (/играй|продолж|включи|плей|воспроизв|play|старт|поехали|давай/.test(t)) return { cmd: 'play' };
   return null;
 }
@@ -163,6 +177,7 @@ async function run({ cmd, q, n, v }) {
   else if (cmd === 'wave-off') { if (waveActive()) startWave(); }
   else if (cmd === 'likes') { const l = store.state.likes; if (l.length) { player.playTracks(l, 0); toast('Включаю ваши лайки'); } else toast('Лайков пока нет'); }
   else if (cmd === 'nav') { closeFull(); const b = document.querySelector(`#bottom-nav .nav-btn[data-view="${v}"]`); if (b) b.click(); }
+  else if (cmd === 'call') await voiceCall(q);
   else if (cmd === 'search') {
     toast(`Ищу «${q}»…`);
     const found = await searchTracks(q).catch(() => []);
@@ -206,6 +221,71 @@ function notUnderstood(heard) {
   say('Я вас не поняла');
 }
 
+// ---------- «позвони …»: по имени или по номеру из списка ----------
+const TR = { а: 'a', б: 'b', в: 'v', г: 'g', д: 'd', е: 'e', ж: 'zh', з: 'z', и: 'i', й: 'y', к: 'k', л: 'l', м: 'm', н: 'n', о: 'o', п: 'p', р: 'r', с: 's', т: 't', у: 'u', ф: 'f', х: 'h', ц: 'ts', ч: 'ch', ш: 'sh', щ: 'sch', ъ: '', ы: 'y', ь: '', э: 'e', ю: 'yu', я: 'ya' };
+const lat = (x) => norm(x).split('').map((c) => (c in TR ? TR[c] : c)).join('').replace(/[^a-z0-9]/g, '')
+  .replace(/x/g, 'ks').replace(/w/g, 'v').replace(/q/g, 'k').replace(/ph/g, 'f').replace(/y/g, 'i').replace(/c(?=[ei])/g, 'ts').replace(/c/g, 'k').replace(/(.)\1+/g, '$1');
+const stem = (x) => x.replace(/[aeiou]+$/, '');
+function matchFriend(q, cards) {
+  const words = norm(q).split(' ').filter((w) => w.length >= 2 && !/^(другу|подруге|мне|пожалуйста|ко?|ему|ей)$/.test(w));
+  let best = null, bestScore = 9;
+  for (const u of cards) {
+    const n = lat(u.nick || '');
+    if (!n) continue;
+    for (const w of [...words, words.join('')]) {
+      const t = lat(w); if (t.length < 2) continue;
+      const d = lev(t, n);
+      const st = stem(t), sn = stem(n);
+      const ok = d <= (n.length <= 4 ? 1 : 2) || (n.length >= 3 && t.startsWith(n.slice(0, Math.max(3, n.length - 1)))) || (t.length >= 3 && n.startsWith(t))
+        || (st.length >= 2 && sn.length >= 2 && n.startsWith(st) && st.length >= Math.min(3, sn.length)); // «Лере», «Ане», «Максу» — падежи
+      if (ok && d < bestScore) { best = u; bestScore = d; }
+    }
+  }
+  return best;
+}
+const ORD = [[/перв/, 1], [/втор/, 2], [/трет/, 3], [/четв[её]р/, 4], [/пят(?:ый|ому|ого|ая|ой|ую)/, 5], [/шест(?:ой|ому|ого|ая|ую)/, 6], [/седьм/, 7], [/восьм/, 8], [/девят(?:ый|ому|ого|ая|ую)/, 9]];
+function pickNumber(t) {
+  for (const [re, n] of ORD) if (re.test(t)) return n;
+  const n = num(t);
+  return n != null && n >= 1 && n <= 9 ? n : null;
+}
+let pick = null;
+function callFriend(u) {
+  pick = null; closeSheet();
+  toast(`Звоню ${u.nick || 'другу'}…`);
+  startCall([u.uid]);
+}
+async function voiceCall(q) {
+  try { if (!friendsLoaded()) await loadFriends(); } catch { /* ignore */ }
+  const ids = friendIds();
+  if (!ids.length) { toast('Звонить можно друзьям — добавьте их в Профиль → Друзья'); say('У вас пока нет друзей в MKW'); return; }
+  const cards = (await friendCards(ids.slice(0, 40))).slice(0, 9);
+  if (q) { const u = matchFriend(q, cards); if (u) { callFriend(u); return; } }
+  if (cards.length === 1 && !q) { callFriend(cards[0]); return; }
+  pick = { list: cards, until: Date.now() + 20000 };
+  openSheet('Кому позвонить? Скажите номер', h('div', { class: 'lb-list vc-pick' }, ...cards.map((u, i) => h('button', { type: 'button', class: 'lb-row fr-pick', onclick: () => callFriend(u) },
+    h('span', { class: 'vc-n', text: String(i + 1) }),
+    h('span', { class: 'lb-av' }, h('img', { src: avSrc(u.avatar), alt: '' })),
+    h('div', { class: 'lb-body' }, h('div', { class: 'lb-nick' }, h('span', { text: u.nick || 'друг' })), h('small', { class: 'lb-sub', text: Date.now() - (Number(u.seen) || 0) < 210000 ? 'в сети' : 'не в сети' }))))));
+  arm(20000);
+  say(q ? 'Не нашла такого друга. Скажите номер из списка' : 'Кому позвонить? Скажите номер');
+}
+// пока открыт список «Кому позвонить?» — ждём номер или имя (без слова «МКВ»)
+function tryPick(alts, isFinal) {
+  if (!pick) return false;
+  if (Date.now() > pick.until) { pick = null; return false; }
+  for (const t of alts) {
+    if (/отмен|никому|не надо|закрой/.test(t)) { pick = null; closeSheet(); toast('Звонок отменён'); disarm(false); unduck(); return true; }
+    const n = pickNumber(t);
+    if (n && pick.list[n - 1]) { const u = pick.list[n - 1]; unduck(); disarm(true); callFriend(u); return true; }
+    if (isFinal) { const u = matchFriend(t.replace(WAKE, ' '), pick.list); if (u) { unduck(); disarm(true); callFriend(u); return true; } }
+  }
+  return false;
+}
+
+// Whisper на тишине и музыке иногда «слышит» титры — такое не считаем командой
+const JUNK = /субтитр|продолжение следует|спасибо за просмотр|подписывайтесь|редактор|dimatorzok|корректор|amara|музыкальная заставка|^[\s.,!?…«»"'()-]*$/i;
+
 function onResult(e) {
   if (Date.now() < speakingUntil || (window.speechSynthesis && speechSynthesis.speaking)) return; // не слушаем самих себя
   lastHeard = Date.now();
@@ -214,35 +294,67 @@ function onResult(e) {
     const key = `${sessionId}:${i}`;
     if (handled.has(key)) continue;
     // берём все варианты распознавания, а не только первый — так слышит лучше
-    const alts = [...res].map((a) => norm(a.transcript)).filter(Boolean);
-    let rest = null;
-    for (const text of alts) { const m = text.match(WAKE); if (m) { rest = text.slice(m.index + m[0].length).trim(); break; } }
-    if (rest == null) for (const text of alts) { const f = fuzzyWake(text); if (f) { rest = f.rest; break; } }
-    const armed = Date.now() < armedUntil;
-    if (rest == null && !armed) continue;
-    if (rest != null && !armed) { arm(7000); duck(); showBadge('Слушаю…'); }
-    else if (rest != null) arm(7000);
-    const tries = rest != null ? [rest, ...alts.map((x) => x.replace(WAKE, ' ').trim())] : alts;
-    let p = null;
-    for (const x of tries) { if (x) { p = parse(x); if (p) break; } }
-    if (p && p.cmd === 'search' && !res.isFinal) { showBadge(rest || alts[0]); continue; } // название дослушиваем до конца
-    if (!p) {
-      if (!res.isFinal) { if (rest) showBadge(rest); continue; }
-      const heard = rest != null ? rest : alts[0];
-      if (heard) { handled.add(key); notUnderstood(heard); } // сказали что-то, но не команду
-      continue; // только «МКВ» — ждём команду, края светятся
-    }
-    if (Date.now() - lastCmd < 900) continue;
-    handled.add(key);
-    lastCmd = Date.now();
-    showBadge(rest || alts[0]);
-    unduck();
-    disarm(true);
-    run(p);
+    processAlts([...res].map((a) => norm(a.transcript)).filter(Boolean), res.isFinal, key);
   }
 }
 
-let sessionId = 0, running = false, lastHeard = 0, watchdog = 0;
+function processAlts(alts, isFinal, key) {
+  if (!alts.length) return;
+  if (tryPick(alts, isFinal)) { handled.add(key); return; }
+  let rest = null;
+  for (const text of alts) { const m = text.match(WAKE); if (m) { rest = text.slice(m.index + m[0].length).trim(); break; } }
+  if (rest == null) for (const text of alts) { const f = fuzzyWake(text); if (f) { rest = f.rest; break; } }
+  const armed = Date.now() < armedUntil;
+  if (rest == null && !armed) return;
+  if (rest != null && !armed) { arm(7000); duck(); showBadge('Слушаю…'); }
+  else if (rest != null) arm(7000);
+  const tries = rest != null ? [rest, ...alts.map((x) => x.replace(WAKE, ' ').trim())] : alts;
+  let p = null;
+  for (const x of tries) { if (x) { p = parse(x); if (p) break; } }
+  if (p && (p.cmd === 'search' || p.cmd === 'call') && !isFinal) { showBadge(rest || alts[0]); return; } // название и имя дослушиваем до конца
+  if (!p) {
+    if (!isFinal) { if (rest) showBadge(rest); return; }
+    const heard = rest != null ? rest : alts[0];
+    if (heard) { handled.add(key); notUnderstood(heard); } // сказали что-то, но не команду
+    return; // только «МКВ» — ждём команду, края светятся
+  }
+  if (Date.now() - lastCmd < 900) return;
+  handled.add(key);
+  lastCmd = Date.now();
+  showBadge(rest || alts[0]);
+  unduck();
+  disarm(true);
+  run(p);
+}
+
+// ---------- распознавание через сервер MKW ----------
+let cloudN = 0, cloudWarned = false;
+function onCloud(r) {
+  if (!on) return;
+  if (r.error === 'no-server') {
+    toast('В этом браузере голосовое управление пока не работает. Откройте MKW в Chrome или Edge');
+    setVoice(false); syncUi(); return;
+  }
+  if (r.error === 'offline') { if (!cloudWarned) { cloudWarned = true; toast('Нет интернета — голос заработает, когда сеть вернётся'); setTimeout(() => { cloudWarned = false; }, 60000); } return; }
+  if (!r.text || JUNK.test(r.text)) return;
+  if (Date.now() < speakingUntil) return;
+  lastHeard = Date.now();
+  processAlts([norm(r.text)], true, `c${++cloudN}`);
+}
+async function startCloudEngine() {
+  engine = 'cloud';
+  try { localStorage.setItem(EKEY, 'cloud'); } catch { /* ignore */ }
+  try { await startCloud(onCloud, () => Date.now() < speakingUntil || Boolean(window.speechSynthesis && speechSynthesis.speaking) || document.documentElement.classList.contains('in-call')); running = true; return true; } // во время звонка разговор на сервер не отправляем
+  catch { toast('Нет доступа к микрофону. Разрешите его в настройках сайта'); on = false; syncUi(); return false; }
+}
+// переключатель в настройках должен показать, что голос выключился
+function syncUi() {
+  document.documentElement.classList.toggle('voice-on', on);
+  try { localStorage.setItem(KEY, on ? '1' : '0'); } catch { /* ignore */ }
+  window.dispatchEvent(new CustomEvent('mkw-voice', { detail: on }));
+}
+
+let sessionId = 0, running = false, lastHeard = 0, watchdog = 0, netFails = 0;
 function start() {
   if (rec) { rec.onend = null; try { rec.abort(); } catch { /* ignore */ } }
   rec = new SR();
@@ -250,34 +362,57 @@ function start() {
   rec.continuous = true;
   rec.interimResults = true;
   rec.maxAlternatives = 5;
-  rec.onresult = onResult;
+  rec.onresult = (e) => { netFails = 0; onResult(e); };
   rec.onstart = () => { running = true; sessionId += 1; handled.clear(); };
   rec.onerror = (e) => {
-    if (e.error === 'not-allowed' || e.error === 'service-not-allowed') { toast('Нет доступа к микрофону. Разрешите его в настройках сайта'); setVoice(false); }
-    else if (e.error === 'network') toast('Распознавание речи без интернета не работает');
+    if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
+      // Яндекс Браузер и другие не пускают к сервису распознавания Google — переходим на сервер MKW
+      if (e.error === 'service-not-allowed' && cloudSttPossible()) { switchToCloud(); return; }
+      toast('Нет доступа к микрофону. Разрешите его в настройках сайта'); setVoice(false); syncUi();
+    } else if (e.error === 'network') {
+      // «network» почти всегда значит, что у браузера нет своего распознавания (интернет при этом есть)
+      if (navigator.onLine !== false && cloudSttPossible()) { netFails += 1; if (netFails >= 1) switchToCloud(); }
+      else if (!cloudWarned) { cloudWarned = true; toast('Нет интернета — голос заработает, когда сеть вернётся'); setTimeout(() => { cloudWarned = false; }, 60000); }
+    }
     // no-speech, aborted, audio-capture — просто перезапускаемся в onend
   };
   // браузер сам останавливает распознавание (тишина, минута работы) — сразу запускаем снова
-  rec.onend = () => { running = false; if (on) { clearTimeout(restartTimer); restartTimer = setTimeout(restart, 150); } };
+  rec.onend = () => { running = false; if (on && engine === 'browser') { clearTimeout(restartTimer); restartTimer = setTimeout(restart, 150); } };
   rec.start();
 }
-function restart() { if (!on || running || document.hidden) return; try { rec.start(); } catch { try { start(); } catch { /* ignore */ } } }
+function switchToCloud() {
+  if (engine === 'cloud') return;
+  engine = 'cloud';
+  clearTimeout(restartTimer);
+  if (rec) { rec.onend = null; rec.onerror = null; try { rec.abort(); } catch { /* ignore */ } rec = null; }
+  running = false;
+  startCloudEngine().then((ok) => { if (ok) toast('Голос работает через сервер MKW — скажите «МКВ, следующая»'); });
+}
+function restart() { if (!on || engine !== 'browser' || running || document.hidden) return; try { rec.start(); } catch { try { start(); } catch { /* ignore */ } } }
 
 export function setVoice(v) {
-  if (v && !SR) { toast('Этот браузер не умеет распознавать речь. Попробуйте Chrome или Яндекс Браузер'); return false; }
+  if (v && !voiceSupported()) { toast('Этот браузер не умеет распознавать речь. Попробуйте Chrome или Яндекс Браузер'); return false; }
   on = Boolean(v);
   try { localStorage.setItem(KEY, on ? '1' : '0'); } catch { /* ignore */ }
   if (on) {
-    try {
-      start(); toast('Скажите: «МКВ, следующая» или «Музыка, громче»'); document.documentElement.classList.add('voice-on');
-      // сторож: если распознавание тихо умерло — поднимаем снова
-      clearInterval(watchdog); watchdog = setInterval(() => { if (on && !running) restart(); }, 4000);
+    netFails = 0;
+    document.documentElement.classList.add('voice-on');
+    if (!SR || preferCloud()) {
+      startCloudEngine().then((ok) => { if (ok) toast('Скажите: «МКВ, следующая» или «Музыка, громче»'); });
+      return on;
     }
-    catch { on = false; toast('Не получилось включить микрофон'); }
+    engine = 'browser';
+    try {
+      start(); toast('Скажите: «МКВ, следующая» или «Музыка, громче»');
+      // сторож: если распознавание тихо умерло — поднимаем снова
+      clearInterval(watchdog); watchdog = setInterval(() => { if (on && engine === 'browser' && !running) restart(); }, 4000);
+    }
+    catch { if (cloudSttPossible()) switchToCloud(); else { on = false; toast('Не получилось включить микрофон'); } }
   } else {
     clearTimeout(restartTimer); clearInterval(watchdog); unduck();
     if (rec) { rec.onend = null; try { rec.stop(); } catch { /* ignore */ } rec = null; }
-    running = false;
+    stopCloud();
+    running = false; pick = null;
     document.documentElement.classList.remove('voice-on');
   }
   return on;
@@ -287,7 +422,7 @@ export function showVoiceGuide() {
   openSheet('Голосовое управление', h('div', {},
     h('p', { class: 'profile-note', text: 'Скажите «МКВ» или «Музыка» — края экрана засветятся цветом приложения, музыка станет тише: значит, я слушаю. Потом команду: «следующая», «громче», «включи Баста». Можно сразу одной фразой: «МКВ, лайк». Если команда незнакомая — отвечу «Я вас не поняла».' }),
     h('div', { class: 'gest-list' }, VOICE_COMMANDS.map(([words, what]) => h('div', { class: 'gest-item' }, h('span', { class: 'ge' }, mi('mic')), h('div', {}, h('b', { text: words }), h('small', { text: what }))))),
-    h('p', { class: 'profile-note', text: 'Работает, пока приложение открыто. Речь распознаёт браузер (в Chrome — сервис Google). Говорите чётко: «эм-ка-вэ» или «музыка».' })));
+    h('p', { class: 'profile-note', text: 'Работает, пока приложение открыто. В Chrome, Edge и Safari речь распознаёт сам браузер. В Яндекс Браузере, Opera и Firefox — сервер MKW: туда уходят только короткие фразы, когда вы что-то сказали. Говорите чётко: «эм-ка-вэ» или «музыка».' })));
 }
 
 export function initVoice() {

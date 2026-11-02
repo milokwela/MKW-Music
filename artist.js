@@ -1,14 +1,14 @@
 // Страница исполнителя: треки, слушать, перемешать, «не рекомендовать».
-import { searchTracks, mapItunes, mapDeezer } from './catalog.js?v=0.26.0';
-import { jsonp } from './jsonp.js?v=0.26.0';
-import { prefetchYouTubeIds } from './youtube.js?v=0.26.0';
-import { $, h, icon, trackRow, skeleton, animateIn, toast, openSheet, closeSheet, sheetItem } from './ui.js?v=0.26.0';
-import { openTrackMenu } from './menu.js?v=0.26.0';
-import * as player from './player.js?v=0.26.0';
-import { splitArtists, isArtistBlocked, blockArtist, unblockArtist, norm } from './taste.js?v=0.26.0';
-import { shuffled, plural } from './utils.js?v=0.26.0';
-import { artistPic } from './artistpic.js?v=0.26.0';
-import { mi } from './icons2.js?v=0.26.0';
+import { searchTracks, mapItunes, mapDeezer } from './catalog.js?v=0.27.0';
+import { jsonp } from './jsonp.js?v=0.27.0';
+import { prefetchYouTubeIds } from './youtube.js?v=0.27.0';
+import { $, h, icon, trackRow, skeleton, animateIn, toast, openSheet, closeSheet, sheetItem } from './ui.js?v=0.27.0';
+import { openTrackMenu } from './menu.js?v=0.27.0';
+import * as player from './player.js?v=0.27.0';
+import { splitArtists, isArtistBlocked, blockArtist, unblockArtist, norm } from './taste.js?v=0.27.0';
+import { shuffled, plural } from './utils.js?v=0.27.0';
+import { artistPic } from './artistpic.js?v=0.27.0';
+import { mi } from './icons2.js?v=0.27.0';
 
 let seq = 0;
 const infoCache = new Map();
@@ -99,6 +99,23 @@ export function closeArtist() {
   const p = $('#artist-page');
   p.classList.remove('open');
   seq += 1;
+}
+
+// «A, B & C» → три отдельные кнопки: каждый исполнитель открывает свою страницу
+export function artistLinks(el, str) {
+  const names = splitArtists(str);
+  if (names.length <= 1) { el.textContent = str || ''; return; }
+  const kids = [];
+  let rest = String(str || '');
+  names.forEach((n, i) => {
+    const at = rest.toLowerCase().indexOf(n.toLowerCase());
+    const sep = i === 0 ? '' : (at > 0 ? rest.slice(0, at) : ', ');
+    if (sep) kids.push(document.createTextNode(sep));
+    kids.push(h('span', { class: 'ar-link', role: 'link', tabindex: '0', 'data-artist': n, text: n }));
+    rest = at >= 0 ? rest.slice(at + n.length) : rest;
+  });
+  if (rest.trim()) kids.push(document.createTextNode(rest));
+  el.replaceChildren(...kids);
 }
 
 export function openArtistFor(artistString) {

@@ -1,36 +1,38 @@
 // Экран «Профиль»: карточка с баннером, витрина (любимые исполнители и треки), вкладки Обзор / Слушатели / Настройки / О MKW.
-import { $, $$, h, icon, openSheet, closeSheet, toast, sheetItem, trackRow } from './ui.js?v=0.26.0';
-import * as store from './store.js?v=0.26.0';
-import * as player from './player.js?v=0.26.0';
-import { ACCENTS, getTheme, getAccent, getCustomHue, setCustomColor, setTheme, setAccent, hslHex, getNeutral } from './theme.js?v=0.26.0';
-import { CHANGELOG, VERSION, STAGE, KNOWN_ISSUES } from './changelog.js?v=0.26.0';
-import { plural, pickTrack } from './utils.js?v=0.26.0';
-import { youtubeEnabled, youtubeQuotaOut } from './youtube.js?v=0.26.0';
-import { audiusEnabled } from './audius.js?v=0.26.0';
-import { SOURCE_MODES, getSourceMode, setSourceMode } from './sources.js?v=0.26.0';
-import { gesturesOn, setGestures, showGestureGuide } from './gestures.js?v=0.26.0';
-import { listenerStats } from './stats.js?v=0.26.0';
-import { liveBg, setLiveBg } from './viz.js?v=0.26.0';
-import { lowPower, setLowPower } from './perf.js?v=0.26.0';
-import { logOut, changePassword, changeNick, authErrorText } from './auth.js?v=0.26.0';
-import { connectionCountry } from './geo.js?v=0.26.0';
-import { goOffline, publishCard, publishProfile, myCard, getProfile, topListeners, hiddenFromBoard, setHidden, myUid } from './leaders.js?v=0.26.0';
-import { mi } from './icons2.js?v=0.26.0';
-import { artistPic } from './artistpic.js?v=0.26.0';
-import { openArtist } from './artist.js?v=0.26.0';
-import { openUserPage, favArtistsRow, favTracksList, isOnline } from './userpage.js?v=0.26.0';
-import { voiceOn, setVoice, showVoiceGuide, voiceSupported } from './voice.js?v=0.26.0';
-import { openImage } from './viewer.js?v=0.26.0';
-import { isDev, devBadge, fanBadge, nickMarks } from './dev.js?v=0.26.0';
-import { fanNumber, restoreFan, becomeFan } from './fans.js?v=0.26.0';
-import { ping } from './leaders.js?v=0.26.0';
-import { streamsOn, setStreams, checkBackground } from './stream.js?v=0.26.0';
-import { DEF_AV, avSrc, isDefAv } from './avatar.js?v=0.26.0';
-import { ONLINE_MS, loadFriends, friendIds, addFriend, removeFriend, findByNick, friendCards, onFriends, declineRequest, acceptRequest, requestIds, sentIds, friendState, friendsLoaded } from './friends.js?v=0.26.0';
-import { openChat, chatWith, isUnread, onChats } from './chat.js?v=0.26.0';
-import { notifyOn, setNotify } from './notify.js?v=0.26.0';
-import { searchTracks } from './catalog.js?v=0.26.0';
-import { seenText } from './userpage.js?v=0.26.0';
+import { $, $$, h, icon, openSheet, closeSheet, toast, sheetItem, trackRow } from './ui.js?v=0.27.0';
+import * as store from './store.js?v=0.27.0';
+import * as player from './player.js?v=0.27.0';
+import { ACCENTS, getTheme, getAccent, getCustomHue, setCustomColor, setTheme, setAccent, hslHex, getNeutral } from './theme.js?v=0.27.0';
+import { CHANGELOG, VERSION, STAGE, KNOWN_ISSUES } from './changelog.js?v=0.27.0';
+import { plural, pickTrack } from './utils.js?v=0.27.0';
+import { youtubeEnabled, youtubeQuotaOut } from './youtube.js?v=0.27.0';
+import { audiusEnabled } from './audius.js?v=0.27.0';
+import { SOURCE_MODES, getSourceMode, setSourceMode } from './sources.js?v=0.27.0';
+import { gesturesOn, setGestures, showGestureGuide } from './gestures.js?v=0.27.0';
+import { listenerStats } from './stats.js?v=0.27.0';
+import { liveBg, setLiveBg } from './viz.js?v=0.27.0';
+import { lowPower, setLowPower } from './perf.js?v=0.27.0';
+import { logOut, changePassword, changeNick, authErrorText } from './auth.js?v=0.27.0';
+import { connectionCountry } from './geo.js?v=0.27.0';
+import { goOffline, publishCard, publishProfile, myCard, getProfile, topListeners, hiddenFromBoard, setHidden, myUid } from './leaders.js?v=0.27.0';
+import { mi } from './icons2.js?v=0.27.0';
+import { artistPic } from './artistpic.js?v=0.27.0';
+import { openArtist } from './artist.js?v=0.27.0';
+import { openUserPage, favArtistsRow, favTracksList, isOnline } from './userpage.js?v=0.27.0';
+import { voiceOn, setVoice, showVoiceGuide, voiceSupported } from './voice.js?v=0.27.0';
+import { openImage } from './viewer.js?v=0.27.0';
+import { isDev, devBadge, fanBadge, nickMarks } from './dev.js?v=0.27.0';
+import { fanNumber, restoreFan, becomeFan } from './fans.js?v=0.27.0';
+import { ping } from './leaders.js?v=0.27.0';
+import { streamsOn, setStreams, checkBackground } from './stream.js?v=0.27.0';
+import { DEF_AV, avSrc, isDefAv } from './avatar.js?v=0.27.0';
+import { ONLINE_MS, loadFriends, friendIds, addFriend, removeFriend, findByNick, friendCards, onFriends, declineRequest, acceptRequest, requestIds, sentIds, friendState, friendsLoaded } from './friends.js?v=0.27.0';
+import { openChat, chatWith, isUnread, onChats } from './chat.js?v=0.27.0';
+import { notifyOn, setNotify } from './notify.js?v=0.27.0';
+import { openInstall, standalone } from './install.js?v=0.27.0';
+import { discordOn, setDiscord, showDiscordGuide, discordPossible, discordReady } from './discord.js?v=0.27.0';
+import { searchTracks } from './catalog.js?v=0.27.0';
+import { seenText } from './userpage.js?v=0.27.0';
 
 // s: sec, likes, playlists, plays, days, artists, night, styled, showcase, rank
 export const ACHIEVEMENTS = [
@@ -146,7 +148,7 @@ function syncControls() {
   $$('.src-chip').forEach((c) => c.classList.toggle('active', c.dataset.id === getSourceMode()));
   if (refs.srcnote) refs.srcnote.textContent = `iTunes: работает · YouTube: работает без лимита (через сервер MKW${youtubeQuotaOut() ? ', ключ на сегодня исчерпан' : ''}) · Audius: ${audiusEnabled() ? 'работает' : 'нет ключа'}`;
   const tog = (el, v) => { if (el) { el.classList.toggle('active', v); el.setAttribute('aria-checked', String(v)); } };
-  tog(refs.gest, gesturesOn()); tog(refs.voice, voiceOn()); tog(refs.notify, notifyOn()); tog(refs.bgplay, streamsOn()); tog(refs.lowp, lowPower()); tog(refs.livebg, liveBg()); tog(refs.board, !hiddenFromBoard());
+  tog(refs.gest, gesturesOn()); tog(refs.voice, voiceOn()); tog(refs.notify, notifyOn()); tog(refs.bgplay, streamsOn()); tog(refs.lowp, lowPower()); tog(refs.livebg, liveBg()); tog(refs.board, !hiddenFromBoard()); tog(refs.discord, discordOn());
   $$('.swatch').forEach((c) => c.classList.toggle('active', c.dataset.id === getAccent()));
   if (refs.customSw) {
     const nt = getNeutral();
@@ -671,6 +673,7 @@ export function buildProfile(nick) {
   refs.gest = sw(async () => { await setGestures(!gesturesOn()); syncControls(); });
   refs.voice = sw(() => { setVoice(!voiceOn()); syncControls(); });
   refs.notify = sw(async () => { await setNotify(!notifyOn()); syncControls(); });
+  refs.discord = sw(async () => { await setDiscord(!discordOn()); syncControls(); });
   refs.bgplay = sw(() => { setStreams(!streamsOn()); syncControls(); toast(streamsOn() ? 'Готово: выключите экран — музыка продолжит играть' : 'Фоновый режим выключен'); });
   refs.board = sw(async () => { await setHidden(!hiddenFromBoard()); syncControls(); if (!hiddenFromBoard()) pushCard(true); setTimeout(() => loadBoard(true), 1800); });
   refs.boardList = h('div', { class: 'lb-list' });
@@ -731,6 +734,11 @@ export function buildProfile(nick) {
       h('div', { class: 'set-group bg-beta' }, h('div', { class: 'set-card' },
         row('Слушать в фоне с выключенным экраном', 'Бета: работает не у всех и не со всеми треками. Полный трек переключается на звук, когда вы гасите экран. Из России — с VPN', refs.bgplay, null, 'moon'),
         row('Проверить фон', 'Покажет, что работает на вашем телефоне и в вашей сети', h('span', { class: 'chev', text: '›' }), runBgCheck, 'shield'))),
+      group('Приложение',
+        row('Установить как приложение', standalone() ? 'Уже установлено — вы в приложении' : 'Своя иконка и отдельное окно. Покажу, куда нажать — в Яндекс Браузере, Chrome, Edge и на телефоне', chev(), () => openInstall(false), 'install'),
+        ...(discordPossible() && (discordReady() || isDev(nick)) ? [
+          row('Статус в Discord', 'Друзья в Discord увидят «Слушает MKW Music»: трек, исполнителя, обложку и время', refs.discord, null, 'gamepad'),
+          row('Как подключить Discord', 'Маленький помощник для компьютера и проверка, что всё работает', chev(), showDiscordGuide, 'note')] : [])),
       group('Внешний вид',
         h('div', { class: 'set-block' }, h('b', { text: 'Тема' }),
           h('div', { class: 'theme-cards' }, themeCard('auto', 'Авто'), themeCard('light', 'Светлая'), themeCard('dark', 'Тёмная'), themeCard('black', 'Чёрная'))),
@@ -748,9 +756,9 @@ export function buildProfile(nick) {
       group('Устройство',
         row('Оптимизация для слабых устройств', 'Отключает размытие и тяжёлые анимации', refs.lowp, null, 'rocket'),
         row('Жесты (бета)', 'Управление рукой через камеру, взмах ладонью — сменить трек', refs.gest, null, 'hand-open'),
-        row('Уведомления', 'Заявки в друзья и сообщения. Если приложение свёрнуто — уведомлением телефона', refs.notify, null, 'bell'),
+        row('Уведомления', 'Звонки, сообщения и заявки в друзья — уведомлением на телефон и компьютер, даже когда MKW закрыт', refs.notify, null, 'bell'),
         row('Какие жесты показывать', 'Список жестов и что они делают', chev(), showGestureGuide, 'hand-peace'),
-        row('Голосовое управление', voiceSupported() ? 'Скажите «МКВ» или «Музыка», потом команду: «МКВ, следующая»' : 'Этот браузер не поддерживает', refs.voice, null, 'mic'),
+        row('Голосовое управление', voiceSupported() ? 'Скажите «МКВ» или «Музыка», потом команду: «МКВ, следующая», «МКВ, включить Баста», «МКВ, позвони Лере»' : 'Этот браузер не поддерживает', refs.voice, null, 'mic'),
         row('Какие команды говорить', 'Все голосовые команды', chev(), showVoiceGuide, 'note')),
       group('Аккаунт',
         row('Изменить профиль', 'Фото, баннер, статус, витрина', chev(), editProfile, 'edit'),
@@ -767,6 +775,7 @@ export function buildProfile(nick) {
         h('ul', {}, KNOWN_ISSUES.map((t) => h('li', { text: t })))))));
 
   built = true;
+  if (!refs.voiceSync) { refs.voiceSync = true; window.addEventListener('mkw-voice', () => syncControls()); }
   swipeTabs(refs.pmain);
   requestAnimationFrame(() => placeLens(false));
   setTab(refs.tab || 'main');
