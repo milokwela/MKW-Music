@@ -2,9 +2,9 @@
 // даже когда MKW закрыт. Подписка этого устройства хранится в push/{uid} (до 6 устройств),
 // а отправляет уведомление наш Cloudflare Worker — подписки он читает от имени отправителя,
 // поэтому получить их могут только взаимные друзья.
-import { db, auth, app } from './firebase.js?v=0.29.2';
+import { db, auth, app } from './firebase.js?v=0.30.0';
 import { doc, getDoc, setDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
-import { RECOGNIZE_URL } from './shazam-config.js?v=0.29.2';
+import { RECOGNIZE_URL } from './shazam-config.js?v=0.30.0';
 
 const W = () => String(RECOGNIZE_URL || '').replace(/\/$/, '');
 const me = () => (auth.currentUser && auth.currentUser.uid) || '';

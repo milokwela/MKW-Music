@@ -1,10 +1,10 @@
-import { auth, db } from './firebase.js?v=0.29.2';
+import { auth, db } from './firebase.js?v=0.30.0';
 import {
   onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut,
   updatePassword, reauthenticateWithCredential, EmailAuthProvider, updateEmail,
 } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
 import { doc, setDoc, getDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
-import { normalizeNick, isValidNick, nickToEmail, emailToNick } from './utils.js?v=0.29.2';
+import { normalizeNick, isValidNick, nickToEmail, emailToNick } from './utils.js?v=0.30.0';
 
 const ERRORS = {
   'auth/invalid-credential': 'Неверный ник или пароль',

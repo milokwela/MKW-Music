@@ -1,23 +1,23 @@
 // Страница другого слушателя: баннер, фото, статус, значки, статистика, любимые исполнители и треки.
-import { $, h, trackRow, animateIn } from './ui.js?v=0.29.2';
-import * as player from './player.js?v=0.29.2';
-import { openTrackMenu } from './menu.js?v=0.29.2';
-import { getProfile } from './leaders.js?v=0.29.2';
-import { ACH, bannerCss, formatListened } from './profile.js?v=0.29.2';
-import { artistPic } from './artistpic.js?v=0.29.2';
-import { openArtist } from './artist.js?v=0.29.2';
-import { mi } from './icons2.js?v=0.29.2';
-import { plural } from './utils.js?v=0.29.2';
-import { openImage } from './viewer.js?v=0.29.2';
-import { isDev, devBadge, showDev, validFan, fanBadge } from './dev.js?v=0.29.2';
-import { friendState, addFriend, removeFriend, loadFriends, friendsLoaded, ONLINE_MS } from './friends.js?v=0.29.2';
-import { openChat } from './chat.js?v=0.29.2';
+import { $, h, trackRow, animateIn } from './ui.js?v=0.30.0';
+import * as player from './player.js?v=0.30.0';
+import { openTrackMenu } from './menu.js?v=0.30.0';
+import { getProfile } from './leaders.js?v=0.30.0';
+import { ACH, bannerCss, formatListened } from './profile.js?v=0.30.0';
+import { artistPic } from './artistpic.js?v=0.30.0';
+import { openArtist } from './artist.js?v=0.30.0';
+import { mi } from './icons2.js?v=0.30.0';
+import { plural } from './utils.js?v=0.30.0';
+import { openImage } from './viewer.js?v=0.30.0';
+import { isDev, devBadge, showDev, validFan, fanBadge } from './dev.js?v=0.30.0';
+import { friendState, addFriend, removeFriend, loadFriends, friendsLoaded, ONLINE_MS } from './friends.js?v=0.30.0';
+import { openChat } from './chat.js?v=0.30.0';
 // удалить друга — двойное нажатие за 3 секунды, чтобы не убрать случайно
 let rmAsk = '';
 function confirmRemove(u) { if (rmAsk === u.uid) { rmAsk = ''; return true; } rmAsk = u.uid; setTimeout(() => { if (rmAsk === u.uid) rmAsk = ''; }, 3000); toast('Нажмите ещё раз, чтобы убрать из друзей'); return false; }
-import { avSrc } from './avatar.js?v=0.29.2';
-import { toast } from './ui.js?v=0.29.2';
-import { searchTracks } from './catalog.js?v=0.29.2';
+import { avSrc } from './avatar.js?v=0.30.0';
+import { toast } from './ui.js?v=0.30.0';
+import { searchTracks } from './catalog.js?v=0.30.0';
 
 export function seenText(seen) {
   const t = Number(seen) || 0;
@@ -70,7 +70,7 @@ function render(u, isMe) {
         u.bio ? h('div', { class: 'hero-bio', text: u.bio }) : null,
         u.now && isOnline(u.seen) ? h('div', { class: 'hero-now' }, mi('note'), h('span', { text: `Слушает: ${u.now}` })) : null,
         u.days ? h('div', { class: 'hero-since', text: `С MKW ${u.days} ${plural(u.days, 'день', 'дня', 'дней')}` }) : null,
-        h('div', { class: 'pbadges' }, ...(isDev(u.nick) ? [h('span', { class: 'pbadge dev-ach' }, mi('crown'), h('b', { text: 'Создатель MKW' }))] : []), ...(u.badges || []).filter((id) => ACH[id]).map((id) => h('span', { class: `pbadge${ACH[id].cls ? ` ${ACH[id].cls}` : ''}`, title: ACH[id].hint }, mi(ACH[id].i), h('b', { text: ACH[id].title })))))),
+        h('div', { class: 'pbadges' }, ...(u.badges || []).filter((id) => ACH[id]).map((id) => h('span', { class: `pbadge${ACH[id].cls ? ` ${ACH[id].cls}` : ''}`, title: ACH[id].hint }, mi(ACH[id].i), h('b', { text: ACH[id].title })))))),
     !isMe && u.uid ? (() => {
       const btn = h('button', { class: 'btn up-friend', type: 'button' });
       const chatBtn = h('button', { class: 'btn tonal up-friend', type: 'button', onclick: () => openChat(u.uid, u) }, mi('chat'), ' Написать');

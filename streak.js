@@ -1,11 +1,12 @@
 // MKW Огонёк: общайтесь с другом каждый день — и огонёк растёт.
-// Огонёк начинается, как только вы написали другу. День засчитывается, когда за день написали ОБА.
+// Огонёк заводится кнопкой «Завести MKW огонёк» в чате. День засчитывается, когда за день написали ОБА.
 // Хранится в документе чата в поле read (там можно хранить любые ключи — правила базы менять не нужно):
-//   read.f_<uid> — последний день, когда этот человек писал;  read.fs — день начала огонька;
-//   read.fx — огонёк потушен вручную (день);  read.fl — сколько дней было у погасшего огонька; read.fld — день, когда погас.
-import { db } from './firebase.js?v=0.29.2';
+//   read.g_<uid> — последний день, когда этот человек писал;  read.gs — день, когда завели огонёк;
+//   read.gx — огонёк потушен вручную (день);  read.gl — сколько дней было у погасшего огонька; read.gld — день, когда погас.
+// (0.30: старые огоньки на ключах f_/fs сброшены у всех — заводятся заново кнопкой)
+import { db } from './firebase.js?v=0.30.0';
 import { doc, setDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
-import { h, toast, openSheet, closeSheet } from './ui.js?v=0.29.2';
+import { h, toast, openSheet, closeSheet } from './ui.js?v=0.30.0';
 
 export const today = () => Math.floor((Date.now() - new Date().getTimezoneOffset() * 60000) / 864e5);
 const FIRE = '<path d="M12 2c.6 3.2-1 5-2.4 6.6C8.2 10.2 7 11.7 7 14a5 5 0 0 0 10 0c0-1.3-.4-2.4-1-3.4-.3 1.2-1 2-2 2.4.6-2.6-.3-5.2-2-7.4.1 1.7-.4 2.9-1.3 3.8C11 7.6 12.4 5 12 2zm0 20a8 8 0 0 1-8-8c0-3.7 2.2-6 3.7-7.6C9.4 4.6 10.6 3.3 10 0c5.3 2.3 7.3 6 7.6 8.3.5-.6.8-1.4.9-2.3C20.6 8 22 10.9 22 14a10 10 0 0 1-10 8z" fill="currentColor" transform="translate(0 1) scale(.92)"/>';
@@ -23,10 +24,10 @@ const levelOf = (n) => [...LEVELS].reverse().find((x) => n >= x.from) || LEVELS[
 export function streakOf(chat, me, other) {
   const r = (chat && chat.read) || {};
   const t = today();
-  const a = Number(r[`f_${me}`]) || 0, b = Number(r[`f_${other}`]) || 0;
-  const fs = Number(r.fs) || 0;
+  const a = Number(r[`g_${me}`]) || 0, b = Number(r[`g_${other}`]) || 0;
+  const fs = Number(r.gs) || 0;
   const both = Math.min(a, b);
-  if (!fs || (r.fx && Number(r.fx) >= fs)) return { state: 'none', lost: Number(r.fl) || 0, lostDay: Number(r.fld) || 0 };
+  if (!fs || (r.gx && Number(r.gx) >= fs)) return { state: 'none', lost: Number(r.gl) || 0, lostDay: Number(r.gld) || 0 };
   // оба писали вчера или сегодня — огонёк жив
   const alive = both >= t - 1 || (fs >= t - 1 && Math.max(a, b) >= t - 1);
   if (!alive) return { state: 'lost', n: Math.max(0, both - fs + 1), lostDay: Math.max(both, fs) + 1, lost: Math.max(0, both - fs + 1) };
@@ -42,16 +43,15 @@ export function fireIcon(st, big) {
   return el;
 }
 
-// при отправке сообщения: отмечаем свой день, при необходимости зажигаем новый огонёк
-export function streakPatch(chat, me, other) {
-  const st = streakOf(chat, me, other);
+// при отправке сообщения: только отмечаем свой день (огонёк сам не заводится — для этого кнопка)
+export function streakPatch(chat, me) {
+  return { [`g_${me}`]: today() };
+}
+
+// завести огонёк (или завести заново после того, как погас)
+export async function startStreak(cid, me) {
   const t = today();
-  const patch = { [`f_${me}`]: t };
-  if (st.state === 'none' || st.state === 'lost') {
-    patch.fs = t; patch.fx = 0;
-    if (st.state === 'lost' && st.lost) { patch.fl = st.lost; patch.fld = today(); }
-  }
-  return patch;
+  await setDoc(doc(db, 'chats', cid), { members: cid.split('_'), read: { gs: t, gx: 0, [`g_${me}`]: t } }, { merge: true });
 }
 
 // восстановить погасший огонёк: 3 раза в месяц
@@ -62,15 +62,15 @@ async function restore(cid, chat, me, other) {
   const r = chat.read || {};
   const y = today() - 1;
   // день разрыва считаем пройденным: оба «написали» вчера, начало огонька сохраняется
-  const fs = Number(r.fs) || y;
-  await setDoc(doc(db, 'chats', cid), { read: { [`f_${me}`]: Math.max(Number(r[`f_${me}`]) || 0, y), [`f_${other}`]: Math.max(Number(r[`f_${other}`]) || 0, y), fs: Math.min(fs, y), fx: 0 } }, { merge: true });
+  const fs = Number(r.gs) || y;
+  await setDoc(doc(db, 'chats', cid), { read: { [`g_${me}`]: Math.max(Number(r[`g_${me}`]) || 0, y), [`g_${other}`]: Math.max(Number(r[`g_${other}`]) || 0, y), gs: Math.min(fs, y), gx: 0 } }, { merge: true });
   try { localStorage.setItem(RKEY(), String(3 - restoresLeft() + 1)); } catch { /* ignore */ }
   toast('Огонёк восстановлен! Напишите друг другу сегодня');
   return true;
 }
 async function stop(cid, n) {
-  await setDoc(doc(db, 'chats', cid), { read: { fx: today(), fl: n || 0, fld: today() } }, { merge: true });
-  toast('Огонёк потушен. Напишите — и начнётся новый');
+  await setDoc(doc(db, 'chats', cid), { read: { gx: today(), gl: n || 0, gld: today() } }, { merge: true });
+  toast('Огонёк потушен. Завести новый можно кнопкой в чате');
 }
 
 export function openStreak(cid, chat, me, other, nick) {
@@ -80,10 +80,11 @@ export function openStreak(cid, chat, me, other, nick) {
     : st.state === 'lost' ? 'Огонёк погас'
     : st.state === 'grey' ? (st.mineToday ? `Ждём ответ от ${nick}` : 'Огонёк гаснет — напишите сегодня')
     : 'Сегодня огонёк горит';
-  const sub = st.state === 'none' ? `Напишите ${nick} — и огонёк зажжётся. Общайтесь каждый день, чтобы он рос`
-    : st.state === 'lost' ? `Было дней: ${st.lost || st.n || 0}. Можно восстановить (осталось ${restoresLeft()} из 3 в этом месяце) или начать заново — просто напишите`
+  const sub = st.state === 'none' ? `Заведите огонёк с ${nick} и общайтесь каждый день — он будет расти и менять цвет`
+    : st.state === 'lost' ? `Было дней: ${st.lost || st.n || 0}. Можно восстановить (осталось ${restoresLeft()} из 3 в этом месяце) или завести заново`
     : `${lvl.name} · дней подряд: ${st.n}. День засчитывается, когда пишете оба`;
   const btns = [];
+  if (st.state === 'none' || st.state === 'lost') btns.push(h('button', { class: 'btn', type: 'button', onclick: async () => { await startStreak(cid, me); closeSheet(); } }, st.state === 'lost' ? 'Завести заново' : 'Завести MKW огонёк'));
   if (st.state === 'lost' && (st.lost || st.n)) btns.push(h('button', { class: 'btn', type: 'button', onclick: async () => { if (await restore(cid, chat, me, other)) closeSheet(); } }, `Восстановить (${restoresLeft()} из 3)`));
   if (st.state === 'lit' || st.state === 'grey') btns.push(h('button', { class: 'btn tonal', type: 'button', onclick: async () => { if (!confirmStop.dataset.ok) { confirmStop.dataset.ok = '1'; confirmStop.textContent = 'Точно потушить? Нажмите ещё раз'; return; } await stop(cid, st.n); closeSheet(); } }, 'Потушить огонёк'));
   const confirmStop = btns[btns.length - 1] || h('i');
@@ -106,4 +107,29 @@ export function greyReminders(list, me, otherOf, nickOf, notify) {
     try { if (localStorage.getItem(k) === String(t)) continue; localStorage.setItem(k, String(t)); } catch { continue; }
     nickOf(o).then((nick) => notify(`Огонёк с ${nick} гаснет`, `Напишите ${nick} сегодня, чтобы сохранить ${st.n} ${st.n === 1 ? 'день' : 'дней'}`, `fire-${c.id}`));
   }
+}
+
+// анимация: огонёк зажёгся / стал ярче. Видят оба — каждый у себя, когда открывает чат (один раз на событие)
+export function fireEventKey(st, chat) {
+  if (!st || (st.state !== 'lit' && st.state !== 'grey')) return '';
+  const gs = Number(((chat && chat.read) || {}).gs) || 0;
+  return `${gs}:${st.state === 'lit' ? (st.level || LEVELS[0]).l : 0}`;
+}
+export function playFire(host, cid, st, chat, nick) {
+  const key = fireEventKey(st, chat); if (!key || !host) return;
+  const k = `mkw.fire.anim.${cid}`;
+  try { if (localStorage.getItem(k) === key) return; localStorage.setItem(k, key); } catch { return; }
+  const lit = st.state === 'lit';
+  const lvl = st.level || LEVELS[0];
+  const first = !lit || (lvl.l === 1 && st.n <= 1);
+  const title = !lit ? 'MKW огонёк заведён!' : first ? 'Огонёк зажёгся!' : `Новый уровень: ${lvl.name}`;
+  const sub = !lit ? `Напишите друг другу сегодня — и он загорится` : first ? `Вы с ${nick} общались весь день` : `${st.n} ${st.n % 10 === 1 && st.n % 100 !== 11 ? 'день' : st.n % 10 >= 2 && st.n % 10 <= 4 && (st.n % 100 < 10 || st.n % 100 >= 20) ? 'дня' : 'дней'} подряд с ${nick}`;
+  const ic = fireIcon(lit ? st : { state: 'lit', level: LEVELS[0] }, true);
+  const box = h('div', { class: `fire-pop l${lit ? lvl.l : 1}${lit ? '' : ' start'}`, role: 'status' },
+    h('div', { class: 'fp-glow' }), h('div', { class: 'fp-sparks' }, ...Array.from({ length: 12 }, (_, i) => h('i', { style: `--a:${i * 30}deg;--d:${(i % 3) * 0.06}s` }))),
+    h('div', { class: 'fp-ic' }, ic), h('b', { text: title }), h('small', { text: sub }));
+  host.appendChild(box);
+  const end = () => { box.classList.add('out'); setTimeout(() => box.remove(), 500); };
+  box.addEventListener('click', end);
+  setTimeout(end, 2600);
 }

@@ -198,3 +198,48 @@
 .pe2 .pe-pane[aria-hidden="false"] { visibility: visible; }
 .pe2.dragging .pe-pane { visibility: visible !important; transition: none !important; }
 .pe-side { background: #0a0a10 !important; }
+
+/* ---------- 0.30: фото — сначала подтвердить ---------- */
+.ch-pc { position: absolute; inset: 0; z-index: 30; display: grid; place-items: center; padding: 16px; background: rgba(0,0,0,.6); backdrop-filter: blur(6px); opacity: 0; transition: opacity .25s; }
+.ch-pc.show { opacity: 1; }
+.ch-pc-card { width: min(420px, 100%); display: grid; gap: 12px; padding: 16px; border-radius: 26px; background: var(--surface, #16141c); box-shadow: 0 24px 60px rgba(0,0,0,.55); transform: translateY(18px) scale(.96); transition: transform .32s var(--m3-emph, cubic-bezier(.2,.9,.3,1.05)); }
+.ch-pc.show .ch-pc-card { transform: none; }
+.ch-pc-t { font-size: 16px; }
+.ch-pc-card img { width: 100%; max-height: 52vh; object-fit: contain; border-radius: 18px; background: rgba(255,255,255,.04); }
+.ch-pc-cap { width: 100%; box-sizing: border-box; padding: 12px 14px; border-radius: 16px; border: 1px solid var(--outline, rgba(255,255,255,.14)); background: rgba(255,255,255,.05); color: inherit; font: inherit; }
+.ch-pc-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.ch-pc-btns .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+.ch-pc-btns .btn .mi { width: 18px; height: 18px; }
+
+/* ---------- 0.30: кнопка «Завести MKW огонёк» ---------- */
+.ch-firecta:empty { display: none; }
+.ch-firecta { padding: 6px 12px 0; display: flex; justify-content: center; }
+.ch-fire-go { display: inline-flex; align-items: center; gap: 8px; padding: 9px 16px 9px 12px; border-radius: 999px; border: 0; cursor: pointer; font: 700 13.5px var(--font, inherit); color: #fff;
+  background: linear-gradient(135deg, rgba(255,90,40,.28), rgba(255,180,40,.18)); box-shadow: inset 0 0 0 1px rgba(255,140,60,.45), 0 6px 20px rgba(255,80,20,.18); animation: ctaPulse 2.4s ease-in-out infinite; }
+.ch-fire-go .fire svg { width: 20px; height: 20px; }
+.ch-fire-go:active { transform: scale(.96); }
+.ch-fire-go:disabled { opacity: .6; }
+@keyframes ctaPulse { 50% { box-shadow: inset 0 0 0 1px rgba(255,160,60,.7), 0 6px 26px rgba(255,90,20,.38); } }
+
+/* ---------- 0.30: анимация огонька (видят оба) ---------- */
+.fire-pop { position: absolute; inset: 0; z-index: 25; display: grid; place-content: center; justify-items: center; gap: 6px; text-align: center; pointer-events: auto; background: radial-gradient(60% 45% at 50% 46%, color-mix(in srgb, var(--fc) 30%, transparent), rgba(0,0,0,.78) 75%); animation: fpIn .35s ease both; }
+.fire-pop.out { animation: fpOut .45s ease both; }
+.fire-pop.l1 { --fc: #ff3b30; } .fire-pop.l2 { --fc: #ff7a1a; } .fire-pop.l3 { --fc: #ffc21a; } .fire-pop.l4 { --fc: #ff3bd4; } .fire-pop.l5 { --fc: #5b7cff; } .fire-pop.l6 { --fc: #b9a5ff; }
+.fp-ic { position: relative; animation: fpBoom .9s cubic-bezier(.2,1.6,.4,1) both; }
+.fp-ic .fire svg { width: 120px; height: 120px; filter: drop-shadow(0 0 18px var(--fc)) drop-shadow(0 0 40px var(--fc)); animation: fireBob 1s ease-in-out infinite alternate; }
+.fire-pop.l6 .fp-ic .fire svg { filter: drop-shadow(0 0 3px #b9a5ff) drop-shadow(0 0 24px #7a5cff) drop-shadow(0 0 50px #7a5cff); }
+.fp-glow { position: absolute; left: 50%; top: 46%; width: 240px; height: 240px; margin: -120px 0 0 -120px; border-radius: 50%; background: radial-gradient(circle, color-mix(in srgb, var(--fc) 60%, transparent), transparent 65%); animation: fpRing 1.2s ease-out both; pointer-events: none; }
+.fp-sparks { position: absolute; left: 50%; top: 44%; width: 0; height: 0; pointer-events: none; }
+.fp-sparks i { position: absolute; width: 6px; height: 6px; margin: -3px; border-radius: 50%; background: #fff; box-shadow: 0 0 10px var(--fc), 0 0 4px #fff; transform: rotate(var(--a)) translateY(0); opacity: 0; animation: fpSpark 1.1s cubic-bezier(.1,.8,.3,1) both; animation-delay: calc(.25s + var(--d)); }
+.fire-pop b { font-size: 22px; font-weight: 800; color: #fff; text-shadow: 0 2px 16px var(--fc); animation: fpUp .5s .35s ease both; }
+.fire-pop small { font-size: 14px; color: rgba(255,255,255,.8); animation: fpUp .5s .5s ease both; max-width: 280px; }
+.fire-pop.start .fp-ic .fire svg { animation: fpLight 1.3s ease both, fireBob 1s 1.3s ease-in-out infinite alternate; }
+@keyframes fpIn { from { opacity: 0; } }
+@keyframes fpOut { to { opacity: 0; transform: scale(1.04); } }
+@keyframes fpBoom { 0% { transform: scale(0) translateY(40px); opacity: 0; } 60% { transform: scale(1.18) translateY(-6px); opacity: 1; } 100% { transform: none; } }
+@keyframes fpRing { 0% { transform: scale(.2); opacity: 0; } 40% { opacity: 1; } 100% { transform: scale(1.6); opacity: .35; } }
+@keyframes fpSpark { 0% { opacity: 1; transform: rotate(var(--a)) translateY(0) scale(1); } 100% { opacity: 0; transform: rotate(var(--a)) translateY(-120px) scale(.3); } }
+@keyframes fpUp { from { opacity: 0; transform: translateY(10px); } }
+@keyframes fpLight { 0% { filter: grayscale(1) brightness(.6); } 60% { filter: grayscale(0) brightness(1.6) drop-shadow(0 0 30px var(--fc)); } 100% { filter: drop-shadow(0 0 18px var(--fc)) drop-shadow(0 0 40px var(--fc)); } }
+@media (prefers-reduced-motion: reduce) { .fire-pop *, .fire-pop { animation-duration: .01s !important; } }
+.cl-text { margin: 8px 0 4px; font-size: 14px; line-height: 1.45; opacity: .9; }
