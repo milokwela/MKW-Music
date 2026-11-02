@@ -11,10 +11,12 @@ const net = require('net');
 const http = require('http');
 const path = require('path');
 
-const VERSION = '1.0.0';
+const VERSION = '1.0.1';
 const PORT = 47331;
 const ORIGINS = /^(https:\/\/(www\.)?mkwmusic\.ru|https:\/\/xn--80adpkcic0dzd\.xn--p1acf|http:\/\/(localhost|127\.0\.0\.1)(:\d+)?)$/;
-let clientId = process.env.MKW_DISCORD_ID || '';
+// Application ID приложения «MKW Music» в Discord (сайт тоже присылает его)
+let clientId = process.env.MKW_DISCORD_ID || '1566880916784029786';
+let noDiscordSaid = false, siteSaid = false, hsTimer = null;
 
 // ---------- Discord: локальный канал (named pipe на Windows, сокет на macOS/Linux) ----------
 function pipePaths() {
@@ -46,12 +48,20 @@ function connect() {
   const paths = pipePaths();
   let i = 0;
   const tryNext = () => {
-    if (i >= paths.length) { connecting = false; retry(); return; }
+    if (i >= paths.length) {
+      connecting = false;
+      if (!noDiscordSaid) { noDiscordSaid = true; log('Не вижу Discord. Откройте приложение Discord на компьютере (сайт discord.com не подойдёт).'); log('Если Discord запущен «от имени администратора» — запустите и MKW-Discord так же (или оба без этого).'); }
+      retry(); return;
+    }
     const p = paths[i++];
     const s = net.createConnection(p);
     s.once('connect', () => {
       connecting = false; sock = s; buf = Buffer.alloc(0);
+      noDiscordSaid = false;
+      log('Нашёл Discord, подключаюсь…');
       s.write(frame(0, { v: 1, client_id: clientId }));
+      clearTimeout(hsTimer);
+      hsTimer = setTimeout(() => { if (!ready && sock === s) { log('Discord не отвечает — пробую ещё раз. Если повторяется, перезапустите Discord (в трее → «Выйти из Discord»)'); s.destroy(); } }, 10000);
       s.on('data', onData);
       s.on('close', () => { if (ready) log('Discord закрылся — жду, когда откроется снова'); sock = null; ready = false; shown = null; retry(); });
       s.on('error', () => {});
@@ -71,7 +81,7 @@ function onData(chunk) {
     try { msg = JSON.parse(buf.slice(8, 8 + len).toString('utf8')); } catch { /* ignore */ }
     buf = buf.slice(8 + len);
     if (op === 1 && msg.evt === 'READY') {
-      ready = true;
+      ready = true; clearTimeout(hsTimer);
       const u = msg.data && msg.data.user;
       log(`Подключено к Discord${u ? ` (${u.global_name || u.username})` : ''}. Включите музыку в MKW Music`);
       schedule();
@@ -152,6 +162,7 @@ const server = http.createServer((req, res) => {
         if (sock) { try { sock.destroy(); } catch { /* ignore */ } } else connect();
       }
       clearTimeout(pauseTimer);
+      if (!siteSaid) { siteSaid = true; log(ready ? 'MKW Music на связи — статус появится, когда заиграет музыка' : 'MKW Music на связи. Жду Discord…'); }
       want = np && np.title && np.on !== false ? activityOf(np) : null;
       // на паузе больше 5 минут — убираем статус совсем
       if (np && np.title && !np.playing) pauseTimer = setTimeout(() => { want = null; schedule(); }, 5 * 60000);
@@ -175,7 +186,8 @@ server.listen(PORT, '127.0.0.1', () => {
   console.log('  2. Откройте mkwmusic.ru → Профиль → Настройки → «Статус в Discord» и включите');
   console.log('  3. Это окно можно свернуть. Закроете его — статус пропадёт');
   console.log('');
-  if (clientId) connect(); else log('Жду, когда откроется MKW Music…');
+  log('Ищу Discord…');
+  connect();
 });
 setInterval(() => { if (!sock && clientId) connect(); }, 15000);
 process.on('SIGINT', () => process.exit(0));
