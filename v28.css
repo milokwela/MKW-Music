@@ -126,7 +126,7 @@
 .pe2 .pe-tabs button { position: relative; z-index: 1; background: none !important; box-shadow: none !important; transition: color .3s; }
 .pe2 .pe-tabs button.on { color: #111 !important; }
 .pe-view { position: relative; overflow: hidden; transition: height .38s var(--m3-emph, ease); margin: 0 -16px; }
-.pe-track { display: flex; align-items: flex-start; transition: transform .42s var(--m3-emph, cubic-bezier(.2,.9,.3,1.05)); will-change: transform; }
+.pe-rail { gap: 0 !important; padding: 0 !important; border: 0 !important; background: none !important; display: flex; align-items: flex-start; transition: transform .42s var(--m3-emph, cubic-bezier(.2,.9,.3,1.05)); will-change: transform; }
 .pe2 .pe-pane { flex: 0 0 100%; min-width: 0; box-sizing: border-box; padding: 4px 16px 8px; display: flex !important; flex-direction: column; gap: 14px; animation: none !important; transition: opacity .3s; }
 .pe2 .pe-pane[aria-hidden="true"] { opacity: .35; }
 .pe2 .pe-frames, .pe2 .pe-banners, .pe2 .pe-pane > .pe-sec > .pe-badges:not(.pe-marks) { margin: 0 -16px; padding: 3px 16px 6px; }
@@ -184,3 +184,6 @@
 #sheet:has(.pe2) .chip.pe-opt { margin: 0 !important; }
 #sheet:has(.pe2) .chip.pe-opt .pe-sm { vertical-align: middle; align-self: center; }
 @media (max-width: 600px) { .pe-live .pbadges .pbadge:nth-child(n+3) { display: none; } }
+.pe2 .pe-add { min-width: 0; }
+.pe2 .pe-add .sheet-input { min-width: 0; width: auto; }
+.pe2 .pe-add .btn { flex: none; }
