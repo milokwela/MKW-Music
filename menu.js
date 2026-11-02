@@ -1,10 +1,11 @@
 // Меню действий над треком и выбор плейлиста.
-import { h, openSheet, closeSheet, sheetItem, askText, toast } from './ui.js?v=0.26.0';
-import * as store from './store.js?v=0.26.0';
-import { shareTrack } from './share.js?v=0.26.0';
-import { openArtistFor } from './artist.js?v=0.26.0';
-import * as player from './player.js?v=0.26.0';
-import { pickFriendFor } from './chat.js?v=0.26.0';
+import { h, openSheet, closeSheet, sheetItem, askText, toast } from './ui.js?v=0.27.0';
+import * as store from './store.js?v=0.27.0';
+import { shareTrack } from './share.js?v=0.27.0';
+import { openArtistFor, openArtist } from './artist.js?v=0.27.0';
+import { splitArtists } from './taste.js?v=0.27.0';
+import * as player from './player.js?v=0.27.0';
+import { pickFriendFor } from './chat.js?v=0.27.0';
 
 function fail(e) {
   console.error(e);
@@ -55,7 +56,9 @@ export function openTrackMenu(track, ctx = {}) {
     sheetItem('plus', 'В плейлист…', () => pickPlaylist(track)),
     sheetItem('user', 'Отправить другу', () => { closeSheet(); setTimeout(() => pickFriendFor(track), 250); }),
     sheetItem('share', 'Поделиться', () => { closeSheet(); shareTrack(track); }),
-    sheetItem('user', 'Перейти к исполнителю', () => { closeSheet(); openArtistFor(track.artist); }));
+    ...(splitArtists(track.artist).length > 1
+      ? splitArtists(track.artist).map((n) => sheetItem('user', `Исполнитель: ${n}`, () => { closeSheet(); openArtist(n); }))
+      : [sheetItem('user', 'Перейти к исполнителю', () => { closeSheet(); openArtistFor(track.artist); })]));
   if (ctx.playlistId) {
     box.appendChild(sheetItem('trash', 'Убрать из плейлиста', async () => {
       closeSheet();

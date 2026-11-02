@@ -1,11 +1,12 @@
 // Уведомления: заявки в друзья, принятые заявки, новые сообщения.
 // Внутри приложения — всплывашка и счётчик на вкладке «Профиль». Если приложение свёрнуто и вы разрешили —
 // системное уведомление телефона/компьютера (работает, пока приложение открыто в фоне).
-import { h, toast } from './ui.js?v=0.26.0';
-import { avSrc } from './avatar.js?v=0.26.0';
-import { watchFriends, stopWatchFriends, requestIds, onFriends, cardOf, watchPresence, stopPresence, friendsLoaded, loadFriends } from './friends.js?v=0.26.0';
-import { watchCalls, stopCalls } from './call.js?v=0.26.0';
-import { watchChats, stopChats, unreadCount, onChats, openChat, chatOpen } from './chat.js?v=0.26.0';
+import { h, toast } from './ui.js?v=0.27.0';
+import { avSrc } from './avatar.js?v=0.27.0';
+import { watchFriends, stopWatchFriends, requestIds, onFriends, cardOf, watchPresence, stopPresence, friendsLoaded, loadFriends } from './friends.js?v=0.27.0';
+import { watchCalls, stopCalls, warmCalls } from './call.js?v=0.27.0';
+import { enablePush, disablePush, pushSupported } from './push.js?v=0.27.0';
+import { watchChats, stopChats, unreadCount, onChats, openChat, chatOpen } from './chat.js?v=0.27.0';
 
 const KEY = 'mkw.notify';
 export const notifyOn = () => { try { return localStorage.getItem(KEY) !== '0'; } catch { return true; } };
@@ -17,6 +18,8 @@ export async function setNotify(v) {
     try { await Notification.requestPermission(); } catch { /* ignore */ }
   }
   if (v && 'Notification' in window && Notification.permission === 'denied') toast('Системные уведомления запрещены в настройках браузера. Внутри приложения они всё равно будут');
+  if (v && systemAllowed()) enablePush().then((ok) => { if (ok) toast('Уведомления включены: звонки и сообщения придут, даже когда MKW закрыт'); });
+  if (!v) disablePush();
   return v;
 }
 
@@ -61,7 +64,11 @@ export function startNotify() {
     system(nick, text, `chat-${c.id}`, () => openChat(uid, u));
   });
   // входящие звонки — слушаем всегда (это важнее настройки уведомлений)
-  (friendsLoaded() ? Promise.resolve() : loadFriends()).catch(() => {}).then(() => watchCalls((nick, many) => system(many ? 'Общий звонок' : 'Входящий звонок', `${nick} звонит вам в MKW`, 'call')));
+  (friendsLoaded() ? Promise.resolve() : loadFriends()).catch(() => {}).then(() => watchCalls((nick, many, id) => system(many ? 'Общий звонок' : 'Входящий звонок', `${nick} звонит вам в MKW`, `call-${id}`)));
+  // пуш на это устройство (если уведомления разрешены)
+  if (notifyOn() && systemAllowed() && pushSupported()) setTimeout(() => enablePush(), 4000);
+  warmCalls();
+  openFromLink(location.hash);
   paint();
 }
 export function stopNotify() { started = false; stopWatchFriends(); stopPresence(); stopChats(); stopCalls(); paint(); }
@@ -77,3 +84,22 @@ function showPop(u, nick, text, onClick) {
   const p = pop; setTimeout(() => { p.classList.remove('show'); setTimeout(() => { p.remove(); if (pop === p) pop = null; }, 400); }, 5000);
 }
 export { paint as paintNotify };
+
+// нажали на уведомление: #chat=<uid> — открыть переписку, #call=<id> — звонок сам появится на экране
+function openFromLink(hash) {
+  const m = String(hash || '').match(/#chat=([A-Za-z0-9]{10,64})/);
+  if (m) {
+    const uid = m[1];
+    try { history.replaceState(null, '', location.pathname + location.search); } catch { /* ignore */ }
+    const go = () => { if (!document.querySelector('#bottom-nav')) { setTimeout(go, 500); return; } cardOf(uid).then((u) => openChat(uid, u)).catch(() => {}); };
+    setTimeout(go, 600);
+  } else if (/#call=/.test(String(hash || ''))) {
+    try { history.replaceState(null, '', location.pathname + location.search); } catch { /* ignore */ }
+  }
+}
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.addEventListener('message', (e) => {
+    const d = e.data || {};
+    if (d.type === 'open' && d.url) { try { openFromLink(new URL(d.url).hash); } catch { /* ignore */ } }
+  });
+}

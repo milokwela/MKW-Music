@@ -1,12 +1,12 @@
 // Интерфейс плеера: мини-плеер, большой плеер, очередь, таймер сна.
-import { $, h, icon, setIcon, artEl, trackRow, openSheet, closeSheet, sheetItem, highlightCurrent, toast, emptyState } from './ui.js?v=0.26.0';
-import { openArtistFor } from './artist.js?v=0.26.0';
-import { renderCarousel, initCarousel } from './carousel.js?v=0.26.0';
-import * as player from './player.js?v=0.26.0';
-import * as store from './store.js?v=0.26.0';
-import { likeToggle, openTrackMenu } from './menu.js?v=0.26.0';
-import { formatTime } from './utils.js?v=0.26.0';
-import { youtubeEnabled } from './youtube.js?v=0.26.0';
+import { $, h, icon, setIcon, artEl, trackRow, openSheet, closeSheet, sheetItem, highlightCurrent, toast, emptyState } from './ui.js?v=0.27.0';
+import { openArtistFor, openArtist, artistLinks } from './artist.js?v=0.27.0';
+import { renderCarousel, initCarousel } from './carousel.js?v=0.27.0';
+import * as player from './player.js?v=0.27.0';
+import * as store from './store.js?v=0.27.0';
+import { likeToggle, openTrackMenu } from './menu.js?v=0.27.0';
+import { formatTime } from './utils.js?v=0.27.0';
+import { youtubeEnabled } from './youtube.js?v=0.27.0';
 
 const { queue, st } = player;
 let seeking = false;
@@ -101,7 +101,7 @@ function renderTrack() {
   $('#mini-artist').textContent = t.artist;
   $('#mini-art').replaceChildren(artEl(t));
   $('#fp-title').textContent = t.title;
-  $('#fp-artist').textContent = t.artist;
+  artistLinks($('#fp-artist'), t.artist);
   $('#full-player').classList.toggle('wave-mode', Boolean(t.wave));
   renderCarousel();
   $('#fp-dur').textContent = formatTime(st.duration);
@@ -211,7 +211,9 @@ export function initPlayerUI() {
   $('#fp-queue').addEventListener('click', openQueue);
   $('#fp-sleep').addEventListener('click', openSleep);
   $('#fp-like').addEventListener('click', () => { if (queue.current) likeToggle(queue.current); });
-  $('#fp-artist').addEventListener('click', () => { if (queue.current) openArtistFor(queue.current.artist); });
+  // у каждого исполнителя своя ссылка; нажали мимо имён — список исполнителей
+  $('#fp-artist').addEventListener('click', (e) => { const one = e.target.closest('.ar-link'); if (one) { openArtist(one.dataset.artist); return; } if (queue.current) openArtistFor(queue.current.artist); });
+  $('#fp-artist').addEventListener('keydown', (e) => { const one = e.target.closest('.ar-link'); if (one && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); e.stopPropagation(); openArtist(one.dataset.artist); } });
   $('#fp-more').addEventListener('click', () => { if (queue.current) openTrackMenu(queue.current); });
 
   const seek = $('#fp-seek');

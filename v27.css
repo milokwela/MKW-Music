@@ -1,0 +1,178 @@
+/* MKW Music 0.27 — установка приложения, Discord, звонки с экраном, исполнители по отдельности, рамка без кручения */
+
+/* ---------- радужная рамка: крутится только цвет, а не фото и не значок «в сети» ---------- */
+@property --fa { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
+.phero[data-frame="rainbow"] .hero-avatar, .lb-av[data-frame="rainbow"] {
+  animation: faSpin 5s linear infinite !important;
+  background: conic-gradient(from var(--fa), #ff4d6d, #ffb84d, #e6ff4d, #4dff88, #4dd8ff, #6b4dff, #ff4dd8, #ff4d6d) border-box !important;
+}
+.phero[data-frame="rainbow"] .hero-avatar img, .lb-av[data-frame="rainbow"] img { animation: none !important; }
+@keyframes faSpin { to { --fa: 360deg; } }
+.lowpower .phero[data-frame="rainbow"] .hero-avatar, .lowpower .lb-av[data-frame="rainbow"] { animation: none !important; }
+
+/* ---------- несколько исполнителей: у каждого своя ссылка ---------- */
+#fp-artist:has(.ar-link):hover { color: var(--on-surface-var); text-decoration-color: transparent; }
+#full-player.pal #fp-artist:has(.ar-link):hover { color: #fff; }
+.ar-link { cursor: pointer; border-radius: 6px; text-decoration: underline; text-decoration-color: transparent; text-underline-offset: 3px; transition: color .2s, text-decoration-color .2s; }
+.ar-link:hover, .ar-link:focus-visible { color: var(--primary); text-decoration-color: currentColor; outline: none; }
+#full-player.pal .ar-link:hover { color: #fff; text-decoration-color: #fff; }
+
+/* ---------- голос: «Кому позвонить? Скажите номер» ---------- */
+.vc-pick .fr-pick { width: 100%; }
+.vc-n { width: 34px; height: 34px; flex: none; display: grid; place-items: center; border-radius: 50%; background: var(--primary); color: var(--on-primary, #fff); font: 800 16px var(--font, inherit); box-shadow: 0 6px 16px color-mix(in srgb, var(--primary) 40%, transparent); }
+
+/* ---------- звонок: перетаскивание, показ экрана ---------- */
+.call-top { cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none; }
+.call-ui.dragging, .call-ui.dragging .call-top { cursor: grabbing; transition: none !important; }
+.call-grip { width: 4px; height: 18px; flex: none; border-radius: 2px; background: radial-gradient(circle, rgba(255,255,255,.45) 1.2px, transparent 1.6px) 0 0 / 4px 6px; opacity: .7; }
+.call-ui.placed { transform: translateY(-16px) scale(.98); opacity: 0; transition: transform .45s var(--m3-emph, ease), opacity .3s, width .35s, padding .35s, border-radius .35s; }
+.call-ui.placed.show { transform: none; opacity: 1; }
+.call-btn.share.on .mi { background: var(--primary); color: var(--on-primary, #fff); box-shadow: 0 8px 22px color-mix(in srgb, var(--primary) 45%, transparent); }
+.call-screen { position: relative; border-radius: 20px; overflow: hidden; background: #000; }
+.call-screen[hidden] { display: none; }
+.call-screen video { display: block; width: 100%; max-height: min(62vh, 560px); object-fit: contain; background: #000; }
+.cs-bar { position: absolute; left: 0; right: 0; bottom: 0; display: flex; align-items: center; gap: 10px; padding: 26px 12px 10px; background: linear-gradient(transparent, rgba(0,0,0,.7)); font-size: 13px; font-weight: 600; }
+.cs-bar span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cs-full { width: 36px; height: 36px; border: 0; border-radius: 50%; background: rgba(255,255,255,.16); color: #fff; display: grid; place-items: center; flex: none; }
+.cs-full .mi { width: 20px; height: 20px; }
+.call-ui.me-share .call-screen { background: color-mix(in srgb, var(--primary) 18%, rgba(255,255,255,.04)); }
+.cs-mine { display: flex; align-items: center; gap: 10px; padding: 10px 12px; font-size: 13.5px; font-weight: 600; }
+.cs-mine .mi { width: 22px; height: 22px; color: var(--primary); flex: none; }
+.cs-mine span { flex: 1; }
+.cs-mine .btn { padding: 7px 14px; font-size: 13px; }
+.call-ui.has-screen:not(.me-share):not(.mini) { width: min(980px, calc(100vw - 20px)); }
+.call-ui.has-screen:not(.me-share) .call-tiles { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.call-ui.has-screen:not(.me-share) .cl-tile { padding: 10px 4px 8px; gap: 8px; }
+.call-ui.has-screen:not(.me-share) .cl-tav { width: 40px; height: 40px; }
+.call-ui.mini .call-screen, .call-ui.mini .call-grip { display: none; }
+.cl-tile.sharing .cl-tav::after { opacity: 1; transform: scale(1); box-shadow: 0 0 0 3px #3ddc84, 0 0 18px rgba(61,220,132,.6); }
+@media (min-width: 700px) {
+  .call-ui:not(.has-screen) { width: 420px; }
+  .call-bar { gap: 26px; }
+}
+
+/* ---------- установка приложения ---------- */
+.inst { gap: 12px !important; }
+.inst-go { display: inline-flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 14px; font-size: 15px; }
+.inst-go .mi { width: 20px; height: 20px; }
+.inst-or { text-align: center; font-size: 12px; color: var(--on-surface-var); text-transform: uppercase; letter-spacing: .08em; }
+.inst-for { display: inline-flex; align-items: center; gap: 8px; align-self: flex-start; padding: 6px 12px; border-radius: 999px; background: color-mix(in srgb, var(--primary) 14%, transparent); color: var(--primary); font: 600 12.5px var(--font, inherit); }
+.inst-for .mi { width: 16px; height: 16px; }
+.inst-steps { margin: 0; padding: 0; list-style: none; counter-reset: st; display: grid; gap: 8px; }
+.inst-steps li { counter-increment: st; position: relative; padding: 10px 12px 10px 46px; border-radius: 16px; background: var(--surface-high, rgba(255,255,255,.05)); font-size: 14px; line-height: 1.4; }
+.inst-steps li::before { content: counter(st); position: absolute; left: 10px; top: 50%; translate: 0 -50%; width: 26px; height: 26px; display: grid; place-items: center; border-radius: 50%; background: var(--primary); color: var(--on-primary, #fff); font-weight: 800; font-size: 13px; }
+.inst-steps a { color: var(--primary); font-weight: 700; }
+.inst-more summary { cursor: pointer; font-size: 13.5px; font-weight: 600; color: var(--on-surface-var); padding: 4px 2px; }
+.inst-other { display: grid; gap: 8px; margin-top: 8px; }
+.inst-other b { display: block; font-size: 13px; }
+.inst-other small { display: block; font-size: 12.5px; color: var(--on-surface-var); line-height: 1.4; }
+.inst-ok { display: flex; align-items: center; gap: 14px; padding: 14px; border-radius: 20px; background: var(--surface-high, rgba(255,255,255,.05)); }
+.inst-ok img { width: 56px; height: 56px; border-radius: 16px; }
+.inst-ok b, .inst-ok small { display: block; }
+.inst-ok small { color: var(--on-surface-var); font-size: 13px; margin-top: 2px; }
+
+/* живая демонстрация — 8 секунд по кругу */
+.idemo { --d: 8s; position: relative; height: 200px; border-radius: 22px; overflow: hidden; isolation: isolate;
+  background: radial-gradient(120% 80% at 20% 0%, color-mix(in srgb, var(--primary) 40%, #101018), #0b0b12 70%); box-shadow: inset 0 0 0 1px rgba(255,255,255,.08); }
+.idemo img { display: block; }
+.idemo .id-page { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; height: 100%; color: #fff; }
+.idemo .id-page img { width: 34px; height: 34px; animation: idStar 4s ease-in-out infinite; }
+.idemo .id-page b { font-size: 13px; }
+.idemo .id-page span { width: 60%; height: 7px; border-radius: 4px; background: rgba(255,255,255,.12); }
+.idemo .id-page span + span { width: 42%; }
+@keyframes idStar { 50% { transform: rotate(12deg) scale(1.08); } }
+/* компьютер */
+.idemo.pc .id-win, .idemo.pc .id-app { position: absolute; left: 50%; top: 22px; width: min(78%, 400px); height: 150px; translate: -50% 0; border-radius: 12px; background: #15151f; box-shadow: 0 16px 40px rgba(0,0,0,.5), inset 0 0 0 1px rgba(255,255,255,.08); overflow: hidden; }
+.idemo.pc .id-win { animation: idWin var(--d) infinite; }
+.idemo.pc .id-bar { display: flex; align-items: center; gap: 5px; height: 28px; padding: 0 8px; background: #1f1f2c; }
+.idemo.pc .id-bar > i { width: 7px; height: 7px; border-radius: 50%; background: #ff5f57; }
+.idemo.pc .id-bar > i:nth-child(2) { background: #febc2e; } .idemo.pc .id-bar > i:nth-child(3) { background: #28c840; }
+.idemo .id-url { flex: 1; margin: 0 6px; height: 18px; border-radius: 9px; background: rgba(255,255,255,.08); color: rgba(255,255,255,.7); font-size: 10.5px; line-height: 18px; padding: 0 9px; }
+.idemo .id-ico { width: 22px; height: 22px; display: grid; place-items: center; border-radius: 7px; color: #fff; animation: idPulse var(--d) infinite; }
+.idemo .id-ico .mi { width: 15px; height: 15px; }
+.idemo.pc .id-page { height: calc(100% - 28px); }
+.idemo .id-menu { position: absolute; display: grid; gap: 2px; padding: 5px; border-radius: 10px; background: #262634; box-shadow: 0 10px 30px rgba(0,0,0,.5); font-size: 10.5px; color: rgba(255,255,255,.75); opacity: 0; animation: idMenu var(--d) infinite; z-index: 2; }
+.idemo .id-menu span { display: flex; align-items: center; gap: 5px; padding: 5px 8px; border-radius: 7px; white-space: nowrap; }
+.idemo .id-menu .mi { width: 12px; height: 12px; }
+.idemo .id-menu .hl { animation: idHl var(--d) infinite; color: #fff; font-weight: 700; }
+.idemo.pc .id-menu { right: 6px; top: 30px; transform-origin: top right; }
+.idemo.pc .id-app { opacity: 0; animation: idApp var(--d) infinite; }
+.idemo .id-appbar { display: flex; align-items: center; gap: 6px; height: 26px; padding: 0 9px; background: color-mix(in srgb, var(--primary) 55%, #15151f); color: #fff; font-size: 11px; font-weight: 700; }
+.idemo .id-appbar img { width: 14px; height: 14px; }
+.idemo.pc .id-app .id-page { height: calc(100% - 26px); }
+.idemo .id-desk { position: absolute; left: 16px; bottom: 12px; display: flex; flex-direction: column; align-items: center; gap: 3px; color: #fff; opacity: 0; animation: idDesk var(--d) infinite; }
+.idemo .id-desk img { width: 36px; height: 36px; border-radius: 10px; box-shadow: 0 6px 16px rgba(0,0,0,.45); }
+.idemo .id-desk small { font-size: 9.5px; }
+.idemo .id-cursor { position: absolute; left: 30%; top: 82%; width: 18px; height: 22px; z-index: 5; pointer-events: none;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 18 22'%3E%3Cpath d='M1 1v17l4.5-4.2 3 6.7 3-1.4-3-6.6H15z' fill='white' stroke='black' stroke-width='1.3' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat;
+  animation: idCursor var(--d) infinite; }
+@keyframes idPulse { 0%, 8% { background: transparent; box-shadow: none; } 14%, 26% { background: var(--primary); box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary) 35%, transparent); } 32%, 100% { background: transparent; box-shadow: none; } }
+@keyframes idMenu { 0%, 27% { opacity: 0; transform: scale(.9); } 31%, 50% { opacity: 1; transform: none; } 54%, 100% { opacity: 0; transform: scale(.96); } }
+@keyframes idHl { 0%, 36% { background: transparent; } 40%, 50% { background: var(--primary); color: var(--on-primary, #fff); } 54%, 100% { background: transparent; } }
+@keyframes idWin { 0%, 52% { opacity: 1; transform: none; } 58%, 92% { opacity: 0; transform: scale(.94); } 100% { opacity: 1; transform: none; } }
+@keyframes idApp { 0%, 54% { opacity: 0; transform: scale(.9); } 62%, 90% { opacity: 1; transform: none; } 96%, 100% { opacity: 0; } }
+@keyframes idDesk { 0%, 60% { opacity: 0; transform: scale(.4); } 66% { opacity: 1; transform: scale(1.15); } 70%, 90% { opacity: 1; transform: none; } 96%, 100% { opacity: 0; } }
+/* курсор: к значку → клик → к пункту меню → клик → в сторону */
+@keyframes idCursor {
+  0% { left: 26%; top: 86%; transform: none; }
+  20% { left: calc(50% + min(39%, 200px) - 26px); top: 30px; transform: none; }
+  24% { transform: scale(.82); } 27% { transform: none; }
+  40% { left: calc(50% + min(39%, 200px) - 100px); top: 84px; transform: none; }
+  45% { transform: scale(.82); } 48% { transform: none; }
+  52% { left: calc(50% + min(39%, 200px) - 100px); top: 84px; }
+  62%, 100% { left: 80%; top: 92%; }
+}
+/* телефон */
+.idemo.phone { height: 270px; }
+.idemo .id-phone { position: absolute; left: 50%; top: 14px; width: 140px; height: 244px; translate: -50% 0; border-radius: 24px; overflow: hidden; background: #15151f; box-shadow: 0 0 0 5px #06060a, 0 0 0 6px rgba(255,255,255,.14), 0 18px 40px rgba(0,0,0,.5); }
+.idemo.phone .id-page { animation: idWin var(--d) infinite; }
+.idemo.phone .id-ico { position: absolute; right: 8px; top: 8px; font-size: 16px; }
+.idemo.phone.ios .id-ico { right: auto; left: 50%; top: auto; bottom: 8px; translate: -50% 0; }
+.idemo.phone .id-menu { left: 6px; right: 6px; bottom: 6px; transform-origin: bottom center; }
+.idemo.phone .id-menu span { white-space: normal; line-height: 1.25; }
+.idemo .id-home { position: absolute; inset: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); align-content: start; gap: 12px 8px; padding: 22px 12px; opacity: 0; animation: idHome var(--d) infinite;
+  background: radial-gradient(120% 70% at 30% 0%, color-mix(in srgb, var(--primary) 45%, #1a1a28), #0e0e16); }
+.idemo .id-home > i { aspect-ratio: 1; border-radius: 9px; background: rgba(255,255,255,.14); }
+.idemo .id-home > i.a1 { background: #3b82f6; } .idemo .id-home > i.a3 { background: #22c55e; } .idemo .id-home > i.a5 { background: #f59e0b; }
+.idemo .id-new { display: flex; flex-direction: column; align-items: center; gap: 2px; color: #fff; animation: idNew var(--d) infinite; }
+.idemo .id-new img { width: 100%; aspect-ratio: 1; border-radius: 9px; box-shadow: 0 0 0 2px var(--primary), 0 6px 14px rgba(0,0,0,.5); }
+.idemo .id-new small { font-size: 8.5px; }
+.idemo .id-tap { position: absolute; width: 26px; height: 26px; margin: -13px 0 0 -13px; border-radius: 50%; background: rgba(255,255,255,.35); box-shadow: 0 0 0 2px rgba(255,255,255,.6); z-index: 5; opacity: 0; animation: idTap var(--d) infinite; }
+.idemo.phone.ios .id-tap { animation-name: idTapIos; }
+@keyframes idHome { 0%, 54% { opacity: 0; } 60%, 92% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes idNew { 0%, 62% { opacity: 0; transform: scale(.3); } 68% { opacity: 1; transform: scale(1.2); } 72%, 100% { opacity: 1; transform: none; } }
+@keyframes idTap {
+  0%, 10% { opacity: 0; left: 60%; top: 60%; }
+  16% { opacity: 1; left: 122px; top: 19px; transform: scale(1); } 22% { transform: scale(.7); } 26% { opacity: 0; left: 122px; top: 19px; transform: scale(1.4); }
+  36% { opacity: 0; left: 70px; top: 200px; } 40% { opacity: 1; left: 70px; top: 204px; transform: scale(1); } 45% { transform: scale(.7); } 49%, 100% { opacity: 0; left: 70px; top: 204px; transform: scale(1.4); }
+}
+@keyframes idTapIos {
+  0%, 10% { opacity: 0; left: 60%; top: 60%; }
+  16% { opacity: 1; left: 70px; top: 230px; transform: scale(1); } 22% { transform: scale(.7); } 26% { opacity: 0; left: 70px; top: 230px; transform: scale(1.4); }
+  36% { opacity: 0; left: 70px; top: 200px; } 40% { opacity: 1; left: 70px; top: 204px; transform: scale(1); } 45% { transform: scale(.7); } 49%, 100% { opacity: 0; left: 70px; top: 204px; transform: scale(1.4); }
+}
+@media (prefers-reduced-motion: reduce) { .idemo * { animation-duration: 16s !important; } }
+/* в режиме для слабых устройств анимации выключены, но демонстрация — это инструкция, её оставляем */
+.lowpower .idemo *, .lowpower .idemo *::before, .lowpower .idemo *::after { animation-duration: 8s !important; animation-iteration-count: infinite !important; }
+.lowpower .idemo .id-page img { animation: none !important; }
+
+/* ---------- Discord ---------- */
+.dc { gap: 12px !important; }
+.dc-prev { padding: 12px; border-radius: 18px; background: #2b2d31; color: #f2f3f5; }
+.dc-prev > small { display: block; font-size: 11.5px; font-weight: 800; letter-spacing: .02em; color: #b5bac1; margin: 0 0 8px; }
+.dc-card { display: flex; align-items: center; gap: 12px; }
+.dc-card img { width: 60px; height: 60px; border-radius: 10px; }
+.dc-card > div { flex: 1; min-width: 0; display: grid; gap: 3px; }
+.dc-card b { font-size: 14px; }
+.dc-card span { font-size: 12.5px; color: #b5bac1; }
+.dc-card > div > i { display: block; height: 4px; border-radius: 2px; background: rgba(255,255,255,.15); margin-top: 5px; overflow: hidden; }
+.dc-card > div > i > i { display: block; height: 100%; width: 38%; background: #fff; border-radius: 2px; animation: dcBar 6s linear infinite; }
+@keyframes dcBar { from { width: 10%; } to { width: 90%; } }
+.dc-warn { margin: 0; padding: 10px 12px; border-radius: 14px; background: rgba(255,184,77,.12); color: #ffcf80; font-size: 13px; }
+.dc-status { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 14px; background: var(--surface-high, rgba(255,255,255,.05)); font-size: 13.5px; font-weight: 600; }
+.dc-dot { width: 10px; height: 10px; border-radius: 50%; background: #9aa0a6; flex: none; }
+.dc-status[data-ok="none"] .dc-dot { background: #ff5f57; }
+.dc-status[data-ok="helper"] .dc-dot { background: #febc2e; }
+.dc-status[data-ok="all"] .dc-dot { background: #3ddc84; box-shadow: 0 0 10px #3ddc84; }
+.dc-dl { display: inline-flex; align-items: center; justify-content: center; gap: 8px; text-decoration: none; }
+.dc-dl .mi { width: 18px; height: 18px; }

@@ -36,3 +36,31 @@ self.addEventListener('fetch', (e) => {
     })());
   }
 });
+
+// ---------- пуш-уведомления: звонки и сообщения, даже когда MKW закрыт ----------
+self.addEventListener('push', (e) => {
+  let d = {};
+  try { d = e.data ? e.data.json() : {}; } catch { d = { title: 'MKW Music', body: e.data ? e.data.text() : '' }; }
+  e.waitUntil((async () => {
+    const wins = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    // приложение открыто на экране — звонок и сообщение и так всплывут внутри
+    if (d.kind !== 'missed' && wins.some((c) => c.visibilityState === 'visible' && c.focused)) return;
+    const call = d.kind === 'call';
+    await self.registration.showNotification(d.title || 'MKW Music', {
+      body: d.body || '', tag: d.tag || d.kind || 'mkw', renotify: d.kind !== 'missed', silent: d.kind === 'missed',
+      icon: 'ic5-192.png', badge: 'fav-96.png', data: { url: d.url || './' }, timestamp: d.at || Date.now(),
+      requireInteraction: call, vibrate: call ? [400, 200, 400, 200, 400, 200, 400] : [150],
+      actions: call ? [{ action: 'open', title: 'Ответить' }] : [],
+    });
+  })());
+});
+self.addEventListener('notificationclick', (e) => {
+  e.notification.close();
+  const url = new URL((e.notification.data && e.notification.data.url) || './', self.registration.scope).href;
+  e.waitUntil((async () => {
+    const wins = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    const w = wins.find((c) => c.url.startsWith(self.registration.scope));
+    if (w) { await w.focus().catch(() => {}); w.postMessage({ type: 'open', url }); return; }
+    await self.clients.openWindow(url);
+  })());
+});

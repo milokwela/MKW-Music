@@ -1,0 +1,48 @@
+# Сборка помощника MKW Discord (статус «Слушает MKW Music» в Discord) в один файл MKW-Discord.exe
+# и выкладка в Releases → discord-helper. Запускается сама, когда меняется папка discord/, и вручную.
+name: MKW Discord helper
+
+on:
+  push:
+    branches: [main]
+    paths: ['discord/**', '.github/workflows/discord-helper.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Собрать MKW-Discord.exe
+        shell: pwsh
+        working-directory: discord
+        run: |
+          node --experimental-sea-config sea-config.json
+          node -e "require('fs').copyFileSync(process.execPath, 'MKW-Discord.exe')"
+          $st = Get-ChildItem 'C:\Program Files (x86)\Windows Kits\10\bin' -Recurse -Filter signtool.exe -ErrorAction SilentlyContinue | Where-Object { $_.FullName -match 'x64' } | Select-Object -First 1
+          if ($st) { & $st.FullName remove /s MKW-Discord.exe }
+          npx --yes postject@1.0.0-alpha.6 MKW-Discord.exe NODE_SEA_BLOB sea-prep.blob --sentinel-fuse NODE_SEA_FUSE_fce680ab2cc467b6e072b8b5df1996b2
+      - name: Проверить, что запускается
+        shell: pwsh
+        working-directory: discord
+        run: |
+          $p = Start-Process .\MKW-Discord.exe -PassThru -WindowStyle Hidden
+          Start-Sleep -Seconds 3
+          $r = Invoke-RestMethod http://127.0.0.1:47331/ping
+          Stop-Process -Id $p.Id -Force
+          if (-not $r.ok) { throw 'помощник не отвечает' }
+          Write-Host "OK: $($r.app) $($r.v)"
+      - name: Выложить в Releases
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view discord-helper 2>$null | Out-Null
+          if ($LASTEXITCODE -ne 0) { gh release create discord-helper --title 'MKW Discord' --notes 'Помощник для статуса «Слушает MKW Music» в Discord. Windows: скачайте MKW-Discord.exe и запустите. macOS/Linux: node mkw-discord.js' }
+          gh release upload discord-helper discord/MKW-Discord.exe discord/mkw-discord.js --clobber

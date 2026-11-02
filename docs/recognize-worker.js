@@ -10,6 +10,9 @@
 // Если заданы ACR_*, используется ACRCloud, иначе AudD. Ответ приводится к одному виду.
 // GET /lyrics?artist=&title=&dur=  — тексты песен (NetEase с таймингами, Genius без), кэш на сутки.
 // GET /artist?name=  — фото исполнителя и число слушателей (Deezer), кэш на неделю.
+// POST /stt   — голосовые команды для браузеров без своего распознавания. Нужна привязка Workers AI с именем AI.
+// POST /push  — уведомления о звонках и сообщениях. Нужен секрет VAPID_SEED (любая длинная случайная строка).
+// GET /vapid  — публичный ключ для подписки на уведомления.
 const json = (obj, status, cors) => new Response(JSON.stringify(obj), { status, headers: { ...cors, 'Content-Type': 'application/json' } });
 
 async function hmacSha1Base64(secret, data) {
@@ -423,10 +426,134 @@ async function turn(env) {
   return new Response(JSON.stringify({ iceServers: ice }), { headers: head });
 }
 
+// ---------- Голосовое управление для браузеров без своего распознавания (Яндекс Браузер, Opera, Firefox) ----------
+// Нужна привязка Workers AI: Settings -> Bindings -> Add -> Workers AI, имя AI. Бесплатно — несколько тысяч фраз в день.
+async function stt(request, env, cors) {
+  if (!env.AI) return json({ error: 'no-ai' }, 501, cors);
+  const buf = new Uint8Array(await request.arrayBuffer());
+  if (buf.length < 2000 || buf.length > 700000) return json({ error: 'size' }, 400, cors);
+  let bin = '';
+  for (let i = 0; i < buf.length; i += 0x8000) bin += String.fromCharCode.apply(null, buf.subarray(i, i + 0x8000));
+  try {
+    const r = await env.AI.run('@cf/openai/whisper-large-v3-turbo', {
+      audio: btoa(bin), task: 'transcribe', language: 'ru',
+      initial_prompt: 'МКВ, следующая. Музыка, громче. МКВ, включить Баста. МКВ, позвони Лере. Пауза. Лайк. Второй.',
+    });
+    return json({ text: String((r && r.text) || '').trim() }, 200, cors);
+  } catch (e) {
+    return json({ error: 'ai', detail: String(e && e.message || e).slice(0, 200) }, 502, cors);
+  }
+}
+
+// ---------- Web Push: звонки и сообщения приходят уведомлением, даже когда MKW закрыт ----------
+// Нужен секрет VAPID_SEED — любая длинная случайная строка (придумайте сами, 30+ символов).
+// Из неё здесь вычисляется пара ключей VAPID; публичный ключ отдаёт GET /vapid.
+const b64u = (u8) => { let s = ''; u8.forEach((b) => { s += String.fromCharCode(b); }); return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); };
+const b64uDec = (str) => { const s = atob(String(str).replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((String(str).length + 3) % 4)); return Uint8Array.from(s, (c) => c.charCodeAt(0)); };
+const cat = (...a) => { const o = new Uint8Array(a.reduce((n, x) => n + x.length, 0)); let i = 0; for (const x of a) { o.set(x, i); i += x.length; } return o; };
+const EC = {
+  p: 0xffffffff00000001000000000000000000000000ffffffffffffffffffffffffn,
+  n: 0xffffffff00000000ffffffffffffffffbce6faada7179e84f3b9cac2fc632551n,
+  gx: 0x6b17d1f2e12c4247f8bce6e563a440f277037d812deb33a0f4a13945d898c296n,
+  gy: 0x4fe342e2fe1a7f9b8ee7eb4a7c0f9e162bce33576b315ececbb6406837bf51f5n,
+};
+const md = (a) => ((a % EC.p) + EC.p) % EC.p;
+function inv(a) { let r0 = md(a), r1 = EC.p, s0 = 1n, s1 = 0n; while (r1) { const q = r0 / r1; [r0, r1] = [r1, r0 - q * r1]; [s0, s1] = [s1, s0 - q * s1]; } return md(s0); }
+function padd(P, Q) {
+  if (!P) return Q; if (!Q) return P;
+  const [x1, y1] = P, [x2, y2] = Q;
+  let l;
+  if (x1 === x2) { if (md(y1 + y2) === 0n) return null; l = md(md(3n * x1 * x1 - 3n) * inv(2n * y1)); }
+  else l = md(md(y2 - y1) * inv(x2 - x1));
+  const x3 = md(l * l - x1 - x2);
+  return [x3, md(l * (x1 - x3) - y1)];
+}
+function pmul(k, P) { let R = null, A = P; while (k > 0n) { if (k & 1n) R = padd(R, A); A = padd(A, A); k >>= 1n; } return R; }
+const big32 = (v) => { const o = new Uint8Array(32); for (let i = 31; i >= 0; i--) { o[i] = Number(v & 0xffn); v >>= 8n; } return o; };
+let vapidCache = null;
+async function vapidKeys(env) {
+  const seed = String(env.VAPID_SEED || '');
+  if (seed.length < 16) return null;
+  if (vapidCache && vapidCache.seed === seed) return vapidCache;
+  const h = new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(`mkw-vapid:${seed}`)));
+  const d = BigInt(`0x${[...h].map((b) => b.toString(16).padStart(2, '0')).join('')}`) % (EC.n - 1n) + 1n;
+  const [x, y] = pmul(d, [EC.gx, EC.gy]);
+  const X = big32(x), Y = big32(y);
+  const key = await crypto.subtle.importKey('jwk', { kty: 'EC', crv: 'P-256', x: b64u(X), y: b64u(Y), d: b64u(big32(d)), ext: true }, { name: 'ECDSA', namedCurve: 'P-256' }, false, ['sign']);
+  vapidCache = { seed, key, pub: b64u(cat(new Uint8Array([4]), X, Y)) };
+  return vapidCache;
+}
+async function vapidHeader(endpoint, v) {
+  const te = new TextEncoder();
+  const enc = (o) => b64u(te.encode(JSON.stringify(o)));
+  const unsigned = `${enc({ typ: 'JWT', alg: 'ES256' })}.${enc({ aud: new URL(endpoint).origin, exp: Math.floor(Date.now() / 1000) + 12 * 3600, sub: 'mailto:push@mkwmusic.ru' })}`;
+  const sig = new Uint8Array(await crypto.subtle.sign({ name: 'ECDSA', hash: 'SHA-256' }, v.key, te.encode(unsigned)));
+  return `vapid t=${unsigned}.${b64u(sig)}, k=${v.pub}`;
+}
+async function hmac(key, data) {
+  const k = await crypto.subtle.importKey('raw', key, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  return new Uint8Array(await crypto.subtle.sign('HMAC', k, data));
+}
+// шифрование по RFC 8291 (aes128gcm): прочитать уведомление может только устройство получателя
+async function encryptPush(sub, text) {
+  const te = new TextEncoder();
+  const uaPub = b64uDec(sub.p256dh), authSecret = b64uDec(sub.auth);
+  const kp = await crypto.subtle.generateKey({ name: 'ECDH', namedCurve: 'P-256' }, true, ['deriveBits']);
+  const asPub = new Uint8Array(await crypto.subtle.exportKey('raw', kp.publicKey));
+  const uaKey = await crypto.subtle.importKey('raw', uaPub, { name: 'ECDH', namedCurve: 'P-256' }, false, []);
+  const shared = new Uint8Array(await crypto.subtle.deriveBits({ name: 'ECDH', public: uaKey }, kp.privateKey, 256));
+  const prkKey = await hmac(authSecret, shared);
+  const ikm = (await hmac(prkKey, cat(te.encode('WebPush: info\0'), uaPub, asPub, new Uint8Array([1])))).slice(0, 32);
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const prk = await hmac(salt, ikm);
+  const cek = (await hmac(prk, cat(te.encode('Content-Encoding: aes128gcm\0'), new Uint8Array([1])))).slice(0, 16);
+  const nonce = (await hmac(prk, cat(te.encode('Content-Encoding: nonce\0'), new Uint8Array([1])))).slice(0, 12);
+  const aes = await crypto.subtle.importKey('raw', cek, 'AES-GCM', false, ['encrypt']);
+  const ct = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv: nonce }, aes, cat(te.encode(text), new Uint8Array([2]))));
+  const head = new Uint8Array(21);
+  head.set(salt, 0); new DataView(head.buffer).setUint32(16, 4096); head[20] = 65;
+  return cat(head, asPub, ct);
+}
+// только настоящие сервисы уведомлений браузеров
+const PUSH_HOSTS = /(^|\.)(fcm\.googleapis\.com|android\.googleapis\.com|push\.services\.mozilla\.com|notify\.windows\.com|push\.apple\.com)$/;
+const fsStr = (f, k) => (f && f[k] && f[k].stringValue) || '';
+async function push(request, env, cors) {
+  const v = await vapidKeys(env);
+  if (!v) return json({ error: 'no-vapid' }, 501, cors);
+  const tok = (request.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '');
+  let b;
+  try { b = await request.json(); } catch { return json({ error: 'bad' }, 400, cors); }
+  const to = String(b.to || ''), project = String(b.project || '');
+  if (!tok || !/^[A-Za-z0-9]{10,64}$/.test(to) || !/^[a-z0-9-]{4,40}$/.test(project)) return json({ error: 'bad' }, 400, cors);
+  // подписки получателя читаем от имени отправителя — правила Firestore пускают только взаимных друзей
+  const r = await fetch(`https://firestore.googleapis.com/v1/projects/${project}/databases/(default)/documents/push/${to}`, { headers: { Authorization: `Bearer ${tok}` } });
+  if (r.status === 404) return json({ sent: 0 }, 200, cors);
+  if (!r.ok) return json({ error: 'denied' }, 403, cors);
+  const d = await r.json();
+  const vals = (((d.fields || {}).subs || {}).arrayValue || {}).values || [];
+  const subs = vals.map((x) => { const f = (x.mapValue || {}).fields || {}; return { endpoint: fsStr(f, 'endpoint'), p256dh: fsStr(f, 'p256dh'), auth: fsStr(f, 'auth') }; })
+    .filter((s) => { try { const u = new URL(s.endpoint); return u.protocol === 'https:' && PUSH_HOSTS.test(u.hostname) && s.p256dh && s.auth; } catch { return false; } })
+    .slice(0, 6);
+  const kind = ['call', 'missed', 'msg'].includes(b.kind) ? b.kind : 'msg';
+  const text = JSON.stringify({ kind, title: String(b.title || 'MKW Music').slice(0, 60), body: String(b.body || '').slice(0, 160), tag: String(b.tag || kind).slice(0, 80), url: String(b.url || './').slice(0, 200), at: Date.now() });
+  let sent = 0;
+  await Promise.all(subs.map(async (s) => {
+    try {
+      const res = await fetch(s.endpoint, {
+        method: 'POST',
+        headers: { Authorization: await vapidHeader(s.endpoint, v), 'Content-Encoding': 'aes128gcm', 'Content-Type': 'application/octet-stream', TTL: kind === 'call' ? '45' : '86400', Urgency: kind === 'msg' ? 'normal' : 'high' },
+        body: await encryptPush(s, text),
+      });
+      if (res.ok) sent += 1;
+    } catch { /* устройство недоступно */ }
+  }));
+  return json({ sent, of: subs.length }, 200, cors);
+}
+
 export default {
   async fetch(request, env) {
     const path = new URL(request.url).pathname;
-    if (request.method === 'GET' && path === '/ping') return new Response(JSON.stringify({ ok: true, proxy: true, lyrics: true, bg: 3, ytsearch: 1, turn: 1 }), { headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
+    if (request.method === 'GET' && path === '/ping') return new Response(JSON.stringify({ ok: true, proxy: true, lyrics: true, bg: 3, ytsearch: 1, turn: 1, stt: env.AI ? 1 : 0, push: env.VAPID_SEED ? 1 : 0 }), { headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
     if (request.method === 'GET' && path === '/geo') return new Response(JSON.stringify({ country: (request.cf && request.cf.country) || '' }), { headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'no-store' } });
     if (request.method === 'GET' && path === '/proxy') return proxy(request, env);
     if (request.method === 'GET' && path === '/lyrics') return lyrics(request);
@@ -436,17 +563,20 @@ export default {
     if (request.method === 'GET' && path === '/bg') return bgAudio(request);
     if (request.method === 'GET' && path === '/ytsearch') return ytSearch(request);
     if (request.method === 'GET' && path === '/turn') return turn(env);
+    if (request.method === 'GET' && path === '/vapid') { const v = await vapidKeys(env); return new Response(JSON.stringify(v ? { key: v.pub } : { key: '' }), { status: v ? 200 : 501, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'max-age=3600' } }); }
     const origin = request.headers.get('Origin') || '';
     const list = String(env.ALLOWED_ORIGIN || '').split(',').map((s) => s.trim()).filter(Boolean);
     const ok = list.includes(origin) || origin.startsWith('http://localhost');
     const cors = {
       'Access-Control-Allow-Origin': ok ? origin : (list[0] || ''),
       'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
       'Vary': 'Origin',
     };
     if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
     if (request.method !== 'POST' || !ok) return new Response('forbidden', { status: 403, headers: cors });
+    if (path === '/stt') return stt(request, env, cors);
+    if (path === '/push') return push(request, env, cors);
     const acr = env.ACR_HOST && env.ACR_KEY && env.ACR_SECRET;
     if (!acr && !env.AUDD_TOKEN) return json({ status: 'error', error: { error_message: 'на сервере не задан ключ' } }, 500, cors);
     if (Number(request.headers.get('Content-Length') || 0) > 8 * 1024 * 1024) return json({ status: 'error', error: { error_message: 'файл слишком большой' } }, 413, cors);

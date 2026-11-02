@@ -1,17 +1,18 @@
 // Чат с друзьями. Писать можно только взаимным друзьям (проверяют и приложение, и правила Firestore).
 //   chats/{a_b}            — { members: [a, b], last: { from, text, at }, at, read: { uid: время } }   (a < b)
 //   chats/{a_b}/msgs/{id}  — { from, text, at, track? }
-import { db } from './firebase.js?v=0.26.0';
+import { db } from './firebase.js?v=0.27.0';
 import { doc, setDoc, addDoc, collection, query, where, orderBy, limit, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
-import { h, toast, openSheet, closeSheet } from './ui.js?v=0.26.0';
-import { openImage } from './viewer.js?v=0.26.0';
-import { mi } from './icons2.js?v=0.26.0';
-import * as player from './player.js?v=0.26.0';
-import { searchTracks } from './catalog.js?v=0.26.0';
-import { me, isFriend, cardOf, friendIds, friendCards, loadFriends, friendsLoaded } from './friends.js?v=0.26.0';
-import { avSrc } from './avatar.js?v=0.26.0';
-import { seenText, isOnline } from './userpage.js?v=0.26.0';
-import { startCall } from './call.js?v=0.26.0';
+import { h, toast, openSheet, closeSheet } from './ui.js?v=0.27.0';
+import { openImage } from './viewer.js?v=0.27.0';
+import { mi } from './icons2.js?v=0.27.0';
+import * as player from './player.js?v=0.27.0';
+import { searchTracks } from './catalog.js?v=0.27.0';
+import { me, isFriend, cardOf, friendIds, friendCards, loadFriends, friendsLoaded } from './friends.js?v=0.27.0';
+import { avSrc } from './avatar.js?v=0.27.0';
+import { seenText, isOnline } from './userpage.js?v=0.27.0';
+import { startCall, warmCalls } from './call.js?v=0.27.0';
+import { pushTo, myNick } from './push.js?v=0.27.0';
 
 export const chatId = (a, b) => [a, b].sort().join('_');
 const other = (c) => (c.members || []).find((x) => x !== me()) || '';
@@ -57,7 +58,11 @@ async function send(cid, text, track, img) {
   if (track) msg.track = { title: String(track.title).slice(0, 120), artist: String(track.artist).slice(0, 120) };
   if (img) msg.img = img;
   await addDoc(collection(db, 'chats', cid, 'msgs'), msg);
-  await setDoc(doc(db, 'chats', cid), { members: cid.split('_'), last: { from, text: (img && !msg.text ? 'Фото' : track && !msg.text ? `♪ ${msg.track.artist} — ${msg.track.title}` : msg.text).slice(0, 140), at }, at, read: { [from]: at } }, { merge: true });
+  const preview = (img && !msg.text ? 'Фото' : track && !msg.text ? `♪ ${msg.track.artist} — ${msg.track.title}` : msg.text).slice(0, 140);
+  await setDoc(doc(db, 'chats', cid), { members: cid.split('_'), last: { from, text: preview, at }, at, read: { [from]: at } }, { merge: true });
+  // пуш другу — придёт, даже если у него MKW закрыт (тот же тег, что и у уведомления внутри приложения, — без повторов)
+  const to = cid.split('_').find((x) => x !== from);
+  if (to) pushTo(to, 'msg', myNick(), preview, `chat-${cid}`, `./#chat=${from}`);
 }
 
 // фото: сжимаем до ~800 px JPEG, чтобы влезло в документ Firestore (без платного хранилища)
@@ -165,6 +170,7 @@ async function playTrack(t) {
 }
 
 export async function openChat(uid, card) {
+  warmCalls();
   if (!uid) return;
   if (!isFriend(uid)) { toast('Писать можно только друзьям. Дождитесь, пока заявку примут'); return; }
   const cid = chatId(me(), uid);
