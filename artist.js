@@ -1,14 +1,14 @@
 // Страница исполнителя: треки, слушать, перемешать, «не рекомендовать».
-import { searchTracks, mapItunes, mapDeezer } from './catalog.js?v=0.27.3';
-import { jsonp } from './jsonp.js?v=0.27.3';
-import { prefetchYouTubeIds } from './youtube.js?v=0.27.3';
-import { $, h, icon, trackRow, skeleton, animateIn, toast, openSheet, closeSheet, sheetItem } from './ui.js?v=0.27.3';
-import { openTrackMenu } from './menu.js?v=0.27.3';
-import * as player from './player.js?v=0.27.3';
-import { splitArtists, isArtistBlocked, blockArtist, unblockArtist, norm } from './taste.js?v=0.27.3';
-import { shuffled, plural } from './utils.js?v=0.27.3';
-import { artistPic } from './artistpic.js?v=0.27.3';
-import { mi } from './icons2.js?v=0.27.3';
+import { searchTracks, mapItunes, mapDeezer } from './catalog.js?v=0.27.4';
+import { jsonp } from './jsonp.js?v=0.27.4';
+import { prefetchYouTubeIds } from './youtube.js?v=0.27.4';
+import { $, h, icon, trackRow, skeleton, animateIn, toast, openSheet, closeSheet, sheetItem } from './ui.js?v=0.27.4';
+import { openTrackMenu } from './menu.js?v=0.27.4';
+import * as player from './player.js?v=0.27.4';
+import { splitArtists, isArtistBlocked, blockArtist, unblockArtist, norm } from './taste.js?v=0.27.4';
+import { shuffled, plural } from './utils.js?v=0.27.4';
+import { artistPic } from './artistpic.js?v=0.27.4';
+import { mi } from './icons2.js?v=0.27.4';
 
 let seq = 0;
 const infoCache = new Map();

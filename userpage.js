@@ -1,23 +1,23 @@
 // Страница другого слушателя: баннер, фото, статус, значки, статистика, любимые исполнители и треки.
-import { $, h, trackRow, animateIn } from './ui.js?v=0.27.3';
-import * as player from './player.js?v=0.27.3';
-import { openTrackMenu } from './menu.js?v=0.27.3';
-import { getProfile } from './leaders.js?v=0.27.3';
-import { ACH, bannerCss, formatListened } from './profile.js?v=0.27.3';
-import { artistPic } from './artistpic.js?v=0.27.3';
-import { openArtist } from './artist.js?v=0.27.3';
-import { mi } from './icons2.js?v=0.27.3';
-import { plural } from './utils.js?v=0.27.3';
-import { openImage } from './viewer.js?v=0.27.3';
-import { isDev, devBadge, showDev, validFan, fanBadge } from './dev.js?v=0.27.3';
-import { friendState, addFriend, removeFriend, loadFriends, friendsLoaded, ONLINE_MS } from './friends.js?v=0.27.3';
-import { openChat } from './chat.js?v=0.27.3';
+import { $, h, trackRow, animateIn } from './ui.js?v=0.27.4';
+import * as player from './player.js?v=0.27.4';
+import { openTrackMenu } from './menu.js?v=0.27.4';
+import { getProfile } from './leaders.js?v=0.27.4';
+import { ACH, bannerCss, formatListened } from './profile.js?v=0.27.4';
+import { artistPic } from './artistpic.js?v=0.27.4';
+import { openArtist } from './artist.js?v=0.27.4';
+import { mi } from './icons2.js?v=0.27.4';
+import { plural } from './utils.js?v=0.27.4';
+import { openImage } from './viewer.js?v=0.27.4';
+import { isDev, devBadge, showDev, validFan, fanBadge } from './dev.js?v=0.27.4';
+import { friendState, addFriend, removeFriend, loadFriends, friendsLoaded, ONLINE_MS } from './friends.js?v=0.27.4';
+import { openChat } from './chat.js?v=0.27.4';
 // удалить друга — двойное нажатие за 3 секунды, чтобы не убрать случайно
 let rmAsk = '';
 function confirmRemove(u) { if (rmAsk === u.uid) { rmAsk = ''; return true; } rmAsk = u.uid; setTimeout(() => { if (rmAsk === u.uid) rmAsk = ''; }, 3000); toast('Нажмите ещё раз, чтобы убрать из друзей'); return false; }
-import { avSrc } from './avatar.js?v=0.27.3';
-import { toast } from './ui.js?v=0.27.3';
-import { searchTracks } from './catalog.js?v=0.27.3';
+import { avSrc } from './avatar.js?v=0.27.4';
+import { toast } from './ui.js?v=0.27.4';
+import { searchTracks } from './catalog.js?v=0.27.4';
 
 export function seenText(seen) {
   const t = Number(seen) || 0;
