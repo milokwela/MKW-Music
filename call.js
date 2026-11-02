@@ -5,16 +5,20 @@
 // Каждый с каждым соединяется напрямую (при 4 людях — 6 соединений).
 // Чтобы звонок подключался сразу: звонящий готовит соединение заранее, пока у друга звонит телефон,
 // поэтому после «Принять» остаётся один короткий ответ.
-import { db } from './firebase.js?v=0.27.7';
+import { db } from './firebase.js?v=0.28.0';
 import { doc, setDoc, updateDoc, deleteDoc, addDoc, collection, query, where, limit, onSnapshot, arrayUnion, arrayRemove } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
-import { h, toast, openSheet, closeSheet } from './ui.js?v=0.27.7';
-import { mi } from './icons2.js?v=0.27.7';
-import { me, isFriend, friendIds, friendCards, cardOf } from './friends.js?v=0.27.7';
-import { avSrc } from './avatar.js?v=0.27.7';
-import { RECOGNIZE_URL } from './shazam-config.js?v=0.27.7';
-import { pushTo, myNick } from './push.js?v=0.27.7';
-import * as player from './player.js?v=0.27.7';
-import { getRingtone } from './ringtone.js?v=0.27.7';
+import { h, toast, openSheet, closeSheet } from './ui.js?v=0.28.0';
+import { mi } from './icons2.js?v=0.28.0';
+import { me, isFriend, friendIds, friendCards, cardOf } from './friends.js?v=0.28.0';
+import { avSrc } from './avatar.js?v=0.28.0';
+import { RECOGNIZE_URL } from './shazam-config.js?v=0.28.0';
+import { pushTo, myNick } from './push.js?v=0.28.0';
+import * as player from './player.js?v=0.28.0';
+import { getRingtone } from './ringtone.js?v=0.28.0';
+import { postCallEvent } from './chat.js?v=0.28.0';
+import * as store from './store.js?v=0.28.0';
+import { pickTrack } from './utils.js?v=0.28.0';
+import { enablePush } from './push.js?v=0.28.0';
 
 const MAX = 4;
 let ice = null, iceP = null;
@@ -103,6 +107,7 @@ async function newPeer(uid, sid) {
       if (cur.tries) cur.tries[uid] = 0;
       if (!entry.ready) {
         entry.ready = true;
+        if (cur.mix.length && offerer(me(), uid) === me()) sendMix(uid, { op: 'sync', list: cur.mix, i: cur.mixPlaying });
         // показ экрана включили, пока соединялись, — досылаем
         if (pc.getTransceivers().some((t) => !t.mid && t.sender && t.sender.track)) pc.onnegotiationneeded();
       }
@@ -170,6 +175,8 @@ async function onSig(m) {
       await pc.setLocalDescription(await pc.createAnswer());
       await gathered(pc);
       if (cur && cur.pcs.get(m.from) === e) await sendSig(m.from, 'answer', e.sid, pc.localDescription.sdp);
+    } else if (m.kind === 'mix') {
+      try { onMix(JSON.parse(m.sdp), m.from); } catch { /* ignore */ }
     } else if (m.kind === 'answer') {
       const e = cur.pcs.get(m.from);
       if (e && (e.sid === m.sid || !m.sid) && e.pc.signalingState === 'have-local-offer') await e.pc.setRemoteDescription({ type: 'answer', sdp: m.sdp });
@@ -322,10 +329,13 @@ function buildUi() {
   const mute = h('button', { class: 'call-btn', type: 'button', onclick: toggleMute }, mi('mic'), h('span', { text: 'Микрофон' }));
   const share = canShare() ? h('button', { class: 'call-btn share', type: 'button', onclick: startShare }, mi('screen'), h('span', { text: 'Экран' })) : null;
   const add = h('button', { class: 'call-btn', type: 'button', onclick: addPeople }, mi('person-add'), h('span', { text: 'Добавить' }));
+  const music = h('button', { class: 'call-btn mix', type: 'button', onclick: openMix }, mi('playlist'), h('span', { text: 'Музыка' }));
+  const mixbar = h('button', { class: 'call-mixbar', type: 'button', hidden: '', onclick: openMix });
+  const sec = h('div', { class: 'call-sec' }, mi('shield'), h('span', { text: 'Звонок зашифрован: голос и экран идут напрямую между вами' }));
   const end = h('button', { class: 'call-btn end', type: 'button', onclick: () => leave() }, mi('call-end'), h('span', { text: 'Завершить' }));
   const min = h('button', { class: 'call-min', type: 'button', 'aria-label': 'Свернуть', title: 'Свернуть', onclick: (e) => { e.stopPropagation(); box.classList.toggle('mini'); } }, h('i'));
   const top = h('div', { class: 'call-top', title: 'Перетащите, чтобы подвинуть окно' }, h('span', { class: 'call-grip' }), h('b', { text: 'Звонок MKW' }), status, min);
-  const box = h('div', { class: 'call-ui' }, top, screen, tiles, h('div', { class: 'call-bar' }, mute, share, add, end));
+  const box = h('div', { class: 'call-ui' }, top, screen, tiles, mixbar, h('div', { class: 'call-bar' }, mute, share, music, add, end), sec);
   box.addEventListener('click', (e) => { if (box.dataset.dragged) return; if (box.classList.contains('mini') && !e.target.closest('.call-btn, .call-min')) box.classList.remove('mini'); });
   document.body.appendChild(box);
   dragBox(box, top);
@@ -334,7 +344,7 @@ function buildUi() {
     if (p && window.innerWidth >= 700) requestAnimationFrame(() => placeBox(box, p.x * window.innerWidth, p.y * window.innerHeight));
   } catch { /* ignore */ }
   requestAnimationFrame(() => box.classList.add('show'));
-  return { box, status, tiles, screen, mute, share, add, end };
+  return { box, status, tiles, screen, mute, share, add, end, music, mixbar };
 }
 
 // «говорит» — обводка у плитки + таймер
@@ -430,7 +440,7 @@ function attach(id) {
 }
 
 async function begin(id, data) {
-  cur = { id, data, local: null, pcs: new Map(), offering: new Set(), muted: false, t0: 0, seen: new Set(), ever: new Set(data.in || []), joined: false, screen: null, sigQ: Promise.resolve() };
+  cur = { id, data, local: null, pcs: new Map(), offering: new Set(), muted: false, t0: 0, seen: new Set(), ever: new Set(data.in || []), joined: false, screen: null, sigQ: Promise.resolve(), mix: [], mixPlaying: -1 };
   setInCall(true);
   cur.ui = buildUi();
   iceServers().catch(() => {});
@@ -450,6 +460,7 @@ export async function startCall(uids) {
   if (cur) { toast('Вы уже в звонке'); cur.ui && cur.ui.box.classList.remove('mini'); return; }
   if (!uids.length || !uids.every(isFriend)) { toast('Звонить можно только друзьям'); return; }
   if (!window.RTCPeerConnection || !navigator.mediaDevices) { toast('Этот браузер не умеет звонить'); return; }
+  askNotify();
   const id = `${me()}_${Date.now().toString(36)}`;
   const data = { host: me(), members: [me(), ...uids], in: [me()], muted: {}, ping: { [me()]: Date.now() }, declined: [], at: Date.now() };
   try { await setDoc(doc(db, 'calls', id), data); }
@@ -477,6 +488,16 @@ export async function leave(reason) {
   if (c.data.host === me()) {
     (c.data.members || []).filter((x) => x !== me() && !c.ever.has(x) && !(c.data.declined || []).includes(x))
       .forEach((x) => pushTo(x, 'missed', 'Пропущенный звонок', `${myNick()} звонил(а) вам в MKW`, `call-${id}`, `./#chat=${me()}`));
+  }
+  // в переписку: «пропущенный», «отклонил», «звонок · N мин» (только звонок вдвоём)
+  const mem = c.data.members || [];
+  if (mem.length === 2) {
+    const other = mem.find((x) => x !== me());
+    if (c.t0 && !reason) postCallEvent(other, 'ended', Math.round((Date.now() - c.t0) / 1000));
+    else if (!c.t0 && c.data.host === me()) {
+      if ((c.data.declined || []).includes(other)) nickOf(other).then((u) => postCallEvent(other, 'declined', 0, u.nick || 'Друг'));
+      else postCallEvent(other, 'missed');
+    }
   }
   try {
     if (last) await deleteDoc(doc(db, 'calls', id));
@@ -616,4 +637,111 @@ export async function pickAndCall() {
     });
     return b;
   }));
+}
+
+// уведомления о звонках: просим разрешение при первом звонке (браузер разрешает спрашивать только по нажатию)
+function askNotify() {
+  try {
+    if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission().then((p) => { if (p === 'granted') enablePush(); });
+  } catch { /* ignore */ }
+}
+
+// ---------- «Музыка вместе»: общий альбом, пока идёт звонок ----------
+// Каждый добавляет песни из своих «Мне нравится», кнопка «Слушать вместе» включает их у всех сразу.
+// Песни передаются тем же каналом, что и звонок (не нужно ничего менять в базе).
+async function sendMix(to, op) {
+  if (!cur) return;
+  try { await addDoc(collection(db, 'calls', cur.id, 'sig'), { from: me(), to, kind: `mix|${Math.random().toString(36).slice(2, 8)}`, sdp: JSON.stringify(op).slice(0, 29000), at: Date.now() }); } catch { /* ignore */ }
+}
+function broadcastMix(op) { if (!cur) return; (cur.data.in || []).filter((x) => x !== me()).forEach((x) => sendMix(x, op)); }
+const slim = (t, by) => ({ ...pickTrack(t), by });
+function onMix(op, from) {
+  if (!cur || !op) return;
+  if (op.op === 'add' && Array.isArray(op.list)) {
+    const have = new Set(cur.mix.map((t) => t.id));
+    const fresh = op.list.filter((t) => t && t.id && !have.has(t.id));
+    cur.mix.push(...fresh);
+    if (fresh.length) nickOf(from).then((u) => toast(`${u.nick || 'Друг'} добавил(а) в общий альбом: ${fresh.length}`));
+  } else if (op.op === 'sync' && Array.isArray(op.list)) {
+    const have = new Set(cur.mix.map((t) => t.id));
+    cur.mix.push(...op.list.filter((t) => t && t.id && !have.has(t.id)));
+    if (op.i >= 0) playMix(op.i, false);
+  } else if (op.op === 'play') {
+    playMix(Number(op.i) || 0, false);
+    nickOf(from).then((u) => toast(`${u.nick || 'Друг'} включил(а) музыку для всех`));
+  } else if (op.op === 'stop') { player.pause(); cur.mixPlaying = -1; }
+  paintMix();
+}
+function playMix(i, tell) {
+  if (!cur || !cur.mix.length) return;
+  cur.mixPlaying = i;
+  cur.resume = false; // после звонка не включать то, что играло до него
+  player.playTracks(cur.mix, i);
+  if (player.getVolume() > 0.55) player.setVolume(0.55); // голос друга слышно поверх музыки
+  if (tell) broadcastMix({ op: 'play', i });
+  paintMix();
+}
+function paintMix() {
+  if (!cur || !cur.ui) return;
+  const t = player.queue.current;
+  const on = cur.mixPlaying >= 0 && t && cur.mix.some((x) => x.id === t.id);
+  cur.ui.mixbar.hidden = !cur.mix.length;
+  cur.ui.mixbar.replaceChildren(mi('playlist'), h('span', { text: on ? `Вместе: ${t.artist} — ${t.title}` : `Общий альбом · ${cur.mix.length} ${cur.mix.length === 1 ? 'песня' : cur.mix.length < 5 ? 'песни' : 'песен'}` }), h('i', { text: '›' }));
+  if (mixList) renderMixList();
+}
+player.onPlayer((ev) => { if (ev === 'track' && cur) paintMix(); });
+
+let mixList = null;
+function renderMixList() {
+  if (!mixList || !document.body.contains(mixList)) { mixList = null; return; }
+  const cur2 = player.queue.current;
+  mixList.replaceChildren(...(cur.mix.length ? cur.mix.map((t, i) => h('button', { type: 'button', class: `mix-row${cur2 && cur2.id === t.id ? ' on' : ''}`, onclick: () => playMix(i, true) },
+    h('img', { src: t.artwork || 'mkw-logo.png', alt: '', loading: 'lazy' }),
+    h('span', {}, h('b', { text: t.title }), h('small', { text: `${t.artist}${t.by ? ` · добавил(а) ${t.by}` : ''}` })),
+    mi(cur2 && cur2.id === t.id ? 'headphones' : 'play-circle'))) : [h('p', { class: 'profile-note', text: 'Пока пусто. Добавьте любимые песни — у друга они тоже появятся.' })]));
+}
+function openMix() {
+  if (!cur) return;
+  mixList = h('div', { class: 'mix-list' });
+  const addBtn = h('button', { class: 'btn tonal', type: 'button', onclick: pickLikes }, mi('heart'), ' Добавить из «Мне нравится»');
+  const playBtn = h('button', { class: 'btn', type: 'button', onclick: () => { if (!cur.mix.length) { toast('Сначала добавьте песни'); return; } playMix(0, true); closeSheet(); } }, mi('play-circle'), ' Слушать вместе');
+  const saveBtn = h('button', { class: 'btn tonal', type: 'button', onclick: saveMix }, mi('playlist'), ' Сохранить в плейлист');
+  openSheet('Музыка вместе', h('div', { class: 'pw-form mix' },
+    h('p', { class: 'profile-note', text: 'Пока болтаете — соберите общий альбом: каждый добавляет песни из своих «Мне нравится», и они играют у всех сразу.' }),
+    mixList, h('div', { class: 'mix-btns' }, addBtn, playBtn), saveBtn));
+  renderMixList();
+}
+function pickLikes() {
+  const likes = store.state.likes.slice(0, 200);
+  if (!likes.length) { toast('В «Мне нравится» пока пусто'); return; }
+  const chosen = new Set();
+  const go = h('button', { class: 'btn', type: 'button', disabled: '' }, 'Добавить');
+  const rows = likes.map((t) => {
+    const b = h('button', { type: 'button', class: 'mix-row pick', 'aria-pressed': 'false' }, h('img', { src: t.artwork || 'mkw-logo.png', alt: '', loading: 'lazy' }), h('span', {}, h('b', { text: t.title }), h('small', { text: t.artist })), h('span', { class: 'call-check' }, mi('check')));
+    b.addEventListener('click', () => {
+      if (chosen.has(t.id)) chosen.delete(t.id); else if (chosen.size >= 20) { toast('За раз — до 20 песен'); return; } else chosen.add(t.id);
+      b.setAttribute('aria-pressed', String(chosen.has(t.id)));
+      go.disabled = !chosen.size; go.textContent = chosen.size ? `Добавить (${chosen.size})` : 'Добавить';
+    });
+    return b;
+  });
+  go.addEventListener('click', () => {
+    if (!cur) return;
+    const add = likes.filter((t) => chosen.has(t.id) && !cur.mix.some((x) => x.id === t.id)).map((t) => slim(t, myNick()));
+    cur.mix.push(...add);
+    broadcastMix({ op: 'add', list: add });
+    toast(`Добавлено в общий альбом: ${add.length}`);
+    openMix(); paintMix();
+  });
+  openSheet('Из «Мне нравится»', h('div', { class: 'pw-form' }, h('div', { class: 'mix-list tall' }, ...rows), go));
+}
+async function saveMix() {
+  if (!cur || !cur.mix.length) { toast('Альбом пока пустой'); return; }
+  try {
+    const others = (cur.data.members || []).filter((x) => x !== me());
+    const names = await Promise.all(others.slice(0, 2).map((x) => nickOf(x).then((u) => u.nick || 'друг')));
+    const pid = await store.createPlaylist(`Вместе с ${names.join(', ')}`, cur.mix[0]);
+    for (const t of cur.mix.slice(1)) await store.addToPlaylist(pid, t);
+    toast('Сохранено в Библиотеку');
+  } catch { toast('Не получилось сохранить'); }
 }

@@ -1,21 +1,37 @@
 // Чат с друзьями. Писать можно только взаимным друзьям (проверяют и приложение, и правила Firestore).
 //   chats/{a_b}            — { members: [a, b], last: { from, text, at }, at, read: { uid: время } }   (a < b)
 //   chats/{a_b}/msgs/{id}  — { from, text, at, track? }
-import { safeUrl } from './utils.js?v=0.27.7';
-import { db } from './firebase.js?v=0.27.7';
+import { safeUrl } from './utils.js?v=0.28.0';
+import { db } from './firebase.js?v=0.28.0';
 import { doc, setDoc, addDoc, collection, query, where, orderBy, limit, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
-import { h, toast, openSheet, closeSheet } from './ui.js?v=0.27.7';
-import { openImage } from './viewer.js?v=0.27.7';
-import { mi } from './icons2.js?v=0.27.7';
-import * as player from './player.js?v=0.27.7';
-import { searchTracks } from './catalog.js?v=0.27.7';
-import { me, isFriend, cardOf, friendIds, friendCards, loadFriends, friendsLoaded } from './friends.js?v=0.27.7';
-import { avSrc } from './avatar.js?v=0.27.7';
-import { seenText, isOnline } from './userpage.js?v=0.27.7';
-import { startCall, warmCalls } from './call.js?v=0.27.7';
-import { pushTo, myNick } from './push.js?v=0.27.7';
+import { h, toast, openSheet, closeSheet } from './ui.js?v=0.28.0';
+import { openImage } from './viewer.js?v=0.28.0';
+import { mi } from './icons2.js?v=0.28.0';
+import * as player from './player.js?v=0.28.0';
+import { searchTracks } from './catalog.js?v=0.28.0';
+import { me, isFriend, cardOf, friendIds, friendCards, loadFriends, friendsLoaded } from './friends.js?v=0.28.0';
+import { avSrc } from './avatar.js?v=0.28.0';
+import { seenText, isOnline } from './userpage.js?v=0.28.0';
+import { startCall, warmCalls } from './call.js?v=0.28.0';
+import { pushTo, myNick } from './push.js?v=0.28.0';
 
 export const chatId = (a, b) => [a, b].sort().join('_');
+
+// События звонка в переписке: «пропущенный», «отклонил», «звонок · 3 мин». Хранятся как текст с меткой —
+// так подходят и старые правила базы.
+const CALL_MARK = '\u2060CALL|';
+const isCallMsg = (t) => String(t || '').startsWith(CALL_MARK);
+function parseCall(t) { const [kind, sec, nick] = String(t).slice(CALL_MARK.length).split('|'); return { kind, sec: Number(sec) || 0, nick: nick || '' }; }
+const dur = (s) => (s < 60 ? `${s} сек` : `${Math.floor(s / 60)} мин${s % 60 ? ` ${s % 60} сек` : ''}`);
+export async function postCallEvent(uid, kind, sec = 0, nick = '') {
+  if (!uid || !isFriend(uid)) return;
+  const cid = chatId(me(), uid), at = Date.now();
+  const human = kind === 'missed' ? 'Пропущенный звонок' : kind === 'declined' ? `${nick || 'Друг'} отклонил(а) звонок` : `Звонок · ${dur(sec)}`;
+  try {
+    await addDoc(collection(db, 'chats', cid, 'msgs'), { from: me(), text: `${CALL_MARK}${kind}|${sec}|${String(nick).slice(0, 32)}`, at });
+    await setDoc(doc(db, 'chats', cid), { members: cid.split('_'), last: { from: me(), text: human, at }, at, read: { [me()]: at } }, { merge: true });
+  } catch { /* старые правила — без записи в чат */ }
+}
 const other = (c) => (c.members || []).find((x) => x !== me()) || '';
 export const otherOf = other;
 
@@ -237,6 +253,17 @@ export async function openChat(uid, card) {
         const dd = dayOf(m.at); if (dd !== day) { day = dd; nodes.push(h('div', { class: 'ch-day', text: dd })); }
         // уже нарисованные сообщения не пересоздаём — фото не мигают и не грузятся заново
         let el = drawn.get(d.id);
+        if (!el && isCallMsg(m.text)) {
+          const ev = parseCall(m.text); const mine = m.from === me();
+          const label = ev.kind === 'missed' ? (mine ? 'Звонок без ответа' : 'Пропущенный звонок')
+            : ev.kind === 'declined' ? `${ev.nick || 'Друг'} отклонил(а) звонок`
+            : `${mine ? 'Исходящий' : 'Входящий'} звонок · ${dur(ev.sec)}`;
+          el = h('div', { class: `ch-call ${ev.kind}${mine ? ' me' : ''}${first ? '' : ' new'}` },
+            h('span', { class: 'ch-call-ic' }, mi(ev.kind === 'ended' ? 'phone' : 'call-end')),
+            h('span', { class: 'ch-call-t' }, h('b', { text: label }), h('small', { text: timeOf(m.at) })),
+            h('button', { class: 'ch-call-again', type: 'button', title: 'Позвонить', 'aria-label': 'Позвонить', onclick: () => startCall([uid]) }, mi('phone')));
+          drawn.set(d.id, el);
+        }
         if (!el) {
           const mineMsg = m.from === me();
           const photoOnly = m.img && !m.text && !m.track;
