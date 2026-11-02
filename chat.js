@@ -1,19 +1,20 @@
 // Чат с друзьями. Писать можно только взаимным друзьям (проверяют и приложение, и правила Firestore).
 //   chats/{a_b}            — { members: [a, b], last: { from, text, at }, at, read: { uid: время } }   (a < b)
 //   chats/{a_b}/msgs/{id}  — { from, text, at, track? }
-import { safeUrl } from './utils.js?v=0.28.0';
-import { db } from './firebase.js?v=0.28.0';
+import { safeUrl } from './utils.js?v=0.29.0';
+import { db } from './firebase.js?v=0.29.0';
 import { doc, setDoc, addDoc, collection, query, where, orderBy, limit, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
-import { h, toast, openSheet, closeSheet } from './ui.js?v=0.28.0';
-import { openImage } from './viewer.js?v=0.28.0';
-import { mi } from './icons2.js?v=0.28.0';
-import * as player from './player.js?v=0.28.0';
-import { searchTracks } from './catalog.js?v=0.28.0';
-import { me, isFriend, cardOf, friendIds, friendCards, loadFriends, friendsLoaded } from './friends.js?v=0.28.0';
-import { avSrc } from './avatar.js?v=0.28.0';
-import { seenText, isOnline } from './userpage.js?v=0.28.0';
-import { startCall, warmCalls } from './call.js?v=0.28.0';
-import { pushTo, myNick } from './push.js?v=0.28.0';
+import { h, toast, openSheet, closeSheet } from './ui.js?v=0.29.0';
+import { openImage } from './viewer.js?v=0.29.0';
+import { mi } from './icons2.js?v=0.29.0';
+import * as player from './player.js?v=0.29.0';
+import { searchTracks } from './catalog.js?v=0.29.0';
+import { me, isFriend, cardOf, friendIds, friendCards, loadFriends, friendsLoaded } from './friends.js?v=0.29.0';
+import { avSrc } from './avatar.js?v=0.29.0';
+import { seenText, isOnline } from './userpage.js?v=0.29.0';
+import { startCall, warmCalls } from './call.js?v=0.29.0';
+import { streakOf, streakPatch, fireIcon, openStreak } from './streak.js?v=0.29.0';
+import { pushTo, myNick } from './push.js?v=0.29.0';
 
 export const chatId = (a, b) => [a, b].sort().join('_');
 
@@ -76,7 +77,8 @@ async function send(cid, text, track, img) {
   if (img) msg.img = img;
   await addDoc(collection(db, 'chats', cid, 'msgs'), msg);
   const preview = (img && !msg.text ? 'Фото' : track && !msg.text ? `♪ ${msg.track.artist} — ${msg.track.title}` : msg.text).slice(0, 140);
-  await setDoc(doc(db, 'chats', cid), { members: cid.split('_'), last: { from, text: preview, at }, at, read: { [from]: at } }, { merge: true });
+  const to0 = cid.split('_').find((x) => x !== from);
+  await setDoc(doc(db, 'chats', cid), { members: cid.split('_'), last: { from, text: preview, at }, at, read: { [from]: at, ...streakPatch(chatWith(to0), from, to0) } }, { merge: true });
   // пуш другу — придёт, даже если у него MKW закрыт (тот же тег, что и у уведомления внутри приложения, — без повторов)
   const to = cid.split('_').find((x) => x !== from);
   if (to) pushTo(to, 'msg', myNick(), preview, `chat-${cid}`, `./#chat=${from}`);
@@ -222,7 +224,7 @@ export async function openChat(uid, card) {
     h('header', { class: 'ch-head' },
       h('button', { class: 'icon-btn', type: 'button', 'aria-label': 'Назад', onclick: closeChat }, mi('close')),
       h('span', { class: 'ch-av' }, h('img', { src: avSrc(u.avatar), alt: '' }), isOnline(u.seen) ? h('i', { class: 'online-dot' }) : null),
-      h('div', { class: 'ch-who' }, h('b', { text: u.nick || 'друг' }), h('small', { text: isOnline(u.seen) && u.now ? `Слушает: ${u.now}` : seenText(u.seen) || '' })),
+      h('div', { class: 'ch-who' }, h('b', {}, h('span', { text: u.nick || 'друг' }), h('span', { class: 'ch-fire' })), h('small', { text: isOnline(u.seen) && u.now ? `Слушает: ${u.now}` : seenText(u.seen) || '' })),
       h('button', { class: 'icon-btn ch-callbtn', type: 'button', 'aria-label': 'Позвонить', title: 'Позвонить', onclick: () => startCall([uid]) }, mi('phone')),
       h('button', { class: 'icon-btn ch-bgbtn', type: 'button', 'aria-label': 'Фон чата', title: 'Фон чата', onclick: () => bgMenu(list, cid) }, mi('palette'))),
     list,
@@ -238,8 +240,19 @@ export async function openChat(uid, card) {
     const c = chatWith(uid); const readAt = Number(c && c.read && c.read[uid]) || 0;
     ticks.forEach(({ at, el }) => { const r = readAt >= at; if (el.dataset.r !== String(r)) { el.dataset.r = String(r); el.classList.toggle('read', r); el.title = r ? 'Прочитано' : 'Доставлено'; } });
   };
+  // огонёк в шапке чата
+  const fireSlot = p.querySelector('.ch-fire');
+  const paintFire = () => {
+    if (!fireSlot) return;
+    const c = chatWith(uid); const stt = streakOf(c, me(), uid);
+    if (stt.state === 'none') { fireSlot.replaceChildren(); return; }
+    const f = fireIcon(stt); f.setAttribute('role', 'button'); f.tabIndex = 0;
+    f.addEventListener('click', () => openStreak(cid, c || { read: {} }, me(), uid, u.nick || 'другом'));
+    fireSlot.replaceChildren(f);
+  };
+  paintFire();
   if (offTicks) offTicks();
-  offTicks = onChats(paintTicks);
+  offTicks = onChats(() => { paintTicks(); paintFire(); });
   list.replaceChildren(h('p', { class: 'ch-empty', text: 'Загрузка…' }));
   try {
     unsubMsgs = onSnapshot(query(collection(db, 'chats', cid, 'msgs'), orderBy('at', 'desc'), limit(80)), (s) => {

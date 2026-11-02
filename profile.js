@@ -1,38 +1,38 @@
 // Экран «Профиль»: карточка с баннером, витрина (любимые исполнители и треки), вкладки Обзор / Слушатели / Настройки / О MKW.
-import { $, $$, h, icon, openSheet, closeSheet, toast, sheetItem, trackRow } from './ui.js?v=0.28.0';
-import * as store from './store.js?v=0.28.0';
-import * as player from './player.js?v=0.28.0';
-import { ACCENTS, getTheme, getAccent, getCustomHue, setCustomColor, setTheme, setAccent, hslHex, getNeutral } from './theme.js?v=0.28.0';
-import { CHANGELOG, VERSION, STAGE, KNOWN_ISSUES } from './changelog.js?v=0.28.0';
-import { plural, pickTrack, safeUrl } from './utils.js?v=0.28.0';
-import { youtubeEnabled, youtubeQuotaOut } from './youtube.js?v=0.28.0';
-import { audiusEnabled } from './audius.js?v=0.28.0';
-import { SOURCE_MODES, getSourceMode, setSourceMode } from './sources.js?v=0.28.0';
-import { gesturesOn, setGestures, showGestureGuide } from './gestures.js?v=0.28.0';
-import { listenerStats } from './stats.js?v=0.28.0';
-import { liveBg, setLiveBg } from './viz.js?v=0.28.0';
-import { lowPower, setLowPower } from './perf.js?v=0.28.0';
-import { logOut, changePassword, changeNick, authErrorText } from './auth.js?v=0.28.0';
-import { connectionCountry } from './geo.js?v=0.28.0';
-import { goOffline, publishCard, publishProfile, myCard, getProfile, topListeners, hiddenFromBoard, setHidden, myUid } from './leaders.js?v=0.28.0';
-import { mi } from './icons2.js?v=0.28.0';
-import { artistPic } from './artistpic.js?v=0.28.0';
-import { openArtist } from './artist.js?v=0.28.0';
-import { openUserPage, favArtistsRow, favTracksList, isOnline } from './userpage.js?v=0.28.0';
-import { voiceOn, setVoice, showVoiceGuide, voiceSupported } from './voice.js?v=0.28.0';
-import { openImage } from './viewer.js?v=0.28.0';
-import { isDev, devBadge, fanBadge, nickMarks } from './dev.js?v=0.28.0';
-import { fanNumber, restoreFan, becomeFan } from './fans.js?v=0.28.0';
-import { ping } from './leaders.js?v=0.28.0';
-import { streamsOn, setStreams, checkBackground } from './stream.js?v=0.28.0';
-import { DEF_AV, avSrc, isDefAv } from './avatar.js?v=0.28.0';
-import { ONLINE_MS, loadFriends, friendIds, addFriend, removeFriend, findByNick, friendCards, onFriends, declineRequest, acceptRequest, requestIds, sentIds, friendState, friendsLoaded } from './friends.js?v=0.28.0';
-import { openChat, chatWith, isUnread, onChats } from './chat.js?v=0.28.0';
-import { notifyOn, setNotify } from './notify.js?v=0.28.0';
-import { openInstall, standalone } from './install.js?v=0.28.0';
-import { getRingtone, clearRingtone } from './ringtone.js?v=0.28.0';
-import { searchTracks } from './catalog.js?v=0.28.0';
-import { seenText } from './userpage.js?v=0.28.0';
+import { $, $$, h, icon, openSheet, closeSheet, toast, sheetItem, trackRow } from './ui.js?v=0.29.0';
+import * as store from './store.js?v=0.29.0';
+import * as player from './player.js?v=0.29.0';
+import { ACCENTS, getTheme, getAccent, getCustomHue, setCustomColor, setTheme, setAccent, hslHex, getNeutral } from './theme.js?v=0.29.0';
+import { CHANGELOG, VERSION, STAGE, KNOWN_ISSUES } from './changelog.js?v=0.29.0';
+import { plural, pickTrack, safeUrl } from './utils.js?v=0.29.0';
+import { youtubeEnabled, youtubeQuotaOut } from './youtube.js?v=0.29.0';
+import { audiusEnabled } from './audius.js?v=0.29.0';
+import { SOURCE_MODES, getSourceMode, setSourceMode } from './sources.js?v=0.29.0';
+import { gesturesOn, setGestures, showGestureGuide } from './gestures.js?v=0.29.0';
+import { listenerStats } from './stats.js?v=0.29.0';
+import { liveBg, setLiveBg } from './viz.js?v=0.29.0';
+import { lowPower, setLowPower } from './perf.js?v=0.29.0';
+import { logOut, changePassword, changeNick, authErrorText } from './auth.js?v=0.29.0';
+import { connectionCountry } from './geo.js?v=0.29.0';
+import { goOffline, publishCard, publishProfile, myCard, getProfile, topListeners, hiddenFromBoard, setHidden, myUid } from './leaders.js?v=0.29.0';
+import { mi } from './icons2.js?v=0.29.0';
+import { artistPic } from './artistpic.js?v=0.29.0';
+import { openArtist } from './artist.js?v=0.29.0';
+import { openUserPage, favArtistsRow, favTracksList, isOnline } from './userpage.js?v=0.29.0';
+import { voiceOn, setVoice, showVoiceGuide, voiceSupported } from './voice.js?v=0.29.0';
+import { openImage } from './viewer.js?v=0.29.0';
+import { isDev, devBadge, fanBadge, nickMarks } from './dev.js?v=0.29.0';
+import { fanNumber, restoreFan, becomeFan } from './fans.js?v=0.29.0';
+import { ping } from './leaders.js?v=0.29.0';
+import { streamsOn, setStreams, checkBackground } from './stream.js?v=0.29.0';
+import { DEF_AV, avSrc, isDefAv } from './avatar.js?v=0.29.0';
+import { ONLINE_MS, loadFriends, friendIds, addFriend, removeFriend, findByNick, friendCards, onFriends, declineRequest, acceptRequest, requestIds, sentIds, friendState, friendsLoaded } from './friends.js?v=0.29.0';
+import { openChat, chatWith, isUnread, onChats } from './chat.js?v=0.29.0';
+import { notifyOn, setNotify } from './notify.js?v=0.29.0';
+import { openInstall, standalone } from './install.js?v=0.29.0';
+import { getRingtone, clearRingtone } from './ringtone.js?v=0.29.0';
+import { searchTracks } from './catalog.js?v=0.29.0';
+import { seenText } from './userpage.js?v=0.29.0';
 
 // s: sec, likes, playlists, plays, days, artists, night, styled, showcase, rank
 export const ACHIEVEMENTS = [
@@ -96,7 +96,7 @@ const CKEY = (n) => `mkw.pcustom.${n}`;
 const DEF = { status: '', banner: 'accent', bannerImg: '', frame: 'glow', badges: [], favArtists: [], favTracks: [], bio: '', nickStyle: 'plain', shape: 'circle', effect: 'none', showNow: true, devBadge: true, fanBadge: true };
 export const NICK_STYLES = [{ id: 'plain', name: 'Обычный' }, { id: 'accent', name: 'Цвет акцента' }, { id: 'gradient', name: 'Градиент' }, { id: 'rainbow', name: 'Радуга' }, { id: 'glow', name: 'Неон' }, { id: 'gold', name: 'Золото' }, { id: 'silver', name: 'Серебро' }, { id: 'fire', name: 'Огонь' }, { id: 'outline', name: 'Контур' }];
 export const SHAPES = [{ id: 'circle', name: 'Круг' }, { id: 'squircle', name: 'Скруглённый' }, { id: 'flower', name: 'Цветок' }];
-export const EFFECTS = [{ id: 'none', name: 'Без эффекта' }, { id: 'stars', name: 'Звёзды' }, { id: 'aurora', name: 'Сияние' }, { id: 'snow', name: 'Снег' }, { id: 'waves', name: 'Волны' }, { id: 'hearts', name: 'Сердечки' }, { id: 'fireflies', name: 'Светлячки' }];
+export const EFFECTS = [{ id: 'none', name: 'Без эффекта' }, { id: 'crosses', name: 'Кресты' }, { id: 'stars', name: 'Звёзды' }, { id: 'aurora', name: 'Сияние' }, { id: 'snow', name: 'Снег' }, { id: 'waves', name: 'Волны' }, { id: 'hearts', name: 'Сердечки' }, { id: 'fireflies', name: 'Светлячки' }];
 const nowPlaying = () => { const c = getCustom(), t = player.queue.current; return c.showNow !== false && t && player.st.playing ? `${t.artist} — ${t.title}` : ''; };
 function getCustom() {
   try { return { ...DEF, ...JSON.parse(localStorage.getItem(CKEY(curNick)) || '{}') }; } catch { return { ...DEF }; }
@@ -401,34 +401,98 @@ function cropBanner(src) {
 function editProfile() {
   const c = getCustom();
   let banner = c.banner, bannerImg = c.bannerImg, frame = c.frame, badges = [...c.badges], favA = [...c.favArtists], favT = [...c.favTracks];
+  let nickStyle = c.nickStyle, shape = c.shape, effect = c.effect, showNow = c.showNow !== false;
+  let devB = c.devBadge !== false, fanB = c.fanBadge !== false;
   const st = h('input', { type: 'text', maxlength: '60', class: 'sheet-input', placeholder: 'Статус, например: слушаю ночной вайб', value: c.status });
+  const bio = h('textarea', { class: 'sheet-input pe-bio', maxlength: '160', rows: '2', placeholder: 'Пара слов о себе и своей музыке' });
+  bio.value = c.bio || '';
 
-  const prev = h('div', { class: 'pe-prev' });
-  const paintPrev = () => prev.style.setProperty('--b', bannerCss(banner, bannerImg));
+  // ---- живой пример: так карточку увидят другие, меняется сразу ----
+  const liveAv = h('img', { src: getAvatar(curNick), alt: '' });
+  const liveNick = h('div', { class: 'hero-nick', text: curNick });
+  const liveStatus = h('div', { class: 'pe-live-st' });
+  const liveMarks = h('div', { class: 'nick-marks' });
+  const liveBadges = h('div', { class: 'pbadges' });
+  const live = h('div', { class: 'phero pe-live' },
+    h('div', { class: 'phero-banner' }),
+    h('div', { class: 'phero-fx' }, ...Array.from({ length: 10 }, () => h('i'))),
+    h('div', { class: 'pe-live-row' }, h('span', { class: 'hero-avatar' }, liveAv),
+      h('div', { class: 'pe-live-txt' }, liveNick, liveMarks, liveStatus)),
+    liveBadges,
+    h('span', { class: 'pe-live-tag', text: 'Так вас видят' }));
+  const paintLive = () => {
+    live.style.setProperty('--banner', bannerCss(banner, bannerImg));
+    live.dataset.bimg = bannerImg ? '1' : '';
+    live.dataset.frame = frame; live.dataset.shape = shape; live.dataset.effect = effect;
+    live.classList.toggle('dev', isDev(curNick) && devB);
+    liveNick.dataset.style = nickStyle;
+    liveStatus.textContent = st.value.trim() || bio.value.trim() || '';
+    const n = fanNumber(curNick);
+    liveMarks.replaceChildren(...(isDev(curNick) && devB ? [devBadge()] : []), ...(n && fanB ? [fanBadge(n)] : []));
+    liveBadges.replaceChildren(...badgeChips(badges).children);
+  };
+  st.addEventListener('input', paintLive); bio.addEventListener('input', paintLive);
+
+  // ---- выбор: выбранное — белое с галочкой, у каждого варианта маленький пример ----
+  const pick = (list, get, set, sample, cls = '') => {
+    const box = h('div', { class: `pe-frames ${cls}` });
+    const paint = () => box.replaceChildren(...list.map((x) => {
+      const on = x.id === get();
+      return h('button', { type: 'button', class: `chip pe-opt${on ? ' active' : ''}`, 'aria-pressed': String(on), onclick: (e) => { set(x.id); paint(); paintLive(); e.currentTarget.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' }); } },
+        sample ? sample(x) : null, h('span', { text: x.name }), on ? mi('check', 'pe-ok') : null);
+    }));
+    paint();
+    return box;
+  };
   const upl = h('input', { type: 'file', accept: 'image/*', hidden: '' });
   upl.addEventListener('change', async () => {
     const f = upl.files && upl.files[0]; if (!f) return;
     upl.value = '';
-    try { const out = await cropBanner(await fileToDataUrl(f)); if (out) { bannerImg = out; paintPrev(); paintB(); } } catch { toast('Не получилось загрузить картинку'); }
+    try { const out = await cropBanner(await fileToDataUrl(f)); if (out) { bannerImg = out; paintB(); paintLive(); } } catch { toast('Не получилось загрузить картинку'); }
   });
   const bWrap = h('div', { class: 'pe-banners' });
   const paintB = () => bWrap.replaceChildren(
-    h('button', { type: 'button', class: `pe-banner own${bannerImg ? ' on' : ''}`, onclick: () => upl.click() }, mi('image'), h('span', { text: bannerImg ? 'Сменить' : 'Своё фото' })),
-    ...BANNERS.map((b) => h('button', { type: 'button', class: `pe-banner${!bannerImg && b.id === banner ? ' on' : ''}`, style: `--b:${b.css}`, title: b.name, onclick: () => { banner = b.id; bannerImg = ''; paintB(); paintPrev(); } }, h('span', { text: b.name }))));
+    h('button', { type: 'button', class: `pe-banner own${bannerImg ? ' on' : ''}`, onclick: () => upl.click() }, mi('image'), h('span', { text: bannerImg ? 'Своё фото ✓' : 'Своё фото' })),
+    ...BANNERS.map((b) => h('button', { type: 'button', class: `pe-banner${!bannerImg && b.id === banner ? ' on' : ''}`, style: `--b:${b.css}`, title: b.name, onclick: () => { banner = b.id; bannerImg = ''; paintB(); paintLive(); } }, h('span', { text: b.name }), !bannerImg && b.id === banner ? mi('check', 'pe-ok') : null)));
+  const frameDot = (x) => h('span', { class: 'pe-sm fr', 'data-frame': x.id }, h('i'));
+  const shapeDot = (x) => h('span', { class: 'pe-sm sh', 'data-shape': x.id }, h('i'));
+  const fxDot = (x) => h('span', { class: 'pe-sm fx', 'data-effect': x.id }, h('i'), h('i'), h('i'));
+  const nickDot = (x) => h('span', { class: 'hero-nick pe-nsd', 'data-style': x.id, text: 'Аа' });
+  const fWrap = pick(FRAMES, () => frame, (v) => { frame = v; }, frameDot);
+  const shWrap = pick(SHAPES, () => shape, (v) => { shape = v; }, shapeDot);
+  const efWrap = pick(EFFECTS, () => effect, (v) => { effect = v; }, fxDot);
+  const nsWrap = pick(NICK_STYLES, () => nickStyle, (v) => { nickStyle = v; }, nickDot);
 
-  const fWrap = h('div', { class: 'pe-frames' });
-  const paintF = () => fWrap.replaceChildren(...FRAMES.map((f) => h('button', { type: 'button', class: `chip${f.id === frame ? ' active' : ''}`, onclick: () => { frame = f.id; paintF(); } }, f.name)));
+  // ---- значки у ника: выбрать, какие показывать ----
+  const marksBox = h('div', { class: 'pe-badges pe-marks' });
+  const paintMarksSel = () => {
+    const n = fanNumber(curNick);
+    const opt = (on, el, toggle) => h('button', { type: 'button', class: `pe-mark${on ? ' on' : ''}`, 'aria-pressed': String(on), onclick: () => { toggle(); paintMarksSel(); paintLive(); } }, el, on ? mi('check', 'pe-ok') : h('i', { class: 'pe-off' }));
+    const kids = [];
+    if (isDev(curNick)) kids.push(opt(devB, devBadge(), () => { devB = !devB; }));
+    if (n) kids.push(opt(fanB, fanBadge(n), () => { fanB = !fanB; }));
+    if (!n) kids.push(h('button', { class: 'btn tonal', type: 'button', onclick: (e) => { likeMkw(e.currentTarget).then(() => { closeSheet(); editProfile(); }); } }, mi('heart'), ' Мне нравится MKW — получить значок'));
+    marksBox.replaceChildren(...kids);
+  };
 
+  // ---- значки в профиле (до 3) ----
   const s = statsNow();
-  const earned = ACHIEVEMENTS.filter((a) => achDone(a, s));
+  const earned = ACHIEVEMENTS.filter((a) => achDone(a, s) && a.id !== 'dev');
   const aWrap = h('div', { class: 'pe-badges' });
-  const paintA = () => aWrap.replaceChildren(...(earned.length ? earned.map((a) => h('button', { type: 'button', class: `pe-badge${badges.includes(a.id) ? ' on' : ''}${a.cls ? ` ${a.cls}` : ''}`, onclick: () => {
-    if (badges.includes(a.id)) badges = badges.filter((x) => x !== a.id);
-    else if (badges.length < 3) badges.push(a.id); else toast('Можно закрепить до 3 значков');
-    paintA();
-  } }, mi(a.i), a.title)) : [h('p', { class: 'profile-note', text: 'Пока нет полученных достижений.' })]));
+  const aCount = h('small', { class: 'pe-cnt' });
+  const paintA = () => {
+    aCount.textContent = `${badges.length} из 3`;
+    aWrap.replaceChildren(...(earned.length ? earned.map((a) => {
+      const on = badges.includes(a.id);
+      return h('button', { type: 'button', class: `pe-badge${on ? ' on' : ''}${a.cls ? ` ${a.cls}` : ''}`, 'aria-pressed': String(on), title: a.hint, onclick: () => {
+        if (on) badges = badges.filter((x) => x !== a.id);
+        else if (badges.length < 3) badges.push(a.id); else { toast('Можно закрепить до 3 значков — сначала снимите один'); return; }
+        paintA(); paintLive();
+      } }, mi(a.i), a.title, on ? mi('check', 'pe-ok') : null);
+    }) : [h('p', { class: 'profile-note', text: 'Пока нет полученных достижений.' })]));
+  };
 
-  // любимые исполнители (до 4)
+  // ---- витрина ----
   const artWrap = h('div', { class: 'pe-badges' });
   const artInput = h('input', { type: 'text', class: 'sheet-input', placeholder: 'Имя исполнителя', maxlength: '80' });
   const addArtist = (name) => {
@@ -442,8 +506,6 @@ function editProfile() {
     artWrap.replaceChildren(...sugg.map((n) => h('button', { type: 'button', class: `pe-badge${favA.includes(n) ? ' on' : ''}`, onclick: () => addArtist(n) }, mi(favA.includes(n) ? 'check' : 'person'), n)));
   };
   const artAdd = h('div', { class: 'pe-add' }, artInput, h('button', { class: 'btn tonal', type: 'button', onclick: () => { addArtist(artInput.value); artInput.value = ''; } }, 'Добавить'));
-
-  // любимые треки (до 10) из лайков
   const trWrap = h('div', { class: 'pe-tracks' });
   const paintTr = () => {
     const pool = [...favT, ...store.state.likes.filter((t) => !favT.some((x) => x.id === t.id))].slice(0, 40);
@@ -456,61 +518,67 @@ function editProfile() {
       } }, h('img', { src: t.artwork || 'mkw-logo.png', alt: '', loading: 'lazy' }), h('span', {}, h('b', { text: t.title }), h('small', { text: t.artist })), h('i', {}, mi(on ? 'check' : 'add')));
     }) : [h('p', { class: 'profile-note', text: 'Лайкните треки, и их можно будет добавить сюда.' })]));
   };
-
-  paintB(); paintF(); paintA(); paintArt(); paintTr(); paintPrev();
-  // оформление: о себе, стиль ника, форма фото, эффект на карточке
-  let nickStyle = c.nickStyle, shape = c.shape, effect = c.effect, showNow = c.showNow !== false;
-  const bio = h('textarea', { class: 'sheet-input pe-bio', maxlength: '160', rows: '3', placeholder: 'Пара слов о себе и своей музыке' });
-  bio.value = c.bio || '';
-  const chips = (list, get, set) => {
-    const box = h('div', { class: 'pe-frames' });
-    const paint = () => box.replaceChildren(...list.map((x) => h('button', { type: 'button', class: `chip${x.id === get() ? ' active' : ''}`, onclick: () => { set(x.id); paint(); } }, x.name)));
-    paint();
-    return box;
-  };
-  const nsWrap = chips(NICK_STYLES, () => nickStyle, (v) => { nickStyle = v; });
-  const shWrap = chips(SHAPES, () => shape, (v) => { shape = v; });
-  const efWrap = chips(EFFECTS, () => effect, (v) => { effect = v; });
   const nowSw = h('button', { class: `switch${showNow ? ' active' : ''}`, type: 'button', role: 'switch', onclick: () => { showNow = !showNow; nowSw.classList.toggle('active', showNow); } }, h('i'));
-  // значки у ника: «Разработчик MKW» (только у создателя) и «MKW #N» (у фанатов) — можно спрятать
-  let devB = c.devBadge !== false, fanB = c.fanBadge !== false;
-  const marksBox = () => {
-    const n = fanNumber(curNick);
-    const swb = (get, set) => { const b = h('button', { class: `switch${get() ? ' active' : ''}`, type: 'button', role: 'switch', onclick: () => { set(!get()); b.classList.toggle('active', get()); } }, h('i')); return b; };
-    const rows = [];
-    if (isDev(curNick)) rows.push(h('div', { class: 'set-row pe-row' }, h('div', { class: 'set-txt' }, devBadge(), h('small', { text: 'Значок создателя MKW рядом с ником' })), swb(() => devB, (v) => { devB = v; })));
-    if (n) rows.push(h('div', { class: 'set-row pe-row' }, h('div', { class: 'set-txt' }, fanBadge(n), h('small', { text: 'Ваш номер фаната MKW' })), swb(() => fanB, (v) => { fanB = v; })));
-    else rows.push(h('button', { class: 'btn tonal', type: 'button', onclick: (e) => { likeMkw(e.currentTarget).then(() => { closeSheet(); editProfile(); }); } }, mi('heart'), ' Мне нравится MKW — получить значок'));
-    return h('div', {}, h('div', { class: 'pe-h' }, mi('verified'), 'Значки у ника'), ...rows);
-  };
+  paintB(); paintA(); paintArt(); paintTr(); paintMarksSel(); paintLive();
+
   const save = h('button', { class: 'btn', type: 'button', onclick: () => {
     setCustom({ devBadge: devB, fanBadge: fanB, status: st.value.trim(), banner, bannerImg, frame, badges, favArtists: favA, favTracks: favT, bio: bio.value.trim(), nickStyle, shape, effect, showNow });
     closeSheet(); toast('Профиль обновлён'); updateProfile();
-  } }, 'Сохранить');
-  // три вкладки вместо одной длинной ленты: Карточка · Ник и значки · Витрина
-  const pane = (id, ...kids) => h('div', { class: 'pe-pane', 'data-pe': id, hidden: id === 'card' ? null : '' }, ...kids);
+  } }, mi('check'), ' Сохранить');
+  const sec = (ic, t, ...kids) => h('section', { class: 'pe-sec' }, h('div', { class: 'pe-h' }, mi(ic), h('span', { text: t })), ...kids);
+  const pane = (id, ...kids) => h('div', { class: 'pe-pane', 'data-pe': id }, ...kids);
   const panes = [
-    pane('card', prev,
-      h('div', { class: 'pe-h' }, mi('image'), 'Фон карточки'), bWrap,
-      h('button', { class: 'btn tonal', type: 'button', onclick: () => avatarMenu(curNick) }, mi('person'), ' Сменить фото профиля'),
-      h('div', { class: 'pe-h' }, mi('sparkle'), 'Рамка фото'), fWrap,
-      h('div', { class: 'pe-h' }, mi('image'), 'Форма фото'), shWrap,
-      h('div', { class: 'pe-h' }, mi('star'), 'Эффект на карточке'), efWrap),
+    pane('card',
+      sec('image', 'Фон карточки', bWrap),
+      h('button', { class: 'btn tonal pe-avbtn', type: 'button', onclick: () => avatarMenu(curNick) }, mi('person'), ' Сменить фото профиля'),
+      sec('sparkle', 'Рамка фото', fWrap),
+      sec('image', 'Форма фото', shWrap),
+      sec('star', 'Эффект на карточке', efWrap)),
     pane('nick',
-      h('div', { class: 'pe-h' }, mi('edit'), 'Статус'), st,
-      h('div', { class: 'pe-h' }, mi('person'), 'О себе'), bio,
-      h('div', { class: 'pe-h' }, mi('palette'), 'Стиль ника'), nsWrap,
-      marksBox(),
-      h('div', { class: 'pe-h' }, mi('medal'), 'Значки в профиле (до 3)'), aWrap,
+      sec('edit', 'Статус', st),
+      sec('person', 'О себе', bio),
+      sec('palette', 'Стиль ника', nsWrap),
+      sec('verified', 'Значки у ника', marksBox),
+      sec('medal', 'Значки в профиле', aCount, aWrap),
       h('div', { class: 'set-row pe-row' }, h('div', { class: 'set-txt' }, h('b', { text: 'Показывать, что я слушаю' }), h('small', { text: 'Другие увидят текущий трек, пока вы в сети' })), nowSw)),
     pane('show',
-      h('div', { class: 'pe-h' }, mi('mic'), 'Любимые исполнители (до 4)'), artWrap, artAdd,
-      h('div', { class: 'pe-h' }, mi('star'), 'Любимые треки (до 10)'), trWrap),
+      sec('mic', 'Любимые исполнители (до 4)', artWrap, artAdd),
+      sec('star', 'Любимые треки (до 10)', trWrap)),
   ];
-  const seg = h('div', { class: 'pe-tabs' });
-  const go = (id) => { seg.querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.pe === id)); panes.forEach((p) => { p.hidden = p.dataset.pe !== id; }); const sh = document.getElementById('sheet'); if (sh) sh.scrollTop = 0; };
-  [['card', 'image', 'Карточка'], ['nick', 'edit', 'Ник'], ['show', 'star', 'Витрина']].forEach(([id, ic, t]) => seg.appendChild(h('button', { type: 'button', 'data-pe': id, class: id === 'card' ? 'on' : '', onclick: () => go(id) }, mi(ic), h('span', { text: t }))));
-  openSheet('Мой профиль', h('div', { class: 'pw-form pe' }, upl, seg, ...panes, h('div', { class: 'pe-save' }, save)));
+  // ---- вкладки: плавно едут, листаются пальцем ----
+  const IDS = ['card', 'nick', 'show'];
+  const track = h('div', { class: 'pe-track' }, ...panes);
+  const view = h('div', { class: 'pe-view' }, track);
+  const seg = h('div', { class: 'pe-tabs' }, h('i', { class: 'pe-lens' }));
+  let curI = 0;
+  const fit = () => { const p = panes[curI]; view.style.height = `${p.offsetHeight}px`; };
+  const go = (i, smooth = true) => {
+    curI = Math.max(0, Math.min(IDS.length - 1, i));
+    track.style.transition = smooth ? '' : 'none';
+    track.style.transform = `translateX(${-curI * 100}%)`;
+    seg.style.setProperty('--i', String(curI));
+    seg.querySelectorAll('button').forEach((b, k) => b.classList.toggle('on', k === curI));
+    panes.forEach((p, k) => p.setAttribute('aria-hidden', String(k !== curI)));
+    requestAnimationFrame(fit);
+  };
+  [['image', 'Карточка'], ['edit', 'Ник'], ['star', 'Витрина']].forEach(([ic, t], k) => seg.appendChild(h('button', { type: 'button', onclick: () => go(k) }, mi(ic), h('span', { text: t }))));
+  // палец: тянем ленту за собой, отпускаем — доезжает до вкладки
+  let sx = 0, sy = 0, dx = 0, drag = 0;
+  view.addEventListener('touchstart', (e) => { if (e.touches.length !== 1 || e.target.closest('.pe-frames, .pe-banners, .pe-badges, input, textarea')) { drag = -1; return; } sx = e.touches[0].clientX; sy = e.touches[0].clientY; dx = 0; drag = 0; }, { passive: true });
+  view.addEventListener('touchmove', (e) => {
+    if (drag === -1) return;
+    const mx = e.touches[0].clientX - sx, my = e.touches[0].clientY - sy;
+    if (drag === 0) { if (Math.abs(mx) > 10 && Math.abs(mx) > Math.abs(my) * 1.3) drag = 1; else if (Math.abs(my) > 10) { drag = -1; return; } else return; }
+    dx = mx; track.style.transition = 'none';
+    const edge = (curI === 0 && dx > 0) || (curI === IDS.length - 1 && dx < 0) ? 0.3 : 1;
+    track.style.transform = `translateX(calc(${-curI * 100}% + ${dx * edge}px))`;
+  }, { passive: true });
+  view.addEventListener('touchend', () => { if (drag === 1) { track.style.transition = ''; go(curI + (dx < -60 ? 1 : dx > 60 ? -1 : 0)); } drag = 0; });
+  const ro = window.ResizeObserver ? new ResizeObserver(fit) : null;
+  if (ro) panes.forEach((p) => ro.observe(p));
+  openSheet('Мой профиль', h('div', { class: 'pw-form pe pe2' }, upl, h('div', { class: 'pe-side' }, live), h('div', { class: 'pe-main' }, seg, view), h('div', { class: 'pe-save' }, save)));
+  go(0, false);
+  setTimeout(fit, 50);
 }
 
 async function loadBoard(force) {
@@ -714,7 +782,7 @@ export function buildProfile(nick) {
       h('div', { class: 'phero-btns' },
         h('button', { class: 'btn tonal phero-edit', type: 'button', onclick: () => openUserPage(myUid(), null, true), title: 'Как видят другие' }, mi('person')),
         h('button', { class: 'btn tonal phero-edit', type: 'button', onclick: editProfile }, mi('edit'), ' Изменить'))),
-    h('div', { class: 'phero-fx' }, h('i'), h('i'), h('i'), h('i'), h('i'), h('i')),
+    h('div', { class: 'phero-fx' }, ...Array.from({ length: 10 }, () => h('i'))),
     h('div', { class: 'phero-info' }, refs.nick, refs.marks = h('div', { class: 'nick-marks' }), refs.avHint = h('button', { class: 'av-hint', type: 'button', hidden: '', onclick: () => avatarMenu(nick) }, mi('edit'), h('span', { text: 'Поставьте своё фото — нажмите на аватар' })), refs.status, refs.bio, refs.since, refs.heroBadges));
 
   paintAvHint();
