@@ -198,3 +198,61 @@
 .inc.founder .inc-badge .mi { color: #ffb347; }
 .inc.founder .inc-tag { color: rgba(255,190,120,.9); }
 .inc-btns.one { grid-template-columns: 1fr; }
+
+/* ---------- звонок в переписке ---------- */
+.ch-call { align-self: center; display: flex; align-items: center; gap: 10px; max-width: min(92%, 380px); padding: 8px 8px 8px 12px; margin: 4px 0; border-radius: 18px; background: var(--surface-high, rgba(255,255,255,.06)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--on-bg, #fff) 8%, transparent); }
+.ch-call.new { animation: msgIn .3s var(--m3-emph, ease) both; }
+.ch-call-ic { width: 34px; height: 34px; flex: none; display: grid; place-items: center; border-radius: 50%; background: color-mix(in srgb, #3ddc84 20%, transparent); color: #3ddc84; }
+.ch-call.missed .ch-call-ic, .ch-call.declined .ch-call-ic { background: color-mix(in srgb, #ff3b5c 18%, transparent); color: #ff5c78; }
+.ch-call-ic .mi { width: 18px; height: 18px; }
+.ch-call-t { display: grid; flex: 1; min-width: 0; }
+.ch-call-t b { font-size: 13.5px; }
+.ch-call.missed:not(.me) .ch-call-t b { color: #ff5c78; }
+.ch-call-t small { font-size: 11.5px; opacity: .6; }
+.ch-call-again { width: 34px; height: 34px; flex: none; border: 0; border-radius: 50%; display: grid; place-items: center; background: var(--primary); color: var(--on-primary, #fff); }
+.ch-call-again .mi { width: 17px; height: 17px; }
+
+/* ---------- звонок: шифрование, музыка вместе ---------- */
+.call-sec { display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 11.5px; color: rgba(255,255,255,.55); margin-top: -4px; }
+.call-sec .mi { width: 14px; height: 14px; color: #3ddc84; flex: none; }
+.call-ui.mini .call-sec, .call-ui.mini .call-mixbar { display: none; }
+.call-mixbar { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 12px; border: 0; border-radius: 16px; background: color-mix(in srgb, var(--primary) 22%, rgba(255,255,255,.05)); color: #fff; font: 600 13px var(--font, inherit); text-align: left; }
+.call-mixbar[hidden] { display: none; }
+.call-mixbar .mi { width: 18px; height: 18px; color: var(--primary); flex: none; }
+.call-mixbar span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.call-btn.mix .mi { background: color-mix(in srgb, var(--primary) 35%, rgba(255,255,255,.12)); }
+.mix-list { display: grid; gap: 6px; max-height: 42vh; overflow-y: auto; }
+.mix-list.tall { max-height: 58vh; }
+.mix-row { display: flex; align-items: center; gap: 10px; width: 100%; padding: 6px 10px 6px 6px; border: 1px solid var(--outline, rgba(255,255,255,.12)); border-radius: 16px; background: none; color: inherit; font: inherit; text-align: left; }
+.mix-row img { width: 42px; height: 42px; border-radius: 10px; object-fit: cover; flex: none; background: #222; }
+.mix-row > span:not(.call-check) { flex: 1; min-width: 0; display: grid; }
+.mix-row b, .mix-row small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mix-row small { opacity: .65; font-size: 12px; }
+.mix-row > .mi { width: 22px; height: 22px; color: var(--primary); flex: none; }
+.mix-row.on { border-color: transparent; background: color-mix(in srgb, var(--primary) 18%, transparent); }
+.mix-row.pick[aria-pressed="true"] .call-check { background: var(--primary); color: var(--on-primary, #fff); box-shadow: none; }
+.mix-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.mix .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+.mix .btn .mi { width: 18px; height: 18px; }
+@media (max-width: 420px) {
+  .call-bar { gap: 8px !important; }
+  .call-btn .mi { width: 50px; height: 50px; padding: 14px; }
+  .call-btn { font-size: 10.5px; }
+}
+
+/* ---------- входящий звонок на телефоне — на весь экран ---------- */
+@media (max-width: 700px) {
+  .call-in { inset: 0; left: 0; top: 0; width: 100%; height: 100%; transform: translateY(100%); border-radius: 0; flex-direction: column; justify-content: flex-start; gap: 18px; padding: 16vh 24px calc(160px + env(safe-area-inset-bottom));
+    background: radial-gradient(90% 60% at 50% 30%, color-mix(in srgb, var(--primary) 45%, transparent), transparent 70%), #07070c; }
+  .call-in.show { transform: none; }
+  .call-in .ci-av { width: 128px; height: 128px; }
+  .call-in .ci-av::after { inset: -10px; border-width: 3px; }
+  .call-in .ci-txt { flex: none; text-align: center; }
+  .call-in .ci-txt b { font-size: 26px; }
+  .call-in .ci-txt small { font-size: 14px; margin-top: 4px; }
+  .call-in .ci-txt::after { content: 'Звонок зашифрован'; display: block; margin-top: 10px; font-size: 12px; color: rgba(255,255,255,.5); }
+  .call-in .ci-btn { position: absolute; bottom: calc(60px + env(safe-area-inset-bottom)); width: 72px; height: 72px; }
+  .call-in .ci-btn .mi { width: 32px; height: 32px; }
+  .call-in .ci-btn.no { left: calc(50% - 110px); }
+  .call-in .ci-btn.yes { right: calc(50% - 110px); }
+}

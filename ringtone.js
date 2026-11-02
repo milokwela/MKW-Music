@@ -1,7 +1,7 @@
 // Рингтон звонка — любая песня: в меню трека «Поставить на звонок».
 // Играет 30-секундный фрагмент (iTunes) по кругу, пока звонят. Нет фрагмента — обычные гудки.
-import { searchTracks } from './catalog.js?v=0.27.7';
-import { toast } from './ui.js?v=0.27.7';
+import { searchTracks } from './catalog.js?v=0.28.0';
+import { toast } from './ui.js?v=0.28.0';
 
 const KEY = 'mkw.ringtone';
 export function getRingtone() { try { return JSON.parse(localStorage.getItem(KEY) || 'null'); } catch { return null; } }
