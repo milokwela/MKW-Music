@@ -126,7 +126,7 @@ service cloud.firestore {
         allow read, delete: if request.auth != null && (resource.data.to == request.auth.uid || resource.data.from == request.auth.uid);
         allow create: if request.auth != null
           && request.resource.data.from == request.auth.uid
-          && request.resource.data.keys().hasOnly(['from', 'to', 'kind', 'sdp', 'at'])
+          && request.resource.data.keys().hasOnly(['from', 'to', 'kind', 'sid', 'sdp', 'at'])
           && request.resource.data.sdp is string && request.resource.data.sdp.size() <= 30000
           && request.auth.uid in get(/databases/$(database)/documents/calls/$(id)).data.members
           && request.resource.data.to in get(/databases/$(database)/documents/calls/$(id)).data.members;
