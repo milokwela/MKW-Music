@@ -1,8 +1,14 @@
 // История версий. Новые записи добавляйте сверху.
-export const VERSION = '0.27.1';
+export const VERSION = '0.27.2';
 export const STAGE = 'beta';
 
 export const CHANGELOG = [
+  {
+    version: '0.27.2',
+    date: '3 ноября 2026',
+    new: ['Статус в Discord без скачивания: одна команда в «Выполнить» (Win+R) — Windows больше не блокирует помощника. Можно включить автозапуск'],
+    fixed: ['Windows 11 блокировал MKW-Discord.exe («Интеллектуальное управление приложениями»)'],
+  },
   {
     version: '0.27.1',
     date: '3 ноября 2026',
