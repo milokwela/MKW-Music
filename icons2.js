@@ -58,6 +58,14 @@ const I = {
   'hand-point': hand([1, 0, 0, 0], 'in'),
   'hand-fist': hand([0, 0, 0, 0], 'in'),
   'hand-three': hand([1, 1, 1, 0], 'in'),
+  // взмах ладонью: ладонь и стрелка в сторону движения
+  'swipe-right': P('M2 12.75h6.5v2.5L12 12l-3.5-3.25v2.5H2z') + '<g transform="translate(9.5 1) scale(.62)">' + hand([1, 1, 1, 1], 'out') + '</g>',
+  'swipe-left': P('M22 12.75h-6.5v2.5L12 12l3.5-3.25v2.5H22z') + '<g transform="translate(-0.5 1) scale(.62)">' + hand([1, 1, 1, 1], 'out') + '</g>',
+  chat: '<path fill-rule="evenodd" d="M6 4h12a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H9l-5 4V6a2 2 0 0 1 2-2zM7.5 8.2v1.8h9V8.2zm0 3.8v1.8h6V12z"/>',
+  bell: P('M12 22a2.5 2.5 0 0 0 2.45-2h-4.9A2.5 2.5 0 0 0 12 22zm7-6V11a7 7 0 0 0-5.5-6.84V3.5a1.5 1.5 0 0 0-3 0v.66A7 7 0 0 0 5 11v5l-2 2v1h18v-1l-2-2z'),
+  send: P('M3.4 20.4 21 12 3.4 3.6 3.39 10.13 15 12 3.39 13.87z'),
+  'person-add': P('M15 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4zm-9-2V7H4v3H1v2h3v3h2v-3h3v-2zm9 4c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z'),
+  hourglass: P('M6 2v6l4 4-4 4v6h12v-6l-4-4 4-4V2H6zm10 14.5V20H8v-3.5l4-4 4 4zm-4-5-4-4V4h8v3.5l-4 4z'),
 };
 
 export function mi(name, cls = '') {

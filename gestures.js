@@ -1,17 +1,19 @@
 // Управление жестами через камеру (MediaPipe GestureRecognizer, модель грузится с CDN).
 // Два пальца: следующий. Рок: предыдущий. Большой вверх: лайк. Средний палец: снять лайк. Большой вниз: дизлайк.
 // Ладонь: пауза. Палец вверх: продолжить. Кулак: тише. Три пальца: громче.
-import { h, toast, openSheet, closeSheet } from './ui.js?v=0.22.1';
-import { mi } from './icons2.js?v=0.22.1';
-import * as player from './player.js?v=0.22.1';
-import * as store from './store.js?v=0.22.1';
-import { dislike } from './wave.js?v=0.22.1';
+import { h, toast, openSheet, closeSheet } from './ui.js?v=0.23.0';
+import { mi } from './icons2.js?v=0.23.0';
+import * as player from './player.js?v=0.23.0';
+import * as store from './store.js?v=0.23.0';
+import { dislike } from './wave.js?v=0.23.0';
 
 const KEY = 'mkw.gestures';
 const LIB = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14';
 const MODEL = 'https://storage.googleapis.com/mediapipe-models/gesture_recognizer/gesture_recognizer/float16/1/gesture_recognizer.task';
 export const GESTURES = [
   ['hand-peace', 'Два пальца', 'Следующий трек'],
+  ['swipe-right', 'Взмах ладонью вправо', 'Следующий трек'],
+  ['swipe-left', 'Взмах ладонью влево', 'Предыдущий трек'],
   ['hand-rock', 'Большой, указательный и мизинец', 'Предыдущий трек'],
   ['thumb-up', 'Большой палец вверх', 'Лайк'],
   ['hand-middle', 'Средний палец', 'Снять лайк'],
@@ -26,10 +28,10 @@ export function gestureList() {
     h('span', { class: 'ge' }, mi(e)), h('div', {}, h('b', { text: what }), h('small', { text: how })))));
 }
 export function showGestureGuide() {
-  openSheet('Жесты', h('div', {}, gestureList(), h('p', { class: 'profile-note', text: 'Держите жест около секунды на расстоянии вытянутой руки, чтобы рука была видна целиком. Должно быть светло.' })));
+  openSheet('Жесты', h('div', {}, gestureList(), h('p', { class: 'profile-note', text: 'Держите жест около секунды на расстоянии вытянутой руки, чтобы рука была видна целиком. Взмах — быстро проведите открытой ладонью влево или вправо перед камерой.' })));
 }
 
-const COOLDOWN_MS = 2000, STEP_MS = 90;
+const COOLDOWN_MS = 2000, STEP_MS = 70;
 
 let on = false, running = false, video = null, stream = null, rec = null, timer = 0;
 let lastAct = 0, badge = null;
@@ -39,10 +41,13 @@ export const gesturesOn = () => on;
 function act(name) {
   const now = Date.now();
   const repeat = name === 'vol-up' || name === 'vol-down';
-  if (now - lastAct < (repeat ? 900 : COOLDOWN_MS)) return;
+  const swipe = name === 'swipe-next' || name === 'swipe-prev';
+  if (now - lastAct < (repeat ? 900 : swipe ? 1100 : COOLDOWN_MS)) return;
   lastAct = now;
   const t = player.queue.current;
-  if (name === 'Victory') { toast('Следующий трек'); player.next(); }
+  if (name === 'swipe-next') { toast('Следующий трек'); player.next(); }
+  else if (name === 'swipe-prev') { toast('Предыдущий трек'); player.previousTrack(); }
+  else if (name === 'Victory') { toast('Следующий трек'); player.next(); }
   else if (name === 'ILoveYou') { toast('Предыдущий трек'); player.previousTrack(); }
   else if (name === 'Thumb_Up') { if (t && !store.isLiked(t.id)) { store.toggleLike(t).catch(() => {}); toast('Добавлено в лайки'); } }
   else if (name === 'middle') { if (t && store.isLiked(t.id)) { store.toggleLike(t).catch(() => {}); toast('Лайк снят'); } }
@@ -69,6 +74,37 @@ export function customGesture(lm) {
   if (up(r.middle) && down(r.index) && down(r.ring) && down(r.pinky)) return 'middle';
   if (up(r.index) && up(r.middle) && up(r.ring) && down(r.pinky)) return 'vol-up';
   return '';
+}
+
+// ---------- взмах ладонью: следим, куда движется центр ладони ----------
+// Камера телефона не зеркальная: если вы ведёте руку вправо (от себя), на кадре она едет влево (x уменьшается).
+const track = [];   // { t, x, y, open }
+function palmPoint(lm) {
+  const ids = [0, 5, 9, 13, 17];
+  const x = ids.reduce((s, i) => s + lm[i].x, 0) / ids.length, y = ids.reduce((s, i) => s + lm[i].y, 0) / ids.length;
+  const { r, up } = fingerState(lm);
+  const open = [r.index, r.middle, r.ring, r.pinky].filter(up).length >= 3;
+  return { x, y, open };
+}
+function detectSwipe(now) {
+  while (track.length && now - track[0].t > 650) track.shift();
+  if (track.length < 3) return '';
+  const last = track[track.length - 1];
+  // ищем точку не раньше 550 мс назад, от которой рука проехала больше всего
+  let best = null;
+  for (const p of track) { if (last.t - p.t < 120 || last.t - p.t > 550) continue; const dx = last.x - p.x; if (!best || Math.abs(dx) > Math.abs(best.dx)) best = { dx, dy: last.y - p.y }; }
+  if (!best) return '';
+  const opens = track.filter((p) => p.open).length;
+  if (opens < Math.ceil(track.length * 0.5)) return '';
+  if (Math.abs(best.dx) < 0.2 || Math.abs(best.dy) > Math.abs(best.dx) * 0.75) return '';
+  return best.dx < 0 ? 'swipe-next' : 'swipe-prev';
+}
+// рука почти не двигается последние 0.35 с — тогда ладонь означает «пауза», а не начало взмаха
+function palmStill(now) {
+  const recent = track.filter((p) => now - p.t < 350);
+  if (recent.length < 2) return true;
+  const xs = recent.map((p) => p.x);
+  return Math.max(...xs) - Math.min(...xs) < 0.06;
 }
 
 const USEFUL = ['Victory', 'Thumb_Up', 'Thumb_Down', 'Open_Palm', 'Pointing_Up', 'ILoveYou', 'Closed_Fist'];
@@ -116,7 +152,12 @@ function loop() {
       const res = rec.recognizeForVideo(frameSource(), now);
       const g = res.gestures && res.gestures[0] && res.gestures[0][0];
       let name = g && g.score > (dark ? 0.38 : 0.5) && USEFUL.includes(g.categoryName) ? g.categoryName : '';
-      const custom = res.landmarks && res.landmarks[0] ? customGesture(res.landmarks[0]) : '';
+      const lm = res.landmarks && res.landmarks[0];
+      if (lm) track.push({ t: now, ...palmPoint(lm) });
+      const sw = detectSwipe(now);
+      if (sw) { act(sw); win.length = 0; track.length = 0; timer = setTimeout(loop, STEP_MS); return; }
+      if (name === 'Open_Palm' && !palmStill(now)) name = '';
+      const custom = lm ? customGesture(lm) : '';
       if (custom) name = custom;
       else if (name === 'Closed_Fist') name = 'vol-down';
       win.push(name);

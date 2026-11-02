@@ -1,18 +1,23 @@
 // Страница другого слушателя: баннер, фото, статус, значки, статистика, любимые исполнители и треки.
-import { $, h, trackRow, animateIn } from './ui.js?v=0.22.1';
-import * as player from './player.js?v=0.22.1';
-import { openTrackMenu } from './menu.js?v=0.22.1';
-import { getProfile } from './leaders.js?v=0.22.1';
-import { ACH, bannerCss, formatListened } from './profile.js?v=0.22.1';
-import { artistPic } from './artistpic.js?v=0.22.1';
-import { openArtist } from './artist.js?v=0.22.1';
-import { mi } from './icons2.js?v=0.22.1';
-import { plural } from './utils.js?v=0.22.1';
-import { openImage } from './viewer.js?v=0.22.1';
-import { isDev, devBadge } from './dev.js?v=0.22.1';
-import { isFriend, addFriend, removeFriend, loadFriends, friendsLoaded } from './friends.js?v=0.22.1';
-import { toast } from './ui.js?v=0.22.1';
-import { searchTracks } from './catalog.js?v=0.22.1';
+import { $, h, trackRow, animateIn } from './ui.js?v=0.23.0';
+import * as player from './player.js?v=0.23.0';
+import { openTrackMenu } from './menu.js?v=0.23.0';
+import { getProfile } from './leaders.js?v=0.23.0';
+import { ACH, bannerCss, formatListened } from './profile.js?v=0.23.0';
+import { artistPic } from './artistpic.js?v=0.23.0';
+import { openArtist } from './artist.js?v=0.23.0';
+import { mi } from './icons2.js?v=0.23.0';
+import { plural } from './utils.js?v=0.23.0';
+import { openImage } from './viewer.js?v=0.23.0';
+import { isDev, devBadge } from './dev.js?v=0.23.0';
+import { friendState, addFriend, removeFriend, loadFriends, friendsLoaded } from './friends.js?v=0.23.0';
+import { openChat } from './chat.js?v=0.23.0';
+// удалить друга — двойное нажатие за 3 секунды, чтобы не убрать случайно
+let rmAsk = '';
+function confirmRemove(u) { if (rmAsk === u.uid) { rmAsk = ''; return true; } rmAsk = u.uid; setTimeout(() => { if (rmAsk === u.uid) rmAsk = ''; }, 3000); toast('Нажмите ещё раз, чтобы убрать из друзей'); return false; }
+import { avSrc } from './avatar.js?v=0.23.0';
+import { toast } from './ui.js?v=0.23.0';
+import { searchTracks } from './catalog.js?v=0.23.0';
 
 export function seenText(seen) {
   const t = Number(seen) || 0;
@@ -55,7 +60,7 @@ function render(u, isMe) {
     h('div', { class: `phero up-hero${isDev(u.nick) ? ' dev' : ''}`, 'data-frame': u.frame || 'none', 'data-shape': u.shape || 'circle', 'data-effect': u.effect || 'none', style: `--banner:${bannerCss(u.banner === 'img' ? 'accent' : u.banner, u.bannerImg)}` },
       h('div', { class: 'phero-banner', onclick: () => u.bannerImg && openImage(u.bannerImg) }),
       h('div', { class: 'phero-fx' }, h('i'), h('i'), h('i'), h('i'), h('i'), h('i')),
-      h('div', { class: 'phero-row' }, h('button', { type: 'button', class: 'hero-avatar', 'aria-label': 'Открыть фото', onclick: () => openImage(u.avatar || 'mkw-logo.png', u.nick) }, h('img', { src: u.avatar || 'mkw-logo.png', alt: '' }), isOnline(u.seen) ? h('span', { class: 'online-dot' }) : null)),
+      h('div', { class: 'phero-row' }, h('button', { type: 'button', class: 'hero-avatar', 'aria-label': 'Открыть фото', onclick: () => openImage(avSrc(u.avatar), u.nick) }, h('img', { src: avSrc(u.avatar), alt: '' }), isOnline(u.seen) ? h('span', { class: 'online-dot' }) : null)),
       h('div', { class: 'phero-info' },
         h('div', { class: 'hero-nick', 'data-style': u.nickStyle || 'plain', text: u.nick || 'Слушатель' }),
         isDev(u.nick) ? devBadge() : null,
@@ -67,10 +72,17 @@ function render(u, isMe) {
         h('div', { class: 'pbadges' }, ...(isDev(u.nick) ? [h('span', { class: 'pbadge dev-ach' }, mi('crown'), h('b', { text: 'Создатель MKW' }))] : []), ...(u.badges || []).filter((id) => ACH[id]).map((id) => h('span', { class: 'pbadge' }, mi(ACH[id].i), h('b', { text: ACH[id].title })))))),
     !isMe && u.uid ? (() => {
       const btn = h('button', { class: 'btn up-friend', type: 'button' });
-      const paint = () => { const f = isFriend(u.uid); btn.classList.toggle('tonal', f); btn.replaceChildren(mi(f ? 'check' : 'add'), f ? ' В друзьях' : ' Добавить в друзья'); };
+      const chatBtn = h('button', { class: 'btn tonal up-friend', type: 'button', onclick: () => openChat(u.uid, u) }, mi('chat'), ' Написать');
+      const LBL = { friend: ['check', ' В друзьях'], sent: ['hourglass', ' Заявка отправлена'], incoming: ['person-add', ' Принять заявку'], none: ['person-add', ' Добавить в друзья'] };
+      const paint = () => { const st = friendState(u.uid); btn.classList.toggle('tonal', st === 'friend' || st === 'sent'); btn.replaceChildren(mi(LBL[st][0]), LBL[st][1]); chatBtn.hidden = st !== 'friend'; };
       btn.addEventListener('click', async () => {
-        try { if (isFriend(u.uid)) { await removeFriend(u.uid); toast('Убрано из друзей'); } else { await addFriend(u.uid); toast(`${u.nick} теперь у вас в друзьях`); } }
-        catch { toast('Не получилось. Админу нужно обновить правила Firestore'); }
+        const st = friendState(u.uid);
+        try {
+          if (st === 'friend') { if (confirmRemove(u)) { await removeFriend(u.uid); toast('Убрано из друзей'); } }
+          else if (st === 'sent') { await removeFriend(u.uid); toast('Заявка отменена'); }
+          else if (st === 'incoming') { await addFriend(u.uid); toast(`Теперь вы друзья с ${u.nick}`); }
+          else { await addFriend(u.uid); toast(`Заявка отправлена. ${u.nick} станет другом, когда примет её`); }
+        } catch { toast('Не получилось. Админу нужно обновить правила Firestore'); }
         paint();
       });
       if (!friendsLoaded()) loadFriends().then(paint);
@@ -79,7 +91,7 @@ function render(u, isMe) {
         const f = await searchTracks(u.now).catch(() => []);
         if (f.length) player.playTracks(f.slice(0, 10), 0); else toast('Не нашла этот трек');
       } }, mi('play-circle'), ' Слушать то же') : null;
-      return h('div', { class: 'up-actions' }, btn, play);
+      return h('div', { class: 'up-actions' }, btn, chatBtn, play);
     })() : null,
     h('div', { class: 'up-stats' },
       stat('timer', t.value, t.unit), stat('play-circle', u.plays || 0, 'треков'), stat('heart', u.likes || 0, 'лайков'),
