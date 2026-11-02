@@ -1,37 +1,38 @@
 // Экран «Профиль»: карточка с баннером, витрина (любимые исполнители и треки), вкладки Обзор / Слушатели / Настройки / О MKW.
-import { $, $$, h, icon, openSheet, closeSheet, toast, sheetItem, trackRow } from './ui.js?v=0.27.6';
-import * as store from './store.js?v=0.27.6';
-import * as player from './player.js?v=0.27.6';
-import { ACCENTS, getTheme, getAccent, getCustomHue, setCustomColor, setTheme, setAccent, hslHex, getNeutral } from './theme.js?v=0.27.6';
-import { CHANGELOG, VERSION, STAGE, KNOWN_ISSUES } from './changelog.js?v=0.27.6';
-import { plural, pickTrack, safeUrl } from './utils.js?v=0.27.6';
-import { youtubeEnabled, youtubeQuotaOut } from './youtube.js?v=0.27.6';
-import { audiusEnabled } from './audius.js?v=0.27.6';
-import { SOURCE_MODES, getSourceMode, setSourceMode } from './sources.js?v=0.27.6';
-import { gesturesOn, setGestures, showGestureGuide } from './gestures.js?v=0.27.6';
-import { listenerStats } from './stats.js?v=0.27.6';
-import { liveBg, setLiveBg } from './viz.js?v=0.27.6';
-import { lowPower, setLowPower } from './perf.js?v=0.27.6';
-import { logOut, changePassword, changeNick, authErrorText } from './auth.js?v=0.27.6';
-import { connectionCountry } from './geo.js?v=0.27.6';
-import { goOffline, publishCard, publishProfile, myCard, getProfile, topListeners, hiddenFromBoard, setHidden, myUid } from './leaders.js?v=0.27.6';
-import { mi } from './icons2.js?v=0.27.6';
-import { artistPic } from './artistpic.js?v=0.27.6';
-import { openArtist } from './artist.js?v=0.27.6';
-import { openUserPage, favArtistsRow, favTracksList, isOnline } from './userpage.js?v=0.27.6';
-import { voiceOn, setVoice, showVoiceGuide, voiceSupported } from './voice.js?v=0.27.6';
-import { openImage } from './viewer.js?v=0.27.6';
-import { isDev, devBadge, fanBadge, nickMarks } from './dev.js?v=0.27.6';
-import { fanNumber, restoreFan, becomeFan } from './fans.js?v=0.27.6';
-import { ping } from './leaders.js?v=0.27.6';
-import { streamsOn, setStreams, checkBackground } from './stream.js?v=0.27.6';
-import { DEF_AV, avSrc, isDefAv } from './avatar.js?v=0.27.6';
-import { ONLINE_MS, loadFriends, friendIds, addFriend, removeFriend, findByNick, friendCards, onFriends, declineRequest, acceptRequest, requestIds, sentIds, friendState, friendsLoaded } from './friends.js?v=0.27.6';
-import { openChat, chatWith, isUnread, onChats } from './chat.js?v=0.27.6';
-import { notifyOn, setNotify } from './notify.js?v=0.27.6';
-import { openInstall, standalone } from './install.js?v=0.27.6';
-import { searchTracks } from './catalog.js?v=0.27.6';
-import { seenText } from './userpage.js?v=0.27.6';
+import { $, $$, h, icon, openSheet, closeSheet, toast, sheetItem, trackRow } from './ui.js?v=0.27.7';
+import * as store from './store.js?v=0.27.7';
+import * as player from './player.js?v=0.27.7';
+import { ACCENTS, getTheme, getAccent, getCustomHue, setCustomColor, setTheme, setAccent, hslHex, getNeutral } from './theme.js?v=0.27.7';
+import { CHANGELOG, VERSION, STAGE, KNOWN_ISSUES } from './changelog.js?v=0.27.7';
+import { plural, pickTrack, safeUrl } from './utils.js?v=0.27.7';
+import { youtubeEnabled, youtubeQuotaOut } from './youtube.js?v=0.27.7';
+import { audiusEnabled } from './audius.js?v=0.27.7';
+import { SOURCE_MODES, getSourceMode, setSourceMode } from './sources.js?v=0.27.7';
+import { gesturesOn, setGestures, showGestureGuide } from './gestures.js?v=0.27.7';
+import { listenerStats } from './stats.js?v=0.27.7';
+import { liveBg, setLiveBg } from './viz.js?v=0.27.7';
+import { lowPower, setLowPower } from './perf.js?v=0.27.7';
+import { logOut, changePassword, changeNick, authErrorText } from './auth.js?v=0.27.7';
+import { connectionCountry } from './geo.js?v=0.27.7';
+import { goOffline, publishCard, publishProfile, myCard, getProfile, topListeners, hiddenFromBoard, setHidden, myUid } from './leaders.js?v=0.27.7';
+import { mi } from './icons2.js?v=0.27.7';
+import { artistPic } from './artistpic.js?v=0.27.7';
+import { openArtist } from './artist.js?v=0.27.7';
+import { openUserPage, favArtistsRow, favTracksList, isOnline } from './userpage.js?v=0.27.7';
+import { voiceOn, setVoice, showVoiceGuide, voiceSupported } from './voice.js?v=0.27.7';
+import { openImage } from './viewer.js?v=0.27.7';
+import { isDev, devBadge, fanBadge, nickMarks } from './dev.js?v=0.27.7';
+import { fanNumber, restoreFan, becomeFan } from './fans.js?v=0.27.7';
+import { ping } from './leaders.js?v=0.27.7';
+import { streamsOn, setStreams, checkBackground } from './stream.js?v=0.27.7';
+import { DEF_AV, avSrc, isDefAv } from './avatar.js?v=0.27.7';
+import { ONLINE_MS, loadFriends, friendIds, addFriend, removeFriend, findByNick, friendCards, onFriends, declineRequest, acceptRequest, requestIds, sentIds, friendState, friendsLoaded } from './friends.js?v=0.27.7';
+import { openChat, chatWith, isUnread, onChats } from './chat.js?v=0.27.7';
+import { notifyOn, setNotify } from './notify.js?v=0.27.7';
+import { openInstall, standalone } from './install.js?v=0.27.7';
+import { getRingtone, clearRingtone } from './ringtone.js?v=0.27.7';
+import { searchTracks } from './catalog.js?v=0.27.7';
+import { seenText } from './userpage.js?v=0.27.7';
 
 // s: sec, likes, playlists, plays, days, artists, night, styled, showcase, rank
 export const ACHIEVEMENTS = [
@@ -770,6 +771,7 @@ export function buildProfile(nick) {
         row('Оптимизация для слабых устройств', 'Отключает размытие и тяжёлые анимации', refs.lowp, null, 'rocket'),
         row('Жесты (бета)', 'Управление рукой через камеру, взмах ладонью — сменить трек', refs.gest, null, 'hand-open'),
         row('Уведомления', 'Звонки, сообщения и заявки в друзья — уведомлением на телефон и компьютер, даже когда MKW закрыт', refs.notify, null, 'bell'),
+        row('Рингтон звонка', (() => { const r = getRingtone(); return r ? `${r.artist} — ${r.title}. Нажмите, чтобы вернуть гудки` : 'Гудки. Любую песню: меню трека (⋮) → «Поставить на звонок»'; })(), chev(), () => { if (getRingtone()) { clearRingtone(); setTimeout(() => { const t = refs.tab; refs.tab = ''; buildProfile(curNick); setTab(t || 'set'); }, 200); } else toast('Откройте меню любой песни (⋮) → «Поставить на звонок»'); }, 'bell'),
         row('Какие жесты показывать', 'Список жестов и что они делают', chev(), showGestureGuide, 'hand-peace'),
         row('Голосовое управление', voiceSupported() ? 'Скажите «МКВ» или «Музыка», потом команду: «МКВ, следующая», «МКВ, включить Баста», «МКВ, позвони Лере»' : 'Этот браузер не поддерживает', refs.voice, null, 'mic'),
         row('Какие команды говорить', 'Все голосовые команды', chev(), showVoiceGuide, 'note')),

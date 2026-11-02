@@ -1,13 +1,14 @@
 // Раздел «Чаты» в нижнем меню: все переписки с друзьями, как в мессенджере.
 // Сверху — недавние и непрочитанные, ниже — друзья, с которыми ещё не переписывались.
-import { $, h } from './ui.js?v=0.27.6';
-import { mi } from './icons2.js?v=0.27.6';
-import { chatList, isUnread, onChats, openChat, otherOf } from './chat.js?v=0.27.6';
-import { me, friendIds, friendCards, loadFriends, friendsLoaded, onFriends, requestIds } from './friends.js?v=0.27.6';
-import { avSrc } from './avatar.js?v=0.27.6';
-import { nickMarks } from './dev.js?v=0.27.6';
-import { seenText, isOnline } from './userpage.js?v=0.27.6';
-import { pickAndCall } from './call.js?v=0.27.6';
+import { $, h } from './ui.js?v=0.27.7';
+import { mi } from './icons2.js?v=0.27.7';
+import { chatList, isUnread, onChats, openChat, otherOf } from './chat.js?v=0.27.7';
+import { me, friendIds, friendCards, loadFriends, friendsLoaded, onFriends, requestIds } from './friends.js?v=0.27.7';
+import { avSrc } from './avatar.js?v=0.27.7';
+import { nickMarks } from './dev.js?v=0.27.7';
+import { seenText, isOnline } from './userpage.js?v=0.27.7';
+import { pickAndCall } from './call.js?v=0.27.7';
+import { setNotify } from './notify.js?v=0.27.7';
 
 let watching = false, filter = '', busy = false, again = false;
 
@@ -56,7 +57,10 @@ export async function renderChats() {
     const talks = chats.map((c) => byId.get(otherOf(c))).filter((u) => u && pass(u));
     const rest = ids.filter((x) => !withChat.has(x)).map((x) => byId.get(x)).filter((u) => u && pass(u));
     const req = requestIds().length;
-    root.querySelector('.cl-req').replaceChildren(...(req ? [h('button', { type: 'button', class: 'cl-reqbtn', onclick: () => document.querySelector('#bottom-nav .nav-btn[data-view="profile"]').click() || setTimeout(() => { const t = document.querySelector('.ptab[data-tab="friends"]'); if (t) t.click(); }, 300) }, mi('person-add'), h('span', { text: `Заявки в друзья: ${req}` }), h('i', { text: '›' }))] : []));
+    // уведомления о звонках: браузер должен разрешить — просим одной кнопкой
+    const askNotif = 'Notification' in window && Notification.permission === 'default';
+    const nb = askNotif ? h('button', { type: 'button', class: 'cl-reqbtn cl-notif', onclick: async () => { await setNotify(true); renderChats(); } }, mi('bell'), h('span', { text: 'Включите уведомления — чтобы не пропускать звонки, даже когда MKW закрыт' }), h('i', { text: '›' })) : null;
+    root.querySelector('.cl-req').replaceChildren(...(nb ? [nb] : []), ...(req ? [h('button', { type: 'button', class: 'cl-reqbtn', onclick: () => document.querySelector('#bottom-nav .nav-btn[data-view="profile"]').click() || setTimeout(() => { const t = document.querySelector('.ptab[data-tab="friends"]'); if (t) t.click(); }, 300) }, mi('person-add'), h('span', { text: `Заявки в друзья: ${req}` }), h('i', { text: '›' }))] : []));
     const list = root.querySelector('.cl-list');
     if (!talks.length && !rest.length) {
       list.replaceChildren(h('div', { class: 'cl-empty' }, mi('chat'), h('b', { text: filter ? 'Никого не нашла' : 'Чатов пока нет' }),
