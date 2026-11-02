@@ -38,6 +38,7 @@ import { seenText } from './userpage.js?v=0.30.0';
 export const ACHIEVEMENTS = [
   { id: 'dev', i: 'crown', title: 'Создатель MKW', hint: 'Разработчик приложения MKW Music', ok: (s) => s.dev, secret: true },
   { id: 'crash0', i: 'fire', title: 'Основатель сбоя', hint: 'Лимитированный значок: такой один на весь MKW. Спасибо за идею самой масштабной ошибки', ok: (s) => s.founder, secret: true, cls: 'ach-crash' },
+  { id: 'wait1', i: 'hourglass', title: 'Дождался модерации', hint: 'Ждал, пока MKW Music проходил модерацию Google (ноябрь 2026). Уникальный значок', ok: (s) => s.waited, cls: 'ach-wait' },
   { id: 'dark1', i: 'shield', title: 'Пережил тёмное время бана', hint: 'Был с MKW, когда сайт по ошибке пометили как опасный (ноябрь 2026). Значок в знак извинения', ok: (s) => s.darkBan, cls: 'ach-dark' },
   { id: 'like1', i: 'heart', title: 'Первый лайк', hint: 'Лайкните любой трек', ok: (s) => s.likes >= 1 },
   { id: 'like10', i: 'hearts', title: 'Коллекционер', hint: '10 лайков', v: (s) => [s.likes, 10] },
@@ -260,6 +261,7 @@ function statsNow() {
     artists: seen.size, night, styled: Boolean(c.styled), showcase: Boolean(c.favArtists.length || c.favTracks.length), rank: myRank, friends: friendIds().length, dev: isDev(curNick),
     // значок «Пережил тёмное время бана»: у всех, кто был с MKW до 10 ноября 2026
     founder: String(curNick).toLowerCase() === FOUNDER,
+    waited: (() => { try { return localStorage.getItem('mkw.wait.badge') === '1'; } catch { return false; } })() || c.badges.includes('wait1'),
     darkBan: Date.now() < DARK_UNTIL || (created > 0 && created < DARK_UNTIL) || c.badges.includes('dark1'),
   };
 }
@@ -313,6 +315,14 @@ function pinDarkBadge() {
   const c = getCustom();
   const add = [...(String(curNick).toLowerCase() === FOUNDER ? ['crash0'] : []), 'dark1'].filter((x) => !c.badges.includes(x));
   if (add.length) setCustom({ badges: [...add, ...c.badges].slice(0, 3) }); // мест три — новые значки встают первыми
+}
+
+// значок «Дождался модерации»: получен кнопкой на странице модерации — сам встаёт первым в профиле
+function pinWaitBadge() {
+  const k = `mkw.wait.pinned.${curNick}`;
+  try { if (localStorage.getItem('mkw.wait.badge') !== '1' || localStorage.getItem(k)) return; localStorage.setItem(k, '1'); } catch { return; }
+  const c = getCustom();
+  if (!c.badges.includes('wait1')) setCustom({ badges: ['wait1', ...c.badges].slice(0, 3) });
 }
 
 function badgeChips(ids) {
@@ -868,6 +878,7 @@ export function buildProfile(nick) {
 
   built = true;
   pinDarkBadge();
+  pinWaitBadge();
   if (!refs.voiceSync) { refs.voiceSync = true; window.addEventListener('mkw-voice', () => syncControls()); }
   swipeTabs(refs.pmain);
   requestAnimationFrame(() => placeLens(false));

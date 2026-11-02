@@ -243,3 +243,5 @@
 @keyframes fpLight { 0% { filter: grayscale(1) brightness(.6); } 60% { filter: grayscale(0) brightness(1.6) drop-shadow(0 0 30px var(--fc)); } 100% { filter: drop-shadow(0 0 18px var(--fc)) drop-shadow(0 0 40px var(--fc)); } }
 @media (prefers-reduced-motion: reduce) { .fire-pop *, .fire-pop { animation-duration: .01s !important; } }
 .cl-text { margin: 8px 0 4px; font-size: 14px; line-height: 1.45; opacity: .9; }
+.pbadge.ach-wait, .pe-badge.ach-wait { position: relative; overflow: hidden; background: linear-gradient(135deg, #04140f, #0d2a3a 55%, #04140f) !important; border: 1px solid rgba(80,230,200,.45) !important; color: #dcfff6 !important; box-shadow: 0 0 14px rgba(57,243,200,.3); }
+.pbadge.ach-wait .mi, .pe-badge.ach-wait .mi { color: #5ff5d2 !important; filter: drop-shadow(0 0 4px rgba(57,243,200,.8)); }
