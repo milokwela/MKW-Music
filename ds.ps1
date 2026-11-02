@@ -5,11 +5,28 @@
 # не ставит программ, не читает файлы, никуда в интернет данные не отправляет.
 # Остановить: закрыть окно «MKW Discord». Убрать из автозапуска: Win+R → shell:startup → удалить «MKW Discord».
 
+# Windows с «Интеллектуальным управлением приложениями» (или другой защитой) может ограничить PowerShell —
+# тогда объясняем, что делать, а не падаем с непонятной ошибкой
+if ($ExecutionContext.SessionState.LanguageMode -ne 'FullLanguage') {
+  Write-Host ''
+  Write-Host '  MKW Discord' -ForegroundColor Magenta
+  Write-Host '  Windows ограничил PowerShell на этом компьютере (так работает «Интеллектуальное управление приложениями»),'
+  Write-Host '  поэтому через эту команду помощник не запустится.'
+  Write-Host ''
+  Write-Host '  Что сделать (любой из способов):'
+  Write-Host '  1. Поставьте Node.js с сайта nodejs.org (кнопка LTS, официальная программа — Windows её пропустит).'
+  Write-Host '     Потом в MKW Music: Настройки → «Как подключить Discord» → «Способ 2» → скопировать команду → Win+R → Ctrl+V → Enter.'
+  Write-Host '  2. Или выключите «Интеллектуальное управление приложениями»: Безопасность Windows → Управление приложениями/браузером.'
+  Write-Host '     Учтите: обратно его включить можно только после переустановки Windows.'
+  Write-Host ''
+  Read-Host '  Нажмите Enter, чтобы закрыть'
+  return
+}
 $ErrorActionPreference = 'Stop'
-$MkwVer = '2.0.0'
+$MkwVer = '2.0.1'
 $AppId = '1566880916784029786'
 $Port = 47331
-$RunCmd = '[Net.ServicePointManager]::SecurityProtocol=3072;iex([Text.Encoding]::UTF8.GetString((iwr https://mkwmusic.ru/ds.ps1 -UseB).RawContentStream.ToArray()))'
+$RunCmd = 'try{[Net.ServicePointManager]::SecurityProtocol=3072}catch{};iex (iwr https://mkwmusic.ru/ds.txt -UseB).Content'
 try { [Console]::OutputEncoding = [Text.Encoding]::UTF8 } catch {}
 try { $Host.UI.RawUI.WindowTitle = 'MKW Discord' } catch {}
 
