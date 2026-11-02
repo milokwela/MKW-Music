@@ -1,20 +1,20 @@
 // Чат с друзьями. Писать можно только взаимным друзьям (проверяют и приложение, и правила Firestore).
 //   chats/{a_b}            — { members: [a, b], last: { from, text, at }, at, read: { uid: время } }   (a < b)
 //   chats/{a_b}/msgs/{id}  — { from, text, at, track? }
-import { safeUrl } from './utils.js?v=0.29.2';
-import { db } from './firebase.js?v=0.29.2';
+import { safeUrl } from './utils.js?v=0.30.0';
+import { db } from './firebase.js?v=0.30.0';
 import { doc, setDoc, addDoc, collection, query, where, orderBy, limit, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
-import { h, toast, openSheet, closeSheet } from './ui.js?v=0.29.2';
-import { openImage } from './viewer.js?v=0.29.2';
-import { mi } from './icons2.js?v=0.29.2';
-import * as player from './player.js?v=0.29.2';
-import { searchTracks } from './catalog.js?v=0.29.2';
-import { me, isFriend, cardOf, friendIds, friendCards, loadFriends, friendsLoaded } from './friends.js?v=0.29.2';
-import { avSrc } from './avatar.js?v=0.29.2';
-import { seenText, isOnline } from './userpage.js?v=0.29.2';
-import { startCall, warmCalls } from './call.js?v=0.29.2';
-import { streakOf, streakPatch, fireIcon, openStreak } from './streak.js?v=0.29.2';
-import { pushTo, myNick } from './push.js?v=0.29.2';
+import { h, toast, openSheet, closeSheet } from './ui.js?v=0.30.0';
+import { openImage } from './viewer.js?v=0.30.0';
+import { mi } from './icons2.js?v=0.30.0';
+import * as player from './player.js?v=0.30.0';
+import { searchTracks } from './catalog.js?v=0.30.0';
+import { me, isFriend, cardOf, friendIds, friendCards, loadFriends, friendsLoaded } from './friends.js?v=0.30.0';
+import { avSrc } from './avatar.js?v=0.30.0';
+import { seenText, isOnline } from './userpage.js?v=0.30.0';
+import { startCall, warmCalls } from './call.js?v=0.30.0';
+import { streakOf, streakPatch, fireIcon, openStreak, startStreak, playFire } from './streak.js?v=0.30.0';
+import { pushTo, myNick } from './push.js?v=0.30.0';
 
 export const chatId = (a, b) => [a, b].sort().join('_');
 
@@ -204,9 +204,24 @@ export async function openChat(uid, card) {
   const photoBtn = h('button', { class: 'ch-share', type: 'button', title: 'Отправить фото', 'aria-label': 'Отправить фото', onclick: () => photoIn.click() }, mi('image'));
   photoIn.addEventListener('change', async () => {
     const f = photoIn.files && photoIn.files[0]; photoIn.value = ''; if (!f) return;
-    toast('Отправляю фото…');
-    try { const d = await shrink(f); await send(cid, input.value.trim(), null, d); input.value = ''; }
-    catch { toast('Фото не отправилось. Админу нужно обновить правила Firestore'); }
+    let d;
+    try { d = await shrink(f); } catch { toast('Не получилось открыть это фото'); return; }
+    // сначала показываем фото и спрашиваем: отправить или отменить
+    const cap = h('input', { class: 'ch-pc-cap', type: 'text', maxlength: '500', placeholder: 'Подпись (необязательно)', value: input.value.trim() });
+    const close = () => { box.classList.remove('show'); setTimeout(() => box.remove(), 260); };
+    const ok = h('button', { class: 'btn', type: 'button', onclick: async () => {
+      ok.disabled = true; ok.textContent = 'Отправляю…';
+      try { await send(cid, cap.value.trim(), null, d); input.value = ''; close(); }
+      catch { ok.disabled = false; ok.textContent = 'Отправить'; toast('Фото не отправилось. Попробуйте ещё раз'); }
+    } }, mi('send'), h('span', { text: 'Отправить' }));
+    const box = h('div', { class: 'ch-pc', role: 'dialog', 'aria-label': 'Отправить фото?' },
+      h('div', { class: 'ch-pc-card' },
+        h('b', { class: 'ch-pc-t', text: `Отправить фото ${u.nick || 'другу'}?` }),
+        h('img', { src: d, alt: '' }), cap,
+        h('div', { class: 'ch-pc-btns' }, h('button', { class: 'btn tonal', type: 'button', onclick: close }, 'Отмена'), ok)));
+    box.addEventListener('click', (e) => { if (e.target === box) close(); });
+    cap.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); ok.click(); } });
+    p.appendChild(box); requestAnimationFrame(() => box.classList.add('show'));
   });
   const doSend = async (track) => {
     const text = input.value.trim();
@@ -228,6 +243,7 @@ export async function openChat(uid, card) {
       h('button', { class: 'icon-btn ch-callbtn', type: 'button', 'aria-label': 'Позвонить', title: 'Позвонить', onclick: () => startCall([uid]) }, mi('phone')),
       h('button', { class: 'icon-btn ch-bgbtn', type: 'button', 'aria-label': 'Фон чата', title: 'Фон чата', onclick: () => bgMenu(list, cid) }, mi('palette'))),
     list,
+    h('div', { class: 'ch-firecta' }),
     h('div', { class: 'ch-bar' }, photoIn, photoBtn, shareBtn, input, sendBtn));
   paintBg(list, cid);
   requestAnimationFrame(() => p.classList.add('open'));
@@ -242,9 +258,25 @@ export async function openChat(uid, card) {
   };
   // огонёк в шапке чата
   const fireSlot = p.querySelector('.ch-fire');
+  const cta = p.querySelector('.ch-firecta');
   const paintFire = () => {
     if (!fireSlot) return;
     const c = chatWith(uid); const stt = streakOf(c, me(), uid);
+    // кнопка «Завести MKW огонёк», пока огонька нет (или он погас)
+    if (cta) {
+      if (c && (stt.state === 'none' || stt.state === 'lost')) {
+        if (cta.dataset.s !== stt.state) {
+          cta.dataset.s = stt.state;
+          const go = h('button', { class: 'ch-fire-go', type: 'button', onclick: async () => {
+            if (stt.state === 'lost') { openStreak(cid, chatWith(uid) || { read: {} }, me(), uid, u.nick || 'другом'); return; }
+            go.disabled = true;
+            try { await startStreak(cid, me()); } catch { go.disabled = false; toast('Не получилось. Проверьте интернет'); }
+          } }, fireIcon({ state: 'lit', level: { l: 1 } }, true), h('span', { text: stt.state === 'lost' ? 'Огонёк погас — восстановить или завести заново' : 'Завести MKW огонёк' }));
+          cta.replaceChildren(go);
+        }
+      } else if (cta.dataset.s) { cta.dataset.s = ''; cta.replaceChildren(); }
+    }
+    playFire(p, cid, stt, c, u.nick || 'другом');
     if (stt.state === 'none') { fireSlot.replaceChildren(); return; }
     const f = fireIcon(stt); f.setAttribute('role', 'button'); f.tabIndex = 0;
     f.addEventListener('click', () => openStreak(cid, c || { read: {} }, me(), uid, u.nick || 'другом'));
