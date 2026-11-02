@@ -1,8 +1,14 @@
 // История версий. Новые записи добавляйте сверху.
-export const VERSION = '0.27.0';
+export const VERSION = '0.27.1';
 export const STAGE = 'beta';
 
 export const CHANGELOG = [
+  {
+    version: '0.27.1',
+    date: '3 ноября 2026',
+    new: ['Статус в Discord включён для всех: Настройки → «Статус в Discord» (на компьютере)'],
+    fixed: [],
+  },
   {
     version: '0.27.0',
     date: '3 ноября 2026',
