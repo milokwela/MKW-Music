@@ -78,7 +78,7 @@ if ($mode -eq 'workflow_dispatch') {
   Write-Host '--- [ограниченный PowerShell] вывод:'; Get-Content $out2 -Encoding UTF8; Get-Content ($out2 + '.err') -ErrorAction SilentlyContinue
   $t2 = [IO.File]::ReadAllText($out2, [Text.Encoding]::UTF8)
   if ($t2 -notmatch 'ConstrainedLanguage') { Write-Host 'внимание: режим не включился' }
-  elseif ($t2 -notmatch 'ограничил PowerShell') { throw 'в ограниченном режиме нет подсказки' }
+  elseif ($t2 -notmatch 'Node\.js' -or $t2 -notmatch 'nodejs\.org') { throw 'в ограниченном режиме нет подсказки' }
   else { Write-Host '[ограниченный PowerShell] ПОДСКАЗКА ПОКАЗАНА' -ForegroundColor Green }
 
   # 3) Node.js (способ 2)
