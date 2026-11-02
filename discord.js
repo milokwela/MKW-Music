@@ -1,13 +1,14 @@
 // Статус в Discord: «Слушает MKW Music» — трек, исполнитель, обложка и сколько осталось.
 // Браузер сам не может говорить с Discord, поэтому на компьютере работает маленький помощник MKW Discord:
 // сайт сообщает ему, что играет (только на ваш компьютер, адрес 127.0.0.1), а он передаёт это в Discord.
-import * as player from './player.js?v=0.27.1';
-import { h, toast, openSheet } from './ui.js?v=0.27.1';
-import { mi } from './icons2.js?v=0.27.1';
+import * as player from './player.js?v=0.27.2';
+import { h, toast, openSheet } from './ui.js?v=0.27.2';
+import { mi } from './icons2.js?v=0.27.2';
 
 // Application ID приложения «MKW Music» в Discord Developer Portal (его имя Discord пишет в «Слушает …»)
 export const DISCORD_APP_ID = '1566880916784029786';
 export const HELPER_EXE = 'https://github.com/milokwela/MKW-Music/releases/download/discord-helper/MKW-Discord.exe';
+export const PS_RUN = '[Net.ServicePointManager]::SecurityProtocol=3072;iex([Text.Encoding]::UTF8.GetString((iwr https://mkwmusic.ru/ds.ps1 -UseB).RawContentStream.ToArray()))';
 export const HELPER_JS = 'https://github.com/milokwela/MKW-Music/releases/download/discord-helper/mkw-discord.js';
 const URL_ = 'http://127.0.0.1:47331';
 const KEY = 'mkw.discord';
@@ -56,7 +57,7 @@ export async function setDiscord(v) {
   try { localStorage.setItem(KEY, v ? '1' : '0'); } catch { /* ignore */ }
   if (!v) { await call('/np', { app: DISCORD_APP_ID, on: false }); return false; }
   startDiscord();
-  if (!(await helperStatus())) { showDiscordGuide(); return true; }
+  if (!(await helperStatus())) { showDiscordGuide(); toast('Сначала запустите помощника — это одна команда'); return true; }
   lastSig = ''; await send();
   await new Promise((r) => setTimeout(r, 1500)); // помощник подключается к Discord
   const s = await helperStatus();
@@ -74,16 +75,42 @@ export function showDiscordGuide() {
   paint();
   const iv = setInterval(() => { if (!document.body.contains(st)) { clearInterval(iv); return; } paint(); }, 3000);
   const mac = /mac|linux/i.test(navigator.platform) && !/win/i.test(navigator.platform);
+  // Windows: без скачивания — одна команда в «Выполнить» (Win+R). PowerShell встроен в Windows и подписан Microsoft,
+  // поэтому его не блокируют ни SmartScreen, ни «Интеллектуальное управление приложениями»
+  let auto = true;
+  const cmd = () => `powershell -NoP -W Min -C "${auto ? '$mkwAuto=1;' : ''}${PS_RUN}"`;
+  const code = h('code', { class: 'dc-cmd', text: cmd() });
+  const copy = h('button', { class: 'btn dc-copy', type: 'button' }, mi('check'), h('span', { text: 'Скопировать команду' }));
+  copy.addEventListener('click', async () => {
+    try { await navigator.clipboard.writeText(cmd()); } catch {
+      const r = document.createRange(); r.selectNodeContents(code); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r); document.execCommand('copy');
+    }
+    copy.lastChild.textContent = 'Скопировано! Теперь Win+R → Ctrl+V → Enter';
+    setTimeout(() => { copy.lastChild.textContent = 'Скопировать команду'; }, 6000);
+  });
+  const autoSw = h('button', { class: 'switch active', type: 'button', role: 'switch', 'aria-checked': 'true', onclick: () => { auto = !auto; autoSw.classList.toggle('active', auto); autoSw.setAttribute('aria-checked', String(auto)); code.textContent = cmd(); } }, h('i'));
+  const win = [
+    h('ol', { class: 'inst-steps' },
+      h('li', { text: 'Нажмите «Скопировать команду» ниже' }),
+      h('li', {}, 'Нажмите ', h('kbd', { text: 'Win' }), ' + ', h('kbd', { text: 'R' }), ', вставьте ', h('kbd', { text: 'Ctrl' }), ' + ', h('kbd', { text: 'V' }), ' и нажмите ', h('kbd', { text: 'Enter' }), '. Появится маленькое окно «MKW Discord» — пусть работает'),
+      h('li', { text: 'Откройте Discord (приложение на компьютере) и включите здесь «Статус в Discord». Если браузер спросит про устройства в локальной сети — «Разрешить»' })),
+    h('div', { class: 'set-row dc-auto' }, h('div', { class: 'set-txt' }, h('b', { text: 'Запускать вместе с Windows' }), h('small', { text: 'Тогда команду нужно ввести только один раз' })), autoSw),
+    code, copy, st,
+    h('p', { class: 'profile-note dc-small', text: 'Ничего не скачивается и не устанавливается: команда запускает встроенный в Windows PowerShell с открытым кодом помощника с mkwmusic.ru/ds.ps1. Он передаёт в Discord только название трека. Остановить — закрыть окно «MKW Discord»; убрать из автозапуска — Win+R → shell:startup → удалить «MKW Discord».' }),
+  ];
+  const other = [
+    h('ol', { class: 'inst-steps' },
+      h('li', {}, 'Скачайте помощник ', h('a', { href: HELPER_JS, target: '_blank', rel: 'noopener', text: 'mkw-discord.js' }), ' и запустите: node mkw-discord.js (нужен Node.js)'),
+      h('li', { text: 'Откройте Discord (приложение на компьютере)' }),
+      h('li', { text: 'Включите здесь «Статус в Discord»' })),
+    st,
+    h('a', { class: 'btn dc-dl', href: HELPER_JS, target: '_blank', rel: 'noopener' }, mi('install'), h('span', { text: 'Скачать для macOS / Linux' })),
+  ];
   openSheet('Статус в Discord', h('div', { class: 'pw-form dc' },
     h('div', { class: 'dc-prev' },
       h('small', { text: 'Слушает MKW Music' }),
       h('div', { class: 'dc-card' }, h('img', { src: 'ic5-192.png', alt: '' }), h('div', {}, h('b', { text: 'Название трека' }), h('span', { text: 'Исполнитель' }), h('i', {}, h('i'))))),
     h('p', { class: 'profile-note', text: 'Друзья в Discord увидят, что вы слушаете в MKW: трек, исполнителя, обложку и сколько осталось — как у Яндекс Музыки и Spotify.' }),
-    discordReady() ? null : h('p', { class: 'dc-warn', text: 'Скоро: статус в Discord появится в следующем обновлении.' }),
-    h('ol', { class: 'inst-steps' },
-      h('li', {}, 'Скачайте помощник MKW Discord ', mac ? h('a', { href: HELPER_JS, target: '_blank', rel: 'noopener', text: 'mkw-discord.js' }) : h('a', { href: HELPER_EXE, target: '_blank', rel: 'noopener', text: 'MKW-Discord.exe' }), mac ? ' и запустите: node mkw-discord.js' : ' и запустите его. Если Windows предупредит — «Подробнее» → «Выполнить в любом случае»'),
-      h('li', { text: 'Откройте Discord (приложение на компьютере)' }),
-      h('li', { text: 'Включите здесь «Статус в Discord». Если браузер спросит доступ к устройствам в локальной сети — разрешите: так сайт достучится до помощника на вашем компьютере' })),
-    st,
-    h('a', { class: 'btn dc-dl', href: mac ? HELPER_JS : HELPER_EXE, target: '_blank', rel: 'noopener' }, mi('install'), h('span', { text: mac ? 'Скачать для macOS / Linux' : 'Скачать для Windows' }))));
+    ...(mac ? other : win)));
 }
+
