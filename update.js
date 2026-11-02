@@ -1,7 +1,7 @@
 // Обновление «на лету»: если пока вы в приложении вышла новая версия — показываем предупреждение
 // и через несколько секунд перезапускаем приложение, чтобы у всех была одна версия и ничего не ломалось.
-import { VERSION } from './changelog.js?v=0.27.0';
-import { h } from './ui.js?v=0.27.0';
+import { VERSION } from './changelog.js?v=0.27.1';
+import { h } from './ui.js?v=0.27.1';
 
 let shown = false, timer = 0;
 const busy = () => document.documentElement.classList.contains('in-call'); // во время звонка не перезапускаем сами

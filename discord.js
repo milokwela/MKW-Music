@@ -1,12 +1,12 @@
 // Статус в Discord: «Слушает MKW Music» — трек, исполнитель, обложка и сколько осталось.
 // Браузер сам не может говорить с Discord, поэтому на компьютере работает маленький помощник MKW Discord:
 // сайт сообщает ему, что играет (только на ваш компьютер, адрес 127.0.0.1), а он передаёт это в Discord.
-import * as player from './player.js?v=0.27.0';
-import { h, toast, openSheet } from './ui.js?v=0.27.0';
-import { mi } from './icons2.js?v=0.27.0';
+import * as player from './player.js?v=0.27.1';
+import { h, toast, openSheet } from './ui.js?v=0.27.1';
+import { mi } from './icons2.js?v=0.27.1';
 
 // Application ID приложения «MKW Music» в Discord Developer Portal (его имя Discord пишет в «Слушает …»)
-export const DISCORD_APP_ID = '';
+export const DISCORD_APP_ID = '1566880916784029786';
 export const HELPER_EXE = 'https://github.com/milokwela/MKW-Music/releases/download/discord-helper/MKW-Discord.exe';
 export const HELPER_JS = 'https://github.com/milokwela/MKW-Music/releases/download/discord-helper/mkw-discord.js';
 const URL_ = 'http://127.0.0.1:47331';
@@ -56,10 +56,11 @@ export async function setDiscord(v) {
   try { localStorage.setItem(KEY, v ? '1' : '0'); } catch { /* ignore */ }
   if (!v) { await call('/np', { app: DISCORD_APP_ID, on: false }); return false; }
   startDiscord();
+  if (!(await helperStatus())) { showDiscordGuide(); return true; }
+  lastSig = ''; await send();
+  await new Promise((r) => setTimeout(r, 1500)); // помощник подключается к Discord
   const s = await helperStatus();
-  if (!s) { showDiscordGuide(); return true; }
-  lastSig = ''; send();
-  toast(s.discord ? 'Готово: в Discord видно, что вы слушаете' : 'Помощник запущен — откройте Discord');
+  toast(s && s.discord ? 'Готово: в Discord видно, что вы слушаете' : 'Помощник запущен — откройте Discord');
   return true;
 }
 
