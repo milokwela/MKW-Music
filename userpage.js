@@ -1,29 +1,30 @@
 // Страница другого слушателя: баннер, фото, статус, значки, статистика, любимые исполнители и треки.
-import { $, h, trackRow, animateIn } from './ui.js?v=0.25.0';
-import * as player from './player.js?v=0.25.0';
-import { openTrackMenu } from './menu.js?v=0.25.0';
-import { getProfile } from './leaders.js?v=0.25.0';
-import { ACH, bannerCss, formatListened } from './profile.js?v=0.25.0';
-import { artistPic } from './artistpic.js?v=0.25.0';
-import { openArtist } from './artist.js?v=0.25.0';
-import { mi } from './icons2.js?v=0.25.0';
-import { plural } from './utils.js?v=0.25.0';
-import { openImage } from './viewer.js?v=0.25.0';
-import { isDev, devBadge, showDev, validFan, fanBadge } from './dev.js?v=0.25.0';
-import { friendState, addFriend, removeFriend, loadFriends, friendsLoaded } from './friends.js?v=0.25.0';
-import { openChat } from './chat.js?v=0.25.0';
+import { $, h, trackRow, animateIn } from './ui.js?v=0.26.0';
+import * as player from './player.js?v=0.26.0';
+import { openTrackMenu } from './menu.js?v=0.26.0';
+import { getProfile } from './leaders.js?v=0.26.0';
+import { ACH, bannerCss, formatListened } from './profile.js?v=0.26.0';
+import { artistPic } from './artistpic.js?v=0.26.0';
+import { openArtist } from './artist.js?v=0.26.0';
+import { mi } from './icons2.js?v=0.26.0';
+import { plural } from './utils.js?v=0.26.0';
+import { openImage } from './viewer.js?v=0.26.0';
+import { isDev, devBadge, showDev, validFan, fanBadge } from './dev.js?v=0.26.0';
+import { friendState, addFriend, removeFriend, loadFriends, friendsLoaded, ONLINE_MS } from './friends.js?v=0.26.0';
+import { openChat } from './chat.js?v=0.26.0';
 // удалить друга — двойное нажатие за 3 секунды, чтобы не убрать случайно
 let rmAsk = '';
 function confirmRemove(u) { if (rmAsk === u.uid) { rmAsk = ''; return true; } rmAsk = u.uid; setTimeout(() => { if (rmAsk === u.uid) rmAsk = ''; }, 3000); toast('Нажмите ещё раз, чтобы убрать из друзей'); return false; }
-import { avSrc } from './avatar.js?v=0.25.0';
-import { toast } from './ui.js?v=0.25.0';
-import { searchTracks } from './catalog.js?v=0.25.0';
+import { avSrc } from './avatar.js?v=0.26.0';
+import { toast } from './ui.js?v=0.26.0';
+import { searchTracks } from './catalog.js?v=0.26.0';
 
 export function seenText(seen) {
   const t = Number(seen) || 0;
   if (!t) return '';
   const m = Math.floor((Date.now() - t) / 60000);
-  if (m < 6) return 'в сети';
+  if (Date.now() - t < ONLINE_MS) return 'в сети';
+  if (m < 1) return 'был(а) в сети только что';
   if (m < 60) return `был(а) в сети ${m} ${plural(m, 'минуту', 'минуты', 'минут')} назад`;
   const hh = Math.floor(m / 60);
   if (hh < 24) return `был(а) в сети ${hh} ${plural(hh, 'час', 'часа', 'часов')} назад`;
@@ -31,7 +32,7 @@ export function seenText(seen) {
   if (d < 30) return `был(а) в сети ${d} ${plural(d, 'день', 'дня', 'дней')} назад`;
   return 'давно не заходил(а)';
 }
-export const isOnline = (seen) => Date.now() - (Number(seen) || 0) < 6 * 60000;
+export const isOnline = (seen) => Date.now() - (Number(seen) || 0) < ONLINE_MS;
 
 let seq = 0;
 

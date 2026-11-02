@@ -1,16 +1,17 @@
 // Чат с друзьями. Писать можно только взаимным друзьям (проверяют и приложение, и правила Firestore).
 //   chats/{a_b}            — { members: [a, b], last: { from, text, at }, at, read: { uid: время } }   (a < b)
 //   chats/{a_b}/msgs/{id}  — { from, text, at, track? }
-import { db } from './firebase.js?v=0.25.0';
+import { db } from './firebase.js?v=0.26.0';
 import { doc, setDoc, addDoc, collection, query, where, orderBy, limit, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
-import { h, toast, openSheet, closeSheet } from './ui.js?v=0.25.0';
-import { openImage } from './viewer.js?v=0.25.0';
-import { mi } from './icons2.js?v=0.25.0';
-import * as player from './player.js?v=0.25.0';
-import { searchTracks } from './catalog.js?v=0.25.0';
-import { me, isFriend, cardOf, friendIds, friendCards, loadFriends, friendsLoaded } from './friends.js?v=0.25.0';
-import { avSrc } from './avatar.js?v=0.25.0';
-import { seenText, isOnline } from './userpage.js?v=0.25.0';
+import { h, toast, openSheet, closeSheet } from './ui.js?v=0.26.0';
+import { openImage } from './viewer.js?v=0.26.0';
+import { mi } from './icons2.js?v=0.26.0';
+import * as player from './player.js?v=0.26.0';
+import { searchTracks } from './catalog.js?v=0.26.0';
+import { me, isFriend, cardOf, friendIds, friendCards, loadFriends, friendsLoaded } from './friends.js?v=0.26.0';
+import { avSrc } from './avatar.js?v=0.26.0';
+import { seenText, isOnline } from './userpage.js?v=0.26.0';
+import { startCall } from './call.js?v=0.26.0';
 
 export const chatId = (a, b) => [a, b].sort().join('_');
 const other = (c) => (c.members || []).find((x) => x !== me()) || '';
@@ -35,6 +36,7 @@ export function watchChats(onNew) {
       chats = s.docs.map((d) => ({ id: d.id, ...d.data() })).sort((a, b) => (Number(b.at) || 0) - (Number(a.at) || 0));
       if (!first && onNew) chats.forEach((c) => { if (isUnread(c) && (prev.get(c.id) || 0) < c.at && openId !== c.id) onNew(c, other(c)); });
       first = false;
+      paintTicks();
       if (openId) { const c = chats.find((x) => x.id === openId); if (c && isUnread(c)) markRead(openId); }
       subs.forEach((f) => { try { f(); } catch { /* ignore */ } });
     }, () => { /* старые правила или нет сети */ });
@@ -131,7 +133,7 @@ export async function pickFriendFor(track) {
 }
 
 // ---------- окно чата ----------
-let page = null, openId = '', unsubMsgs = null;
+let page = null, openId = '', unsubMsgs = null, offTicks = null;
 function ensurePage() {
   if (page) return page;
   page = h('section', { id: 'chat-page', 'aria-label': 'Чат' });
@@ -140,6 +142,7 @@ function ensurePage() {
 }
 export function closeChat() {
   if (unsubMsgs) { unsubMsgs(); unsubMsgs = null; }
+  if (offTicks) { offTicks(); offTicks = null; }
   openId = '';
   if (page) page.classList.remove('open');
 }
@@ -197,6 +200,7 @@ export async function openChat(uid, card) {
       h('button', { class: 'icon-btn', type: 'button', 'aria-label': 'Назад', onclick: closeChat }, mi('close')),
       h('span', { class: 'ch-av' }, h('img', { src: avSrc(u.avatar), alt: '' }), isOnline(u.seen) ? h('i', { class: 'online-dot' }) : null),
       h('div', { class: 'ch-who' }, h('b', { text: u.nick || 'друг' }), h('small', { text: isOnline(u.seen) && u.now ? `Слушает: ${u.now}` : seenText(u.seen) || '' })),
+      h('button', { class: 'icon-btn ch-callbtn', type: 'button', 'aria-label': 'Позвонить', title: 'Позвонить', onclick: () => startCall([uid]) }, mi('phone')),
       h('button', { class: 'icon-btn ch-bgbtn', type: 'button', 'aria-label': 'Фон чата', title: 'Фон чата', onclick: () => bgMenu(list, cid) }, mi('palette'))),
     list,
     h('div', { class: 'ch-bar' }, photoIn, photoBtn, shareBtn, input, sendBtn));
@@ -205,6 +209,14 @@ export async function openChat(uid, card) {
 
   if (unsubMsgs) unsubMsgs();
   const drawn = new Map(); let first = true;
+  // галочки: одна — доставлено, две — прочитано (друг открыл чат после этого сообщения)
+  const ticks = new Map();
+  const paintTicks = () => {
+    const c = chatWith(uid); const readAt = Number(c && c.read && c.read[uid]) || 0;
+    ticks.forEach(({ at, el }) => { const r = readAt >= at; if (el.dataset.r !== String(r)) { el.dataset.r = String(r); el.classList.toggle('read', r); el.title = r ? 'Прочитано' : 'Доставлено'; } });
+  };
+  if (offTicks) offTicks();
+  offTicks = onChats(paintTicks);
   list.replaceChildren(h('p', { class: 'ch-empty', text: 'Загрузка…' }));
   try {
     unsubMsgs = onSnapshot(query(collection(db, 'chats', cid, 'msgs'), orderBy('at', 'desc'), limit(80)), (s) => {
@@ -227,7 +239,7 @@ export async function openChat(uid, card) {
             m.track ? h('button', { class: 'ch-track', type: 'button', onclick: () => playTrack(m.track) }, mi('play-circle'), h('span', {}, h('b', { text: m.track.title }), h('small', { text: m.track.artist }))) : null,
             img,
             m.text ? h('div', { class: 'ch-text', text: m.text }) : null,
-            h('time', { text: timeOf(m.at) }));
+            h('time', {}, timeOf(m.at), mineMsg ? (() => { const tk = h('span', { class: 'ch-tick', 'aria-hidden': 'true' }, h('i'), h('i')); ticks.set(d.id, { at: Number(m.at) || 0, el: tk }); return tk; })() : null));
           drawn.set(d.id, el);
         }
         nodes.push(el);

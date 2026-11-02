@@ -1,10 +1,11 @@
 // Уведомления: заявки в друзья, принятые заявки, новые сообщения.
 // Внутри приложения — всплывашка и счётчик на вкладке «Профиль». Если приложение свёрнуто и вы разрешили —
 // системное уведомление телефона/компьютера (работает, пока приложение открыто в фоне).
-import { h, toast } from './ui.js?v=0.25.0';
-import { avSrc } from './avatar.js?v=0.25.0';
-import { watchFriends, stopWatchFriends, requestIds, onFriends, cardOf } from './friends.js?v=0.25.0';
-import { watchChats, stopChats, unreadCount, onChats, openChat, chatOpen } from './chat.js?v=0.25.0';
+import { h, toast } from './ui.js?v=0.26.0';
+import { avSrc } from './avatar.js?v=0.26.0';
+import { watchFriends, stopWatchFriends, requestIds, onFriends, cardOf, watchPresence, stopPresence, friendsLoaded, loadFriends } from './friends.js?v=0.26.0';
+import { watchCalls, stopCalls } from './call.js?v=0.26.0';
+import { watchChats, stopChats, unreadCount, onChats, openChat, chatOpen } from './chat.js?v=0.26.0';
 
 const KEY = 'mkw.notify';
 export const notifyOn = () => { try { return localStorage.getItem(KEY) !== '0'; } catch { return true; } };
@@ -45,6 +46,7 @@ export function startNotify() {
   if (started) return;
   started = true;
   onFriends(paint); onChats(paint);
+  onFriends(watchPresence); // список друзей поменялся — следим за их «в сети»
   watchFriends(async (kind, uid) => {
     if (!notifyOn()) return;
     const u = await cardOf(uid).catch(() => null); const nick = (u && u.nick) || 'Кто-то';
@@ -58,9 +60,11 @@ export function startNotify() {
     showPop(u, nick, text, () => openChat(uid, u));
     system(nick, text, `chat-${c.id}`, () => openChat(uid, u));
   });
+  // входящие звонки — слушаем всегда (это важнее настройки уведомлений)
+  (friendsLoaded() ? Promise.resolve() : loadFriends()).catch(() => {}).then(() => watchCalls((nick, many) => system(many ? 'Общий звонок' : 'Входящий звонок', `${nick} звонит вам в MKW`, 'call')));
   paint();
 }
-export function stopNotify() { started = false; stopWatchFriends(); stopChats(); paint(); }
+export function stopNotify() { started = false; stopWatchFriends(); stopPresence(); stopChats(); stopCalls(); paint(); }
 
 // всплывашка о новом сообщении: нажали — открылся чат
 let pop = null;

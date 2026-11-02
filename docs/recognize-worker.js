@@ -381,10 +381,52 @@ async function bgAudio(request) {
   return out;
 }
 
+// ---------- /ytsearch: поиск видео на YouTube без ключа и без дневного лимита ----------
+// Берём внутренний API сайта youtube.com (как браузер). Ответ кэшируется на сутки.
+const toSec = (t) => String(t || '').split(':').map(Number).reduce((a, x) => a * 60 + (x || 0), 0);
+async function ytSearch(request) {
+  const head = { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'public, max-age=86400' };
+  const q = (new URL(request.url).searchParams.get('q') || '').trim().slice(0, 200);
+  if (!q) return new Response(JSON.stringify({ items: [] }), { headers: head });
+  const cache = caches.default, key = new Request(`https://mkw.cache/ytsearch?q=${encodeURIComponent(q.toLowerCase())}`);
+  const hit = await cache.match(key); if (hit) return hit;
+  let items = [];
+  try {
+    const r = await timed(fetch('https://www.youtube.com/youtubei/v1/search?prettyPrint=false', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36', Origin: 'https://www.youtube.com' },
+      body: JSON.stringify({ context: { client: { clientName: 'WEB', clientVersion: '2.20241101.00.00', hl: 'ru', gl: 'RU' } }, query: q, params: 'EgIQAQ%3D%3D' }),
+    }), 8000);
+    const j = await r.json();
+    const walk = (o) => { if (!o || typeof o !== 'object') return; if (o.videoRenderer) { const v = o.videoRenderer; items.push({ id: v.videoId, title: (v.title && v.title.runs && v.title.runs.map((x) => x.text).join('')) || '', channel: (v.ownerText && v.ownerText.runs && v.ownerText.runs[0].text) || '', dur: toSec(v.lengthText && v.lengthText.simpleText) }); return; } for (const k in o) walk(o[k]); };
+    walk(j && j.contents);
+  } catch { /* YouTube не ответил */ }
+  items = items.filter((x) => x.id && x.id.length === 11 && x.dur > 0).slice(0, 15);
+  const out = new Response(JSON.stringify({ items }), { headers: head });
+  if (items.length) await cache.put(key, out.clone());
+  return out;
+}
+
+// ---------- /turn: серверы для звонков (STUN всегда, TURN — если в Cloudflare заданы TURN_KEY_ID и TURN_KEY_TOKEN) ----------
+async function turn(env) {
+  const head = { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'no-store' };
+  const ice = [{ urls: ['stun:stun.cloudflare.com:3478', 'stun:stun.l.google.com:19302'] }];
+  if (env.TURN_KEY_ID && env.TURN_KEY_TOKEN) {
+    try {
+      const r = await timed(fetch(`https://rtc.live.cloudflare.com/v1/turn/keys/${env.TURN_KEY_ID}/credentials/generate`, {
+        method: 'POST', headers: { Authorization: `Bearer ${env.TURN_KEY_TOKEN}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ ttl: 86400 }),
+      }), 6000);
+      const j = await r.json();
+      if (j && j.iceServers) ice.push(...[].concat(j.iceServers));
+    } catch { /* без TURN */ }
+  }
+  return new Response(JSON.stringify({ iceServers: ice }), { headers: head });
+}
+
 export default {
   async fetch(request, env) {
     const path = new URL(request.url).pathname;
-    if (request.method === 'GET' && path === '/ping') return new Response(JSON.stringify({ ok: true, proxy: true, lyrics: true, bg: 3 }), { headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
+    if (request.method === 'GET' && path === '/ping') return new Response(JSON.stringify({ ok: true, proxy: true, lyrics: true, bg: 3, ytsearch: 1, turn: 1 }), { headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
     if (request.method === 'GET' && path === '/geo') return new Response(JSON.stringify({ country: (request.cf && request.cf.country) || '' }), { headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'no-store' } });
     if (request.method === 'GET' && path === '/proxy') return proxy(request, env);
     if (request.method === 'GET' && path === '/lyrics') return lyrics(request);
@@ -392,6 +434,8 @@ export default {
     if (request.method === 'GET' && path === '/yt') return ytAudio(request);
     if (request.method === 'GET' && path === '/ytp') return ytProxy(request);
     if (request.method === 'GET' && path === '/bg') return bgAudio(request);
+    if (request.method === 'GET' && path === '/ytsearch') return ytSearch(request);
+    if (request.method === 'GET' && path === '/turn') return turn(env);
     const origin = request.headers.get('Origin') || '';
     const list = String(env.ALLOWED_ORIGIN || '').split(',').map((s) => s.trim()).filter(Boolean);
     const ok = list.includes(origin) || origin.startsWith('http://localhost');

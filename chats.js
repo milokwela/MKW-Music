@@ -1,12 +1,13 @@
 // Раздел «Чаты» в нижнем меню: все переписки с друзьями, как в мессенджере.
 // Сверху — недавние и непрочитанные, ниже — друзья, с которыми ещё не переписывались.
-import { $, h } from './ui.js?v=0.25.0';
-import { mi } from './icons2.js?v=0.25.0';
-import { chatList, isUnread, onChats, openChat, otherOf } from './chat.js?v=0.25.0';
-import { me, friendIds, friendCards, loadFriends, friendsLoaded, onFriends, requestIds } from './friends.js?v=0.25.0';
-import { avSrc } from './avatar.js?v=0.25.0';
-import { nickMarks } from './dev.js?v=0.25.0';
-import { seenText, isOnline } from './userpage.js?v=0.25.0';
+import { $, h } from './ui.js?v=0.26.0';
+import { mi } from './icons2.js?v=0.26.0';
+import { chatList, isUnread, onChats, openChat, otherOf } from './chat.js?v=0.26.0';
+import { me, friendIds, friendCards, loadFriends, friendsLoaded, onFriends, requestIds } from './friends.js?v=0.26.0';
+import { avSrc } from './avatar.js?v=0.26.0';
+import { nickMarks } from './dev.js?v=0.26.0';
+import { seenText, isOnline } from './userpage.js?v=0.26.0';
+import { pickAndCall } from './call.js?v=0.26.0';
 
 let watching = false, filter = '', busy = false, again = false;
 
@@ -43,7 +44,7 @@ export async function renderChats() {
     if (!root.firstChild) {
       const inp = h('input', { class: 'sheet-input cl-search', type: 'search', placeholder: 'Найти друга', autocomplete: 'off' });
       inp.addEventListener('input', () => { filter = inp.value.trim().toLowerCase(); renderChats(); });
-      root.replaceChildren(h('h1', { class: 'view-title', text: 'Чаты' }), inp, h('div', { class: 'cl-req' }), h('div', { class: 'cl-list' }));
+      root.replaceChildren(h('div', { class: 'cl-head' }, h('h1', { class: 'view-title', text: 'Чаты' }), h('button', { type: 'button', class: 'cl-callbtn', onclick: pickAndCall }, mi('phone'), h('span', { text: 'Звонок' }))), inp, h('div', { class: 'cl-req' }), h('div', { class: 'cl-list' }));
     }
     if (!friendsLoaded()) await loadFriends();
     const ids = friendIds();
