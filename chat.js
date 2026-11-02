@@ -1,18 +1,18 @@
 // Чат с друзьями. Писать можно только взаимным друзьям (проверяют и приложение, и правила Firestore).
 //   chats/{a_b}            — { members: [a, b], last: { from, text, at }, at, read: { uid: время } }   (a < b)
 //   chats/{a_b}/msgs/{id}  — { from, text, at, track? }
-import { db } from './firebase.js?v=0.27.4';
+import { db } from './firebase.js?v=0.27.5';
 import { doc, setDoc, addDoc, collection, query, where, orderBy, limit, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
-import { h, toast, openSheet, closeSheet } from './ui.js?v=0.27.4';
-import { openImage } from './viewer.js?v=0.27.4';
-import { mi } from './icons2.js?v=0.27.4';
-import * as player from './player.js?v=0.27.4';
-import { searchTracks } from './catalog.js?v=0.27.4';
-import { me, isFriend, cardOf, friendIds, friendCards, loadFriends, friendsLoaded } from './friends.js?v=0.27.4';
-import { avSrc } from './avatar.js?v=0.27.4';
-import { seenText, isOnline } from './userpage.js?v=0.27.4';
-import { startCall, warmCalls } from './call.js?v=0.27.4';
-import { pushTo, myNick } from './push.js?v=0.27.4';
+import { h, toast, openSheet, closeSheet } from './ui.js?v=0.27.5';
+import { openImage } from './viewer.js?v=0.27.5';
+import { mi } from './icons2.js?v=0.27.5';
+import * as player from './player.js?v=0.27.5';
+import { searchTracks } from './catalog.js?v=0.27.5';
+import { me, isFriend, cardOf, friendIds, friendCards, loadFriends, friendsLoaded } from './friends.js?v=0.27.5';
+import { avSrc } from './avatar.js?v=0.27.5';
+import { seenText, isOnline } from './userpage.js?v=0.27.5';
+import { startCall, warmCalls } from './call.js?v=0.27.5';
+import { pushTo, myNick } from './push.js?v=0.27.5';
 
 export const chatId = (a, b) => [a, b].sort().join('_');
 const other = (c) => (c.members || []).find((x) => x !== me()) || '';

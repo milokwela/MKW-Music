@@ -1,17 +1,17 @@
 // Голосовое управление (бета): «MKW, следующая», «MKW, громче», «Музыка, лайк», «MKW, включи Баста».
 // Работает через распознавание речи браузера (Chrome, Яндекс Браузер, Edge, Safari). Слушает, пока вкладка открыта.
-import { toast, openSheet, h } from './ui.js?v=0.27.4';
-import * as player from './player.js?v=0.27.4';
-import * as store from './store.js?v=0.27.4';
-import { dislike, startWave, waveActive } from './wave.js?v=0.27.4';
-import { searchTracks } from './catalog.js?v=0.27.4';
-import { mi } from './icons2.js?v=0.27.4';
-import { openFull, closeFull, isFullOpen } from './playerui.js?v=0.27.4';
-import { startCloud, stopCloud, cloudSttPossible } from './stt.js?v=0.27.4';
-import { friendIds, friendCards, loadFriends, friendsLoaded } from './friends.js?v=0.27.4';
-import { startCall } from './call.js?v=0.27.4';
-import { avSrc } from './avatar.js?v=0.27.4';
-import { closeSheet } from './ui.js?v=0.27.4';
+import { toast, openSheet, h } from './ui.js?v=0.27.5';
+import * as player from './player.js?v=0.27.5';
+import * as store from './store.js?v=0.27.5';
+import { dislike, startWave, waveActive } from './wave.js?v=0.27.5';
+import { searchTracks } from './catalog.js?v=0.27.5';
+import { mi } from './icons2.js?v=0.27.5';
+import { openFull, closeFull, isFullOpen } from './playerui.js?v=0.27.5';
+import { startCloud, stopCloud, cloudSttPossible } from './stt.js?v=0.27.5';
+import { friendIds, friendCards, loadFriends, friendsLoaded } from './friends.js?v=0.27.5';
+import { startCall } from './call.js?v=0.27.5';
+import { avSrc } from './avatar.js?v=0.27.5';
+import { closeSheet } from './ui.js?v=0.27.5';
 
 const KEY = 'mkw.voice';
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;

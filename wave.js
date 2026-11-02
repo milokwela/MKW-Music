@@ -7,15 +7,15 @@
 //  • не повторяет песню в другой версии, не ставит одного исполнителя чаще раза в 3 трека;
 //  • помнит жанры, время суток (утро / вечер), быстрые пропуски конкретных песен;
 //  • «радио по треку»: соседи текущего исполнителя; плюс вкусы людей с похожими любимыми исполнителями.
-import { searchTracks } from './catalog.js?v=0.27.4';
-import { peekYouTubeId, prefetchYouTubeIds } from './youtube.js?v=0.27.4';
-import * as player from './player.js?v=0.27.4';
-import * as store from './store.js?v=0.27.4';
-import { $, toast } from './ui.js?v=0.27.4';
-import { shuffled } from './utils.js?v=0.27.4';
-import { norm, isArtistBlocked, blockedArtists, dislikedTracks, dislikeTrack, splitArtists } from './taste.js?v=0.27.4';
-import { jsonp } from './jsonp.js?v=0.27.4';
-import { communityTaste } from './leaders.js?v=0.27.4';
+import { searchTracks } from './catalog.js?v=0.27.5';
+import { peekYouTubeId, prefetchYouTubeIds } from './youtube.js?v=0.27.5';
+import * as player from './player.js?v=0.27.5';
+import * as store from './store.js?v=0.27.5';
+import { $, toast } from './ui.js?v=0.27.5';
+import { shuffled } from './utils.js?v=0.27.5';
+import { norm, isArtistBlocked, blockedArtists, dislikedTracks, dislikeTrack, splitArtists } from './taste.js?v=0.27.5';
+import { jsonp } from './jsonp.js?v=0.27.5';
+import { communityTaste } from './leaders.js?v=0.27.5';
 
 const SKEY = 'mkw.wave2';
 const RKEY = 'mkw.wave.related';

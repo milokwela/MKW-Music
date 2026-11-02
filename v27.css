@@ -1,4 +1,4 @@
-/* MKW Music 0.27 — установка приложения, Discord, звонки с экраном, исполнители по отдельности, рамка без кручения */
+/* MKW Music 0.27 — установка приложения, звонки с экраном, исполнители по отдельности, рамка без кручения */
 
 /* ---------- радужная рамка: крутится только цвет, а не фото и не значок «в сети» ---------- */
 @property --fa { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
@@ -156,29 +156,32 @@
 .lowpower .idemo *, .lowpower .idemo *::before, .lowpower .idemo *::after { animation-duration: 8s !important; animation-iteration-count: infinite !important; }
 .lowpower .idemo .id-page img { animation: none !important; }
 
-/* ---------- Discord ---------- */
-.dc { gap: 12px !important; }
-.dc-prev { padding: 12px; border-radius: 18px; background: #2b2d31; color: #f2f3f5; }
-.dc-prev > small { display: block; font-size: 11.5px; font-weight: 800; letter-spacing: .02em; color: #b5bac1; margin: 0 0 8px; }
-.dc-card { display: flex; align-items: center; gap: 12px; }
-.dc-card img { width: 60px; height: 60px; border-radius: 10px; }
-.dc-card > div { flex: 1; min-width: 0; display: grid; gap: 3px; }
-.dc-card b { font-size: 14px; }
-.dc-card span { font-size: 12.5px; color: #b5bac1; }
-.dc-card > div > i { display: block; height: 4px; border-radius: 2px; background: rgba(255,255,255,.15); margin-top: 5px; overflow: hidden; }
-.dc-card > div > i > i { display: block; height: 100%; width: 38%; background: #fff; border-radius: 2px; animation: dcBar 6s linear infinite; }
-@keyframes dcBar { from { width: 10%; } to { width: 90%; } }
-.dc-warn { margin: 0; padding: 10px 12px; border-radius: 14px; background: rgba(255,184,77,.12); color: #ffcf80; font-size: 13px; }
-.dc-status { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 14px; background: var(--surface-high, rgba(255,255,255,.05)); font-size: 13.5px; font-weight: 600; }
-.dc-dot { width: 10px; height: 10px; border-radius: 50%; background: #9aa0a6; flex: none; }
-.dc-status[data-ok="none"] .dc-dot { background: #ff5f57; }
-.dc-status[data-ok="helper"] .dc-dot { background: #febc2e; }
-.dc-status[data-ok="all"] .dc-dot { background: #3ddc84; box-shadow: 0 0 10px #3ddc84; }
-.dc-dl { display: inline-flex; align-items: center; justify-content: center; gap: 8px; text-decoration: none; }
-.dc-dl .mi { width: 18px; height: 18px; }
-.dc-cmd { display: block; padding: 10px 12px; border-radius: 12px; background: #0c0c12; color: #d7d7e0; font: 11.5px/1.45 ui-monospace, Consolas, monospace; word-break: break-all; user-select: all; box-shadow: inset 0 0 0 1px rgba(255,255,255,.08); }
-.dc-copy { display: inline-flex; align-items: center; justify-content: center; gap: 8px; width: 100%; }
-.dc-copy .mi { width: 18px; height: 18px; }
-.dc kbd { display: inline-block; min-width: 22px; padding: 1px 6px; border-radius: 6px; background: var(--surface-high, rgba(255,255,255,.08)); box-shadow: inset 0 -2px 0 rgba(0,0,0,.35); font: 700 12px var(--font, inherit); text-align: center; }
-.dc-auto { padding: 4px 2px !important; }
-.dc-small { font-size: 12px !important; }
+
+/* ---------- значок «Пережил тёмное время бана» ---------- */
+.pbadge.ach-dark, .pe-badge.ach-dark { position: relative; overflow: hidden; background: linear-gradient(135deg, #0b0b10, #1d1430 55%, #0b0b10) !important; border: 1px solid rgba(190,150,255,.45) !important; color: #efe6ff !important; box-shadow: 0 0 14px rgba(150,90,255,.35); }
+.pbadge.ach-dark .mi, .pe-badge.ach-dark .mi { color: #c9a7ff !important; filter: drop-shadow(0 0 4px rgba(170,120,255,.8)); }
+.pbadge.ach-dark::after { content: ''; position: absolute; inset: 0; background: linear-gradient(110deg, transparent 35%, rgba(255,255,255,.22) 50%, transparent 65%); transform: translateX(-100%); animation: darkShine 4s ease-in-out infinite; pointer-events: none; }
+@keyframes darkShine { 55%, 100% { transform: translateX(100%); } }
+.pe-badge.ach-dark.on { box-shadow: 0 0 0 2px #c9a7ff, 0 0 18px rgba(150,90,255,.5); }
+.ach.ach-dark { background: radial-gradient(120% 120% at 0% 0%, rgba(150,90,255,.35), transparent 60%), linear-gradient(135deg, #0c0b12, #1b1328) !important; border: 1px solid rgba(190,150,255,.4) !important; color: #efe6ff; }
+.ach.ach-dark .ach-ico { background: #000 !important; color: #c9a7ff !important; box-shadow: 0 0 16px rgba(150,90,255,.55); }
+.ach.ach-dark .ach-h { color: rgba(239,230,255,.7) !important; }
+
+/* ---------- сообщение о сбое ---------- */
+.inc { position: fixed; inset: 0; z-index: 900; display: grid; place-items: center; padding: 18px; background: rgba(3,3,6,.74); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); opacity: 0; transition: opacity .35s; }
+.inc.show { opacity: 1; }
+.inc-card { width: min(420px, 100%); max-height: calc(100vh - 36px); overflow-y: auto; display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 26px 22px 20px; border-radius: 30px; text-align: center; color: #fff;
+  background: radial-gradient(120% 70% at 50% 0%, rgba(150,90,255,.32), transparent 70%), #0b0a12; box-shadow: inset 0 0 0 1px rgba(255,255,255,.1), 0 30px 80px rgba(0,0,0,.6);
+  transform: translateY(18px) scale(.96); transition: transform .5s var(--m3-emph, cubic-bezier(.2,.9,.3,1.05)); }
+.inc.show .inc-card { transform: none; }
+.inc-badge { position: relative; width: 78px; height: 78px; display: grid; place-items: center; }
+.inc-badge > i { position: absolute; inset: 0; border-radius: 50%; background: conic-gradient(from 0deg, #6d3cff, #c9a7ff, #1a0f33, #6d3cff); animation: updSpin 6s linear infinite; filter: blur(1px); }
+.inc-badge > span { position: relative; width: 66px; height: 66px; border-radius: 50%; display: grid; place-items: center; background: #07060c; box-shadow: 0 0 24px rgba(150,90,255,.6); }
+.inc-badge .mi { width: 34px; height: 34px; color: #c9a7ff; }
+.inc-tag { font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: rgba(201,167,255,.85); }
+.inc-card h2 { margin: 0; font-size: 21px; font-weight: 800; }
+.inc-card p { margin: 0; font-size: 14px; line-height: 1.5; color: rgba(255,255,255,.75); }
+.inc-gift { display: grid; justify-items: center; gap: 8px; width: 100%; margin-top: 4px; padding: 14px; border-radius: 20px; background: rgba(255,255,255,.04); box-shadow: inset 0 0 0 1px rgba(190,150,255,.2); }
+.inc-gift .pbadge { font-size: 14px; padding: 7px 14px 7px 10px; }
+.inc-gift small { font-size: 12.5px; line-height: 1.45; color: rgba(255,255,255,.65); }
+.inc-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; width: 100%; margin-top: 6px; }

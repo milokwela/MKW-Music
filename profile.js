@@ -1,42 +1,42 @@
 // Экран «Профиль»: карточка с баннером, витрина (любимые исполнители и треки), вкладки Обзор / Слушатели / Настройки / О MKW.
-import { $, $$, h, icon, openSheet, closeSheet, toast, sheetItem, trackRow } from './ui.js?v=0.27.4';
-import * as store from './store.js?v=0.27.4';
-import * as player from './player.js?v=0.27.4';
-import { ACCENTS, getTheme, getAccent, getCustomHue, setCustomColor, setTheme, setAccent, hslHex, getNeutral } from './theme.js?v=0.27.4';
-import { CHANGELOG, VERSION, STAGE, KNOWN_ISSUES } from './changelog.js?v=0.27.4';
-import { plural, pickTrack } from './utils.js?v=0.27.4';
-import { youtubeEnabled, youtubeQuotaOut } from './youtube.js?v=0.27.4';
-import { audiusEnabled } from './audius.js?v=0.27.4';
-import { SOURCE_MODES, getSourceMode, setSourceMode } from './sources.js?v=0.27.4';
-import { gesturesOn, setGestures, showGestureGuide } from './gestures.js?v=0.27.4';
-import { listenerStats } from './stats.js?v=0.27.4';
-import { liveBg, setLiveBg } from './viz.js?v=0.27.4';
-import { lowPower, setLowPower } from './perf.js?v=0.27.4';
-import { logOut, changePassword, changeNick, authErrorText } from './auth.js?v=0.27.4';
-import { connectionCountry } from './geo.js?v=0.27.4';
-import { goOffline, publishCard, publishProfile, myCard, getProfile, topListeners, hiddenFromBoard, setHidden, myUid } from './leaders.js?v=0.27.4';
-import { mi } from './icons2.js?v=0.27.4';
-import { artistPic } from './artistpic.js?v=0.27.4';
-import { openArtist } from './artist.js?v=0.27.4';
-import { openUserPage, favArtistsRow, favTracksList, isOnline } from './userpage.js?v=0.27.4';
-import { voiceOn, setVoice, showVoiceGuide, voiceSupported } from './voice.js?v=0.27.4';
-import { openImage } from './viewer.js?v=0.27.4';
-import { isDev, devBadge, fanBadge, nickMarks } from './dev.js?v=0.27.4';
-import { fanNumber, restoreFan, becomeFan } from './fans.js?v=0.27.4';
-import { ping } from './leaders.js?v=0.27.4';
-import { streamsOn, setStreams, checkBackground } from './stream.js?v=0.27.4';
-import { DEF_AV, avSrc, isDefAv } from './avatar.js?v=0.27.4';
-import { ONLINE_MS, loadFriends, friendIds, addFriend, removeFriend, findByNick, friendCards, onFriends, declineRequest, acceptRequest, requestIds, sentIds, friendState, friendsLoaded } from './friends.js?v=0.27.4';
-import { openChat, chatWith, isUnread, onChats } from './chat.js?v=0.27.4';
-import { notifyOn, setNotify } from './notify.js?v=0.27.4';
-import { openInstall, standalone } from './install.js?v=0.27.4';
-import { discordOn, setDiscord, showDiscordGuide, discordPossible, discordReady } from './discord.js?v=0.27.4';
-import { searchTracks } from './catalog.js?v=0.27.4';
-import { seenText } from './userpage.js?v=0.27.4';
+import { $, $$, h, icon, openSheet, closeSheet, toast, sheetItem, trackRow } from './ui.js?v=0.27.5';
+import * as store from './store.js?v=0.27.5';
+import * as player from './player.js?v=0.27.5';
+import { ACCENTS, getTheme, getAccent, getCustomHue, setCustomColor, setTheme, setAccent, hslHex, getNeutral } from './theme.js?v=0.27.5';
+import { CHANGELOG, VERSION, STAGE, KNOWN_ISSUES } from './changelog.js?v=0.27.5';
+import { plural, pickTrack } from './utils.js?v=0.27.5';
+import { youtubeEnabled, youtubeQuotaOut } from './youtube.js?v=0.27.5';
+import { audiusEnabled } from './audius.js?v=0.27.5';
+import { SOURCE_MODES, getSourceMode, setSourceMode } from './sources.js?v=0.27.5';
+import { gesturesOn, setGestures, showGestureGuide } from './gestures.js?v=0.27.5';
+import { listenerStats } from './stats.js?v=0.27.5';
+import { liveBg, setLiveBg } from './viz.js?v=0.27.5';
+import { lowPower, setLowPower } from './perf.js?v=0.27.5';
+import { logOut, changePassword, changeNick, authErrorText } from './auth.js?v=0.27.5';
+import { connectionCountry } from './geo.js?v=0.27.5';
+import { goOffline, publishCard, publishProfile, myCard, getProfile, topListeners, hiddenFromBoard, setHidden, myUid } from './leaders.js?v=0.27.5';
+import { mi } from './icons2.js?v=0.27.5';
+import { artistPic } from './artistpic.js?v=0.27.5';
+import { openArtist } from './artist.js?v=0.27.5';
+import { openUserPage, favArtistsRow, favTracksList, isOnline } from './userpage.js?v=0.27.5';
+import { voiceOn, setVoice, showVoiceGuide, voiceSupported } from './voice.js?v=0.27.5';
+import { openImage } from './viewer.js?v=0.27.5';
+import { isDev, devBadge, fanBadge, nickMarks } from './dev.js?v=0.27.5';
+import { fanNumber, restoreFan, becomeFan } from './fans.js?v=0.27.5';
+import { ping } from './leaders.js?v=0.27.5';
+import { streamsOn, setStreams, checkBackground } from './stream.js?v=0.27.5';
+import { DEF_AV, avSrc, isDefAv } from './avatar.js?v=0.27.5';
+import { ONLINE_MS, loadFriends, friendIds, addFriend, removeFriend, findByNick, friendCards, onFriends, declineRequest, acceptRequest, requestIds, sentIds, friendState, friendsLoaded } from './friends.js?v=0.27.5';
+import { openChat, chatWith, isUnread, onChats } from './chat.js?v=0.27.5';
+import { notifyOn, setNotify } from './notify.js?v=0.27.5';
+import { openInstall, standalone } from './install.js?v=0.27.5';
+import { searchTracks } from './catalog.js?v=0.27.5';
+import { seenText } from './userpage.js?v=0.27.5';
 
 // s: sec, likes, playlists, plays, days, artists, night, styled, showcase, rank
 export const ACHIEVEMENTS = [
   { id: 'dev', i: 'crown', title: 'Создатель MKW', hint: 'Разработчик приложения MKW Music', ok: (s) => s.dev, secret: true },
+  { id: 'dark1', i: 'shield', title: 'Пережил тёмное время бана', hint: 'Был с MKW, когда сайт по ошибке пометили как опасный (ноябрь 2026). Значок в знак извинения', ok: (s) => s.darkBan, cls: 'ach-dark' },
   { id: 'like1', i: 'heart', title: 'Первый лайк', hint: 'Лайкните любой трек', ok: (s) => s.likes >= 1 },
   { id: 'like10', i: 'hearts', title: 'Коллекционер', hint: '10 лайков', v: (s) => [s.likes, 10] },
   { id: 'like50', i: 'heart-plus', title: 'Сердцеед', hint: '50 лайков', v: (s) => [s.likes, 50] },
@@ -62,6 +62,7 @@ export const ACHIEVEMENTS = [
   { id: 'top1', i: 'crown', title: 'Король эфира', hint: 'Станьте первым в рейтинге', ok: (s) => s.rank === 1 },
   { id: 'fr3', i: 'group', title: 'Душа компании', hint: 'Добавьте 3 друзей', v: (s) => [s.friends, 3] },
 ];
+export const DARK_UNTIL = Date.UTC(2026, 10, 10);
 const achDone = (a, s) => (a.ok ? a.ok(s) : a.v(s)[0] >= a.v(s)[1]);
 export const ACH = Object.fromEntries(ACHIEVEMENTS.map((a) => [a.id, a]));
 
@@ -148,7 +149,7 @@ function syncControls() {
   $$('.src-chip').forEach((c) => c.classList.toggle('active', c.dataset.id === getSourceMode()));
   if (refs.srcnote) refs.srcnote.textContent = `iTunes: работает · YouTube: работает без лимита (через сервер MKW${youtubeQuotaOut() ? ', ключ на сегодня исчерпан' : ''}) · Audius: ${audiusEnabled() ? 'работает' : 'нет ключа'}`;
   const tog = (el, v) => { if (el) { el.classList.toggle('active', v); el.setAttribute('aria-checked', String(v)); } };
-  tog(refs.gest, gesturesOn()); tog(refs.voice, voiceOn()); tog(refs.notify, notifyOn()); tog(refs.bgplay, streamsOn()); tog(refs.lowp, lowPower()); tog(refs.livebg, liveBg()); tog(refs.board, !hiddenFromBoard()); tog(refs.discord, discordOn());
+  tog(refs.gest, gesturesOn()); tog(refs.voice, voiceOn()); tog(refs.notify, notifyOn()); tog(refs.bgplay, streamsOn()); tog(refs.lowp, lowPower()); tog(refs.livebg, liveBg()); tog(refs.board, !hiddenFromBoard());
   $$('.swatch').forEach((c) => c.classList.toggle('active', c.dataset.id === getAccent()));
   if (refs.customSw) {
     const nt = getNeutral();
@@ -253,6 +254,8 @@ function statsNow() {
     plays: Number(p.plays) || store.state.history.length,
     days: created ? Math.max(1, Math.ceil((Date.now() - created) / 86400000)) : 1,
     artists: seen.size, night, styled: Boolean(c.styled), showcase: Boolean(c.favArtists.length || c.favTracks.length), rank: myRank, friends: friendIds().length, dev: isDev(curNick),
+    // значок «Пережил тёмное время бана»: у всех, кто был с MKW до 10 ноября 2026
+    darkBan: Date.now() < DARK_UNTIL || (created > 0 && created < DARK_UNTIL) || c.badges.includes('dark1'),
   };
 }
 
@@ -296,8 +299,17 @@ async function likeMkw(btn) {
   } catch { toast('Не получилось. Админу нужно обновить правила Firestore'); if (btn) btn.disabled = false; }
 }
 
+// значок «Пережил тёмное время бана» сам закрепляется в профиле первым (поменять можно в «Изменить» → «Ник»)
+function pinDarkBadge() {
+  const k = `mkw.dark1.pinned.${curNick}`;
+  try { if (localStorage.getItem(k)) return; localStorage.setItem(k, '1'); } catch { return; }
+  if (!ACHIEVEMENTS.find((a) => a.id === 'dark1').ok(statsNow())) return;
+  const c = getCustom();
+  if (!c.badges.includes('dark1')) setCustom({ badges: ['dark1', ...c.badges].slice(0, 3) }); // мест три — значок встаёт первым
+}
+
 function badgeChips(ids) {
-  return h('div', { class: 'pbadges' }, (ids || []).filter((id) => ACH[id]).map((id) => h('span', { class: 'pbadge', title: ACH[id].hint }, mi(ACH[id].i), h('b', { text: ACH[id].title }))));
+  return h('div', { class: 'pbadges' }, (ids || []).filter((id) => ACH[id]).map((id) => h('span', { class: `pbadge${ACH[id].cls ? ` ${ACH[id].cls}` : ''}`, title: ACH[id].hint }, mi(ACH[id].i), h('b', { text: ACH[id].title }))));
 }
 
 function paintHero() {
@@ -404,7 +416,7 @@ function editProfile() {
   const s = statsNow();
   const earned = ACHIEVEMENTS.filter((a) => achDone(a, s));
   const aWrap = h('div', { class: 'pe-badges' });
-  const paintA = () => aWrap.replaceChildren(...(earned.length ? earned.map((a) => h('button', { type: 'button', class: `pe-badge${badges.includes(a.id) ? ' on' : ''}`, onclick: () => {
+  const paintA = () => aWrap.replaceChildren(...(earned.length ? earned.map((a) => h('button', { type: 'button', class: `pe-badge${badges.includes(a.id) ? ' on' : ''}${a.cls ? ` ${a.cls}` : ''}`, onclick: () => {
     if (badges.includes(a.id)) badges = badges.filter((x) => x !== a.id);
     else if (badges.length < 3) badges.push(a.id); else toast('Можно закрепить до 3 значков');
     paintA();
@@ -673,7 +685,6 @@ export function buildProfile(nick) {
   refs.gest = sw(async () => { await setGestures(!gesturesOn()); syncControls(); });
   refs.voice = sw(() => { setVoice(!voiceOn()); syncControls(); });
   refs.notify = sw(async () => { await setNotify(!notifyOn()); syncControls(); });
-  refs.discord = sw(async () => { await setDiscord(!discordOn()); syncControls(); });
   refs.bgplay = sw(() => { setStreams(!streamsOn()); syncControls(); toast(streamsOn() ? 'Готово: выключите экран — музыка продолжит играть' : 'Фоновый режим выключен'); });
   refs.board = sw(async () => { await setHidden(!hiddenFromBoard()); syncControls(); if (!hiddenFromBoard()) pushCard(true); setTimeout(() => loadBoard(true), 1800); });
   refs.boardList = h('div', { class: 'lb-list' });
@@ -735,10 +746,7 @@ export function buildProfile(nick) {
         row('Слушать в фоне с выключенным экраном', 'Бета: работает не у всех и не со всеми треками. Полный трек переключается на звук, когда вы гасите экран. Из России — с VPN', refs.bgplay, null, 'moon'),
         row('Проверить фон', 'Покажет, что работает на вашем телефоне и в вашей сети', h('span', { class: 'chev', text: '›' }), runBgCheck, 'shield'))),
       group('Приложение',
-        row('Установить как приложение', standalone() ? 'Уже установлено — вы в приложении' : 'Своя иконка и отдельное окно. Покажу, куда нажать — в Яндекс Браузере, Chrome, Edge и на телефоне', chev(), () => openInstall(false), 'install'),
-        ...(discordPossible() && (discordReady() || isDev(nick)) ? [
-          row('Статус в Discord', 'Друзья в Discord увидят «Слушает MKW Music»: трек, исполнителя, обложку и время', refs.discord, null, 'gamepad'),
-          row('Как подключить Discord', 'Маленький помощник для компьютера и проверка, что всё работает', chev(), showDiscordGuide, 'note')] : [])),
+        row('Установить как приложение', standalone() ? 'Уже установлено — вы в приложении' : 'Своя иконка и отдельное окно. Покажу, куда нажать — в Яндекс Браузере, Chrome, Edge и на телефоне', chev(), () => openInstall(false), 'install')),
       group('Внешний вид',
         h('div', { class: 'set-block' }, h('b', { text: 'Тема' }),
           h('div', { class: 'theme-cards' }, themeCard('auto', 'Авто'), themeCard('light', 'Светлая'), themeCard('dark', 'Тёмная'), themeCard('black', 'Чёрная'))),
@@ -775,6 +783,7 @@ export function buildProfile(nick) {
         h('ul', {}, KNOWN_ISSUES.map((t) => h('li', { text: t })))))));
 
   built = true;
+  pinDarkBadge();
   if (!refs.voiceSync) { refs.voiceSync = true; window.addEventListener('mkw-voice', () => syncControls()); }
   swipeTabs(refs.pmain);
   requestAnimationFrame(() => placeLens(false));
@@ -820,7 +829,7 @@ function updateAch() {
     const ok = achDone(a, s); if (ok) got += 1;
     const v = a.v ? a.v(s) : null;
     const pr = v ? Math.min(1, v[0] / v[1]) : (ok ? 1 : 0);
-    return h('div', { class: `ach${ok ? ' on' : ''}${a.secret ? ' dev-ach' : ''}`, title: a.hint },
+    return h('div', { class: `ach${ok ? ' on' : ''}${a.secret ? ' dev-ach' : ''}${a.cls ? ` ${a.cls}` : ''}`, title: a.hint },
       h('div', { class: 'ach-ico m' }, mi(a.i)),
       h('div', { class: 'ach-t', text: a.title }),
       h('div', { class: 'ach-h', text: ok ? 'Получено' : v ? `${a.hint} · ${Math.min(v[0], v[1])}/${v[1]}` : a.hint }),
