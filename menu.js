@@ -1,10 +1,10 @@
 // Меню действий над треком и выбор плейлиста.
-import { h, openSheet, closeSheet, sheetItem, askText, toast } from './ui.js?v=0.24.0';
-import * as store from './store.js?v=0.24.0';
-import { shareTrack } from './share.js?v=0.24.0';
-import { openArtistFor } from './artist.js?v=0.24.0';
-import * as player from './player.js?v=0.24.0';
-import { pickFriendFor } from './chat.js?v=0.24.0';
+import { h, openSheet, closeSheet, sheetItem, askText, toast } from './ui.js?v=0.25.0';
+import * as store from './store.js?v=0.25.0';
+import { shareTrack } from './share.js?v=0.25.0';
+import { openArtistFor } from './artist.js?v=0.25.0';
+import * as player from './player.js?v=0.25.0';
+import { pickFriendFor } from './chat.js?v=0.25.0';
 
 function fail(e) {
   console.error(e);

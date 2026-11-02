@@ -1,5 +1,5 @@
 // Движение в стиле Material 3: «общая ось» при смене вкладок и волна (ripple) при нажатии.
-const ORDER = ['search', 'library', 'profile'];
+const ORDER = ['search', 'library', 'chats', 'profile'];
 let cur = 'search';
 
 export function viewDirection(next) {
