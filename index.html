@@ -10,8 +10,8 @@
 <style>
   :root { color-scheme: dark; }
   * { box-sizing: border-box; }
-  html, body { margin: 0; height: 100%; }
-  body { min-height: 100%; display: grid; place-items: center; padding: 24px 16px; background: radial-gradient(90% 60% at 50% 0%, rgba(255,60,90,.22), transparent 70%), radial-gradient(70% 50% at 100% 100%, rgba(122,92,255,.18), transparent 70%), #050508; color: #f3f3f7; font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; text-align: center; overflow: hidden; }
+  html, body { margin: 0; }
+  body { min-height: 100vh; min-height: 100dvh; display: grid; justify-items: center; align-content: safe center; gap: 18px; padding: 24px 16px; background: radial-gradient(90% 60% at 50% 0%, rgba(255,60,90,.22), transparent 70%), radial-gradient(70% 50% at 100% 100%, rgba(122,92,255,.18), transparent 70%), #050508; background-attachment: fixed; color: #f3f3f7; font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; text-align: center; overflow-x: hidden; }
   .card { width: min(440px, 100%); padding: 34px 24px 28px; border-radius: 30px; background: rgba(255,255,255,.05); box-shadow: inset 0 0 0 1px rgba(255,255,255,.1), 0 30px 80px rgba(0,0,0,.6); animation: in .6s cubic-bezier(.2,.9,.3,1.05) both; }
   .logo { width: 84px; height: 84px; margin: 0 auto 14px; border-radius: 24px; display: block; box-shadow: 0 10px 40px rgba(255,60,90,.35); animation: pulse 2.4s ease-in-out infinite; }
   .brand { font-weight: 900; font-size: 30px; letter-spacing: .04em; margin: 0; }
@@ -22,6 +22,20 @@
   .dots { display: inline-flex; gap: 6px; margin-top: 14px; }
   .dots i { width: 8px; height: 8px; border-radius: 50%; background: #ff3b5c; animation: dot 1.2s ease-in-out infinite; }
   .dots i:nth-child(2) { animation-delay: .15s; } .dots i:nth-child(3) { animation-delay: .3s; }
+  .who { color: #ff8a80; }
+  .game { width: min(440px, 100%); padding: 18px 16px 16px; border-radius: 30px; background: rgba(255,255,255,.05); box-shadow: inset 0 0 0 1px rgba(255,255,255,.1); animation: in .6s .15s cubic-bezier(.2,.9,.3,1.05) both; }
+  .game h2 { font-size: 16px; margin: 0 0 10px; }
+  .score { display: flex; justify-content: space-between; font-size: 14px; color: rgba(255,255,255,.7); margin: 0 4px 8px; }
+  .score b { color: #fff; }
+  .board { position: relative; width: 100%; max-width: 320px; margin: 0 auto; aspect-ratio: 1; touch-action: none; }
+  canvas { width: 100%; height: 100%; display: block; border-radius: 18px; background: #0c0b12; box-shadow: inset 0 0 0 1px rgba(255,255,255,.08); }
+  .play { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); padding: 12px 28px; border: 0; border-radius: 999px; background: linear-gradient(135deg, #ff3b5c, #ff8a3b); color: #fff; font: 800 16px system-ui, sans-serif; cursor: pointer; box-shadow: 0 8px 28px rgba(255,60,90,.4); }
+  .play[hidden] { display: none; }
+  .pad { display: grid; grid-template-columns: repeat(3, 56px); grid-template-rows: repeat(2, 48px); gap: 8px; justify-content: center; margin-top: 12px; }
+  .pad button { border: 0; border-radius: 14px; background: rgba(255,255,255,.08); color: #fff; font-size: 18px; cursor: pointer; touch-action: manipulation; }
+  .pad button:active { background: rgba(255,255,255,.18); }
+  .pad [data-d=up] { grid-column: 2; } .pad [data-d=left] { grid-column: 1; grid-row: 2; } .pad [data-d=down] { grid-column: 2; grid-row: 2; } .pad [data-d=right] { grid-column: 3; grid-row: 2; }
+  @media (hover: hover) and (pointer: fine) { .pad { display: none; } }
   @keyframes in { from { opacity: 0; transform: translateY(20px) scale(.97); } }
   @keyframes pulse { 50% { transform: scale(1.05); box-shadow: 0 10px 56px rgba(255,60,90,.55); } }
   @keyframes dot { 50% { opacity: .25; transform: translateY(-4px); } }
@@ -33,12 +47,78 @@
     <p class="brand">MKW</p>
     <span class="tag">ТЕХНИЧЕСКИЙ ПЕРЕРЫВ</span>
     <h1>Упс! Мы нашли критическую ошибку</h1>
-    <p>Прямо сейчас срочно её исправляем. Пока MKW Music недоступен.</p>
+    <p>Пользователь <b class="who">Motrahka</b> нарушил работу сервиса. Просим терпения — мы скоро всё починим.</p>
     <p>Мы пришлём уведомление, когда работа возобновится — у всех сразу.</p>
     <div class="dots" aria-hidden="true"><i></i><i></i><i></i></div>
     <p class="note">Ваш профиль, лайки, плейлисты и чаты в сохранности.</p>
   </main>
+  <section class="game" aria-label="Змейка">
+    <h2>А пока можете поиграть в классическую змейку</h2>
+    <div class="score"><span>Счёт: <b id="sc">0</b></span><span>Рекорд: <b id="best">0</b></span></div>
+    <div class="board"><canvas id="cv" width="320" height="320"></canvas>
+      <button id="go" class="play" type="button">Играть</button></div>
+    <div class="pad" aria-label="Управление">
+      <button type="button" data-d="up" aria-label="Вверх">▲</button>
+      <button type="button" data-d="left" aria-label="Влево">◀</button>
+      <button type="button" data-d="down" aria-label="Вниз">▼</button>
+      <button type="button" data-d="right" aria-label="Вправо">▶</button>
+    </div>
+    <p class="note">Стрелки или WASD на компьютере, свайпы или кнопки на телефоне</p>
+  </section>
 <script>
+  // ---------- классическая змейка ----------
+  (function () {
+    var N = 16, cv = document.getElementById('cv'), x = cv.getContext('2d'), S = cv.width / N;
+    var sc = document.getElementById('sc'), bestEl = document.getElementById('best'), go = document.getElementById('go');
+    var best = 0; try { best = +localStorage.getItem('mkw.snake.best') || 0; } catch (e) {}
+    bestEl.textContent = best;
+    var snake, dir, next, food, score, timer = 0, speed;
+    function place() { do { food = { x: Math.floor(Math.random() * N), y: Math.floor(Math.random() * N) }; } while (snake.some(function (p) { return p.x === food.x && p.y === food.y; })); }
+    function cell(px, py, c, r) { x.fillStyle = c; var g = 1.5; x.beginPath(); if (x.roundRect) x.roundRect(px * S + g, py * S + g, S - 2 * g, S - 2 * g, r); else x.rect(px * S + g, py * S + g, S - 2 * g, S - 2 * g); x.fill(); }
+    function draw() {
+      x.clearRect(0, 0, cv.width, cv.height);
+      x.fillStyle = 'rgba(255,255,255,.03)';
+      for (var i = 0; i < N; i++) for (var j = 0; j < N; j++) if ((i + j) % 2) x.fillRect(i * S, j * S, S, S);
+      x.shadowColor = '#ff8a3b'; x.shadowBlur = 12; cell(food.x, food.y, '#ff8a3b', S / 2); x.shadowBlur = 0;
+      snake.forEach(function (p, k) { cell(p.x, p.y, k ? 'hsl(' + (345 - k * 4) + ',90%,' + Math.max(45, 62 - k) + '%)' : '#fff', 6); });
+    }
+    function reset() { snake = [{ x: 8, y: 8 }, { x: 7, y: 8 }, { x: 6, y: 8 }]; dir = next = { x: 1, y: 0 }; score = 0; speed = 150; sc.textContent = 0; place(); draw(); }
+    function step() {
+      dir = next;
+      var h = { x: snake[0].x + dir.x, y: snake[0].y + dir.y };
+      if (h.x < 0 || h.y < 0 || h.x >= N || h.y >= N || snake.some(function (p) { return p.x === h.x && p.y === h.y; })) return over();
+      snake.unshift(h);
+      if (h.x === food.x && h.y === food.y) {
+        score++; sc.textContent = score;
+        if (score > best) { best = score; bestEl.textContent = best; try { localStorage.setItem('mkw.snake.best', best); } catch (e) {} }
+        place(); if (speed > 70) { speed -= 4; clearInterval(timer); timer = setInterval(step, speed); }
+      } else snake.pop();
+      draw();
+    }
+    function over() { clearInterval(timer); timer = 0; go.textContent = 'Ещё раз · счёт ' + score; go.hidden = false; }
+    function start() { reset(); go.hidden = true; clearInterval(timer); timer = setInterval(step, speed); }
+    function turn(d) {
+      var m = { up: { x: 0, y: -1 }, down: { x: 0, y: 1 }, left: { x: -1, y: 0 }, right: { x: 1, y: 0 } }[d];
+      if (!m) return; if (!timer) { start(); }
+      if (m.x === -dir.x && m.y === -dir.y) return; next = m;
+    }
+    go.onclick = start;
+    document.addEventListener('keydown', function (e) {
+      var k = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right', w: 'up', s: 'down', a: 'left', d: 'right', 'ц': 'up', 'ы': 'down', 'ф': 'left', 'в': 'right' }[e.key];
+      if (k) { e.preventDefault(); turn(k); }
+    });
+    document.querySelectorAll('.pad button').forEach(function (b) { b.addEventListener('pointerdown', function (e) { e.preventDefault(); turn(b.dataset.d); }); });
+    var sx = 0, sy = 0, board = cv.parentNode;
+    board.addEventListener('touchstart', function (e) { sx = e.touches[0].clientX; sy = e.touches[0].clientY; }, { passive: true });
+    board.addEventListener('touchmove', function (e) { e.preventDefault(); }, { passive: false });
+    board.addEventListener('touchend', function (e) {
+      var dx = e.changedTouches[0].clientX - sx, dy = e.changedTouches[0].clientY - sy;
+      if (Math.max(Math.abs(dx), Math.abs(dy)) < 20) return;
+      turn(Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up'));
+    });
+    reset();
+  })();
+
   // как только перерыв закончится — страница сама откроет MKW Music
   setInterval(function () {
     fetch('version.json?t=' + Date.now(), { cache: 'no-store' }).then(function (r) { return r.json(); })
