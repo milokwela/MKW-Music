@@ -1,23 +1,23 @@
 // Страница другого слушателя: баннер, фото, статус, значки, статистика, любимые исполнители и треки.
-import { $, h, trackRow, animateIn } from './ui.js?v=0.28.0';
-import * as player from './player.js?v=0.28.0';
-import { openTrackMenu } from './menu.js?v=0.28.0';
-import { getProfile } from './leaders.js?v=0.28.0';
-import { ACH, bannerCss, formatListened } from './profile.js?v=0.28.0';
-import { artistPic } from './artistpic.js?v=0.28.0';
-import { openArtist } from './artist.js?v=0.28.0';
-import { mi } from './icons2.js?v=0.28.0';
-import { plural } from './utils.js?v=0.28.0';
-import { openImage } from './viewer.js?v=0.28.0';
-import { isDev, devBadge, showDev, validFan, fanBadge } from './dev.js?v=0.28.0';
-import { friendState, addFriend, removeFriend, loadFriends, friendsLoaded, ONLINE_MS } from './friends.js?v=0.28.0';
-import { openChat } from './chat.js?v=0.28.0';
+import { $, h, trackRow, animateIn } from './ui.js?v=0.29.0';
+import * as player from './player.js?v=0.29.0';
+import { openTrackMenu } from './menu.js?v=0.29.0';
+import { getProfile } from './leaders.js?v=0.29.0';
+import { ACH, bannerCss, formatListened } from './profile.js?v=0.29.0';
+import { artistPic } from './artistpic.js?v=0.29.0';
+import { openArtist } from './artist.js?v=0.29.0';
+import { mi } from './icons2.js?v=0.29.0';
+import { plural } from './utils.js?v=0.29.0';
+import { openImage } from './viewer.js?v=0.29.0';
+import { isDev, devBadge, showDev, validFan, fanBadge } from './dev.js?v=0.29.0';
+import { friendState, addFriend, removeFriend, loadFriends, friendsLoaded, ONLINE_MS } from './friends.js?v=0.29.0';
+import { openChat } from './chat.js?v=0.29.0';
 // удалить друга — двойное нажатие за 3 секунды, чтобы не убрать случайно
 let rmAsk = '';
 function confirmRemove(u) { if (rmAsk === u.uid) { rmAsk = ''; return true; } rmAsk = u.uid; setTimeout(() => { if (rmAsk === u.uid) rmAsk = ''; }, 3000); toast('Нажмите ещё раз, чтобы убрать из друзей'); return false; }
-import { avSrc } from './avatar.js?v=0.28.0';
-import { toast } from './ui.js?v=0.28.0';
-import { searchTracks } from './catalog.js?v=0.28.0';
+import { avSrc } from './avatar.js?v=0.29.0';
+import { toast } from './ui.js?v=0.29.0';
+import { searchTracks } from './catalog.js?v=0.29.0';
 
 export function seenText(seen) {
   const t = Number(seen) || 0;
@@ -60,7 +60,7 @@ function render(u, isMe) {
   const kids = [
     h('div', { class: `phero up-hero${showDev(u) ? ' dev' : ''}`, 'data-frame': u.frame || 'none', 'data-shape': u.shape || 'circle', 'data-effect': u.effect || 'none', 'data-bimg': u.bannerImg ? '1' : '', style: `--banner:${bannerCss(u.banner === 'img' ? 'accent' : u.banner, u.bannerImg)}` },
       h('div', { class: 'phero-banner', onclick: () => u.bannerImg && openImage(u.bannerImg) }),
-      h('div', { class: 'phero-fx' }, h('i'), h('i'), h('i'), h('i'), h('i'), h('i')),
+      h('div', { class: 'phero-fx' }, ...Array.from({ length: 10 }, () => h('i'))),
       h('div', { class: 'phero-row' }, h('button', { type: 'button', class: 'hero-avatar', 'aria-label': 'Открыть фото', onclick: () => openImage(avSrc(u.avatar), u.nick) }, h('img', { src: avSrc(u.avatar), alt: '' }), isOnline(u.seen) ? h('span', { class: 'online-dot' }) : null)),
       h('div', { class: 'phero-info' },
         h('div', { class: 'hero-nick', 'data-style': u.nickStyle || 'plain', text: u.nick || 'Слушатель' }),
