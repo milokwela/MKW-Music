@@ -28,8 +28,7 @@ function Np([string]$json) {
   $b = [Text.Encoding]::UTF8.GetBytes($json)
   Invoke-WebRequest -Uri http://127.0.0.1:47331/np -Method Post -Body $b -ContentType 'application/json' -Headers $h -UseBasicParsing
 }
-function Check-Helper([string]$name, $proc, [string]$out) {
-  Set-Content -Path $log -Value '' -Encoding UTF8
+function Check-Helper([string]$name, $proc, [string]$out, [long]$off) {
   $ok = $false
   for ($i = 0; $i -lt 30; $i++) { try { $ping = Invoke-RestMethod -Uri http://127.0.0.1:47331/ping -Headers $h -TimeoutSec 2; if ($ping.discord) { $ok = $true; break } } catch {}; Start-Sleep -Milliseconds 500 }
   Write-Host "[$name] PING: $($ping | ConvertTo-Json -Compress)"
@@ -45,8 +44,8 @@ function Check-Helper([string]$name, $proc, [string]$out) {
   Stop-Process -Id $proc.Id -Force
   Start-Sleep -Seconds 1
   Write-Host "--- [$name] помощник:"; if (Test-Path $out) { Get-Content $out -Encoding UTF8 }
-  Write-Host "--- [$name] поддельный Discord:"; Get-Content $log -Encoding UTF8
-  $t = [IO.File]::ReadAllText($log, [Text.Encoding]::UTF8)
+  $all = [IO.File]::ReadAllBytes($log); $t = [Text.Encoding]::UTF8.GetString($all, $off, $all.Length - $off)
+  Write-Host "--- [$name] поддельный Discord:"; Write-Host $t
   if ($t -notmatch '"client_id":"1566880916784029786"') { throw "[$name] нет рукопожатия" }
   if ($t -notmatch 'распять' -or $t -notmatch '"type":2') { throw "[$name] статус не дошёл" }
   if ($t -notmatch 'пауза') { throw "[$name] пауза не дошла" }
@@ -63,8 +62,9 @@ if ($mode -eq 'workflow_dispatch') {
 } else {
   $cmd = "iex([IO.File]::ReadAllText('$PWD\discord\ds.ps1',[Text.Encoding]::UTF8))"
 }
+$off1 = (Get-Item $log).Length
 $p = Start-Process powershell -ArgumentList '-NoProfile', '-Command', $cmd -PassThru -RedirectStandardOutput $out -WindowStyle Hidden
-Check-Helper 'PowerShell' $p $out
+Check-Helper 'PowerShell' $p $out $off1
 
 if ($mode -eq 'workflow_dispatch') {
   # 2) PowerShell, ограниченный Windows (как при «Интеллектуальном управлении приложениями»): должна быть понятная подсказка
@@ -83,7 +83,8 @@ if ($mode -eq 'workflow_dispatch') {
 
   # 3) Node.js (способ 2)
   $out3 = Join-Path $env:RUNNER_TEMP 'node.log'
+  $off3 = (Get-Item $log).Length
   $p3 = Start-Process node -ArgumentList '-e', '"fetch(''https://mkwmusic.ru/mkw-discord.js'').then(r=>r.text()).then(eval)"' -PassThru -RedirectStandardOutput $out3 -WindowStyle Hidden
-  Check-Helper 'Node.js' $p3 $out3
+  Check-Helper 'Node.js' $p3 $out3 $off3
 }
 Write-Host 'ВСЁ РАБОТАЕТ' -ForegroundColor Green
