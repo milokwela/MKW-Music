@@ -2,8 +2,11 @@
 // Друзья — только взаимно: я есть в его списке, а он в моём. То есть дружба начинается, когда второй нажал «Принять».
 //   заявка ко мне  — он добавил меня, я его ещё нет;
 //   моя заявка     — я добавил его, он меня ещё нет.
-import { db, auth } from './firebase.js?v=0.25.0';
-import { doc, getDoc, setDoc, collection, query, where, getDocs, limit, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+import { db, auth } from './firebase.js?v=0.26.0';
+import { doc, getDoc, setDoc, collection, query, where, getDocs, limit, onSnapshot, documentId } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+
+// «В сети»: отметка свежее 3.5 минуты (пинг раз в 2 минуты, при уходе из приложения — сразу «не в сети»)
+export const ONLINE_MS = 210000;
 
 let mine = [];       // мой список (заявки + принятые)
 let incoming = [];   // у кого я в списке
@@ -121,7 +124,25 @@ export async function friendCards(uids, maxAge = 60000) {
     try { const s = await getDoc(doc(db, 'leaders', uid)); const v = s.exists() ? { uid, ...s.data() } : { uid, nick: 'слушатель', hidden: true }; cache.set(uid, { v, at: Date.now() }); return v; }
     catch { return { uid, nick: 'слушатель', hidden: true }; }
   }));
-  const online = (u) => Date.now() - (Number(u.seen) || 0) < 6 * 60000;
+  const online = (u) => Date.now() - (Number(u.seen) || 0) < ONLINE_MS;
   return out.sort((a, b) => (online(b) - online(a)) || ((Number(b.seen) || 0) - (Number(a.seen) || 0)));
 }
 export async function cardOf(uid) { return (await friendCards([uid], 300000))[0]; }
+
+// Живой статус друзей: «в сети», что слушает — обновляется сразу, как друг зашёл или вышел
+let presSig = '', presUnsub = [];
+export function watchPresence() {
+  const ids = friendIds().slice(0, 60);
+  const sig = ids.slice().sort().join(',');
+  if (sig === presSig) return;
+  presSig = sig; presUnsub.forEach((f) => f()); presUnsub = [];
+  for (let i = 0; i < ids.length; i += 30) {
+    try {
+      presUnsub.push(onSnapshot(query(collection(db, 'leaders'), where(documentId(), 'in', ids.slice(i, i + 30))), (s) => {
+        s.docs.forEach((d) => cache.set(d.id, { v: { uid: d.id, ...d.data() }, at: Date.now() }));
+        emit();
+      }, () => { /* нет сети */ }));
+    } catch { /* ignore */ }
+  }
+}
+export function stopPresence() { presSig = ''; presUnsub.forEach((f) => f()); presUnsub = []; }

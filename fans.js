@@ -1,9 +1,9 @@
 // «Мне нравится MKW»: значок фаната с номером по порядку. Номера раздаёт счётчик meta/fans в Firestore
 // (в одной транзакции: fans/{uid} = { n } и meta/fans = { count: n }), поэтому номера не повторяются.
 // Разработчик всегда #1, первый фанат получает #2.
-import { db, auth } from './firebase.js?v=0.25.0';
+import { db, auth } from './firebase.js?v=0.26.0';
 import { doc, getDoc, runTransaction } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
-import { isDev } from './dev.js?v=0.25.0';
+import { isDev } from './dev.js?v=0.26.0';
 
 const KEY = (uid) => `mkw.fan.${uid}`;
 const uidNow = () => (auth.currentUser && auth.currentUser.uid) || '';

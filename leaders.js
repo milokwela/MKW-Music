@@ -1,5 +1,5 @@
 // Рейтинг слушателей: у каждого публичная карточка leaders/{uid} (ник, часы, статус, значки, маленькое фото).
-import { db, auth } from './firebase.js?v=0.25.0';
+import { db, auth } from './firebase.js?v=0.26.0';
 import { doc, getDoc, setDoc, deleteDoc, collection, query, orderBy, limit, getDocs, where } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
 const KEY = 'mkw.leaders.hide';
@@ -7,14 +7,24 @@ export const hiddenFromBoard = () => { try { return localStorage.getItem(KEY) ==
 let lastSent = '';
 let lastSeenAt = 0;
 
-// «В сети»: отметка времени и что сейчас играет. Не чаще раза в 4 минуты (бережём лимит Firestore).
+// «В сети»: отметка времени и что сейчас играет. Не чаще раза в 2 минуты (бережём лимит Firestore).
 export async function ping(now, force) {
   const uid = auth.currentUser && auth.currentUser.uid;
   if (!uid || hiddenFromBoard() || !lastSent) return;
-  if (!force && Date.now() - lastSeenAt < 240000) return;
+  if (!force && Date.now() - lastSeenAt < 110000) return;
   lastSeenAt = Date.now();
   const data = { seen: Date.now(), now: String(now || '').slice(0, 120) };
   try { await setDoc(doc(db, 'leaders', uid), data, { merge: true }); } catch { /* нет карточки — не страшно */ }
+  try { await setDoc(doc(db, 'profiles', uid), data, { merge: true }); } catch { /* ignore */ }
+}
+
+// Ушли из приложения — сразу «не в сети» (отметку сдвигаем в прошлое, чтобы друзья не ждали 3 минуты)
+export async function goOffline() {
+  const uid = auth.currentUser && auth.currentUser.uid;
+  if (!uid || hiddenFromBoard() || !lastSent) return;
+  lastSeenAt = 0;
+  const data = { seen: Date.now() - 600000, now: '' };
+  try { await setDoc(doc(db, 'leaders', uid), data, { merge: true }); } catch { /* ignore */ }
   try { await setDoc(doc(db, 'profiles', uid), data, { merge: true }); } catch { /* ignore */ }
 }
 
