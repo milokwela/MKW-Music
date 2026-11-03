@@ -59,12 +59,6 @@
 @media (max-height: 560px) { .sp6-star { width: 150px; margin: -70px 0 0 -75px; } .sp6-title { top: calc(42% + 92px); } .sp6-sub { top: calc(42% + 136px); } }
 @media (prefers-reduced-motion: reduce) { #splash * { animation-duration: .01s !important; animation-delay: 0s !important; } }
 
-/* ---------- настройки на большом экране: две колонки карточек ---------- */
-@media (min-width: 1500px) and (pointer: fine) {
-  #view-profile .ppane[data-pane="set"]:not([hidden]) { columns: 2; column-gap: 18px; }
-  #view-profile .ppane[data-pane="set"] > * { break-inside: avoid; }
-}
-
 /* подсказка для iPhone в чатах */
 .cl-ios { position: relative; display: grid; gap: 8px; padding: 14px 16px; margin: 0 0 10px; border-radius: 22px; background: color-mix(in srgb, var(--primary) 14%, var(--surface, #18151d)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--primary) 30%, transparent); }
 .cl-ios b { display: flex; align-items: center; gap: 8px; font-size: 15px; }
@@ -73,3 +67,70 @@
 .cl-ios small { color: var(--on-surface-var); font-size: 12.5px; }
 .cl-ios-x { justify-self: start; border: 0; border-radius: 999px; padding: 7px 14px; background: color-mix(in srgb, var(--on-bg) 10%, transparent); color: inherit; font: 600 13px var(--font, inherit); cursor: pointer; }
 .ch-who small.on { color: #3ddc84; }
+
+/* ---------- 0.33.1: чаты на компьютере — как в Discord ---------- */
+.ch-meta { display: none; }
+@media (min-width: 980px) and (pointer: fine) {
+  :root { --cl-w: 340px; --pane-l: max(16px, calc(50vw - 640px)); --pane-b: 112px; }
+  body.on-chats:has(#mini-player:not([hidden])) { --pane-b: 180px; }
+  /* левая панель: личные сообщения */
+  body.on-chats #view-chats:not([hidden]) { position: fixed; left: var(--pane-l); top: 16px; bottom: var(--pane-b); width: var(--cl-w); max-width: none; margin: 0; padding: 16px 10px 12px !important; overflow-y: auto; border-radius: 24px 0 0 24px; background: color-mix(in srgb, var(--surface, #17141b) 92%, #000); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--on-bg) 8%, transparent); scrollbar-width: thin; animation: none !important; }
+  body.on-chats #view-chats .cl-head { padding: 0 8px; margin-bottom: 10px; }
+  body.on-chats #view-chats .view-title { font-size: 20px !important; margin: 0 !important; }
+  body.on-chats #view-chats .cl-search { margin: 0 6px 10px; width: calc(100% - 12px); min-height: 0; padding: 9px 12px; border-radius: 10px; font-size: 14px; }
+  body.on-chats #view-chats .section-title { margin: 14px 8px 6px; font-size: 11.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--on-surface-var); }
+  body.on-chats #view-chats .section-title::before { display: none; }
+  body.on-chats .cl-list { display: grid; gap: 1px; }
+  body.on-chats .cl-row { padding: 7px 10px !important; border-radius: 10px !important; gap: 12px; animation: none !important; transition: background .12s; }
+  body.on-chats .cl-row .cl-av { width: 40px !important; height: 40px !important; }
+  body.on-chats .cl-row:hover:not(.on) { background: color-mix(in srgb, var(--on-bg) 6%, transparent); }
+  body.on-chats .cl-row.on { background: color-mix(in srgb, var(--on-bg) 11%, transparent); }
+  body.on-chats .cl-row .cl-top b { font-size: 14.5px; }
+  body.on-chats .cl-row .cl-prev { font-size: 13px; }
+  body.on-chats .cl-reqbtn { margin: 0 6px 6px; border-radius: 12px; }
+
+  /* правая панель: переписка */
+  body.on-chats #chat-page, body.on-chats::after { left: calc(var(--pane-l) + var(--cl-w)); right: max(16px, calc(50vw - 640px)); top: 16px; bottom: var(--pane-b); border-radius: 0 24px 24px 0; }
+  body.on-chats #chat-page { background: color-mix(in srgb, var(--bg, #0e0c10) 94%, #000); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--on-bg) 8%, transparent), 0 20px 60px rgba(0,0,0,.35); }
+  body.on-chats::after { border: 0; background: color-mix(in srgb, var(--bg, #0e0c10) 94%, #000); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--on-bg) 8%, transparent); content: 'Выберите переписку слева'; }
+  body.on-chats #chat-page .ch-head { padding: 10px 18px; min-height: 56px; box-sizing: border-box; background: transparent; border-bottom: 1px solid color-mix(in srgb, var(--on-bg) 8%, transparent); backdrop-filter: none; }
+  body.on-chats #chat-page .ch-head .ch-av { width: 34px; height: 34px; }
+  body.on-chats #chat-page .ch-who b { font-size: 15.5px; }
+
+  /* сообщения без «пузырей»: фото, ник, время и текст в строку — как в Discord */
+  body.on-chats #chat-page .ch-list { gap: 0; padding: 12px 0 18px; }
+  body.on-chats #chat-page .ch-msg, body.on-chats #chat-page .ch-msg.me { align-self: stretch; max-width: none; width: auto; margin: 0; padding: 3px 24px 3px 76px; border-radius: 0; background: none !important; color: var(--on-bg, #f2eef5) !important; box-shadow: none !important; animation: none; }
+  body.on-chats #chat-page .ch-list > * { flex-shrink: 0; }
+  body.on-chats #chat-page .ch-msg:not(.grp) { margin-top: 14px; padding-top: 4px; min-height: 44px; }
+  body.on-chats #chat-page .ch-msg:hover { background: color-mix(in srgb, var(--on-bg) 4%, transparent) !important; }
+  body.on-chats #chat-page .ch-meta { display: flex; align-items: baseline; gap: 8px; margin-bottom: 2px; }
+  body.on-chats #chat-page .ch-meta img { position: absolute; left: 20px; top: 6px; width: 40px; height: 40px; border-radius: 50%; object-fit: cover; }
+  body.on-chats #chat-page .ch-meta b { font-size: 15px; font-weight: 700; }
+  body.on-chats #chat-page .ch-msg.me .ch-meta b { color: var(--primary); }
+  body.on-chats #chat-page .ch-meta span { font-size: 12px; color: var(--on-surface-var); }
+  body.on-chats #chat-page .ch-msg.grp .ch-meta { display: none; }
+  body.on-chats #chat-page .ch-text { font-size: 15px; line-height: 1.45; }
+  /* время: у первого сообщения — в шапке, у остальных — слева при наведении */
+  body.on-chats #chat-page .ch-msg time { position: absolute; left: 0; top: 6px; width: 70px; margin: 0; padding: 0; text-align: center; font-size: 11px; color: var(--on-surface-var) !important; background: none !important; opacity: 0; backdrop-filter: none; }
+  body.on-chats #chat-page .ch-msg.grp:hover time { opacity: 1; }
+  body.on-chats #chat-page .ch-msg:not(.grp) time { display: none; }
+  body.on-chats #chat-page .ch-msg .ch-tick { display: none; }
+  /* фото, треки и голосовые внутри строки */
+  body.on-chats #chat-page .ch-msg.has-img { width: auto; }
+  body.on-chats #chat-page .ch-msg .ch-img { width: auto !important; max-width: min(420px, 100%); max-height: 320px; min-height: 0; margin: 4px 0; border-radius: 12px !important; box-shadow: none; }
+  body.on-chats #chat-page .ch-track { max-width: 420px; background: color-mix(in srgb, var(--on-bg) 7%, transparent) !important; }
+  body.on-chats #chat-page .ch-msg.voice { min-width: 0; }
+  body.on-chats #chat-page .ch-voice { max-width: 360px; padding: 8px 12px; border-radius: 14px; background: color-mix(in srgb, var(--on-bg) 7%, transparent); }
+  body.on-chats #chat-page .ch-msg.me .ch-vplay { background: var(--primary); color: var(--on-primary); }
+  /* разделитель дня — линия с датой */
+  body.on-chats #chat-page .ch-day { align-self: stretch; display: flex; align-items: center; gap: 10px; margin: 18px 20px 2px; padding: 0; background: none; font-size: 12px; font-weight: 600; color: var(--on-surface-var); }
+  body.on-chats #chat-page .ch-day::before, body.on-chats #chat-page .ch-day::after { content: ''; flex: 1; height: 1px; background: color-mix(in srgb, var(--on-bg) 10%, transparent); }
+  body.on-chats #chat-page .ch-call { margin: 10px auto; }
+  /* поле ввода — широкое, как в Discord */
+  body.on-chats #chat-page .ch-bar { padding: 0 16px 16px; background: transparent; backdrop-filter: none; border: 0; }
+  body.on-chats #chat-page .ch-input { border-radius: 12px; background: color-mix(in srgb, var(--on-bg) 8%, transparent); min-height: 46px; }
+  body.on-chats #chat-page .ch-share, body.on-chats #chat-page .ch-send { width: 46px; height: 46px; border-radius: 12px; }
+  body.on-chats #chat-page .ch-rec { padding: 0 16px 16px; background: color-mix(in srgb, var(--bg, #0e0c10) 94%, #000); }
+  body.on-chats #chat-page .ch-firecta { padding: 4px 0 8px; }
+}
+@media (min-width: 980px) and (pointer: fine) and (max-width: 1240px) { :root { --cl-w: 300px; } }

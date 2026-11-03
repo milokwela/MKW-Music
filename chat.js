@@ -1,21 +1,21 @@
 // Чат с друзьями. Писать можно только взаимным друзьям (проверяют и приложение, и правила Firestore).
 //   chats/{a_b}            — { members: [a, b], last: { from, text, at }, at, read: { uid: время } }   (a < b)
 //   chats/{a_b}/msgs/{id}  — { from, text, at, track? }
-import { safeUrl } from './utils.js?v=0.33.0';
-import { db } from './firebase.js?v=0.33.0';
+import { safeUrl } from './utils.js?v=0.33.1';
+import { db } from './firebase.js?v=0.33.1';
 import { doc, setDoc, addDoc, deleteDoc, getDocs, collection, query, where, orderBy, limit, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
-import { h, toast, openSheet, closeSheet } from './ui.js?v=0.33.0';
-import { openImage } from './viewer.js?v=0.33.0';
-import { mi } from './icons2.js?v=0.33.0';
-import * as player from './player.js?v=0.33.0';
-import { searchTracks } from './catalog.js?v=0.33.0';
-import { me, isFriend, cardOf, friendIds, friendCards, loadFriends, friendsLoaded } from './friends.js?v=0.33.0';
-import { avSrc } from './avatar.js?v=0.33.0';
-import { seenText, isOnline, openUserPage, closeUserPage } from './userpage.js?v=0.33.0';
-import { startCall, warmCalls } from './call.js?v=0.33.0';
-import { streakOf, streakPatch, fireIcon, openStreak, startStreak, playFire } from './streak.js?v=0.33.0';
-import { pushTo, myNick } from './push.js?v=0.33.0';
-import { srvNow } from './clock.js?v=0.33.0';
+import { h, toast, openSheet, closeSheet } from './ui.js?v=0.33.1';
+import { openImage } from './viewer.js?v=0.33.1';
+import { mi } from './icons2.js?v=0.33.1';
+import * as player from './player.js?v=0.33.1';
+import { searchTracks } from './catalog.js?v=0.33.1';
+import { me, isFriend, cardOf, friendIds, friendCards, loadFriends, friendsLoaded } from './friends.js?v=0.33.1';
+import { avSrc } from './avatar.js?v=0.33.1';
+import { seenText, isOnline, openUserPage, closeUserPage } from './userpage.js?v=0.33.1';
+import { startCall, warmCalls } from './call.js?v=0.33.1';
+import { streakOf, streakPatch, fireIcon, openStreak, startStreak, playFire } from './streak.js?v=0.33.1';
+import { pushTo, myNick } from './push.js?v=0.33.1';
+import { srvNow } from './clock.js?v=0.33.1';
 
 export const chatId = (a, b) => [a, b].sort().join('_');
 
@@ -312,6 +312,7 @@ function fitKeyboard(p, list) {
 }
 let offKb = null;
 let offPeer = null;
+let meCard = null;
 
 export async function openChat(uid, card) {
   warmCalls();
@@ -326,7 +327,7 @@ export async function openChat(uid, card) {
   stopVoice();
   openId = cid;
   const list = h('div', { class: 'ch-list' });
-  const input = h('textarea', { class: 'ch-input', rows: '1', placeholder: 'Сообщение', maxlength: '500', enterkeyhint: 'send' });
+  const input = h('textarea', { class: 'ch-input', rows: '1', placeholder: matchMedia('(pointer: fine)').matches ? `Написать @${u.nick || 'другу'}` : 'Сообщение', maxlength: '500', enterkeyhint: 'send' });
   const sendBtn = h('button', { class: 'ch-send', type: 'button', 'aria-label': 'Отправить' }, mi('send'));
   const micBtn = h('button', { class: 'ch-send ch-mic', type: 'button', 'aria-label': 'Записать голосовое', title: 'Голосовое сообщение' }, mi('mic'));
   const shareBtn = h('button', { class: 'ch-share', type: 'button', title: 'Отправить трек, который играет', 'aria-label': 'Отправить текущий трек' }, mi('note'));
@@ -445,6 +446,7 @@ export async function openChat(uid, card) {
   document.querySelectorAll('.cl-row').forEach((r) => r.classList.toggle('on', r.dataset.uid === uid));
   offKb = fitKeyboard(p, list);
 
+  if (!meCard) cardOf(me()).then((c) => { if (c) meCard = c; }).catch(() => {});
   if (unsubMsgs) unsubMsgs();
   const drawn = new Map(); let first = true; let lastDocs = null; let viewKey = '';
   // галочки: одна — доставлено, две — прочитано (друг открыл чат после этого сообщения)
@@ -496,11 +498,11 @@ export async function openChat(uid, card) {
     const docs = lastDocs.slice().reverse().filter((d) => { const m = d.data(); const at = Number(m.at) || 0; return at > from && !(bl && m.from === uid && at > bl); });
     const atBottom = list.scrollHeight - list.scrollTop - list.clientHeight < 80;
     if (!docs.length) { list.replaceChildren(h('p', { class: 'ch-empty', text: from ? 'Здесь пока пусто — чат очищен.' : `Напишите ${u.nick || 'другу'} первым. Можно отправить трек, который сейчас играет — кнопка с нотой, или голосовое — кнопка с микрофоном.` })); return; }
-    let day = '';
+    let day = '', prevFrom = '', prevAt = 0;
     const nodes = [];
     docs.forEach((d) => {
       const m = d.data();
-      const dd = dayOf(m.at); if (dd !== day) { day = dd; nodes.push(h('div', { class: 'ch-day', text: dd })); }
+      const dd = dayOf(m.at); if (dd !== day) { day = dd; prevFrom = ''; nodes.push(h('div', { class: 'ch-day', text: dd })); }
       let el = drawn.get(d.id);
       if (!el && isCallMsg(m.text)) {
         const ev = parseCall(m.text); const mine = m.from === me();
@@ -520,7 +522,11 @@ export async function openChat(uid, card) {
         const img = !voiceSrc && m.img && safeUrl(m.img).startsWith('data:image/') ? h('img', { class: 'ch-img', src: m.img, alt: 'Фото', decoding: 'async', onclick: () => openImage(m.img, '') }) : null;
         if (img) img.addEventListener('load', () => { if (list.scrollHeight - list.scrollTop - list.clientHeight < 400) list.scrollTop = list.scrollHeight; }, { once: true });
         const text = voiceSrc && m.text === VOICE_TXT ? '' : m.text;
+        // для компьютера: фото, ник и время над сообщением (как в Discord); на телефоне скрыто
+        const who = mineMsg ? (meCard || { nick: myNick(), avatar: '' }) : u;
+        const meta = h('div', { class: 'ch-meta' }, h('img', { src: avSrc(who.avatar), alt: '', loading: 'lazy' }), h('b', { text: who.nick || (mineMsg ? 'Вы' : 'друг') }), h('span', { text: `${dayOf(m.at)}, ${timeOf(m.at)}` }));
         el = h('div', { class: `ch-msg${mineMsg ? ' me' : ''}${img ? ' has-img' : ''}${photoOnly ? ' photo' : ''}${voiceSrc ? ' voice' : ''}${first ? '' : ' new'}` },
+          meta,
           m.track ? h('button', { class: 'ch-track', type: 'button', onclick: () => playTrack(m.track) }, mi('play-circle'), h('span', {}, h('b', { text: m.track.title }), h('small', { text: m.track.artist }))) : null,
           img,
           voiceSrc ? voiceBubble(voiceSrc, Number(m.vdur) || 0) : null,
@@ -528,6 +534,10 @@ export async function openChat(uid, card) {
           h('time', {}, timeOf(m.at), mineMsg ? (() => { const tk = h('span', { class: 'ch-tick', 'aria-hidden': 'true' }, h('i'), h('i')); ticks.set(d.id, { at: Number(m.at) || 0, el: tk }); return tk; })() : null));
         drawn.set(d.id, el);
       }
+      // подряд от одного человека (в пределах 7 минут) — без повторного ника и фото
+      const at = Number(m.at) || 0, call = isCallMsg(m.text);
+      el.classList.toggle('grp', !call && prevFrom === m.from && at - prevAt < 420000);
+      prevFrom = call ? '' : m.from; prevAt = at;
       nodes.push(el);
     });
     first = false;
