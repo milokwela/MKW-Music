@@ -1,15 +1,15 @@
 // Раздел «Чаты» в нижнем меню: все переписки с друзьями, как в мессенджере.
 // Сверху — недавние и непрочитанные, ниже — друзья, с которыми ещё не переписывались.
-import { $, h } from './ui.js?v=0.32.0';
-import { mi } from './icons2.js?v=0.32.0';
-import { chatList, isUnread, onChats, openChat, otherOf, clearedAt, blockedByMe, openUid as openId } from './chat.js?v=0.32.0';
-import { me, friendIds, friendCards, loadFriends, friendsLoaded, onFriends, requestIds } from './friends.js?v=0.32.0';
-import { avSrc } from './avatar.js?v=0.32.0';
-import { nickMarks } from './dev.js?v=0.32.0';
-import { seenText, isOnline } from './userpage.js?v=0.32.0';
-import { pickAndCall } from './call.js?v=0.32.0';
-import { streakOf, fireIcon } from './streak.js?v=0.32.0';
-import { setNotify } from './notify.js?v=0.32.0';
+import { $, h } from './ui.js?v=0.33.0';
+import { mi } from './icons2.js?v=0.33.0';
+import { chatList, isUnread, onChats, openChat, otherOf, clearedAt, blockedByMe, openUid as openId } from './chat.js?v=0.33.0';
+import { me, friendIds, friendCards, loadFriends, friendsLoaded, onFriends, requestIds } from './friends.js?v=0.33.0';
+import { avSrc } from './avatar.js?v=0.33.0';
+import { nickMarks } from './dev.js?v=0.33.0';
+import { seenText, isOnline } from './userpage.js?v=0.33.0';
+import { pickAndCall } from './call.js?v=0.33.0';
+import { streakOf, fireIcon } from './streak.js?v=0.33.0';
+import { setNotify } from './notify.js?v=0.33.0';
 
 let watching = false, filter = '', busy = false, again = false;
 
@@ -62,8 +62,20 @@ export async function renderChats() {
     const req = requestIds().length;
     // уведомления о звонках: браузер должен разрешить — просим одной кнопкой
     const askNotif = 'Notification' in window && Notification.permission === 'default';
+    // iPhone в Safari: звонки и уведомления приходят, только если MKW добавлен на экран «Домой»
+    const ios = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    const standalone = (window.navigator.standalone === true) || matchMedia('(display-mode: standalone)').matches;
+    let iosHide = false; try { iosHide = localStorage.getItem('mkw.ioshint') === '1'; } catch { /* ignore */ }
+    const iosTip = ios && !standalone && !iosHide ? h('div', { class: 'cl-ios' },
+      h('b', {}, mi('phone'), h('span', { text: 'Чтобы на iPhone приходили звонки' })),
+      h('ol', {},
+        h('li', { text: 'Нажмите «Поделиться» внизу Safari (квадрат со стрелкой)' }),
+        h('li', { text: 'Выберите «На экран «Домой»» → «Добавить»' }),
+        h('li', { text: 'Откройте MKW с иконки на экране и разрешите уведомления' })),
+      h('small', { text: 'В обычной вкладке Safari iPhone не пускает звонки и уведомления, когда MKW свёрнут.' }),
+      h('button', { type: 'button', class: 'cl-ios-x', onclick: () => { try { localStorage.setItem('mkw.ioshint', '1'); } catch { /* ignore */ } renderChats(); } }, 'Понятно')) : null;
     const nb = askNotif ? h('button', { type: 'button', class: 'cl-reqbtn cl-notif', onclick: async () => { await setNotify(true); renderChats(); } }, mi('bell'), h('span', { text: 'Включите уведомления — чтобы не пропускать звонки, даже когда MKW закрыт' }), h('i', { text: '›' })) : null;
-    root.querySelector('.cl-req').replaceChildren(...(nb ? [nb] : []), ...(req ? [h('button', { type: 'button', class: 'cl-reqbtn', onclick: () => document.querySelector('#bottom-nav .nav-btn[data-view="profile"]').click() || setTimeout(() => { const t = document.querySelector('.ptab[data-tab="friends"]'); if (t) t.click(); }, 300) }, mi('person-add'), h('span', { text: `Заявки в друзья: ${req}` }), h('i', { text: '›' }))] : []));
+    root.querySelector('.cl-req').replaceChildren(...(iosTip ? [iosTip] : []), ...(nb ? [nb] : []), ...(req ? [h('button', { type: 'button', class: 'cl-reqbtn', onclick: () => document.querySelector('#bottom-nav .nav-btn[data-view="profile"]').click() || setTimeout(() => { const t = document.querySelector('.ptab[data-tab="friends"]'); if (t) t.click(); }, 300) }, mi('person-add'), h('span', { text: `Заявки в друзья: ${req}` }), h('i', { text: '›' }))] : []));
     const list = root.querySelector('.cl-list');
     if (!talks.length && !rest.length) {
       list.replaceChildren(h('div', { class: 'cl-empty' }, mi('chat'), h('b', { text: filter ? 'Никого не нашла' : 'Чатов пока нет' }),
