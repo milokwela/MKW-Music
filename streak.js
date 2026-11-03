@@ -4,9 +4,9 @@
 //   read.g_<uid> — последний день, когда этот человек писал;  read.gs — день, когда завели огонёк;
 //   read.gx — огонёк потушен вручную (день);  read.gl — сколько дней было у погасшего огонька; read.gld — день, когда погас.
 // (0.30: старые огоньки на ключах f_/fs сброшены у всех — заводятся заново кнопкой)
-import { db } from './firebase.js?v=0.30.0';
+import { db } from './firebase.js?v=0.31.0';
 import { doc, setDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
-import { h, toast, openSheet, closeSheet } from './ui.js?v=0.30.0';
+import { h, toast, openSheet, closeSheet } from './ui.js?v=0.31.0';
 
 export const today = () => Math.floor((Date.now() - new Date().getTimezoneOffset() * 60000) / 864e5);
 const FIRE = '<path d="M12 2c.6 3.2-1 5-2.4 6.6C8.2 10.2 7 11.7 7 14a5 5 0 0 0 10 0c0-1.3-.4-2.4-1-3.4-.3 1.2-1 2-2 2.4.6-2.6-.3-5.2-2-7.4.1 1.7-.4 2.9-1.3 3.8C11 7.6 12.4 5 12 2zm0 20a8 8 0 0 1-8-8c0-3.7 2.2-6 3.7-7.6C9.4 4.6 10.6 3.3 10 0c5.3 2.3 7.3 6 7.6 8.3.5-.6.8-1.4.9-2.3C20.6 8 22 10.9 22 14a10 10 0 0 1-10 8z" fill="currentColor" transform="translate(0 1) scale(.92)"/>';

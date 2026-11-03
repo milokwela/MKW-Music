@@ -1,8 +1,8 @@
 // Живой фон большого плеера: цвет берётся с обложки, пульсация идёт в ритме, подобранном для трека.
 // Это визуальный эффект: реальный звук YouTube страница анализировать не может.
-import { queue, st, onPlayer } from './player.js?v=0.30.0';
-import { $ } from './ui.js?v=0.30.0';
-import { jsonp } from './jsonp.js?v=0.30.0';
+import { queue, st, onPlayer } from './player.js?v=0.31.0';
+import { $ } from './ui.js?v=0.31.0';
+import { jsonp } from './jsonp.js?v=0.31.0';
 
 export const liveBg = () => { try { return localStorage.getItem('mkw.livebg') !== '0'; } catch { return true; } };
 export function setLiveBg(on) {
@@ -96,9 +96,10 @@ async function syncTrack() {
 }
 
 function frame(now) {
-  raf = requestAnimationFrame(frame);
   const full = $('#full-player');
-  if (!liveBg() || (!full.classList.contains('open') && !full.classList.contains('dragging'))) return;
+  // большой плеер закрыт — цикл не крутим вовсе (экономим батарею и плавность)
+  if (!liveBg() || !full || (!full.classList.contains('open') && !full.classList.contains('dragging'))) { raf = 0; return; }
+  raf = requestAnimationFrame(frame);
   const el = $('#fp-glow');
   const t = (now - t0) / 1000;
   let beat = 0;
@@ -125,5 +126,8 @@ export function initViz() {
   if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
   t0 = performance.now();
   onPlayer((what) => { if (what === 'track') syncTrack(); });
-  raf = requestAnimationFrame(frame);
+  const full = $('#full-player');
+  const kick = () => { if (!raf) raf = requestAnimationFrame(frame); };
+  if (full) new MutationObserver(kick).observe(full, { attributes: true, attributeFilter: ['class'] });
+  kick();
 }
