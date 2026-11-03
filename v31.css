@@ -97,3 +97,30 @@
 @media (min-width: 980px) and (pointer: fine) and (max-width: 1240px) {
   :root { --cl-w: 340px; }
 }
+
+/* ---------- 0.33: компьютер — меню слева вертикальной панелью, чаты и профиль на всю высоту ---------- */
+@media (min-width: 980px) and (pointer: fine) {
+  :root { --rail: 104px; --pane-l: max(calc(var(--rail) + 8px), calc(50vw - 640px)); }
+  #bottom-nav { position: fixed !important; left: 16px !important; top: 50% !important; bottom: auto !important; right: auto !important; transform: translateY(-50%) !important; width: 84px !important; max-width: none !important; height: auto !important; margin: 0 !important; padding: 8px !important; border-radius: 30px !important; }
+  #bottom-nav .nav-inner { display: flex !important; flex-direction: column !important; gap: 6px !important; height: auto !important; padding: 0 !important; }
+  #bottom-nav .nav-btn { flex: none !important; width: 68px !important; height: 66px !important; border-radius: 22px !important; font-size: 11.5px !important; gap: 5px !important; }
+  #bottom-nav .nav-btn.active { background: color-mix(in srgb, var(--on-bg, #fff) 14%, transparent) !important; color: var(--on-bg, #fff) !important; }
+  #bottom-nav .nav-btn:hover:not(.active) { background: color-mix(in srgb, var(--on-bg, #fff) 7%, transparent); }
+  #bottom-nav .nav-lens { display: none !important; }
+  body { padding-left: var(--rail); box-sizing: border-box; }
+  main .view { padding-bottom: calc(110px + env(safe-area-inset-bottom)) !important; }
+  #dock { padding-left: var(--rail); }
+
+  /* чаты: две колонки на всю высоту экрана */
+  body.on-chats #app { margin: 0 !important; max-width: none !important; }
+  body.on-chats #view-chats { max-width: var(--cl-w); margin-left: calc(var(--pane-l) - var(--rail)); padding-top: 18px; }
+  body.on-chats #chat-page, body.on-chats::after { left: calc(var(--pane-l) + var(--cl-w) + 18px); right: max(16px, calc(50vw - 640px)); top: 16px; bottom: 16px; }
+  body.on-chats:has(#mini-player:not([hidden])) #chat-page, body.on-chats:has(#mini-player:not([hidden]))::after { bottom: 96px; }
+  body.on-chats #chat-page .ch-list { padding: 18px 22px 12px; }
+  body.on-chats #chat-page .ch-head { padding: 12px 18px; }
+  body.on-chats #chat-page .ch-bar { padding: 12px 16px; }
+  body.on-chats .cl-row { border-radius: 18px; padding: 10px 12px; transition: background .15s; }
+  body.on-chats .cl-row:hover:not(.on) { background: color-mix(in srgb, var(--on-bg) 6%, transparent); }
+  body.on-chats .cl-list { display: grid; gap: 2px; }
+}
+@media (min-width: 980px) and (pointer: fine) and (max-width: 1240px) { :root { --cl-w: 320px; } }

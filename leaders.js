@@ -1,6 +1,7 @@
 // Рейтинг слушателей: у каждого публичная карточка leaders/{uid} (ник, часы, статус, значки, маленькое фото).
-import { db, auth } from './firebase.js?v=0.32.0';
+import { db, auth } from './firebase.js?v=0.33.0';
 import { doc, getDoc, setDoc, deleteDoc, collection, query, orderBy, limit, getDocs, where } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+import { srvNow } from './clock.js?v=0.33.0';
 
 const KEY = 'mkw.leaders.hide';
 export const hiddenFromBoard = () => { try { return localStorage.getItem(KEY) === '1'; } catch { return false; } };
@@ -11,9 +12,9 @@ let lastSeenAt = 0;
 export async function ping(now, force) {
   const uid = auth.currentUser && auth.currentUser.uid;
   if (!uid || hiddenFromBoard() || !lastSent) return;
-  if (!force && Date.now() - lastSeenAt < 110000) return;
-  lastSeenAt = Date.now();
-  const data = { seen: Date.now(), now: String(now || '').slice(0, 120) };
+  if (!force && srvNow() - lastSeenAt < 80000) return;
+  lastSeenAt = srvNow();
+  const data = { seen: srvNow(), now: String(now || '').slice(0, 120) };
   try { await setDoc(doc(db, 'leaders', uid), data, { merge: true }); } catch { /* нет карточки — не страшно */ }
   try { await setDoc(doc(db, 'profiles', uid), data, { merge: true }); } catch { /* ignore */ }
 }
@@ -23,7 +24,7 @@ export async function goOffline() {
   const uid = auth.currentUser && auth.currentUser.uid;
   if (!uid || hiddenFromBoard() || !lastSent) return;
   lastSeenAt = 0;
-  const data = { seen: Date.now() - 600000, now: '' };
+  const data = { seen: srvNow() - 600000, now: '' };
   try { await setDoc(doc(db, 'leaders', uid), data, { merge: true }); } catch { /* ignore */ }
   try { await setDoc(doc(db, 'profiles', uid), data, { merge: true }); } catch { /* ignore */ }
 }
@@ -55,11 +56,11 @@ export async function publishCard(card) {
   };
   const sig = JSON.stringify(data);
   if (sig === lastSent) return;
-  try { await setDoc(doc(db, 'leaders', uid), { ...data, seen: Date.now(), updatedAt: Date.now() }); lastSent = sig; lastSeenAt = Date.now(); }
+  try { await setDoc(doc(db, 'leaders', uid), { ...data, seen: srvNow(), updatedAt: srvNow() }); lastSent = sig; lastSeenAt = srvNow(); }
   catch (e) {
     // старые правила Firestore не знают новых полей — пишем в прежнем виде, пока админ не обновит правила
     const { shape, now, fan, devOff, ...old } = data;
-    try { await setDoc(doc(db, 'leaders', uid), { ...old, updatedAt: Date.now() }); lastSent = sig; } catch (e2) { console.warn('leaders', e2); }
+    try { await setDoc(doc(db, 'leaders', uid), { ...old, updatedAt: srvNow() }); lastSent = sig; } catch (e2) { console.warn('leaders', e2); }
   }
 }
 
@@ -103,11 +104,11 @@ export async function publishProfile(p) {
   };
   const sig = JSON.stringify(data);
   if (sig === lastPub) return;
-  try { await setDoc(doc(db, 'profiles', uid), { ...data, seen: Date.now(), updatedAt: Date.now() }); lastPub = sig; }
+  try { await setDoc(doc(db, 'profiles', uid), { ...data, seen: srvNow(), updatedAt: srvNow() }); lastPub = sig; }
   catch (e) {
     const { bio, nickStyle, shape, effect, now, fan, devOff, ...old } = data;
     if (old.avatar.length > 60000) old.avatar = '';
-    try { await setDoc(doc(db, 'profiles', uid), { ...old, updatedAt: Date.now() }); lastPub = sig; } catch (e2) { console.warn('profiles', e2); }
+    try { await setDoc(doc(db, 'profiles', uid), { ...old, updatedAt: srvNow() }); lastPub = sig; } catch (e2) { console.warn('profiles', e2); }
   }
 }
 export async function getProfile(uid) {
@@ -122,20 +123,20 @@ export async function hideProfile() {
 // Вкусы сообщества для Волны: любимые исполнители из открытых профилей (кэш на 12 часов)
 export async function communityTaste() {
   const KEY = 'mkw.community.v1';
-  try { const c = JSON.parse(localStorage.getItem(KEY) || 'null'); if (c && Date.now() - c.at < 12 * 3600000) return c.v; } catch { /* ignore */ }
+  try { const c = JSON.parse(localStorage.getItem(KEY) || 'null'); if (c && srvNow() - c.at < 12 * 3600000) return c.v; } catch { /* ignore */ }
   let v = [];
   try {
     const s = await getDocs(query(collection(db, 'profiles'), limit(80)));
     v = s.docs.map((d) => (d.data().favArtists || []).map(String)).filter((x) => x.length > 1);
   } catch { return []; }
-  try { localStorage.setItem(KEY, JSON.stringify({ v, at: Date.now() })); } catch { /* ignore */ }
+  try { localStorage.setItem(KEY, JSON.stringify({ v, at: srvNow() })); } catch { /* ignore */ }
   return v;
 }
 
 // «Сейчас слушают в MKW»: любимые треки из открытых профилей слушателей. Кэш на 6 часов, чтобы беречь лимит.
 export async function communityTracks() {
   const KEY = 'mkw.community.tracks.v1';
-  try { const c = JSON.parse(localStorage.getItem(KEY) || 'null'); if (c && Date.now() - c.at < 6 * 3600000 && c.v.length) return c.v; } catch { /* ignore */ }
+  try { const c = JSON.parse(localStorage.getItem(KEY) || 'null'); if (c && srvNow() - c.at < 6 * 3600000 && c.v.length) return c.v; } catch { /* ignore */ }
   let v = [];
   try {
     const s = await getDocs(query(collection(db, 'profiles'), limit(80)));
@@ -147,6 +148,6 @@ export async function communityTracks() {
     }
   } catch { return []; }
   v = v.slice(0, 60);
-  try { localStorage.setItem(KEY, JSON.stringify({ v, at: Date.now() })); } catch { /* ignore */ }
+  try { localStorage.setItem(KEY, JSON.stringify({ v, at: srvNow() })); } catch { /* ignore */ }
   return v;
 }

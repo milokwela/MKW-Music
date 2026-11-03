@@ -2,11 +2,12 @@
 // Друзья — только взаимно: я есть в его списке, а он в моём. То есть дружба начинается, когда второй нажал «Принять».
 //   заявка ко мне  — он добавил меня, я его ещё нет;
 //   моя заявка     — я добавил его, он меня ещё нет.
-import { db, auth } from './firebase.js?v=0.32.0';
+import { db, auth } from './firebase.js?v=0.33.0';
 import { doc, getDoc, setDoc, collection, query, where, getDocs, limit, onSnapshot, documentId } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+import { srvNow } from './clock.js?v=0.33.0';
 
 // «В сети»: отметка свежее 3.5 минуты (пинг раз в 2 минуты, при уходе из приложения — сразу «не в сети»)
-export const ONLINE_MS = 210000;
+export const ONLINE_MS = 190000;
 
 let mine = [];       // мой список (заявки + принятые)
 let incoming = [];   // у кого я в списке
@@ -59,8 +60,8 @@ export async function loadFriends() {
 async function save() {
   const uid = me(); if (!uid) return;
   try { localStorage.setItem(DKEY(), JSON.stringify(declined.slice(-300))); } catch { /* ignore */ }
-  try { await setDoc(doc(db, 'friends', uid), { list: mine.slice(0, 200), declined: declined.slice(-300), updatedAt: Date.now() }); }
-  catch { await setDoc(doc(db, 'friends', uid), { list: mine.slice(0, 200), updatedAt: Date.now() }); } // старые правила
+  try { await setDoc(doc(db, 'friends', uid), { list: mine.slice(0, 200), declined: declined.slice(-300), updatedAt: srvNow() }); }
+  catch { await setDoc(doc(db, 'friends', uid), { list: mine.slice(0, 200), updatedAt: srvNow() }); } // старые правила
 }
 
 // Отклонить заявку: человек больше не появится в «Хотят дружить» (сам он об этом не узнает)
@@ -120,11 +121,11 @@ const cache = new Map();
 export async function friendCards(uids, maxAge = 60000) {
   const out = await Promise.all(uids.map(async (uid) => {
     const c = cache.get(uid);
-    if (c && Date.now() - c.at < maxAge) return c.v;
-    try { const s = await getDoc(doc(db, 'leaders', uid)); const v = s.exists() ? { uid, ...s.data() } : { uid, nick: 'слушатель', hidden: true }; cache.set(uid, { v, at: Date.now() }); return v; }
+    if (c && srvNow() - c.at < maxAge) return c.v;
+    try { const s = await getDoc(doc(db, 'leaders', uid)); const v = s.exists() ? { uid, ...s.data() } : { uid, nick: 'слушатель', hidden: true }; cache.set(uid, { v, at: srvNow() }); return v; }
     catch { return { uid, nick: 'слушатель', hidden: true }; }
   }));
-  const online = (u) => Date.now() - (Number(u.seen) || 0) < ONLINE_MS;
+  const online = (u) => srvNow() - (Number(u.seen) || 0) < ONLINE_MS;
   return out.sort((a, b) => (online(b) - online(a)) || ((Number(b.seen) || 0) - (Number(a.seen) || 0)));
 }
 export async function cardOf(uid) { return (await friendCards([uid], 300000))[0]; }
@@ -139,7 +140,7 @@ export function watchPresence() {
   for (let i = 0; i < ids.length; i += 30) {
     try {
       presUnsub.push(onSnapshot(query(collection(db, 'leaders'), where(documentId(), 'in', ids.slice(i, i + 30))), (s) => {
-        s.docs.forEach((d) => cache.set(d.id, { v: { uid: d.id, ...d.data() }, at: Date.now() }));
+        s.docs.forEach((d) => cache.set(d.id, { v: { uid: d.id, ...d.data() }, at: srvNow() }));
         emit();
       }, () => { /* нет сети */ }));
     } catch { /* ignore */ }

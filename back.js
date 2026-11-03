@@ -3,11 +3,11 @@
 // Поэтому системный жест «назад» на Android (свайп от края экрана) и кнопка «назад» закрывают верхний экран,
 // а не всё приложение. На iPhone, где у приложения на домашнем экране нет такого жеста, свайп от левого
 // края делаем сами: экран тянется за пальцем и закрывается.
-import { closeChat } from './chat.js?v=0.32.0';
-import { closeUserPage } from './userpage.js?v=0.32.0';
-import { closeArtist } from './artist.js?v=0.32.0';
-import { closeSheet } from './ui.js?v=0.32.0';
-import { closeFull } from './playerui.js?v=0.32.0';
+import { closeChat } from './chat.js?v=0.33.0';
+import { closeUserPage } from './userpage.js?v=0.33.0';
+import { closeArtist } from './artist.js?v=0.33.0';
+import { closeSheet } from './ui.js?v=0.33.0';
+import { closeFull } from './playerui.js?v=0.33.0';
 
 const SCREENS = {
   sheet: closeSheet,

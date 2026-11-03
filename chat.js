@@ -1,20 +1,21 @@
 // Чат с друзьями. Писать можно только взаимным друзьям (проверяют и приложение, и правила Firestore).
 //   chats/{a_b}            — { members: [a, b], last: { from, text, at }, at, read: { uid: время } }   (a < b)
 //   chats/{a_b}/msgs/{id}  — { from, text, at, track? }
-import { safeUrl } from './utils.js?v=0.32.0';
-import { db } from './firebase.js?v=0.32.0';
+import { safeUrl } from './utils.js?v=0.33.0';
+import { db } from './firebase.js?v=0.33.0';
 import { doc, setDoc, addDoc, deleteDoc, getDocs, collection, query, where, orderBy, limit, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
-import { h, toast, openSheet, closeSheet } from './ui.js?v=0.32.0';
-import { openImage } from './viewer.js?v=0.32.0';
-import { mi } from './icons2.js?v=0.32.0';
-import * as player from './player.js?v=0.32.0';
-import { searchTracks } from './catalog.js?v=0.32.0';
-import { me, isFriend, cardOf, friendIds, friendCards, loadFriends, friendsLoaded } from './friends.js?v=0.32.0';
-import { avSrc } from './avatar.js?v=0.32.0';
-import { seenText, isOnline, openUserPage, closeUserPage } from './userpage.js?v=0.32.0';
-import { startCall, warmCalls } from './call.js?v=0.32.0';
-import { streakOf, streakPatch, fireIcon, openStreak, startStreak, playFire } from './streak.js?v=0.32.0';
-import { pushTo, myNick } from './push.js?v=0.32.0';
+import { h, toast, openSheet, closeSheet } from './ui.js?v=0.33.0';
+import { openImage } from './viewer.js?v=0.33.0';
+import { mi } from './icons2.js?v=0.33.0';
+import * as player from './player.js?v=0.33.0';
+import { searchTracks } from './catalog.js?v=0.33.0';
+import { me, isFriend, cardOf, friendIds, friendCards, loadFriends, friendsLoaded } from './friends.js?v=0.33.0';
+import { avSrc } from './avatar.js?v=0.33.0';
+import { seenText, isOnline, openUserPage, closeUserPage } from './userpage.js?v=0.33.0';
+import { startCall, warmCalls } from './call.js?v=0.33.0';
+import { streakOf, streakPatch, fireIcon, openStreak, startStreak, playFire } from './streak.js?v=0.33.0';
+import { pushTo, myNick } from './push.js?v=0.33.0';
+import { srvNow } from './clock.js?v=0.33.0';
 
 export const chatId = (a, b) => [a, b].sort().join('_');
 
@@ -26,7 +27,7 @@ function parseCall(t) { const [kind, sec, nick] = String(t).slice(CALL_MARK.leng
 const dur = (s) => (s < 60 ? `${s} сек` : `${Math.floor(s / 60)} мин${s % 60 ? ` ${s % 60} сек` : ''}`);
 export async function postCallEvent(uid, kind, sec = 0, nick = '') {
   if (!uid || !isFriend(uid)) return;
-  const cid = chatId(me(), uid), at = Date.now();
+  const cid = chatId(me(), uid), at = srvNow();
   const human = kind === 'missed' ? 'Пропущенный звонок' : kind === 'declined' ? `${nick || 'Друг'} отклонил(а) звонок` : `Звонок · ${dur(sec)}`;
   try {
     await addDoc(collection(db, 'chats', cid, 'msgs'), { from: me(), text: `${CALL_MARK}${kind}|${sec}|${String(nick).slice(0, 32)}`, at });
@@ -60,9 +61,9 @@ async function setFlags(uid, flags) {
   const c = chatWith(uid); if (c) c.read = { ...(c.read || {}), ...flags };
   subs.forEach((f) => { try { f(); } catch { /* ignore */ } });
 }
-export async function clearForMe(uid) { await setFlags(uid, { [`x_${me()}`]: Date.now() }); }
+export async function clearForMe(uid) { await setFlags(uid, { [`x_${me()}`]: srvNow() }); }
 export async function clearForAll(uid) {
-  await setFlags(uid, { xa: Date.now() });
+  await setFlags(uid, { xa: srvNow() });
   // сами сообщения тоже стираем из базы (если правила базы это разрешают — иначе они просто скрыты у обоих)
   try {
     const cid = chatId(me(), uid);
@@ -74,7 +75,7 @@ export async function clearForAll(uid) {
     }
   } catch { /* старые правила — сообщения скрыты, но остаются в базе */ }
 }
-export async function setBlocked(uid, on) { await setFlags(uid, { [`b_${me()}`]: on ? Date.now() : 0 }); }
+export async function setBlocked(uid, on) { await setFlags(uid, { [`b_${me()}`]: on ? srvNow() : 0 }); }
 
 // кнопки в профиле друга: очистить, удалить у всех, заблокировать
 export function chatActions(uid, u) {
@@ -119,14 +120,14 @@ export function stopChats() { if (unsubList) { unsubList(); unsubList = null; } 
 
 function markRead(cid) {
   const c = chats.find((x) => x.id === cid); if (!c) return;
-  c.read = { ...(c.read || {}), [me()]: Date.now() };
-  setDoc(doc(db, 'chats', cid), { read: { [me()]: Date.now() } }, { merge: true }).catch(() => {});
+  c.read = { ...(c.read || {}), [me()]: srvNow() };
+  setDoc(doc(db, 'chats', cid), { read: { [me()]: srvNow() } }, { merge: true }).catch(() => {});
   subs.forEach((f) => { try { f(); } catch { /* ignore */ } });
 }
 
 const VOICE_TXT = '🎤 Голосовое сообщение';
 async function send(cid, text, track, img, voice) {
-  const at = Date.now(), from = me();
+  const at = srvNow(), from = me();
   const msg = { from, text: text.slice(0, 500), at };
   if (track) msg.track = { title: String(track.title).slice(0, 120), artist: String(track.artist).slice(0, 120) };
   if (img) msg.img = img;
@@ -229,6 +230,7 @@ function ensurePage() {
 export function closeChat() {
   if (unsubMsgs) { unsubMsgs(); unsubMsgs = null; }
   if (typeof stopVoice === 'function') stopVoice();
+  if (offPeer) offPeer();
   if (offKb) { offKb(); offKb = null; }
   if (offTicks) { offTicks(); offTicks = null; }
   openId = '';
@@ -309,6 +311,7 @@ function fitKeyboard(p, list) {
   return () => { vv.removeEventListener('resize', f); vv.removeEventListener('scroll', f); p.style.top = ''; p.style.height = ''; p.style.bottom = ''; p.classList.remove('kb'); };
 }
 let offKb = null;
+let offPeer = null;
 
 export async function openChat(uid, card) {
   warmCalls();
@@ -393,13 +396,13 @@ export async function openChat(uid, card) {
     let mr;
     try { mr = new MediaRecorder(stream, { ...(mime ? { mimeType: mime } : {}), audioBitsPerSecond: 32000 }); }
     catch { try { mr = new MediaRecorder(stream); } catch { stream.getTracks().forEach((t) => t.stop()); toast('Этот браузер не умеет записывать голос'); return; } }
-    const chunks = [], t0 = Date.now();
+    const chunks = [], t0 = srvNow();
     const r = { mr, stream, t0, sendIt: false, timer: 0, cap: 0 };
     rec = r;
     mr.ondataavailable = (e) => { if (e.data && e.data.size) chunks.push(e.data); };
     mr.onstop = async () => {
       stream.getTracks().forEach((t) => t.stop());
-      const dur = (Date.now() - t0) / 1000;
+      const dur = (srvNow() - t0) / 1000;
       if (!r.sendIt) return;
       if (dur < 0.7) { toast('Слишком коротко — держите запись подольше'); return; }
       const blob = new Blob(chunks, { type: (mr.mimeType || mime || 'audio/webm').split(';')[0] });
@@ -416,7 +419,7 @@ export async function openChat(uid, card) {
       h('i', { class: 'ch-rec-dot' }), tm, h('span', { class: 'ch-rec-hint', text: 'Идёт запись…' }),
       h('button', { type: 'button', class: 'ch-send ch-rec-send', 'aria-label': 'Отправить голосовое', onclick: () => stopRec(true) }, mi('send')));
     bar.classList.add('rec');
-    r.timer = setInterval(() => { tm.textContent = mmss((Date.now() - t0) / 1000); }, 250);
+    r.timer = setInterval(() => { tm.textContent = mmss((srvNow() - t0) / 1000); }, 250);
     r.cap = setTimeout(() => stopRec(true), VOICE_MAX * 1000);
   });
   bar.appendChild(recUi);
@@ -532,6 +535,21 @@ export async function openChat(uid, card) {
     paintTicks();
     if (atBottom || list.dataset.first !== '1') { list.scrollTop = list.scrollHeight; list.dataset.first = '1'; }
   };
+  // «в сети» и «слушает» в шапке — вживую, без переоткрытия чата
+  if (offPeer) offPeer();
+  const whoSmall = p.querySelector('.ch-who small'), avBox = p.querySelector('.ch-head .ch-av');
+  const paintPeer = () => {
+    const on = isOnline(u.seen);
+    whoSmall.textContent = on && u.now ? `Слушает: ${u.now}` : on ? 'в сети' : seenText(u.seen) || '';
+    whoSmall.classList.toggle('on', on);
+    const dot = avBox.querySelector('.online-dot');
+    if (on && !dot) avBox.appendChild(h('i', { class: 'online-dot' })); else if (!on && dot) dot.remove();
+  };
+  let unsubPeer = () => {};
+  try { unsubPeer = onSnapshot(doc(db, 'profiles', uid), (d) => { const x = d.exists() ? d.data() : {}; if (x.seen != null) u.seen = x.seen; if (x.now != null) u.now = x.now; paintPeer(); }, () => {}); } catch { /* ignore */ }
+  const peerT = setInterval(paintPeer, 30000);
+  offPeer = () => { try { unsubPeer(); } catch { /* ignore */ } clearInterval(peerT); offPeer = null; };
+  paintPeer();
   paintFire(); paintBlock();
   if (offTicks) offTicks();
   offTicks = onChats(() => { paintTicks(); paintFire(); paintBlock(); if (keyOf() !== viewKey) render(); });

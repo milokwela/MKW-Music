@@ -31,6 +31,7 @@
 <link rel="icon" type="image/png" sizes="144x144" href="fav-144.png?v=7">
 <link rel="apple-touch-icon" href="ic5-180.png">
 <link rel="manifest" href="manifest.webmanifest">
+<link rel="preload" as="image" href="mkw-star6.webp">
 <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
 <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js" crossorigin>
 <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js" crossorigin>
@@ -53,7 +54,7 @@ if(mem<=2||cpu<=4&&/Android/.test(u)){c.push('weak');try{if(localStorage.getItem
 if(!CSS.supports('backdrop-filter','blur(1px)')&&!CSS.supports('-webkit-backdrop-filter','blur(1px)'))c.push('no-blur');
 d.className+=' '+c.join(' ');})();
 </script>
-<link rel="stylesheet" href="app.css?v=0.32.0">
+<link rel="stylesheet" href="app.css?v=0.33.0">
 </head>
 <body>
 <script>
@@ -65,12 +66,15 @@ setTimeout(function(){var e=s();if(e&&e.parentNode)e.parentNode.removeChild(e)},
 document.addEventListener('click',function(){var e=s();if(e&&e.parentNode)e.parentNode.removeChild(e)});})();
 </script>
 <div id="splash" aria-hidden="true">
-  <div class="sp5-bg"></div>
-  <div class="sp5-ring"></div>
-  <div class="sp5-trail"></div>
-  <div class="sp5-star"><img src="mkw-star.png" alt=""></div>
-  <div class="sp5-title"><span>M</span><span>K</span><span>W</span><em>Music</em></div>
-  <div class="sp5-by">create <b>MiloKwel</b></div>
+  <div class="sp6-flare"></div>
+  <div class="sp6-halo"></div>
+  <div class="sp6-wave"></div>
+  <div class="sp6-wave w2"></div>
+  <div class="sp6-sparks"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+  <div class="sp6-star"><img src="mkw-star6.webp" alt=""><span class="sp6-shine"></span></div>
+  <div class="sp6-title"><span>M</span><span>K</span><span>W</span></div>
+  <div class="sp6-sub">MUSIC</div>
+  <div class="sp6-by">by MiloKwel</div>
 </div>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -274,6 +278,6 @@ document.addEventListener('click',function(){var e=s();if(e&&e.parentNode)e.pare
 <audio id="preview-player" preload="none"></audio>
 <div id="yt-holder" style="position:fixed;width:1px;height:1px;left:-10px;top:-10px;overflow:hidden;opacity:0;pointer-events:none"><div id="yt-target"></div></div>
 
-<script type="module" src="app.js?v=0.32.0"></script>
+<script type="module" src="app.js?v=0.33.0"></script>
 </body>
 </html>

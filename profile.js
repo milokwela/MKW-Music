@@ -1,38 +1,38 @@
 // Экран «Профиль»: карточка с баннером, витрина (любимые исполнители и треки), вкладки Обзор / Слушатели / Настройки / О MKW.
-import { $, $$, h, icon, openSheet, closeSheet, toast, sheetItem, trackRow } from './ui.js?v=0.32.0';
-import * as store from './store.js?v=0.32.0';
-import * as player from './player.js?v=0.32.0';
-import { ACCENTS, getTheme, getAccent, getCustomHue, setCustomColor, setTheme, setAccent, hslHex, getNeutral } from './theme.js?v=0.32.0';
-import { CHANGELOG, VERSION, STAGE, KNOWN_ISSUES } from './changelog.js?v=0.32.0';
-import { plural, pickTrack, safeUrl } from './utils.js?v=0.32.0';
-import { youtubeEnabled, youtubeQuotaOut } from './youtube.js?v=0.32.0';
-import { audiusEnabled } from './audius.js?v=0.32.0';
-import { SOURCE_MODES, getSourceMode, setSourceMode } from './sources.js?v=0.32.0';
-import { gesturesOn, setGestures, showGestureGuide } from './gestures.js?v=0.32.0';
-import { listenerStats } from './stats.js?v=0.32.0';
-import { liveBg, setLiveBg } from './viz.js?v=0.32.0';
-import { lowPower, setLowPower } from './perf.js?v=0.32.0';
-import { logOut, changePassword, changeNick, authErrorText } from './auth.js?v=0.32.0';
-import { connectionCountry } from './geo.js?v=0.32.0';
-import { goOffline, publishCard, publishProfile, myCard, getProfile, topListeners, hiddenFromBoard, setHidden, myUid } from './leaders.js?v=0.32.0';
-import { mi } from './icons2.js?v=0.32.0';
-import { artistPic } from './artistpic.js?v=0.32.0';
-import { openArtist } from './artist.js?v=0.32.0';
-import { openUserPage, favArtistsRow, favTracksList, isOnline } from './userpage.js?v=0.32.0';
-import { voiceOn, setVoice, showVoiceGuide, voiceSupported } from './voice.js?v=0.32.0';
-import { openImage } from './viewer.js?v=0.32.0';
-import { isDev, devBadge, fanBadge, nickMarks } from './dev.js?v=0.32.0';
-import { fanNumber, restoreFan, becomeFan } from './fans.js?v=0.32.0';
-import { ping } from './leaders.js?v=0.32.0';
-import { streamsOn, setStreams, checkBackground } from './stream.js?v=0.32.0';
-import { DEF_AV, avSrc, isDefAv } from './avatar.js?v=0.32.0';
-import { ONLINE_MS, loadFriends, friendIds, addFriend, removeFriend, findByNick, friendCards, onFriends, declineRequest, acceptRequest, requestIds, sentIds, friendState, friendsLoaded } from './friends.js?v=0.32.0';
-import { openChat, chatWith, isUnread, onChats } from './chat.js?v=0.32.0';
-import { notifyOn, setNotify } from './notify.js?v=0.32.0';
-import { openInstall, standalone } from './install.js?v=0.32.0';
-import { getRingtone, clearRingtone } from './ringtone.js?v=0.32.0';
-import { searchTracks } from './catalog.js?v=0.32.0';
-import { seenText } from './userpage.js?v=0.32.0';
+import { $, $$, h, icon, openSheet, closeSheet, toast, sheetItem, trackRow } from './ui.js?v=0.33.0';
+import * as store from './store.js?v=0.33.0';
+import * as player from './player.js?v=0.33.0';
+import { ACCENTS, getTheme, getAccent, getCustomHue, setCustomColor, setTheme, setAccent, hslHex, getNeutral } from './theme.js?v=0.33.0';
+import { CHANGELOG, VERSION, STAGE, KNOWN_ISSUES } from './changelog.js?v=0.33.0';
+import { plural, pickTrack, safeUrl } from './utils.js?v=0.33.0';
+import { youtubeEnabled, youtubeQuotaOut } from './youtube.js?v=0.33.0';
+import { audiusEnabled } from './audius.js?v=0.33.0';
+import { SOURCE_MODES, getSourceMode, setSourceMode } from './sources.js?v=0.33.0';
+import { gesturesOn, setGestures, showGestureGuide } from './gestures.js?v=0.33.0';
+import { listenerStats } from './stats.js?v=0.33.0';
+import { liveBg, setLiveBg } from './viz.js?v=0.33.0';
+import { lowPower, setLowPower } from './perf.js?v=0.33.0';
+import { logOut, changePassword, changeNick, authErrorText } from './auth.js?v=0.33.0';
+import { connectionCountry } from './geo.js?v=0.33.0';
+import { goOffline, publishCard, publishProfile, myCard, getProfile, topListeners, hiddenFromBoard, setHidden, myUid } from './leaders.js?v=0.33.0';
+import { mi } from './icons2.js?v=0.33.0';
+import { artistPic } from './artistpic.js?v=0.33.0';
+import { openArtist } from './artist.js?v=0.33.0';
+import { openUserPage, favArtistsRow, favTracksList, isOnline } from './userpage.js?v=0.33.0';
+import { voiceOn, setVoice, showVoiceGuide, voiceSupported } from './voice.js?v=0.33.0';
+import { openImage } from './viewer.js?v=0.33.0';
+import { isDev, devBadge, fanBadge, nickMarks } from './dev.js?v=0.33.0';
+import { fanNumber, restoreFan, becomeFan } from './fans.js?v=0.33.0';
+import { ping } from './leaders.js?v=0.33.0';
+import { streamsOn, setStreams, checkBackground } from './stream.js?v=0.33.0';
+import { DEF_AV, avSrc, isDefAv } from './avatar.js?v=0.33.0';
+import { ONLINE_MS, loadFriends, friendIds, addFriend, removeFriend, findByNick, friendCards, onFriends, declineRequest, acceptRequest, requestIds, sentIds, friendState, friendsLoaded } from './friends.js?v=0.33.0';
+import { openChat, chatWith, isUnread, onChats } from './chat.js?v=0.33.0';
+import { notifyOn, setNotify } from './notify.js?v=0.33.0';
+import { openInstall, standalone } from './install.js?v=0.33.0';
+import { getRingtone, clearRingtone } from './ringtone.js?v=0.33.0';
+import { searchTracks } from './catalog.js?v=0.33.0';
+import { seenText } from './userpage.js?v=0.33.0';
 
 // s: sec, likes, playlists, plays, days, artists, night, styled, showcase, rank
 export const ACHIEVEMENTS = [
@@ -889,13 +889,15 @@ export function buildProfile(nick) {
   setTimeout(() => pushCard(true), 5000);
   if (!refs.presence) {
     // раз в 2 минуты «я в сети» (и в фоне, если играет музыка); ушли из приложения без музыки — сразу «не в сети»
-    refs.presence = setInterval(() => { if (!document.hidden || player.st.playing) ping(nowPlaying()); }, 120000);
+    refs.presence = setInterval(() => { if (!document.hidden || player.st.playing) ping(nowPlaying()); }, 90000);
     let offT = 0;
     const away = () => { clearTimeout(offT); offT = setTimeout(() => { if (document.hidden && !player.st.playing) goOffline(); }, 8000); };
     document.addEventListener('visibilitychange', () => { if (document.hidden) away(); else { clearTimeout(offT); ping(nowPlaying(), true); } });
     window.addEventListener('pagehide', () => { if (!player.st.playing) goOffline(); });
     let lastNow = '';
-    player.onPlayer((ev) => { if (ev !== 'state' && ev !== 'track') return; const n = nowPlaying(); if (n !== lastNow) { lastNow = n; ping(n, Date.now() - (refs.lastPingForce || 0) > 60000); refs.lastPingForce = Date.now(); } });
+    // «Слушает»: друзья видят новый трек почти сразу (через 3 секунды после смены — чтобы не писать на каждое переключение)
+    let nowT = 0;
+    player.onPlayer((ev) => { if (ev !== 'state' && ev !== 'track') return; const n = nowPlaying(); if (n !== lastNow) { lastNow = n; clearTimeout(nowT); nowT = setTimeout(() => ping(nowPlaying(), true), 3000); } });
   }
   if (!restored) {
     restored = true;

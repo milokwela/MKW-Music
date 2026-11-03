@@ -5,20 +5,21 @@
 // Каждый с каждым соединяется напрямую (при 4 людях — 6 соединений).
 // Чтобы звонок подключался сразу: звонящий готовит соединение заранее, пока у друга звонит телефон,
 // поэтому после «Принять» остаётся один короткий ответ.
-import { db } from './firebase.js?v=0.32.0';
+import { db } from './firebase.js?v=0.33.0';
 import { doc, setDoc, updateDoc, deleteDoc, addDoc, collection, query, where, limit, onSnapshot, arrayUnion, arrayRemove } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
-import { h, toast, openSheet, closeSheet } from './ui.js?v=0.32.0';
-import { mi } from './icons2.js?v=0.32.0';
-import { me, isFriend, friendIds, friendCards, cardOf } from './friends.js?v=0.32.0';
-import { avSrc } from './avatar.js?v=0.32.0';
-import { RECOGNIZE_URL } from './shazam-config.js?v=0.32.0';
-import { pushTo, myNick } from './push.js?v=0.32.0';
-import * as player from './player.js?v=0.32.0';
-import { getRingtone } from './ringtone.js?v=0.32.0';
-import { postCallEvent, isBlocked } from './chat.js?v=0.32.0';
-import * as store from './store.js?v=0.32.0';
-import { pickTrack } from './utils.js?v=0.32.0';
-import { enablePush } from './push.js?v=0.32.0';
+import { h, toast, openSheet, closeSheet } from './ui.js?v=0.33.0';
+import { mi } from './icons2.js?v=0.33.0';
+import { me, isFriend, friendIds, friendCards, cardOf } from './friends.js?v=0.33.0';
+import { avSrc } from './avatar.js?v=0.33.0';
+import { RECOGNIZE_URL } from './shazam-config.js?v=0.33.0';
+import { pushTo, myNick } from './push.js?v=0.33.0';
+import * as player from './player.js?v=0.33.0';
+import { getRingtone } from './ringtone.js?v=0.33.0';
+import { postCallEvent, isBlocked } from './chat.js?v=0.33.0';
+import * as store from './store.js?v=0.33.0';
+import { pickTrack } from './utils.js?v=0.33.0';
+import { enablePush } from './push.js?v=0.33.0';
+import { srvNow } from './clock.js?v=0.33.0';
 
 const MAX = 4;
 let ice = null, iceP = null;
@@ -146,7 +147,7 @@ function dropPeer(uid) {
 
 async function sendSig(to, kind, sid, sdp) {
   // номер соединения кладём прямо в kind («offer|abc»): так подходят и старые правила базы, где нет поля sid
-  await addDoc(collection(db, 'calls', cur.id, 'sig'), { from: me(), to, kind: `${kind}|${sid}`, sdp, at: Date.now() });
+  await addDoc(collection(db, 'calls', cur.id, 'sig'), { from: me(), to, kind: `${kind}|${sid}`, sdp, at: srvNow() });
 }
 async function offerTo(uid, fresh) {
   if (!cur || cur.offering.has(uid)) return;
@@ -158,7 +159,7 @@ async function offerTo(uid, fresh) {
     await e.pc.setLocalDescription(await e.pc.createOffer());
     await gathered(e.pc);
     if (!cur || cur.pcs.get(uid) !== e) return;
-    e.offeredAt = Date.now();
+    e.offeredAt = srvNow();
     await sendSig(uid, 'offer', e.sid, e.pc.localDescription.sdp);
   } catch (err) { console.warn('offer', err); }
   finally { const e = cur && cur.pcs.get(uid); if (e) e.makingOffer = false; if (cur) cur.offering.delete(uid); }
@@ -261,7 +262,7 @@ function paint() {
   }
   paintScreen();
 }
-const timer = () => { const s = Math.floor((Date.now() - (cur.t0 || Date.now())) / 1000); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
+const timer = () => { const s = Math.floor((srvNow() - (cur.t0 || srvNow())) / 1000); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
 
 // показ экрана: у смотрящих — большое видео, у показывающего — плашка «Вы показываете экран»
 function paintScreen() {
@@ -435,7 +436,7 @@ function attach(id) {
     cur.data = s.data();
     const inn = cur.data.in || [];
     inn.forEach((x) => cur.ever.add(x));
-    if (inn.length > 1 && !cur.t0) cur.t0 = Date.now();
+    if (inn.length > 1 && !cur.t0) cur.t0 = srvNow();
     prevIn.filter((x) => !inn.includes(x) && x !== me()).forEach((x) => { dropPeer(x); nickOf(x).then((c) => toast(`${c.nick} вышел(а) из звонка`)); });
     if (!inn.includes(me()) && cur.joined) { finish('Звонок завершён'); return; }
     // все остальные вышли — звонок закончен
@@ -447,7 +448,7 @@ function attach(id) {
         if (inn.includes(x)) {
           // друг взял трубку: если заготовка устарела (больше 25 с) — отправляем свежую
           if (!e) offerTo(x);
-          else if (e.pc.signalingState === 'have-local-offer' && Date.now() - e.offeredAt > 25000) offerTo(x, true);
+          else if (e.pc.signalingState === 'have-local-offer' && srvNow() - e.offeredAt > 25000) offerTo(x, true);
         } else if (!e && cur.data.host === me()) offerTo(x); // ещё звонит — готовим соединение заранее
       }
     }
@@ -462,14 +463,14 @@ function attach(id) {
     s.docChanges().forEach((ch) => {
       if (ch.type !== 'added') return;
       const m = ch.doc.data();
-      if (Date.now() - (m.at || 0) < 120000 && !cur.seen.has(ch.doc.id)) { cur.seen.add(ch.doc.id); fresh.push(m); }
+      if (srvNow() - (m.at || 0) < 120000 && !cur.seen.has(ch.doc.id)) { cur.seen.add(ch.doc.id); fresh.push(m); }
       deleteDoc(ch.doc.ref).catch(() => {});
     });
     // по порядку: сначала старые предложения, потом новые
     fresh.sort((a, b) => (a.at || 0) - (b.at || 0)).forEach((m) => { cur.sigQ = cur.sigQ.then(() => onSig(m)); });
   }, () => { /* ignore */ });
   // «я ещё тут» раз в 20 секунд — по этому видно, что звонок живой
-  cur.alive = setInterval(() => { updateDoc(doc(db, 'calls', id), { [`ping.${me()}`]: Date.now() }).catch(() => {}); }, 20000);
+  cur.alive = setInterval(() => { updateDoc(doc(db, 'calls', id), { [`ping.${me()}`]: srvNow() }).catch(() => {}); }, 20000);
 }
 
 async function begin(id, data) {
@@ -496,8 +497,8 @@ export async function startCall(uids) {
   if (!window.RTCPeerConnection || !navigator.mediaDevices) { toast('Этот браузер не умеет звонить'); return; }
   askNotify();
   unlockAudio();
-  const id = `${me()}_${Date.now().toString(36)}`;
-  const data = { host: me(), members: [me(), ...uids], in: [me()], muted: {}, ping: { [me()]: Date.now() }, declined: [], at: Date.now() };
+  const id = `${me()}_${srvNow().toString(36)}`;
+  const data = { host: me(), members: [me(), ...uids], in: [me()], muted: {}, ping: { [me()]: srvNow() }, declined: [], at: srvNow() };
   try { await setDoc(doc(db, 'calls', id), data); }
   catch { toast('Звонок не начался. Админу нужно обновить правила Firestore'); return; }
   // пуш на телефон и компьютер — даже если у друга MKW закрыт
@@ -512,7 +513,7 @@ export async function startCall(uids) {
 async function join(id, data) {
   unlockAudio();
   if (!(await begin(id, data))) return;
-  try { await updateDoc(doc(db, 'calls', id), { in: arrayUnion(me()), [`ping.${me()}`]: Date.now() }); cur.joined = true; }
+  try { await updateDoc(doc(db, 'calls', id), { in: arrayUnion(me()), [`ping.${me()}`]: srvNow() }); cur.joined = true; }
   catch { finish('Не получилось подключиться'); return; }
   paint();
 }
@@ -529,7 +530,7 @@ export async function leave(reason) {
   const mem = c.data.members || [];
   if (mem.length === 2) {
     const other = mem.find((x) => x !== me());
-    if (c.t0 && !reason) postCallEvent(other, 'ended', Math.round((Date.now() - c.t0) / 1000));
+    if (c.t0 && !reason) postCallEvent(other, 'ended', Math.round((srvNow() - c.t0) / 1000));
     else if (!c.t0 && c.data.host === me()) {
       if ((c.data.declined || []).includes(other)) nickOf(other).then((u) => postCallEvent(other, 'declined', 0, u.nick || 'Друг'));
       else postCallEvent(other, 'missed');
@@ -567,7 +568,7 @@ export function watchCalls(onRing) {
         if (cur && cur.id === d.id) return;
         if ((c.in || []).includes(me()) || (c.declined || []).includes(me())) return;
         const last = Math.max(Number(c.at) || 0, ...Object.values(c.ping || {}).map(Number));
-        if (last < Date.now() - 150000) { if (last < Date.now() - 600000) deleteDoc(d.ref).catch(() => {}); return; } // старый «повисший» звонок убираем
+        if (last < srvNow() - 150000) { if (last < srvNow() - 600000) deleteDoc(d.ref).catch(() => {}); return; } // старый «повисший» звонок убираем
         if (!(c.in || []).length) return;
         // звонок только от друзей (или от друга в общем звонке)
         if (!isFriend(c.host) && !(c.in || []).some((x) => x !== me() && isFriend(x))) return;
@@ -658,7 +659,7 @@ export async function pickAndCall() {
   go.addEventListener('click', () => { const u = [...chosen]; closeSheet(); startCall(u); });
   openSheet('Звонок друзьям', h('div', {}, note, list, go));
   const cs = await friendCards(ids.slice(0, 60));
-  const online = (u) => Date.now() - (Number(u.seen) || 0) < 210000;
+  const online = (u) => srvNow() - (Number(u.seen) || 0) < 210000;
   list.replaceChildren(...cs.map((u) => {
     const b = h('button', { type: 'button', class: 'lb-row fr-pick', 'aria-pressed': 'false' },
       h('span', { class: 'lb-av' }, h('img', { src: avSrc(u.avatar), alt: '' }), online(u) ? h('i', { class: 'online-dot' }) : null),
@@ -688,7 +689,7 @@ function askNotify() {
 // Песни передаются тем же каналом, что и звонок (не нужно ничего менять в базе).
 async function sendMix(to, op) {
   if (!cur) return;
-  try { await addDoc(collection(db, 'calls', cur.id, 'sig'), { from: me(), to, kind: `mix|${Math.random().toString(36).slice(2, 8)}`, sdp: JSON.stringify(op).slice(0, 29000), at: Date.now() }); } catch { /* ignore */ }
+  try { await addDoc(collection(db, 'calls', cur.id, 'sig'), { from: me(), to, kind: `mix|${Math.random().toString(36).slice(2, 8)}`, sdp: JSON.stringify(op).slice(0, 29000), at: srvNow() }); } catch { /* ignore */ }
 }
 function broadcastMix(op) { if (!cur) return; (cur.data.in || []).filter((x) => x !== me()).forEach((x) => sendMix(x, op)); }
 const slim = (t, by) => ({ ...pickTrack(t), by });
