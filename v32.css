@@ -68,7 +68,7 @@
 .cl-ios-x { justify-self: start; border: 0; border-radius: 999px; padding: 7px 14px; background: color-mix(in srgb, var(--on-bg) 10%, transparent); color: inherit; font: 600 13px var(--font, inherit); cursor: pointer; }
 .ch-who small.on { color: #3ddc84; }
 
-/* ---------- 0.33.1: чаты на компьютере — как в Discord ---------- */
+/* ---------- 0.33.1: чаты на компьютере ---------- */
 .ch-meta { display: none; }
 @media (min-width: 980px) and (pointer: fine) {
   :root { --cl-w: 340px; --pane-l: max(16px, calc(50vw - 640px)); --pane-b: 112px; }
@@ -97,7 +97,7 @@
   body.on-chats #chat-page .ch-head .ch-av { width: 34px; height: 34px; }
   body.on-chats #chat-page .ch-who b { font-size: 15.5px; }
 
-  /* сообщения без «пузырей»: фото, ник, время и текст в строку — как в Discord */
+  /* сообщения без «пузырей»: фото, ник, время и текст в строку */
   body.on-chats #chat-page .ch-list { gap: 0; padding: 12px 0 18px; }
   body.on-chats #chat-page .ch-msg, body.on-chats #chat-page .ch-msg.me { align-self: stretch; max-width: none; width: auto; margin: 0; padding: 3px 24px 3px 76px; border-radius: 0; background: none !important; color: var(--on-bg, #f2eef5) !important; box-shadow: none !important; animation: none; }
   body.on-chats #chat-page .ch-list > * { flex-shrink: 0; }
@@ -126,7 +126,7 @@
   body.on-chats #chat-page .ch-day { align-self: stretch; display: flex; align-items: center; gap: 10px; margin: 18px 20px 2px; padding: 0; background: none; font-size: 12px; font-weight: 600; color: var(--on-surface-var); }
   body.on-chats #chat-page .ch-day::before, body.on-chats #chat-page .ch-day::after { content: ''; flex: 1; height: 1px; background: color-mix(in srgb, var(--on-bg) 10%, transparent); }
   body.on-chats #chat-page .ch-call { margin: 10px auto; }
-  /* поле ввода — широкое, как в Discord */
+  /* поле ввода — широкое */
   body.on-chats #chat-page .ch-bar { padding: 0 16px 16px; background: transparent; backdrop-filter: none; border: 0; }
   body.on-chats #chat-page .ch-input { border-radius: 12px; background: color-mix(in srgb, var(--on-bg) 8%, transparent); min-height: 46px; }
   body.on-chats #chat-page .ch-share, body.on-chats #chat-page .ch-send { width: 46px; height: 46px; border-radius: 12px; }

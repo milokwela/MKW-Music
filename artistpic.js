@@ -1,7 +1,7 @@
 // Фото исполнителя: Deezer напрямую, потом через ваш Worker, потом Википедия. Кэш в браузере на 2 недели.
-import { RECOGNIZE_URL } from './shazam-config.js?v=0.33.1';
+import { RECOGNIZE_URL } from './shazam-config.js?v=0.34.0';
 
-const KEY = 'mkw.artistpic.v2';
+const KEY = 'mkw.artistpic.v3';
 const TTL = 14 * 86400000;
 const mem = new Map();
 let store = null;
@@ -14,7 +14,9 @@ async function getJson(url, ms = 7000) {
   try { const r = await fetch(url, { signal: c.signal }); return r.ok ? await r.json() : null; } catch { return null; } finally { clearTimeout(t); }
 }
 
-import { jsonp } from './jsonp.js?v=0.33.1';
+import { jsonp } from './jsonp.js?v=0.34.0';
+import { searchTracks } from './catalog.js?v=0.34.0';
+import { artUrl } from './utils.js?v=0.34.0';
 
 async function fetchInfo(name) {
   const d = await jsonp(`https://api.deezer.com/search/artist?limit=5&q=${encodeURIComponent(name)}`);
@@ -25,6 +27,13 @@ async function fetchInfo(name) {
     const w = await getJson(`${RECOGNIZE_URL.replace(/\/$/, '')}/artist?name=${encodeURIComponent(name)}`);
     if (w && w.picture && !/\/artist\/\//.test(w.picture)) return { picture: w.picture, fans: w.fans || 0, albums: w.albums || 0 };
   }
+  // нет фото у Deezer (небольшие и новые исполнители) — берём обложку самого популярного трека исполнителя
+  try {
+    const found = await searchTracks(name);
+    const own = found.filter((t) => n(t.artist).includes(n(name)) || n(name).includes(n(t.artist)));
+    const t = own.find((x) => x.artwork) || null;
+    if (t) return { picture: artUrl(t.artwork, 600), fans: 0, albums: 0, cover: true };
+  } catch { /* нет сети */ }
   return null;
 }
 

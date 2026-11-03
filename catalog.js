@@ -1,6 +1,6 @@
-import { jsonp } from './jsonp.js?v=0.33.1';
+import { jsonp } from './jsonp.js?v=0.34.0';
 // Каталог треков: iTunes Search API (бесплатно, без ключа, есть превью 30 сек).
-import { ITUNES_COUNTRIES } from './config.js?v=0.33.1';
+import { ITUNES_COUNTRIES } from './config.js?v=0.34.0';
 
 export function mapItunes(r) {
   return {
@@ -59,7 +59,7 @@ export function mapDeezer(r) {
     title: r.title || '',
     artist: (r.artist && r.artist.name) || '',
     album: (r.album && r.album.title) || '',
-    artwork: (r.album && (r.album.cover_medium || r.album.cover)) || '',
+    artwork: (r.album && (r.album.cover_big || r.album.cover_medium || r.album.cover)) || '',
     previewUrl: r.preview || '',
     duration: Number(r.duration) || 0,
     genre: '',
