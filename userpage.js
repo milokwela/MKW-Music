@@ -1,23 +1,23 @@
 // Страница другого слушателя: баннер, фото, статус, значки, статистика, любимые исполнители и треки.
-import { $, h, trackRow, animateIn } from './ui.js?v=0.31.0';
-import * as player from './player.js?v=0.31.0';
-import { openTrackMenu } from './menu.js?v=0.31.0';
-import { getProfile } from './leaders.js?v=0.31.0';
-import { ACH, bannerCss, formatListened } from './profile.js?v=0.31.0';
-import { artistPic } from './artistpic.js?v=0.31.0';
-import { openArtist } from './artist.js?v=0.31.0';
-import { mi } from './icons2.js?v=0.31.0';
-import { plural } from './utils.js?v=0.31.0';
-import { openImage } from './viewer.js?v=0.31.0';
-import { isDev, devBadge, showDev, validFan, fanBadge } from './dev.js?v=0.31.0';
-import { friendState, addFriend, removeFriend, loadFriends, friendsLoaded, ONLINE_MS } from './friends.js?v=0.31.0';
-import { openChat } from './chat.js?v=0.31.0';
+import { $, h, trackRow, animateIn } from './ui.js?v=0.32.0';
+import * as player from './player.js?v=0.32.0';
+import { openTrackMenu } from './menu.js?v=0.32.0';
+import { getProfile } from './leaders.js?v=0.32.0';
+import { ACH, bannerCss, formatListened } from './profile.js?v=0.32.0';
+import { artistPic } from './artistpic.js?v=0.32.0';
+import { openArtist } from './artist.js?v=0.32.0';
+import { mi } from './icons2.js?v=0.32.0';
+import { plural } from './utils.js?v=0.32.0';
+import { openImage } from './viewer.js?v=0.32.0';
+import { isDev, devBadge, showDev, validFan, fanBadge } from './dev.js?v=0.32.0';
+import { friendState, addFriend, removeFriend, loadFriends, friendsLoaded, ONLINE_MS } from './friends.js?v=0.32.0';
+import { openChat, chatActions } from './chat.js?v=0.32.0';
 // удалить друга — двойное нажатие за 3 секунды, чтобы не убрать случайно
 let rmAsk = '';
 function confirmRemove(u) { if (rmAsk === u.uid) { rmAsk = ''; return true; } rmAsk = u.uid; setTimeout(() => { if (rmAsk === u.uid) rmAsk = ''; }, 3000); toast('Нажмите ещё раз, чтобы убрать из друзей'); return false; }
-import { avSrc } from './avatar.js?v=0.31.0';
-import { toast } from './ui.js?v=0.31.0';
-import { searchTracks } from './catalog.js?v=0.31.0';
+import { avSrc } from './avatar.js?v=0.32.0';
+import { toast } from './ui.js?v=0.32.0';
+import { searchTracks } from './catalog.js?v=0.32.0';
 
 export function seenText(seen) {
   const t = Number(seen) || 0;
@@ -94,6 +94,7 @@ function render(u, isMe) {
       } }, mi('play-circle'), ' Слушать то же') : null;
       return h('div', { class: 'up-actions' }, btn, chatBtn, play);
     })() : null,
+    !isMe && u.uid && friendState(u.uid) === 'friend' ? chatActions(u.uid, u) : null,
     h('div', { class: 'up-stats' },
       stat('timer', t.value, t.unit), stat('play-circle', u.plays || 0, 'треков'), stat('heart', u.likes || 0, 'лайков'),
       u.achCount != null ? stat('medal', u.achCount, 'наград') : null),
@@ -113,6 +114,8 @@ export async function openUserPage(uid, basic, isMe = false) {
   if (basic && !basic.uid) basic = { ...basic, uid };
   const page = $('#user-page'), body = $('#user-body');
   const mine = ++seq;
+  const ch = document.getElementById('chat-page');
+  page.classList.toggle('over-chat', Boolean(ch && ch.classList.contains('open')));
   page.classList.add('open');
   page.scrollTop = 0;
   body.replaceChildren(...(basic ? render(basic, isMe) : [h('div', { class: 'phero up-hero sk' })]));

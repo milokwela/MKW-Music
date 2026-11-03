@@ -5,20 +5,20 @@
 // Каждый с каждым соединяется напрямую (при 4 людях — 6 соединений).
 // Чтобы звонок подключался сразу: звонящий готовит соединение заранее, пока у друга звонит телефон,
 // поэтому после «Принять» остаётся один короткий ответ.
-import { db } from './firebase.js?v=0.31.0';
+import { db } from './firebase.js?v=0.32.0';
 import { doc, setDoc, updateDoc, deleteDoc, addDoc, collection, query, where, limit, onSnapshot, arrayUnion, arrayRemove } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
-import { h, toast, openSheet, closeSheet } from './ui.js?v=0.31.0';
-import { mi } from './icons2.js?v=0.31.0';
-import { me, isFriend, friendIds, friendCards, cardOf } from './friends.js?v=0.31.0';
-import { avSrc } from './avatar.js?v=0.31.0';
-import { RECOGNIZE_URL } from './shazam-config.js?v=0.31.0';
-import { pushTo, myNick } from './push.js?v=0.31.0';
-import * as player from './player.js?v=0.31.0';
-import { getRingtone } from './ringtone.js?v=0.31.0';
-import { postCallEvent } from './chat.js?v=0.31.0';
-import * as store from './store.js?v=0.31.0';
-import { pickTrack } from './utils.js?v=0.31.0';
-import { enablePush } from './push.js?v=0.31.0';
+import { h, toast, openSheet, closeSheet } from './ui.js?v=0.32.0';
+import { mi } from './icons2.js?v=0.32.0';
+import { me, isFriend, friendIds, friendCards, cardOf } from './friends.js?v=0.32.0';
+import { avSrc } from './avatar.js?v=0.32.0';
+import { RECOGNIZE_URL } from './shazam-config.js?v=0.32.0';
+import { pushTo, myNick } from './push.js?v=0.32.0';
+import * as player from './player.js?v=0.32.0';
+import { getRingtone } from './ringtone.js?v=0.32.0';
+import { postCallEvent, isBlocked } from './chat.js?v=0.32.0';
+import * as store from './store.js?v=0.32.0';
+import { pickTrack } from './utils.js?v=0.32.0';
+import { enablePush } from './push.js?v=0.32.0';
 
 const MAX = 4;
 let ice = null, iceP = null;
@@ -81,7 +81,12 @@ async function newPeer(uid, sid) {
       entry.micId = s.id;
       if (!entry.audio) { entry.audio = h('audio', { autoplay: '', playsinline: '' }); document.body.appendChild(entry.audio); }
       entry.audio.srcObject = s;
-      entry.audio.play().catch(() => {});
+      entry.audio.play().catch(() => {
+        // iPhone не дал включить звук сам — включим при первом касании экрана
+        toast('Коснитесь экрана, чтобы включить звук');
+        const go = () => { if (entry.audio) entry.audio.play().catch(() => {}); };
+        document.addEventListener('pointerdown', go, { once: true, capture: true });
+      });
       entry.an = levelMeter(s);
     } else {
       // демонстрация экрана (картинка и, если есть, звук вкладки)
@@ -95,7 +100,7 @@ async function newPeer(uid, sid) {
   // нужно что-то поменять в соединении (включили или выключили показ экрана) — договариваемся заново
   pc.onnegotiationneeded = async () => {
     if (!entry.ready || !cur) return;
-    try { entry.makingOffer = true; await pc.setLocalDescription(); await gathered(pc); await sendSig(uid, 'offer', entry.sid, pc.localDescription.sdp); }
+    try { entry.makingOffer = true; await pc.setLocalDescription(await pc.createOffer()); await gathered(pc); await sendSig(uid, 'offer', entry.sid, pc.localDescription.sdp); }
     catch (err) { console.warn('renegotiate', err); }
     finally { entry.makingOffer = false; }
   };
@@ -196,6 +201,33 @@ function levelMeter(stream) {
 }
 const loud = (an) => { if (!an) return 0; const d = new Uint8Array(an.frequencyBinCount); an.getByteFrequencyData(d); return d.reduce((a, b) => a + b, 0) / d.length; };
 
+// гудки, пока друг не взял трубку: 425 Гц, 1 секунда звука и 3 тишины (как в обычном телефоне)
+let rbTimer = 0;
+function ringback(on) {
+  if (!on) { if (rbTimer) { clearInterval(rbTimer); rbTimer = 0; } return; }
+  if (rbTimer) return;
+  const beep = () => {
+    try {
+      actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+      if (actx.state === 'suspended') actx.resume().catch(() => {});
+      const t = actx.currentTime, o = actx.createOscillator(), g = actx.createGain();
+      o.frequency.value = 425;
+      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.12, t + 0.03);
+      g.gain.setValueAtTime(0.12, t + 0.97); g.gain.exponentialRampToValueAtTime(0.0001, t + 1.0);
+      o.connect(g).connect(actx.destination); o.start(t); o.stop(t + 1.02);
+    } catch { /* ignore */ }
+  };
+  beep(); rbTimer = setInterval(beep, 4000);
+}
+// iPhone и некоторые Android: звук можно включить только сразу после нажатия — «будим» его заранее
+function unlockAudio() {
+  try {
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+    if (actx.state === 'suspended') actx.resume().catch(() => {});
+    const b = actx.createBuffer(1, 1, 22050), src = actx.createBufferSource(); src.buffer = b; src.connect(actx.destination); src.start(0);
+  } catch { /* ignore */ }
+}
+
 // ---------- окно звонка ----------
 const cards = new Map();
 async function nickOf(uid) { if (!cards.has(uid)) cards.set(uid, await cardOf(uid).catch(() => ({ uid, nick: 'друг' }))); return cards.get(uid); }
@@ -207,6 +239,7 @@ function paint() {
   const waiting = inn.length <= 1;
   const allDeclined = others.length && others.every((x) => (d.declined || []).includes(x));
   cur.ui.status.textContent = waiting ? (allDeclined ? 'Не отвечает' : 'Звоним…') : timer();
+  ringback(waiting && !allDeclined && d.host === me());
   cur.ui.tiles.replaceChildren(...[me(), ...others].map((uid) => {
     const c = cards.get(uid) || { nick: '…' };
     const here = inn.includes(uid);
@@ -459,8 +492,10 @@ export async function startCall(uids) {
   uids = [...new Set(uids)].filter((x) => x && x !== me()).slice(0, MAX - 1);
   if (cur) { toast('Вы уже в звонке'); cur.ui && cur.ui.box.classList.remove('mini'); return; }
   if (!uids.length || !uids.every(isFriend)) { toast('Звонить можно только друзьям'); return; }
+  if (uids.length === 1 && isBlocked(uids[0])) { toast('Звонки с этим человеком ограничены'); return; }
   if (!window.RTCPeerConnection || !navigator.mediaDevices) { toast('Этот браузер не умеет звонить'); return; }
   askNotify();
+  unlockAudio();
   const id = `${me()}_${Date.now().toString(36)}`;
   const data = { host: me(), members: [me(), ...uids], in: [me()], muted: {}, ping: { [me()]: Date.now() }, declined: [], at: Date.now() };
   try { await setDoc(doc(db, 'calls', id), data); }
@@ -475,6 +510,7 @@ export async function startCall(uids) {
 }
 
 async function join(id, data) {
+  unlockAudio();
   if (!(await begin(id, data))) return;
   try { await updateDoc(doc(db, 'calls', id), { in: arrayUnion(me()), [`ping.${me()}`]: Date.now() }); cur.joined = true; }
   catch { finish('Не получилось подключиться'); return; }
@@ -509,7 +545,7 @@ export async function leave(reason) {
 function finish(text) {
   if (!cur) return;
   const c = cur; cur = null;
-  cancelAnimationFrame(loop); clearInterval(c.alive); clearTimeout(c.noAnswer);
+  cancelAnimationFrame(loop); clearInterval(c.alive); clearTimeout(c.noAnswer); ringback(false);
   try { c.unsubDoc && c.unsubDoc(); c.unsubSig && c.unsubSig(); } catch { /* ignore */ }
   c.pcs.forEach((e) => { clearTimeout(e.lost); try { e.pc.close(); } catch { /* ignore */ } if (e.audio) e.audio.remove(); });
   if (c.local) c.local.getTracks().forEach((t) => t.stop());
@@ -531,10 +567,11 @@ export function watchCalls(onRing) {
         if (cur && cur.id === d.id) return;
         if ((c.in || []).includes(me()) || (c.declined || []).includes(me())) return;
         const last = Math.max(Number(c.at) || 0, ...Object.values(c.ping || {}).map(Number));
-        if (last < Date.now() - 60000) { if (last < Date.now() - 600000) deleteDoc(d.ref).catch(() => {}); return; } // старый «повисший» звонок убираем
+        if (last < Date.now() - 150000) { if (last < Date.now() - 600000) deleteDoc(d.ref).catch(() => {}); return; } // старый «повисший» звонок убираем
         if (!(c.in || []).length) return;
         // звонок только от друзей (или от друга в общем звонке)
         if (!isFriend(c.host) && !(c.in || []).some((x) => x !== me() && isFriend(x))) return;
+        if ((c.members || []).length === 2 && isBlocked(c.host)) return; // заблокирован — звонок не показываем
         if (cur) { decline(d.id); return; } // уже в другом звонке — «занято»
         if (ringing && ringing.id === d.id) return;
         ring(d.id, c, onRing);
