@@ -1,15 +1,17 @@
 // Главная: «Друзья в сети» и умные миксы, которые собираются из вашей музыки, времени суток и друзей.
-import { $, h, toast } from './ui.js?v=0.33.1';
-import * as store from './store.js?v=0.33.1';
-import * as player from './player.js?v=0.33.1';
-import { searchTracks } from './catalog.js?v=0.33.1';
-import { shuffled } from './utils.js?v=0.33.1';
-import { splitArtists, norm } from './taste.js?v=0.33.1';
-import { mi } from './icons2.js?v=0.33.1';
-import { avSrc } from './avatar.js?v=0.33.1';
-import { loadFriends, friendIds, friendCards, onFriends } from './friends.js?v=0.33.1';
-import { getProfile, communityTaste, communityTracks } from './leaders.js?v=0.33.1';
-import { openUserPage, isOnline } from './userpage.js?v=0.33.1';
+import { $, h, toast } from './ui.js?v=0.34.0';
+import * as store from './store.js?v=0.34.0';
+import * as player from './player.js?v=0.34.0';
+import { searchTracks } from './catalog.js?v=0.34.0';
+import { shuffled } from './utils.js?v=0.34.0';
+import { splitArtists, norm } from './taste.js?v=0.34.0';
+import { mi } from './icons2.js?v=0.34.0';
+import { avSrc } from './avatar.js?v=0.34.0';
+import { loadFriends, friendIds, friendCards, onFriends } from './friends.js?v=0.34.0';
+import { getProfile, communityTaste, communityTracks } from './leaders.js?v=0.34.0';
+import { openUserPage, isOnline } from './userpage.js?v=0.34.0';
+import { recapCard } from './recap.js?v=0.34.0';
+import { artistTop, artistRadio, relatedArtists } from './reco.js?v=0.34.0';
 
 const part = () => { const hr = new Date().getHours(); return hr < 6 ? 0 : hr < 12 ? 1 : hr < 18 ? 2 : 3; };
 const PARTS = [
@@ -34,7 +36,16 @@ function spread(list) {
   while (rest.length) { const last = out.length ? norm(out[out.length - 1].artist) : ''; let i = rest.findIndex((t) => norm(t.artist) !== last); if (i < 0) i = 0; out.push(rest.splice(i, 1)[0]); }
   return out;
 }
+// самые популярные песни исполнителей (Deezer), если не нашлось — поиск iTunes
 async function byArtists(names, per) {
+  const res = await Promise.all(names.map(async (a) => {
+    const top = (await artistTop(a, per * 2).catch(() => [])).filter((t) => norm(t.artist).includes(norm(a)));
+    if (top.length >= Math.min(per, 3)) return shuffled(top).slice(0, per);
+    return (await searchTracks(a).catch(() => [])).filter((t) => norm(t.artist).includes(norm(a))).slice(0, per);
+  }));
+  return res.flat();
+}
+async function byArtistsItunes(names, per) {
   const res = await Promise.all(names.map((a) => searchTracks(a).then((f) => f.filter((t) => norm(t.artist).includes(norm(a))).slice(0, per)).catch(() => [])));
   return res.flat();
 }
@@ -62,10 +73,24 @@ const MIXES = [
       tracks = [...tracks, ...(await byArtists(shuffled([...new Set(arts)]).slice(0, 4), 4))];
       return spread(uniq(shuffled(tracks))).slice(0, 25);
     } },
+  { id: 'like', title: 'Похоже на любимое', sub: 'Песни, похожие на ваших исполнителей', icon: 'heart-star', hue: 280,
+    build: async () => {
+      const arts = shuffled(topArtists(6)).slice(0, 3);
+      const mine = new Set(store.state.likes.map((t) => t.id));
+      const lists = await Promise.all(arts.map((a) => artistRadio(a).catch(() => [])));
+      return spread(uniq(shuffled(lists.flat().filter((t) => !mine.has(t.id))))).slice(0, 30);
+    } },
+  { id: 'disc', title: 'Открытия', sub: 'Исполнители, которых вы ещё не слушали', icon: 'globe', hue: 170,
+    build: async () => {
+      const known = new Set([...store.state.likes, ...store.state.history].flatMap((t) => splitArtists(t.artist).map(norm)));
+      const rel = (await Promise.all(shuffled(topArtists(8)).slice(0, 3).map((a) => relatedArtists(a).catch(() => [])))).flat().filter((x) => !known.has(norm(x.name)));
+      const picks = shuffled([...new Map(rel.map((x) => [norm(x.name), x])).values()]).slice(0, 8).map((x) => x.name);
+      return spread(uniq(await byArtists(picks, 3))).slice(0, 24);
+    } },
   { id: 'fresh', title: 'Новое от ваших', sub: 'Свежие релизы любимых исполнителей', icon: 'rocket', hue: 150,
     build: async () => {
       const y = new Date().getFullYear();
-      const all = await byArtists(topArtists(6), 30);
+      const all = await byArtistsItunes(topArtists(6), 30);
       const fresh = all.filter((t) => Number(t.year) >= y - 1).sort((a, b) => Number(b.year) - Number(a.year));
       return uniq(fresh.length >= 4 ? fresh : all.sort((a, b) => Number(b.year || 0) - Number(a.year || 0))).slice(0, 25);
     } },
@@ -131,12 +156,23 @@ async function renderStrip() {
 }
 
 let inited = false, mixT = 0;
+function renderRecap() {
+  let box = $('#recap-entry');
+  const anchor = $('#wave-moods') || $('#wave-btn');
+  if (!anchor) return;
+  if (!box) { box = h('div', { id: 'recap-entry' }); anchor.after(box); }
+  const has = store.state.history.length >= 3;
+  box.hidden = !has;
+  if (has && !box.firstChild) box.appendChild(recapCard());
+}
+
 export function initHome() {
   renderMixes();
+  renderRecap();
   renderPopular();
   if (!inited) {
     inited = true;
-    store.onStore((w) => { if (w === 'likes' || w === 'history') { clearTimeout(mixT); mixT = setTimeout(renderMixes, 1500); } });
+    store.onStore((w) => { if (w === 'likes' || w === 'history') { clearTimeout(mixT); mixT = setTimeout(() => { renderMixes(); renderRecap(); }, 1500); } });
     onFriends(() => renderStrip());
   }
   renderStrip();

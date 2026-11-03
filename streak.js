@@ -4,11 +4,15 @@
 //   read.g_<uid> — последний день, когда этот человек писал;  read.gs — день, когда завели огонёк;
 //   read.gx — огонёк потушен вручную (день);  read.gl — сколько дней было у погасшего огонька; read.gld — день, когда погас.
 // (0.30: старые огоньки на ключах f_/fs сброшены у всех — заводятся заново кнопкой)
-import { db } from './firebase.js?v=0.33.1';
+import { db } from './firebase.js?v=0.34.0';
 import { doc, setDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
-import { h, toast, openSheet, closeSheet } from './ui.js?v=0.33.1';
+import { h, toast, openSheet, closeSheet } from './ui.js?v=0.34.0';
+import { srvNow } from './clock.js?v=0.34.0';
 
-export const today = () => Math.floor((Date.now() - new Date().getTimezoneOffset() * 60000) / 864e5);
+// День огонька — общий для всех, по московскому времени и по часам сервера.
+// Раньше считали по часам и поясу каждого телефона: у друзей в разных часовых поясах «сегодня» не совпадало,
+// и огонёк оставался серым, хотя вы переписывались весь день.
+export const today = () => Math.floor((srvNow() + 3 * 3600000) / 864e5);
 const FIRE = '<path d="M12 2c.6 3.2-1 5-2.4 6.6C8.2 10.2 7 11.7 7 14a5 5 0 0 0 10 0c0-1.3-.4-2.4-1-3.4-.3 1.2-1 2-2 2.4.6-2.6-.3-5.2-2-7.4.1 1.7-.4 2.9-1.3 3.8C11 7.6 12.4 5 12 2zm0 20a8 8 0 0 1-8-8c0-3.7 2.2-6 3.7-7.6C9.4 4.6 10.6 3.3 10 0c5.3 2.3 7.3 6 7.6 8.3.5-.6.8-1.4.9-2.3C20.6 8 22 10.9 22 14a10 10 0 0 1-10 8z" fill="currentColor" transform="translate(0 1) scale(.92)"/>';
 export const LEVELS = [
   { from: 1, l: 1, name: 'Искра', hint: '1–2 дня' },
@@ -36,6 +40,36 @@ export function streakOf(chat, me, other) {
   return { state: todayDone ? 'lit' : 'grey', n, mineToday: a >= t, theirToday: b >= t, level: levelOf(Math.max(1, n)) };
 }
 
+// огонёк группы: день засчитывается, когда за день написала хотя бы половина участников (не меньше двух).
+// read.gd — последний засчитанный день, read.gs — день, когда огонёк завели.
+export const groupNeed = (n) => Math.max(2, Math.ceil(n / 2));
+export function groupStreak(chat, me) {
+  const r = (chat && chat.read) || {};
+  const t = today();
+  const fs = Number(r.gs) || 0, gd = Number(r.gd) || 0;
+  if (!fs || (r.gx && Number(r.gx) >= fs)) return { state: 'none', lost: Number(r.gl) || 0, group: true };
+  const alive = gd >= t - 1 || fs >= t - 1;
+  const n = gd >= fs ? gd - fs + 1 : 0;
+  if (!alive) return { state: 'lost', n, lost: n, group: true };
+  const members = (chat.members || []);
+  const wrote = members.filter((u) => (Number(r[`g_${u}`]) || 0) >= t).length;
+  return { state: gd >= t ? 'lit' : 'grey', n, mineToday: (Number(r[`g_${me}`]) || 0) >= t, wrote, need: groupNeed(members.length), level: levelOf(Math.max(1, n)), group: true };
+}
+export const streakAny = (chat, me, other) => (chat && chat.group ? groupStreak(chat, me) : streakOf(chat, me, other));
+// при отправке в группу: отмечаем себя и, если набралась половина, засчитываем день
+export function groupPatch(chat, me) {
+  const t = today();
+  const r = (chat && chat.read) || {};
+  const patch = { [`g_${me}`]: t };
+  const fs = Number(r.gs) || 0, gd = Number(r.gd) || 0;
+  if (fs && !(r.gx && Number(r.gx) >= fs) && (gd >= t - 1 || fs >= t - 1) && gd < t) {
+    const members = (chat.members || []);
+    const wrote = members.filter((u) => u === me || (Number(r[`g_${u}`]) || 0) >= t).length;
+    if (wrote >= groupNeed(members.length)) patch.gd = t;
+  }
+  return patch;
+}
+
 export function fireIcon(st, big) {
   const el = h('span', { class: `fire${st.state === 'grey' ? ' grey' : st.state === 'lost' ? ' lost' : ` l${(st.level || LEVELS[0]).l}`}${big ? ' big' : ''}`, title: 'MKW Огонёк' });
   el.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true">${FIRE}</svg>`;
@@ -49,9 +83,10 @@ export function streakPatch(chat, me) {
 }
 
 // завести огонёк (или завести заново после того, как погас)
-export async function startStreak(cid, me) {
+export async function startStreak(cid, me, group) {
   const t = today();
-  await setDoc(doc(db, 'chats', cid), { members: cid.split('_'), read: { gs: t, gx: 0, [`g_${me}`]: t } }, { merge: true });
+  if (group) await setDoc(doc(db, 'chats', cid), { read: { gs: t, gx: 0, gd: 0, [`g_${me}`]: t } }, { merge: true });
+  else await setDoc(doc(db, 'chats', cid), { members: cid.split('_'), read: { gs: t, gx: 0, [`g_${me}`]: t } }, { merge: true });
 }
 
 // восстановить погасший огонёк: 3 раза в месяц
@@ -63,6 +98,12 @@ async function restore(cid, chat, me, other) {
   const y = today() - 1;
   // день разрыва считаем пройденным: оба «написали» вчера, начало огонька сохраняется
   const fs = Number(r.gs) || y;
+  if (chat.group) {
+    await setDoc(doc(db, 'chats', cid), { read: { gd: Math.max(Number(r.gd) || 0, y), gs: Math.min(fs, y), gx: 0 } }, { merge: true });
+    try { localStorage.setItem(RKEY(), String(3 - restoresLeft() + 1)); } catch { /* ignore */ }
+    toast('Огонёк группы восстановлен! Напишите сегодня');
+    return true;
+  }
   await setDoc(doc(db, 'chats', cid), { read: { [`g_${me}`]: Math.max(Number(r[`g_${me}`]) || 0, y), [`g_${other}`]: Math.max(Number(r[`g_${other}`]) || 0, y), gs: Math.min(fs, y), gx: 0 } }, { merge: true });
   try { localStorage.setItem(RKEY(), String(3 - restoresLeft() + 1)); } catch { /* ignore */ }
   toast('Огонёк восстановлен! Напишите друг другу сегодня');
@@ -74,17 +115,18 @@ async function stop(cid, n) {
 }
 
 export function openStreak(cid, chat, me, other, nick) {
-  const st = streakOf(chat, me, other);
+  const st = streakAny(chat, me, other);
+  const grp = Boolean(chat && chat.group);
   const lvl = st.level || LEVELS[0];
   const head = st.state === 'none' ? 'Огонька пока нет'
     : st.state === 'lost' ? 'Огонёк погас'
-    : st.state === 'grey' ? (st.mineToday ? `Ждём ответ от ${nick}` : 'Огонёк гаснет — напишите сегодня')
+    : st.state === 'grey' ? (grp ? `Сегодня написали ${st.wrote} из ${st.need} нужных` : st.mineToday ? `Ждём ответ от ${nick}` : 'Огонёк гаснет — напишите сегодня')
     : 'Сегодня огонёк горит';
   const sub = st.state === 'none' ? `Заведите огонёк с ${nick} и общайтесь каждый день — он будет расти и менять цвет`
     : st.state === 'lost' ? `Было дней: ${st.lost || st.n || 0}. Можно восстановить (осталось ${restoresLeft()} из 3 в этом месяце) или завести заново`
-    : `${lvl.name} · дней подряд: ${st.n}. День засчитывается, когда пишете оба`;
+    : `${lvl.name} · дней подряд: ${st.n}. ${grp ? 'День засчитывается, когда за день пишет хотя бы половина группы' : 'День засчитывается, когда пишете оба'}`;
   const btns = [];
-  if (st.state === 'none' || st.state === 'lost') btns.push(h('button', { class: 'btn', type: 'button', onclick: async () => { await startStreak(cid, me); closeSheet(); } }, st.state === 'lost' ? 'Завести заново' : 'Завести MKW огонёк'));
+  if (st.state === 'none' || st.state === 'lost') btns.push(h('button', { class: 'btn', type: 'button', onclick: async () => { await startStreak(cid, me, grp); closeSheet(); } }, st.state === 'lost' ? 'Завести заново' : 'Завести MKW огонёк'));
   if (st.state === 'lost' && (st.lost || st.n)) btns.push(h('button', { class: 'btn', type: 'button', onclick: async () => { if (await restore(cid, chat, me, other)) closeSheet(); } }, `Восстановить (${restoresLeft()} из 3)`));
   if (st.state === 'lit' || st.state === 'grey') btns.push(h('button', { class: 'btn tonal', type: 'button', onclick: async () => { if (!confirmStop.dataset.ok) { confirmStop.dataset.ok = '1'; confirmStop.textContent = 'Точно потушить? Нажмите ещё раз'; return; } await stop(cid, st.n); closeSheet(); } }, 'Потушить огонёк'));
   const confirmStop = btns[btns.length - 1] || h('i');
@@ -99,7 +141,7 @@ export function openStreak(cid, chat, me, other, nick) {
 export function greyReminders(list, me, otherOf, nickOf, notify) {
   const t = today();
   for (const c of list) {
-    const o = otherOf(c); if (!o) continue;
+    const o = otherOf(c); if (!o || c.group) continue;
     const st = streakOf(c, me, o);
     if (st.state !== 'grey' || st.mineToday || st.n < 1) continue;
     const k = `mkw.fire.grey.${c.id}`;

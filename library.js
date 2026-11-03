@@ -1,9 +1,11 @@
 // Экран «Библиотека»: лайки, плейлисты, история.
-import { $, $$, h, icon, trackRow, emptyState, askText, toast, openSheet, closeSheet, sheetItem, animateIn } from './ui.js?v=0.33.1';
-import * as store from './store.js?v=0.33.1';
-import * as player from './player.js?v=0.33.1';
-import { openTrackMenu } from './menu.js?v=0.33.1';
-import { tracksWord, timeAgo, artUrl } from './utils.js?v=0.33.1';
+import { $, $$, h, icon, trackRow, emptyState, askText, toast, openSheet, closeSheet, sheetItem, animateIn } from './ui.js?v=0.34.0';
+import * as store from './store.js?v=0.34.0';
+import * as player from './player.js?v=0.34.0';
+import { openTrackMenu } from './menu.js?v=0.34.0';
+import { plural, tracksWord, timeAgo, artUrl } from './utils.js?v=0.34.0';
+import { sharedList, onShared, watchShared } from './shared.js?v=0.34.0';
+import { openSharedSheet } from './sharedui.js?v=0.34.0';
 
 let tab = 'likes';
 let openPid = null;
@@ -51,12 +53,18 @@ function renderPlaylists(box) {
     if (!name) return;
     try { await store.createPlaylist(name); toast('Плейлист создан'); } catch (e) { console.error(e); toast('Не получилось создать'); }
   } }, icon('plus'), 'Новый плейлист');
-  if (!pls.length) { box.replaceChildren(h('div', { class: 'lib-actions' }, create), emptyState('library', 'Плейлистов нет')); return; }
+  watchShared();
+  const sh = sharedList();
+  const shared = sh.length ? [h('div', { class: 'section-title', text: 'Общие с друзьями' }), ...sh.map((pl) => h('button', { class: 'pl-card shared', type: 'button', onclick: () => openSharedSheet(pl.id) },
+    cover({ tracks: pl.tracks || [] }),
+    h('div', { class: 'track-info' }, h('div', { class: 'track-title', text: pl.name || 'Общий плейлист' }), h('div', { class: 'track-sub', text: `${tracksWord((pl.tracks || []).length)} · ${(pl.members || []).length} ${plural((pl.members || []).length, 'участник', 'участника', 'участников')}` }))))] : [];
+  if (!pls.length) { box.replaceChildren(h('div', { class: 'lib-actions' }, create), emptyState('library', 'Плейлистов нет'), ...shared); return; }
   box.replaceChildren(
     h('div', { class: 'lib-actions' }, create),
     ...pls.map((pl) => h('button', { class: 'pl-card', type: 'button', onclick: () => { openPid = pl.pid; render(); } },
       cover(pl),
-      h('div', { class: 'track-info' }, h('div', { class: 'track-title', text: pl.name }), h('div', { class: 'track-sub', text: tracksWord(pl.tracks.length) })))));
+      h('div', { class: 'track-info' }, h('div', { class: 'track-title', text: pl.name }), h('div', { class: 'track-sub', text: tracksWord(pl.tracks.length) })))),
+    ...shared);
 }
 
 function renderPlaylistPage(box) {
@@ -131,6 +139,7 @@ export function initLibrary() {
     render();
   });
   store.onStore(() => { if (!$('#view-library').hidden) render(); });
+  onShared(() => { if (!$('#view-library').hidden && tab === 'playlists' && !openPid) render(); });
 }
 
 export function resetLibrary() { tab = 'likes'; openPid = null; }

@@ -1,10 +1,10 @@
 // Данные пользователя в Firestore: лайки, плейлисты, история.
 // users/{uid}/likes/{trackId}, users/{uid}/playlists/{id}, users/{uid}/history/{auto}
-import { db } from './firebase.js?v=0.33.1';
+import { db } from './firebase.js?v=0.34.0';
 import {
   collection, doc, setDoc, deleteDoc, addDoc, updateDoc, onSnapshot, query, orderBy, limit, increment,
 } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
-import { pickTrack } from './utils.js?v=0.33.1';
+import { pickTrack } from './utils.js?v=0.34.0';
 
 const MAX_PLAYLIST = 300;
 const HISTORY_LIMIT = 50;
@@ -96,7 +96,15 @@ export async function removeFromPlaylist(pid, trackId) {
 
 // ---- статистика прослушивания ----
 let pendingSec = 0;
-export function addListened(sec) { pendingSec += sec; }
+// дневник: сколько секунд музыки за каждый день (для «Итогов недели и месяца»), хранится на устройстве
+let diary = null, diaryT = 0;
+const dayKey = (d = new Date()) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+export function diaryDays() { if (!diary) { try { diary = JSON.parse(localStorage.getItem('mkw.diary') || '{}'); } catch { diary = {}; } } return diary; }
+export function addListened(sec) {
+  pendingSec += sec;
+  const d = diaryDays(); const k = dayKey(); d[k] = (d[k] || 0) + sec;
+  if (!diaryT) diaryT = setTimeout(() => { diaryT = 0; try { const e = Object.entries(diary).sort().slice(-400); localStorage.setItem('mkw.diary', JSON.stringify(Object.fromEntries(e))); } catch { /* ignore */ } }, 15000);
+}
 export function listenedTotal() { return (Number(state.profile.listenedSec) || 0) + pendingSec; }
 export async function flushListened() {
   if (!state.uid || pendingSec < 1) return;

@@ -1,14 +1,16 @@
 // Уведомления: заявки в друзья, принятые заявки, новые сообщения.
 // Внутри приложения — всплывашка и счётчик на вкладке «Профиль». Если приложение свёрнуто и вы разрешили —
 // системное уведомление телефона/компьютера (работает, пока приложение открыто в фоне).
-import { h, toast } from './ui.js?v=0.33.1';
-import { avSrc } from './avatar.js?v=0.33.1';
-import { watchFriends, stopWatchFriends, requestIds, onFriends, cardOf, watchPresence, stopPresence, friendsLoaded, loadFriends } from './friends.js?v=0.33.1';
-import { watchCalls, stopCalls, warmCalls } from './call.js?v=0.33.1';
-import { enablePush, disablePush, pushSupported } from './push.js?v=0.33.1';
-import { watchChats, stopChats, unreadCount, onChats, openChat, chatOpen, chatList, otherOf } from './chat.js?v=0.33.1';
-import { greyReminders } from './streak.js?v=0.33.1';
-import { me as meUid } from './friends.js?v=0.33.1';
+import { h, toast } from './ui.js?v=0.34.0';
+import { avSrc } from './avatar.js?v=0.34.0';
+import { watchFriends, stopWatchFriends, requestIds, onFriends, cardOf, watchPresence, stopPresence, friendsLoaded, loadFriends } from './friends.js?v=0.34.0';
+import { watchCalls, stopCalls, warmCalls } from './call.js?v=0.34.0';
+import { enablePush, disablePush, pushSupported } from './push.js?v=0.34.0';
+import { watchChats, stopChats, unreadCount, onChats, openChat, openGroup, chatOpen, chatList, otherOf } from './chat.js?v=0.34.0';
+import { watchShared, stopShared } from './shared.js?v=0.34.0';
+import { leaveTogether } from './together.js?v=0.34.0';
+import { greyReminders } from './streak.js?v=0.34.0';
+import { me as meUid } from './friends.js?v=0.34.0';
 
 const KEY = 'mkw.notify';
 export const notifyOn = () => { try { return localStorage.getItem(KEY) !== '0'; } catch { return true; } };
@@ -62,6 +64,12 @@ export function startNotify() {
   });
   watchChats(async (c, uid) => {
     if (!notifyOn() || chatOpen()) return;
+    if (c.group) {
+      const text = c.last && c.last.text ? `${c.last.nick || 'Кто-то'}: ${c.last.text}` : 'Новое сообщение';
+      showPop({ avatar: '' }, c.name || 'Группа', text, () => openGroup(c.id));
+      system(c.name || 'Группа', text, `chat-${c.id}`, () => openGroup(c.id));
+      return;
+    }
     const u = await cardOf(uid).catch(() => null); const nick = (u && u.nick) || 'Друг';
     const text = c.last && c.last.text ? c.last.text : 'Новое сообщение';
     showPop(u, nick, text, () => openChat(uid, u));
@@ -73,10 +81,11 @@ export function startNotify() {
   // пуш нужен для звонков всегда, если браузер разрешил уведомления
   if (systemAllowed() && pushSupported()) setTimeout(() => enablePush(), 4000);
   warmCalls();
+  watchShared();
   openFromLink(location.hash);
   paint();
 }
-export function stopNotify() { started = false; stopWatchFriends(); stopPresence(); stopChats(); stopCalls(); paint(); }
+export function stopNotify() { started = false; stopWatchFriends(); stopPresence(); stopChats(); stopShared(); leaveTogether(true); stopCalls(); paint(); }
 
 // всплывашка о новом сообщении: нажали — открылся чат
 let pop = null;
@@ -93,7 +102,12 @@ export { paint as paintNotify };
 // нажали на уведомление: #chat=<uid> — открыть переписку, #call=<id> — звонок сам появится на экране
 function openFromLink(hash) {
   const m = String(hash || '').match(/#chat=([A-Za-z0-9]{10,64})/);
-  if (m) {
+  const g = String(hash || '').match(/#group=(g[A-Za-z0-9]{6,40})/);
+  if (g) {
+    try { history.replaceState(null, '', location.pathname + location.search); } catch { /* ignore */ }
+    const go = () => { if (!document.querySelector('#bottom-nav')) { setTimeout(go, 600); return; } openGroup(g[1]); };
+    setTimeout(go, 800);
+  } else if (m) {
     const uid = m[1];
     try { history.replaceState(null, '', location.pathname + location.search); } catch { /* ignore */ }
     const go = () => { if (!document.querySelector('#bottom-nav')) { setTimeout(go, 500); return; } cardOf(uid).then((u) => openChat(uid, u)).catch(() => {}); };

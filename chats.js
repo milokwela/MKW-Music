@@ -1,15 +1,15 @@
 // Раздел «Чаты» в нижнем меню: все переписки с друзьями, как в мессенджере.
 // Сверху — недавние и непрочитанные, ниже — друзья, с которыми ещё не переписывались.
-import { $, h } from './ui.js?v=0.33.1';
-import { mi } from './icons2.js?v=0.33.1';
-import { chatList, isUnread, onChats, openChat, otherOf, clearedAt, blockedByMe, openUid as openId } from './chat.js?v=0.33.1';
-import { me, friendIds, friendCards, loadFriends, friendsLoaded, onFriends, requestIds } from './friends.js?v=0.33.1';
-import { avSrc } from './avatar.js?v=0.33.1';
-import { nickMarks } from './dev.js?v=0.33.1';
-import { seenText, isOnline } from './userpage.js?v=0.33.1';
-import { pickAndCall } from './call.js?v=0.33.1';
-import { streakOf, fireIcon } from './streak.js?v=0.33.1';
-import { setNotify } from './notify.js?v=0.33.1';
+import { $, h } from './ui.js?v=0.34.0';
+import { mi } from './icons2.js?v=0.34.0';
+import { chatList, isUnread, onChats, openChat, otherOf, clearedAt, blockedByMe, openCid, openGroup, groupAvatar, createGroupSheet, chatId } from './chat.js?v=0.34.0';
+import { me, friendIds, friendCards, loadFriends, friendsLoaded, onFriends, requestIds } from './friends.js?v=0.34.0';
+import { avSrc } from './avatar.js?v=0.34.0';
+import { nickMarks } from './dev.js?v=0.34.0';
+import { seenText, isOnline } from './userpage.js?v=0.34.0';
+import { pickAndCall } from './call.js?v=0.34.0';
+import { streakAny, fireIcon } from './streak.js?v=0.34.0';
+import { setNotify } from './notify.js?v=0.34.0';
 
 let watching = false, filter = '', busy = false, again = false;
 
@@ -27,10 +27,25 @@ function row(u, c, i) {
   const cleared = c && c.last && (Number(c.last.at) || 0) <= clearedAt(c);
   const blocked = c && blockedByMe(u.uid);
   const preview = blocked ? 'Заблокирован(а)' : cleared ? 'Нет сообщений' : c && c.last ? `${mine ? 'Вы: ' : ''}${c.last.text}` : isOnline(u.seen) && u.now ? `Слушает: ${u.now}` : seenText(u.seen) || 'Напишите первым';
-  return h('button', { type: 'button', 'data-uid': u.uid, class: `cl-row${unread && !cleared ? ' unread' : ''}${blocked ? ' blocked' : ''}${openId() === u.uid ? ' on' : ''}`, style: `animation-delay:${Math.min(i, 10) * 30}ms`, onclick: () => openChat(u.uid, u) },
+  const cidOf = chatId(me(), u.uid);
+  return h('button', { type: 'button', 'data-uid': u.uid, 'data-cid': cidOf, class: `cl-row${unread && !cleared ? ' unread' : ''}${blocked ? ' blocked' : ''}${openCid() === cidOf ? ' on' : ''}`, style: `animation-delay:${Math.min(i, 10) * 30}ms`, onclick: () => openChat(u.uid, u) },
     h('span', { class: 'cl-av' }, h('img', { src: avSrc(u.avatar), alt: '', loading: 'lazy' }), isOnline(u.seen) ? h('i', { class: 'online-dot' }) : null),
     h('span', { class: 'cl-body' },
-      h('span', { class: 'cl-top' }, h('b', { text: u.nick || 'друг' }), ...nickMarks(u), ...(() => { const st = streakOf(c, me(), u.uid); return st.state === 'lit' || st.state === 'grey' ? [fireIcon(st)] : []; })(), c ? h('time', { text: when(c.at) }) : null),
+      h('span', { class: 'cl-top' }, h('b', { text: u.nick || 'друг' }), ...nickMarks(u), ...(() => { const st = streakAny(c, me(), u.uid); return st.state === 'lit' || st.state === 'grey' ? [fireIcon(st)] : []; })(), c ? h('time', { text: when(c.at) }) : null),
+      h('span', { class: 'cl-prev' }, h('span', { text: preview }), unread && !cleared ? h('i', { class: 'cl-dot' }) : null)));
+}
+
+// строка группы
+function groupRow(c, cards, i) {
+  const unread = isUnread(c);
+  const cleared = c.last && (Number(c.last.at) || 0) <= clearedAt(c);
+  const mine = c.last && c.last.from === me();
+  const preview = cleared ? 'Нет сообщений' : c.last ? `${mine ? 'Вы' : (c.last.nick || 'Кто-то')}: ${c.last.text}` : 'Группа';
+  const st = streakAny(c, me(), '');
+  return h('button', { type: 'button', 'data-cid': c.id, class: `cl-row group${unread && !cleared ? ' unread' : ''}${openCid() === c.id ? ' on' : ''}`, style: `animation-delay:${Math.min(i, 10) * 30}ms`, onclick: () => openGroup(c.id) },
+    h('span', { class: 'cl-av' }, groupAvatar(c, cards)),
+    h('span', { class: 'cl-body' },
+      h('span', { class: 'cl-top' }, h('b', { text: c.name || 'Группа' }), h('span', { class: 'cl-gtag', text: String((c.members || []).length) }), ...(st.state === 'lit' || st.state === 'grey' ? [fireIcon(st)] : []), h('time', { text: when(c.at) })),
       h('span', { class: 'cl-prev' }, h('span', { text: preview }), unread && !cleared ? h('i', { class: 'cl-dot' }) : null)));
 }
 
@@ -48,16 +63,20 @@ export async function renderChats() {
     if (!root.firstChild) {
       const inp = h('input', { class: 'sheet-input cl-search', type: 'search', placeholder: 'Найти друга', autocomplete: 'off' });
       inp.addEventListener('input', () => { filter = inp.value.trim().toLowerCase(); renderChats(); });
-      root.replaceChildren(h('div', { class: 'cl-head' }, h('h1', { class: 'view-title', text: 'Чаты' }), h('button', { type: 'button', class: 'cl-callbtn', onclick: pickAndCall }, mi('phone'), h('span', { text: 'Звонок' }))), inp, h('div', { class: 'cl-req' }), h('div', { class: 'cl-list' }));
+      root.replaceChildren(h('div', { class: 'cl-head' }, h('h1', { class: 'view-title', text: 'Чаты' }), h('button', { type: 'button', class: 'cl-callbtn cl-grpbtn', title: 'Новая группа', onclick: () => createGroupSheet() }, mi('group'), h('span', { text: 'Группа' })), h('button', { type: 'button', class: 'cl-callbtn', onclick: pickAndCall }, mi('phone'), h('span', { text: 'Звонок' }))), inp, h('div', { class: 'cl-req' }), h('div', { class: 'cl-list' }));
     }
     if (!friendsLoaded()) await loadFriends();
     const ids = friendIds();
     const chats = chatList();
-    const withChat = new Map(chats.map((c) => [otherOf(c), c]));
-    const cards = await friendCards([...new Set([...chats.map(otherOf), ...ids])].filter(Boolean).slice(0, 80), 60000);
+    const dms = chats.filter((c) => !c.group);
+    const groups = chats.filter((c) => c.group);
+    const withChat = new Map(dms.map((c) => [otherOf(c), c]));
+    const gMembers = groups.flatMap((c) => (c.members || []).filter((x) => x !== me()).slice(0, 3));
+    const cards = await friendCards([...new Set([...dms.map(otherOf), ...ids, ...gMembers])].filter(Boolean).slice(0, 120), 60000);
     const byId = new Map(cards.map((u) => [u.uid, u]));
     const pass = (u) => !filter || String(u.nick || '').toLowerCase().includes(filter);
-    const talks = chats.map((c) => byId.get(otherOf(c))).filter((u) => u && pass(u));
+    // переписки и группы вместе, по времени последнего сообщения
+    const talks = chats.map((c) => (c.group ? (!filter || String(c.name || '').toLowerCase().includes(filter) ? { c } : null) : (byId.get(otherOf(c)) && pass(byId.get(otherOf(c))) ? { u: byId.get(otherOf(c)), c } : null))).filter(Boolean);
     const rest = ids.filter((x) => !withChat.has(x)).map((x) => byId.get(x)).filter((u) => u && pass(u));
     const req = requestIds().length;
     // уведомления о звонках: браузер должен разрешить — просим одной кнопкой
@@ -83,7 +102,7 @@ export async function renderChats() {
     } else {
       let i = 0;
       list.replaceChildren(
-        ...talks.map((u) => row(u, withChat.get(u.uid), i++)),
+        ...talks.map((x) => (x.u ? row(x.u, x.c, i++) : groupRow(x.c, byId, i++))),
         ...(rest.length ? [h('div', { class: 'section-title', text: talks.length ? 'Друзья' : 'Начните переписку' }), ...rest.map((u) => row(u, null, i++))] : []));
     }
   } finally { busy = false; if (again) { again = false; renderChats(); } }

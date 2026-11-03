@@ -1,27 +1,34 @@
-// Чат с друзьями. Писать можно только взаимным друзьям (проверяют и приложение, и правила Firestore).
-//   chats/{a_b}            — { members: [a, b], last: { from, text, at }, at, read: { uid: время } }   (a < b)
-//   chats/{a_b}/msgs/{id}  — { from, text, at, track? }
-import { safeUrl } from './utils.js?v=0.33.1';
-import { db } from './firebase.js?v=0.33.1';
-import { doc, setDoc, addDoc, deleteDoc, getDocs, collection, query, where, orderBy, limit, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
-import { h, toast, openSheet, closeSheet } from './ui.js?v=0.33.1';
-import { openImage } from './viewer.js?v=0.33.1';
-import { mi } from './icons2.js?v=0.33.1';
-import * as player from './player.js?v=0.33.1';
-import { searchTracks } from './catalog.js?v=0.33.1';
-import { me, isFriend, cardOf, friendIds, friendCards, loadFriends, friendsLoaded } from './friends.js?v=0.33.1';
-import { avSrc } from './avatar.js?v=0.33.1';
-import { seenText, isOnline, openUserPage, closeUserPage } from './userpage.js?v=0.33.1';
-import { startCall, warmCalls } from './call.js?v=0.33.1';
-import { streakOf, streakPatch, fireIcon, openStreak, startStreak, playFire } from './streak.js?v=0.33.1';
-import { pushTo, myNick } from './push.js?v=0.33.1';
-import { srvNow } from './clock.js?v=0.33.1';
+// Чаты MKW: переписка с другом и групповые чаты (3–10 человек).
+//   chats/{a_b}            — с другом: { members: [a, b], last, at, read }      (a < b, только взаимные друзья)
+//   chats/{g…}             — группа:   { group: true, name, owner, members, last, at, read }
+//   chats/{id}/msgs/{id}   — { from, text, at, track?, img?, voice?, vdur?, re?: {id, from, text}, rx?: {uid: эмодзи}, ed? }
+// В read хранится всё «служебное»: прочитано (uid), огонёк (g_*, gs, gd…), очистка (x_*), блокировка (b_*),
+// «печатает…» (t_<uid> — когда, tk_<uid> — что: text | voice).
+import { safeUrl } from './utils.js?v=0.34.0';
+import { db } from './firebase.js?v=0.34.0';
+import { doc, getDoc, setDoc, addDoc, updateDoc, deleteDoc, getDocs, collection, query, where, orderBy, limit, onSnapshot, deleteField } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+import { h, toast, openSheet, closeSheet } from './ui.js?v=0.34.0';
+import { openImage } from './viewer.js?v=0.34.0';
+import { mi } from './icons2.js?v=0.34.0';
+import * as player from './player.js?v=0.34.0';
+import { searchTracks } from './catalog.js?v=0.34.0';
+import { me, isFriend, cardOf, friendIds, friendCards, loadFriends, friendsLoaded } from './friends.js?v=0.34.0';
+import { avSrc } from './avatar.js?v=0.34.0';
+import { seenText, isOnline, openUserPage, closeUserPage } from './userpage.js?v=0.34.0';
+import { startCall, warmCalls } from './call.js?v=0.34.0';
+import { streakAny, streakPatch, groupPatch, fireIcon, openStreak, startStreak, playFire } from './streak.js?v=0.34.0';
+import { pushTo, myNick } from './push.js?v=0.34.0';
+import { srvNow } from './clock.js?v=0.34.0';
+import { togetherBar, startTogether } from './together.js?v=0.34.0';
+import { ensureShared } from './shared.js?v=0.34.0';
+import { openSharedSheet } from './sharedui.js?v=0.34.0';
 
 export const chatId = (a, b) => [a, b].sort().join('_');
+const isGroupId = (cid) => String(cid || '').startsWith('g') && !String(cid).includes('_');
 
 // События звонка в переписке: «пропущенный», «отклонил», «звонок · 3 мин». Хранятся как текст с меткой —
 // так подходят и старые правила базы.
-const CALL_MARK = '\u2060CALL|';
+const CALL_MARK = '⁠CALL|';
 const isCallMsg = (t) => String(t || '').startsWith(CALL_MARK);
 function parseCall(t) { const [kind, sec, nick] = String(t).slice(CALL_MARK.length).split('|'); return { kind, sec: Number(sec) || 0, nick: nick || '' }; }
 const dur = (s) => (s < 60 ? `${s} сек` : `${Math.floor(s / 60)} мин${s % 60 ? ` ${s % 60} сек` : ''}`);
@@ -34,39 +41,40 @@ export async function postCallEvent(uid, kind, sec = 0, nick = '') {
     await setDoc(doc(db, 'chats', cid), { members: cid.split('_'), last: { from: me(), text: human, at }, at, read: { [me()]: at } }, { merge: true });
   } catch { /* старые правила — без записи в чат */ }
 }
-const other = (c) => (c.members || []).find((x) => x !== me()) || '';
+const other = (c) => (c && !c.group ? (c.members || []).find((x) => x !== me()) || '' : '');
 export const otherOf = other;
 
 // ---------- список чатов и непрочитанные ----------
 let chats = [];
 let unsubList = null;
 const subs = new Set();
+const notifySubs = () => subs.forEach((f) => { try { f(); } catch (e) { console.warn('chats', e); } });
 export const onChats = (f) => { subs.add(f); return () => subs.delete(f); };
 export const chatList = () => chats;
 export const isUnread = (c) => c && c.last && c.last.from !== me() && (Number(c.at) || 0) > (Number(c.read && c.read[me()]) || 0) && !(Number((c.read || {})[`b_${me()}`]) > 0);
 export const unreadCount = () => chats.filter(isUnread).length;
-export const chatWith = (uid) => chats.find((c) => other(c) === uid) || null;
+export const chatWith = (uid) => chats.find((c) => !c.group && other(c) === uid) || null;
+export const chatById = (cid) => chats.find((c) => c.id === cid) || null;
+export const groupList = () => chats.filter((c) => c.group);
 
-// ---------- очистка и блокировка (в документе чата, поле read — правила базы это уже разрешают) ----------
-//   read.x_<uid> — с какого момента этот человек очистил чат у себя;  read.xa — чат очищен у обоих
+// ---------- очистка и блокировка ----------
+//   read.x_<uid> — с какого момента этот человек очистил чат у себя;  read.xa — чат очищен у всех
 //   read.b_<uid> — с какого момента этот человек заблокировал собеседника (0 — не блокировал)
 const rd = (c) => (c && c.read) || {};
 export const clearedAt = (c) => Math.max(Number(rd(c)[`x_${me()}`]) || 0, Number(rd(c).xa) || 0);
 export const blockedByMe = (uid) => Number(rd(chatWith(uid))[`b_${me()}`]) || 0;
 export const blockedMe = (uid) => Number(rd(chatWith(uid))[`b_${uid}`]) || 0;
 export const isBlocked = (uid) => Boolean(blockedByMe(uid) || blockedMe(uid));
-async function setFlags(uid, flags) {
-  const cid = chatId(me(), uid);
-  await setDoc(doc(db, 'chats', cid), { members: cid.split('_'), read: flags }, { merge: true });
-  const c = chatWith(uid); if (c) c.read = { ...(c.read || {}), ...flags };
-  subs.forEach((f) => { try { f(); } catch { /* ignore */ } });
+async function setFlagsCid(cid, flags) {
+  if (isGroupId(cid)) await setDoc(doc(db, 'chats', cid), { read: flags }, { merge: true });
+  else await setDoc(doc(db, 'chats', cid), { members: cid.split('_'), read: flags }, { merge: true });
+  const c = chatById(cid); if (c) c.read = { ...(c.read || {}), ...flags };
+  notifySubs();
 }
+const setFlags = (uid, flags) => setFlagsCid(chatId(me(), uid), flags);
 export async function clearForMe(uid) { await setFlags(uid, { [`x_${me()}`]: srvNow() }); }
-export async function clearForAll(uid) {
-  await setFlags(uid, { xa: srvNow() });
-  // сами сообщения тоже стираем из базы (если правила базы это разрешают — иначе они просто скрыты у обоих)
+async function wipeMsgs(cid) {
   try {
-    const cid = chatId(me(), uid);
     for (let round = 0; round < 10; round += 1) {
       const s = await getDocs(query(collection(db, 'chats', cid, 'msgs'), orderBy('at', 'desc'), limit(100)));
       if (!s.size) break;
@@ -75,15 +83,16 @@ export async function clearForAll(uid) {
     }
   } catch { /* старые правила — сообщения скрыты, но остаются в базе */ }
 }
+export async function clearForAll(uid) { await setFlags(uid, { xa: srvNow() }); await wipeMsgs(chatId(me(), uid)); }
 export async function setBlocked(uid, on) { await setFlags(uid, { [`b_${me()}`]: on ? srvNow() : 0 }); }
 
 // кнопки в профиле друга: очистить, удалить у всех, заблокировать
+function confirm2(btn, text, run) {
+  if (btn.dataset.sure !== '1') { btn.dataset.sure = '1'; const sp = btn.querySelector('span'); const old = sp.textContent; sp.textContent = text; setTimeout(() => { if (btn.isConnected) { btn.dataset.sure = ''; sp.textContent = old; } }, 3500); return; }
+  btn.dataset.sure = ''; run();
+}
 export function chatActions(uid, u) {
   const nick = (u && u.nick) || 'друг';
-  const confirm2 = (btn, text, run) => {
-    if (btn.dataset.sure !== '1') { btn.dataset.sure = '1'; const old = btn.querySelector('span').textContent; btn.querySelector('span').textContent = text; setTimeout(() => { if (btn.isConnected) { btn.dataset.sure = ''; btn.querySelector('span').textContent = old; } }, 3500); return; }
-    btn.dataset.sure = ''; run();
-  };
   const box = h('div', { class: 'up-chat' });
   const paint = () => {
     const bl = blockedByMe(uid);
@@ -105,14 +114,13 @@ export function watchChats(onNew) {
   if (unsubList || !me()) return;
   let first = true;
   try {
-    unsubList = onSnapshot(query(collection(db, 'chats'), where('members', 'array-contains', me()), limit(100)), (s) => {
+    unsubList = onSnapshot(query(collection(db, 'chats'), where('members', 'array-contains', me()), limit(120)), (s) => {
       const prev = new Map(chats.map((c) => [c.id, c.at]));
       chats = s.docs.map((d) => ({ id: d.id, ...d.data() })).sort((a, b) => (Number(b.at) || 0) - (Number(a.at) || 0));
-      if (!first && onNew) chats.forEach((c) => { if (isUnread(c) && (prev.get(c.id) || 0) < c.at && openId !== c.id && !(Number((c.read || {})[`b_${me()}`]) > 0)) onNew(c, other(c)); });
+      if (!first && onNew) chats.forEach((c) => { if (isUnread(c) && (prev.get(c.id) || 0) < c.at && openId !== c.id) onNew(c, other(c)); });
       first = false;
-      paintTicks();
-      if (openId) { const c = chats.find((x) => x.id === openId); if (c && isUnread(c)) markRead(openId); }
-      subs.forEach((f) => { try { f(); } catch { /* ignore */ } });
+      if (openId) { const c = chats.find((x) => x.id === openId); if (c && isUnread(c) && !document.hidden) markRead(openId); }
+      notifySubs();
     }, () => { /* старые правила или нет сети */ });
   } catch { /* ignore */ }
 }
@@ -120,31 +128,155 @@ export function stopChats() { if (unsubList) { unsubList(); unsubList = null; } 
 
 function markRead(cid) {
   const c = chats.find((x) => x.id === cid); if (!c) return;
-  c.read = { ...(c.read || {}), [me()]: srvNow() };
-  setDoc(doc(db, 'chats', cid), { read: { [me()]: srvNow() } }, { merge: true }).catch(() => {});
-  subs.forEach((f) => { try { f(); } catch { /* ignore */ } });
+  const t = srvNow();
+  c.read = { ...(c.read || {}), [me()]: t };
+  setDoc(doc(db, 'chats', cid), { read: { [me()]: t } }, { merge: true }).catch(() => {});
+  notifySubs();
 }
 
+// ---------- «печатает…» и «записывает голосовое…» ----------
+const TYPING_TTL = 6500;
+let typingSent = { cid: '', kind: '', at: 0 };
+function typing(cid, kind) {
+  if (!cid) return;
+  const now = Date.now();
+  if (typingSent.cid === cid && typingSent.kind === kind && now - typingSent.at < 3500) return;
+  typingSent = { cid, kind, at: now };
+  setDoc(doc(db, 'chats', cid), { read: { [`t_${me()}`]: srvNow(), [`tk_${me()}`]: kind } }, { merge: true }).catch(() => {});
+}
+function typingOff(cid) {
+  if (!cid || typingSent.cid !== cid || !typingSent.at) return;
+  typingSent = { cid: '', kind: '', at: 0 };
+  setDoc(doc(db, 'chats', cid), { read: { [`t_${me()}`]: 0 } }, { merge: true }).catch(() => {});
+}
+// кто сейчас печатает в этой переписке: [{ uid, kind }]
+function typers(c) {
+  const r = rd(c), now = srvNow();
+  return (c && c.members ? c.members : []).filter((u) => u !== me()).map((u) => ({ uid: u, at: Number(r[`t_${u}`]) || 0, kind: r[`tk_${u}`] === 'voice' ? 'voice' : 'text' })).filter((x) => x.at && now - x.at < TYPING_TTL);
+}
+
+// ---------- отправка ----------
 const VOICE_TXT = '🎤 Голосовое сообщение';
-async function send(cid, text, track, img, voice) {
+const quoteText = (m) => (m.voice || (typeof m.img === 'string' && m.img.startsWith('data:audio/')) ? '🎤 Голосовое' : m.img && !m.text ? '📷 Фото' : m.track && !m.text ? `♪ ${m.track.artist} — ${m.track.title}` : String(m.text || '')).slice(0, 120);
+async function send(cv, text, track, img, voice, re) {
+  const cid = cv.cid;
   const at = srvNow(), from = me();
-  const msg = { from, text: text.slice(0, 500), at };
+  const msg = { from, text: String(text || '').slice(0, 500), at };
   if (track) msg.track = { title: String(track.title).slice(0, 120), artist: String(track.artist).slice(0, 120) };
   if (img) msg.img = img;
+  if (re && re.id) msg.re = { id: String(re.id), from: String(re.from || ''), text: String(re.text || '').slice(0, 120) };
   if (voice) {
     msg.voice = voice.data; msg.vdur = Math.round(voice.dur);
     try { await addDoc(collection(db, 'chats', cid, 'msgs'), msg); }
     catch {
       // правила базы ещё старые — кладём запись в поле фото, а текстом подписываем для старых версий приложения
-      await addDoc(collection(db, 'chats', cid, 'msgs'), { from, text: VOICE_TXT, at, img: voice.data });
+      const old = { from, text: VOICE_TXT, at, img: voice.data };
+      await addDoc(collection(db, 'chats', cid, 'msgs'), old);
     }
-  } else await addDoc(collection(db, 'chats', cid, 'msgs'), msg);
+  } else {
+    try { await addDoc(collection(db, 'chats', cid, 'msgs'), msg); }
+    catch (e) { if (msg.re) { delete msg.re; await addDoc(collection(db, 'chats', cid, 'msgs'), msg); } else throw e; }
+  }
   const preview = (voice ? VOICE_TXT : img && !msg.text ? 'Фото' : track && !msg.text ? `♪ ${msg.track.artist} — ${msg.track.title}` : msg.text).slice(0, 140);
-  const to0 = cid.split('_').find((x) => x !== from);
-  await setDoc(doc(db, 'chats', cid), { members: cid.split('_'), last: { from, text: preview, at }, at, read: { [from]: at, ...streakPatch(chatWith(to0), from, to0) } }, { merge: true });
-  // пуш другу — придёт, даже если у него MKW закрыт (тот же тег, что и у уведомления внутри приложения, — без повторов)
+  typingSent = { cid: '', kind: '', at: 0 };
+  if (cv.group) {
+    const c = chatById(cid);
+    await setDoc(doc(db, 'chats', cid), { last: { from, text: preview, at, nick: myNick() }, at, read: { [from]: at, [`t_${from}`]: 0, ...groupPatch(c || { members: cv.members, read: {} }, from) } }, { merge: true });
+    (cv.members || []).filter((x) => x !== from).slice(0, 9).forEach((to) => pushTo(to, 'msg', cv.title || 'Группа', `${myNick()}: ${preview}`, `chat-${cid}`, `./#group=${cid}`));
+    return;
+  }
   const to = cid.split('_').find((x) => x !== from);
+  await setDoc(doc(db, 'chats', cid), { members: cid.split('_'), last: { from, text: preview, at }, at, read: { [from]: at, [`t_${from}`]: 0, ...streakPatch(chatWith(to), from, to) } }, { merge: true });
+  // пуш другу — придёт, даже если у него MKW закрыт (тот же тег, что и у уведомления внутри приложения, — без повторов)
   if (to) pushTo(to, 'msg', myNick(), preview, `chat-${cid}`, `./#chat=${from}`);
+}
+
+// правка, удаление, реакции
+async function editMsg(cid, id, text) { await updateDoc(doc(db, 'chats', cid, 'msgs', id), { text: String(text).slice(0, 500), ed: srvNow() }); }
+async function deleteMsg(cid, id) { await deleteDoc(doc(db, 'chats', cid, 'msgs', id)); }
+async function react(cid, id, emoji, mine) {
+  await updateDoc(doc(db, 'chats', cid, 'msgs', id), { [`rx.${me()}`]: mine === emoji ? deleteField() : emoji });
+}
+const REACTIONS = ['❤️', '🔥', '😂', '👍', '😮', '😢', '🙏'];
+
+// ---------- группы ----------
+export async function createGroup(name, uids) {
+  const ids = [...new Set(uids)].filter((x) => x && x !== me()).slice(0, 9);
+  if (ids.length < 2) throw new Error('мало участников');
+  const gid = `g${Math.random().toString(36).slice(2, 10)}${srvNow().toString(36).slice(-4)}`;
+  const at = srvNow();
+  await setDoc(doc(db, 'chats', gid), { group: true, name: String(name || '').trim().slice(0, 40) || 'Группа', owner: me(), members: [me(), ...ids], at, last: { from: me(), text: 'Группа создана', at, nick: myNick() }, read: { [me()]: at } });
+  return gid;
+}
+async function patchGroup(gid, data) { await setDoc(doc(db, 'chats', gid), data, { merge: true }); }
+export async function leaveGroup(gid) {
+  const c = chatById(gid); if (!c) return;
+  await patchGroup(gid, { members: (c.members || []).filter((x) => x !== me()) });
+}
+
+// создать группу: название и друзья галочками
+export async function createGroupSheet(preselect = []) {
+  if (!friendsLoaded()) await loadFriends();
+  const ids = friendIds();
+  if (ids.length < 2) { openSheet('Новая группа', h('p', { class: 'profile-note', text: 'Для группы нужно хотя бы два друга. Добавьте друзей в Профиль → Друзья.' })); return; }
+  const picked = new Set(preselect);
+  const name = h('input', { class: 'sheet-input', type: 'text', maxlength: '40', placeholder: 'Название группы' });
+  const cnt = h('small', { class: 'gr-cnt' });
+  const go = h('button', { class: 'btn', type: 'button' }, mi('group'), h('span', { text: 'Создать группу' }));
+  const list = h('div', { class: 'gr-pick' }, h('p', { class: 'profile-note', text: 'Загрузка…' }));
+  const paint = () => { cnt.textContent = `Выбрано: ${picked.size} из 9`; go.disabled = picked.size < 2; };
+  go.addEventListener('click', async () => {
+    go.disabled = true;
+    try { const gid = await createGroup(name.value, [...picked]); closeSheet(); toast('Группа создана'); setTimeout(() => openGroup(gid), 250); }
+    catch { go.disabled = false; toast('Не получилось. Нужны новые правила базы — у разработчика'); }
+  });
+  openSheet('Новая группа', h('div', { class: 'gr-sheet' }, name, cnt, list, go));
+  const cards = await friendCards(ids.slice(0, 80));
+  list.replaceChildren(...cards.map((u) => {
+    const row = h('button', { type: 'button', class: `gr-row${picked.has(u.uid) ? ' on' : ''}` },
+      h('img', { src: avSrc(u.avatar), alt: '', loading: 'lazy' }), h('b', { text: u.nick || 'друг' }), h('i', { class: 'gr-chk' }, mi('check')));
+    row.addEventListener('click', () => {
+      if (picked.has(u.uid)) picked.delete(u.uid); else if (picked.size < 9) picked.add(u.uid); else toast('В группе до 10 человек');
+      row.classList.toggle('on', picked.has(u.uid)); paint();
+    });
+    return row;
+  }));
+  paint();
+}
+
+// аватар группы: до трёх фото участников кружками
+export function groupAvatar(c, cards) {
+  const ms = (c.members || []).filter((x) => x !== me()).slice(0, 3);
+  return h('span', { class: 'gr-av' }, ...ms.map((u) => h('img', { src: avSrc((cards && cards.get && cards.get(u) || {}).avatar), alt: '', loading: 'lazy' })));
+}
+
+// ---------- отправить песню другу (из меню трека) ----------
+export async function sendTrackTo(uid, track, text = 'Послушай') {
+  if (!isFriend(uid)) throw new Error('не друг');
+  const cid = chatId(me(), uid);
+  await send({ cid, group: false, members: cid.split('_') }, text, track);
+}
+export async function pickFriendFor(track) {
+  if (!friendsLoaded()) await loadFriends();
+  const ids = friendIds();
+  if (!ids.length) { openSheet('Отправить другу', h('p', { class: 'profile-note', text: 'Пока нет друзей. Добавьте друга в Профиль → Друзья: когда он примет заявку, сюда можно будет отправлять песни.' })); return; }
+  const list = h('div', { class: 'lb-list' }, h('p', { class: 'profile-note', text: 'Загрузка…' }));
+  openSheet('Отправить другу', h('div', {}, h('div', { class: 'sheet-note', text: `${track.title} — ${track.artist}` }), list));
+  const cards = await friendCards(ids.slice(0, 60));
+  const groups = groupList();
+  list.replaceChildren(
+    ...groups.map((g) => h('button', { type: 'button', class: 'lb-row fr-pick', onclick: async (e) => {
+      const b = e.currentTarget; b.disabled = true;
+      try { await send({ cid: g.id, group: true, members: g.members, title: g.name }, 'Послушай', track); closeSheet(); toast(`Отправлено в «${g.name}»`); }
+      catch { toast('Не отправилось'); b.disabled = false; }
+    } }, h('span', { class: 'lb-av' }, groupAvatar(g)), h('div', { class: 'lb-body' }, h('div', { class: 'lb-nick' }, h('span', { text: g.name || 'Группа' })), h('div', { class: 'lb-status', text: `Группа · ${(g.members || []).length}` })), h('span', { class: 'fr-send' }, mi('send')))),
+    ...cards.map((u) => h('button', { type: 'button', class: 'lb-row fr-pick', onclick: async (e) => {
+      const b = e.currentTarget; b.disabled = true;
+      try { await sendTrackTo(u.uid, track); closeSheet(); toast(`Отправлено ${u.nick}`); }
+      catch { toast('Не отправилось. Проверьте интернет'); b.disabled = false; }
+    } }, h('span', { class: 'lb-av' }, h('img', { src: avSrc(u.avatar), alt: '', loading: 'lazy' }), isOnline(u.seen) ? h('i', { class: 'online-dot' }) : null),
+      h('div', { class: 'lb-body' }, h('div', { class: 'lb-nick' }, h('span', { text: u.nick })), h('div', { class: 'lb-status', text: isOnline(u.seen) ? 'в сети' : seenText(u.seen) })),
+      h('span', { class: 'fr-send' }, mi('send')))));
 }
 
 // фото: сжимаем до ~800 px JPEG, чтобы влезло в документ Firestore (без платного хранилища)
@@ -198,64 +330,6 @@ function bgMenu(list, cid) {
     h('p', { class: 'profile-note', text: 'Фон видите только вы, на этом устройстве.' })));
 }
 
-// ---------- отправить песню другу (из меню трека) ----------
-export async function sendTrackTo(uid, track, text = 'Послушай') {
-  if (!isFriend(uid)) throw new Error('не друг');
-  await send(chatId(me(), uid), text, track);
-}
-export async function pickFriendFor(track) {
-  if (!friendsLoaded()) await loadFriends();
-  const ids = friendIds();
-  if (!ids.length) { openSheet('Отправить другу', h('p', { class: 'profile-note', text: 'Пока нет друзей. Добавьте друга в Профиль → Друзья: когда он примет заявку, сюда можно будет отправлять песни.' })); return; }
-  const list = h('div', { class: 'lb-list' }, h('p', { class: 'profile-note', text: 'Загрузка…' }));
-  openSheet('Отправить другу', h('div', {}, h('div', { class: 'sheet-note', text: `${track.title} — ${track.artist}` }), list));
-  const cards = await friendCards(ids.slice(0, 60));
-  list.replaceChildren(...cards.map((u) => h('button', { type: 'button', class: 'lb-row fr-pick', onclick: async (e) => {
-    const b = e.currentTarget; b.disabled = true;
-    try { await sendTrackTo(u.uid, track); closeSheet(); toast(`Отправлено ${u.nick}`); }
-    catch { toast('Не отправилось. Админу нужно обновить правила Firestore'); b.disabled = false; }
-  } }, h('span', { class: 'lb-av' }, h('img', { src: avSrc(u.avatar), alt: '', loading: 'lazy' }), isOnline(u.seen) ? h('i', { class: 'online-dot' }) : null),
-    h('div', { class: 'lb-body' }, h('div', { class: 'lb-nick' }, h('span', { text: u.nick })), h('div', { class: 'lb-status', text: isOnline(u.seen) ? 'в сети' : seenText(u.seen) })),
-    h('span', { class: 'fr-send' }, mi('send')))));
-}
-
-// ---------- окно чата ----------
-let page = null, openId = '', unsubMsgs = null, offTicks = null;
-function ensurePage() {
-  if (page) return page;
-  page = h('section', { id: 'chat-page', 'aria-label': 'Чат' });
-  document.body.appendChild(page);
-  return page;
-}
-export function closeChat() {
-  if (unsubMsgs) { unsubMsgs(); unsubMsgs = null; }
-  if (typeof stopVoice === 'function') stopVoice();
-  if (offPeer) offPeer();
-  if (offKb) { offKb(); offKb = null; }
-  if (offTicks) { offTicks(); offTicks = null; }
-  openId = '';
-  if (page) page.classList.remove('open');
-  document.body.classList.remove('chat-open');
-  document.querySelectorAll('.cl-row.on').forEach((r) => r.classList.remove('on'));
-}
-export const chatOpen = () => Boolean(openId);
-export const openUid = () => (openId ? openId.split('_').find((x) => x !== me()) || '' : '');
-
-function timeOf(t) { const d = new Date(Number(t) || 0); return d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }); }
-function dayOf(t) {
-  const d = new Date(Number(t) || 0), n = new Date();
-  const same = (a, b) => a.toDateString() === b.toDateString();
-  if (same(d, n)) return 'Сегодня';
-  const y = new Date(n); y.setDate(n.getDate() - 1);
-  if (same(d, y)) return 'Вчера';
-  return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
-}
-
-async function playTrack(t) {
-  toast(`Включаю: ${t.artist} — ${t.title}`);
-  const f = await searchTracks(`${t.artist} ${t.title}`).catch(() => []);
-  if (f.length) player.playTracks(f.slice(0, 10), 0); else toast('Не нашла этот трек');
-}
 
 // ---------- голосовые сообщения ----------
 const VOICE_MAX = 60; // секунд
@@ -310,46 +384,176 @@ function fitKeyboard(p, list) {
   vv.addEventListener('resize', f); vv.addEventListener('scroll', f);
   return () => { vv.removeEventListener('resize', f); vv.removeEventListener('scroll', f); p.style.top = ''; p.style.height = ''; p.style.bottom = ''; p.classList.remove('kb'); };
 }
-let offKb = null;
-let offPeer = null;
-let meCard = null;
+
+// ---------- окно переписки ----------
+let page = null, openId = '', unsubMsgs = null, offTicks = null;
+let offKb = null, offPeer = null, offTg = null, meCard = null, cvCur = null, closeMenu = null;
+function ensurePage() {
+  if (page) return page;
+  page = h('section', { id: 'chat-page', 'aria-label': 'Чат' });
+  document.body.appendChild(page);
+  return page;
+}
+function cleanup() {
+  if (unsubMsgs) { unsubMsgs(); unsubMsgs = null; }
+  stopVoice();
+  if (offPeer) offPeer();
+  if (offTg) { offTg(); offTg = null; }
+  if (offKb) { offKb(); offKb = null; }
+  if (offTicks) { offTicks(); offTicks = null; }
+  if (closeMenu) closeMenu();
+  typingOff(openId);
+}
+export function closeChat() {
+  cleanup();
+  openId = ''; cvCur = null;
+  if (page) page.classList.remove('open');
+  document.body.classList.remove('chat-open');
+  document.querySelectorAll('.cl-row.on').forEach((r) => r.classList.remove('on'));
+}
+export const chatOpen = () => Boolean(openId);
+export const openCid = () => openId;
+export const openUid = () => (openId && !isGroupId(openId) ? openId.split('_').find((x) => x !== me()) || '' : '');
+
+function timeOf(t) { const d = new Date(Number(t) || 0); return d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }); }
+function dayOf(t) {
+  const d = new Date(Number(t) || 0), n = new Date();
+  const same = (a, b) => a.toDateString() === b.toDateString();
+  if (same(d, n)) return 'Сегодня';
+  const y = new Date(n); y.setDate(n.getDate() - 1);
+  if (same(d, y)) return 'Вчера';
+  return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
+}
+
+async function playTrack(t) {
+  toast(`Включаю: ${t.artist} — ${t.title}`);
+  const f = await searchTracks(`${t.artist} ${t.title}`).catch(() => []);
+  if (f.length) player.playTracks(f.slice(0, 10), 0); else toast('Не нашла этот трек');
+}
 
 export async function openChat(uid, card) {
   warmCalls();
   if (!uid) return;
   if (!isFriend(uid)) { toast('Писать можно только друзьям. Дождитесь, пока заявку примут'); return; }
+  const u = card || (await cardOf(uid)) || { uid, nick: 'друг' };
+  const cid = chatId(me(), uid);
+  await openConv({ cid, group: false, peer: uid, u, title: u.nick || 'друг', members: cid.split('_'), cards: new Map([[uid, u]]) });
+}
+export async function openGroup(gid) {
+  warmCalls();
+  let c = chatById(gid);
+  if (!c) { try { const s = await getDoc(doc(db, 'chats', gid)); if (s.exists()) c = { id: gid, ...s.data() }; } catch { /* ignore */ } }
+  if (!c || !(c.members || []).includes(me())) { toast('Группа недоступна'); return; }
+  const cards = new Map((await friendCards((c.members || []).filter((x) => x !== me()), 120000).catch(() => [])).map((u) => [u.uid, u]));
+  await openConv({ cid: gid, group: true, title: c.name || 'Группа', members: c.members || [], owner: c.owner, cards });
+}
+
+// меню переписки (⋯): слушать вместе, общий плейлист, огонёк, фон, профиль/участники
+function convMenu(cv, list) {
+  const items = [];
+  const it = (ic, label, fn, danger) => h('button', { type: 'button', class: `ch-sm${danger ? ' danger' : ''}`, onclick: () => { closeSheet(); setTimeout(fn, 200); } }, mi(ic), h('span', { text: label }));
+  items.push(it('headphones', 'Слушать вместе', async () => {
+    const t = player.queue.current;
+    if (!t) { toast('Включите трек, который хотите слушать вместе'); return; }
+    if (await startTogether(cv.cid, cv.members)) {
+      toast('Вы слушаете вместе — друзья увидят приглашение');
+      send(cv, '🎧 Зову слушать вместе — нажмите «Слушать» сверху', t).catch(() => {});
+    }
+  }));
+  items.push(it('playlist', 'Общий плейлист', async () => {
+    try {
+      const sp = await ensureShared(cv.cid, cv.members, cv.group ? cv.title : `${myNick() || 'Я'} + ${cv.title}`);
+      openSharedSheet(sp.id);
+    } catch { toast('Общие плейлисты заработают после обновления правил базы'); }
+  }));
+  items.push(it('fire', 'MKW огонёк', () => openStreak(cv.cid, chatById(cv.cid) || { read: {}, group: cv.group, members: cv.members }, me(), cv.peer, cv.group ? 'группой' : (cv.u.nick || 'другом'))));
+  items.push(it('palette', 'Фон чата', () => bgMenu(list, cv.cid)));
+  if (cv.group) items.push(it('group', 'Участники и настройки', () => groupSheet(cv)));
+  else items.push(it('person', 'Профиль', () => openUserPage(cv.peer, cv.u)));
+  openSheet(cv.title, h('div', { class: 'ch-smenu' }, ...items));
+}
+
+// настройки группы: название, участники, добавить, огонёк, очистить, выйти
+async function groupSheet(cv) {
+  const c = chatById(cv.cid) || { members: cv.members, name: cv.title, owner: cv.owner, read: {} };
+  const owner = c.owner === me();
+  const name = h('input', { class: 'sheet-input', type: 'text', maxlength: '40', value: c.name || '' });
+  const save = h('button', { class: 'btn tonal', type: 'button', onclick: async () => { const v = name.value.trim(); if (!v) return; try { await patchGroup(cv.cid, { name: v.slice(0, 40) }); toast('Название сохранено'); } catch { toast('Не получилось'); } } }, 'Сохранить');
+  const cards = await friendCards((c.members || []).filter((x) => x !== me()), 120000).catch(() => []);
+  const rows = [{ uid: me(), nick: `${myNick() || 'Вы'} (вы)`, avatar: (meCard || {}).avatar }, ...cards].map((u) => h('button', { type: 'button', class: 'gr-mem', onclick: () => { if (u.uid !== me()) { closeSheet(); setTimeout(() => openUserPage(u.uid, u), 250); } } },
+    h('img', { src: avSrc(u.avatar), alt: '', loading: 'lazy' }), h('b', { text: u.nick || 'друг' }), c.owner === u.uid ? h('small', { text: 'создатель' }) : null));
+  const addBtn = owner && (c.members || []).length < 10 ? h('button', { type: 'button', class: 'up-ca', onclick: async () => {
+    if (!friendsLoaded()) await loadFriends();
+    const free = friendIds().filter((x) => !(c.members || []).includes(x));
+    if (!free.length) { toast('Все ваши друзья уже в группе'); return; }
+    const fc = await friendCards(free.slice(0, 60));
+    openSheet('Добавить в группу', h('div', { class: 'gr-pick' }, ...fc.map((u) => h('button', { type: 'button', class: 'gr-row', onclick: async () => {
+      try { const m = [...new Set([...(chatById(cv.cid) || c).members, u.uid])].slice(0, 10); await patchGroup(cv.cid, { members: m }); cv.members = m; cv.cards.set(u.uid, u); closeSheet(); toast(`${u.nick} в группе`); } catch { toast('Не получилось'); }
+    } }, h('img', { src: avSrc(u.avatar), alt: '' }), h('b', { text: u.nick }), h('i', { class: 'gr-chk' }, mi('add'))))));
+  } }, mi('person-add'), h('span', { text: 'Добавить участников' })) : null;
+  openSheet(c.name || 'Группа', h('div', { class: 'gr-sheet' },
+    h('div', { class: 'gr-name' }, name, save),
+    h('div', { class: 'section-title', text: `Участники · ${(c.members || []).length}` }),
+    h('div', { class: 'gr-mems' }, ...rows),
+    h('div', { class: 'up-chat-list' }, ...[addBtn,
+      h('button', { type: 'button', class: 'up-ca', onclick: () => { closeSheet(); setTimeout(() => openStreak(cv.cid, chatById(cv.cid) || c, me(), '', 'группой'), 250); } }, mi('fire'), h('span', { text: 'Огонёк группы' })),
+      h('button', { type: 'button', class: 'up-ca', onclick: (e) => confirm2(e.currentTarget, 'Нажмите ещё раз — очистить у себя', async () => { try { await setFlagsCid(cv.cid, { [`x_${me()}`]: srvNow() }); toast('Чат очищен у вас'); closeSheet(); } catch { toast('Не получилось'); } }) }, mi('chat'), h('span', { text: 'Очистить чат у себя' })),
+      h('button', { type: 'button', class: 'up-ca danger', onclick: (e) => confirm2(e.currentTarget, 'Нажмите ещё раз — выйти из группы', async () => { try { await leaveGroup(cv.cid); closeSheet(); closeChat(); toast('Вы вышли из группы'); } catch { toast('Не получилось'); } }) }, mi('close'), h('span', { text: 'Выйти из группы' }))].filter(Boolean))));
+}
+
+async function openConv(cv) {
   const up = document.getElementById('user-page');
   if (up && up.classList.contains('open')) closeUserPage();
-  const cid = chatId(me(), uid);
-  const u = card || (await cardOf(uid)) || { uid, nick: 'друг' };
   const p = ensurePage();
-  if (offKb) { offKb(); offKb = null; }
-  stopVoice();
-  openId = cid;
+  cleanup();
+  openId = cv.cid; cvCur = cv;
+  const cid = cv.cid, uid = cv.peer, u = cv.u || {};
+  if (!meCard) cardOf(me()).then((c) => { if (c) meCard = c; }).catch(() => {});
+  const nickOf = (x) => (x === me() ? ((meCard && meCard.nick) || myNick() || 'Вы') : ((cv.cards.get(x) || {}).nick || 'друг'));
+  const avOf = (x) => (x === me() ? (meCard || {}).avatar : (cv.cards.get(x) || {}).avatar);
+  const fine = matchMedia('(pointer: fine)').matches;
+
   const list = h('div', { class: 'ch-list' });
-  const input = h('textarea', { class: 'ch-input', rows: '1', placeholder: matchMedia('(pointer: fine)').matches ? `Написать @${u.nick || 'другу'}` : 'Сообщение', maxlength: '500', enterkeyhint: 'send' });
+  const input = h('textarea', { class: 'ch-input', rows: '1', placeholder: fine ? `Написать ${cv.group ? `в «${cv.title}»` : `@${u.nick || 'другу'}`}` : 'Сообщение', maxlength: '500', enterkeyhint: 'send' });
   const sendBtn = h('button', { class: 'ch-send', type: 'button', 'aria-label': 'Отправить' }, mi('send'));
   const micBtn = h('button', { class: 'ch-send ch-mic', type: 'button', 'aria-label': 'Записать голосовое', title: 'Голосовое сообщение' }, mi('mic'));
   const shareBtn = h('button', { class: 'ch-share', type: 'button', title: 'Отправить трек, который играет', 'aria-label': 'Отправить текущий трек' }, mi('note'));
   const photoIn = h('input', { type: 'file', accept: 'image/*', hidden: '' });
   const photoBtn = h('button', { class: 'ch-share', type: 'button', title: 'Отправить фото', 'aria-label': 'Отправить фото', onclick: () => photoIn.click() }, mi('image'));
   const bar = h('div', { class: 'ch-bar' }, photoIn, photoBtn, shareBtn, input, sendBtn, canVoice() ? micBtn : null);
-  const paintBar = () => bar.classList.toggle('typing', Boolean(input.value.trim()) || !canVoice());
+  const paintBar = () => bar.classList.toggle('typing', Boolean(input.value.trim()) || !canVoice() || Boolean(editing));
+
+  // ответ и правка: плашка над полем ввода
+  const replyBar = h('div', { class: 'ch-reply', hidden: '' });
+  let replyTo = null, editing = null;
+  const paintReply = () => {
+    const x = editing || replyTo;
+    if (!x) { replyBar.hidden = true; replyBar.replaceChildren(); paintBar(); return; }
+    replyBar.hidden = false;
+    replyBar.classList.toggle('edit', Boolean(editing));
+    replyBar.replaceChildren(
+      h('span', { class: 'ch-reply-ic' }, mi(editing ? 'edit' : 'reply')),
+      h('span', { class: 'ch-reply-t' }, h('b', { text: editing ? 'Редактирование' : `Ответ ${nickOf(replyTo.from)}` }), h('small', { text: editing ? editing.text : replyTo.text })),
+      h('button', { type: 'button', class: 'ch-reply-x', 'aria-label': 'Отменить', onclick: () => { if (editing) { input.value = ''; input.style.height = ''; } replyTo = null; editing = null; paintReply(); } }, mi('close')));
+    paintBar();
+  };
+  const setReply = (id, m) => { editing = null; replyTo = { id, from: m.from, text: quoteText(m) }; paintReply(); input.focus({ preventScroll: true }); };
+  const setEdit = (id, m) => { replyTo = null; editing = { id, text: String(m.text || '').slice(0, 80) }; input.value = m.text || ''; input.style.height = ''; input.style.height = `${Math.min(120, input.scrollHeight)}px`; paintReply(); input.focus({ preventScroll: true }); };
+
   photoIn.addEventListener('change', async () => {
     const f = photoIn.files && photoIn.files[0]; photoIn.value = ''; if (!f) return;
     let d;
     try { d = await shrink(f); } catch { toast('Не получилось открыть это фото'); return; }
-    // сначала показываем фото и спрашиваем: отправить или отменить
     const cap = h('input', { class: 'ch-pc-cap', type: 'text', maxlength: '500', placeholder: 'Подпись (необязательно)', value: input.value.trim() });
     const close = () => { box.classList.remove('show'); setTimeout(() => box.remove(), 260); };
     const ok = h('button', { class: 'btn', type: 'button', onclick: async () => {
       ok.disabled = true; ok.textContent = 'Отправляю…';
-      try { await send(cid, cap.value.trim(), null, d); input.value = ''; paintBar(); close(); }
+      try { await send(cv, cap.value.trim(), null, d, null, replyTo); input.value = ''; replyTo = null; paintReply(); close(); }
       catch { ok.disabled = false; ok.textContent = 'Отправить'; toast('Фото не отправилось. Попробуйте ещё раз'); }
     } }, mi('send'), h('span', { text: 'Отправить' }));
     const box = h('div', { class: 'ch-pc', role: 'dialog', 'aria-label': 'Отправить фото?' },
       h('div', { class: 'ch-pc-card' },
-        h('b', { class: 'ch-pc-t', text: `Отправить фото ${u.nick || 'другу'}?` }),
+        h('b', { class: 'ch-pc-t', text: `Отправить фото ${cv.group ? `в «${cv.title}»` : (u.nick || 'другу')}?` }),
         h('img', { src: d, alt: '' }), cap,
         h('div', { class: 'ch-pc-btns' }, h('button', { class: 'btn tonal', type: 'button', onclick: close }, 'Отмена'), ok)));
     box.addEventListener('click', (e) => { if (e.target === box) close(); });
@@ -358,23 +562,39 @@ export async function openChat(uid, card) {
   });
   // клавиатура не прячется после отправки: кнопка не забирает фокус у поля ввода
   let keepFocus = false;
-  const noSteal = (e) => { keepFocus = document.activeElement === input; e.preventDefault(); };
-  sendBtn.addEventListener('mousedown', noSteal); sendBtn.addEventListener('pointerdown', (e) => { keepFocus = document.activeElement === input; if (e.pointerType === 'mouse') e.preventDefault(); });
+  sendBtn.addEventListener('mousedown', (e) => { keepFocus = document.activeElement === input; e.preventDefault(); });
+  sendBtn.addEventListener('pointerdown', (e) => { keepFocus = document.activeElement === input; if (e.pointerType === 'mouse') e.preventDefault(); });
+  const blockedNow = () => (!cv.group && (blockedByMe(uid) || blockedMe(uid)));
   const doSend = async (track) => {
     const text = input.value.trim();
+    if (editing) {
+      const ed = editing; editing = null;
+      input.value = ''; input.style.height = ''; paintReply();
+      if (text && text !== ed.text) { try { await editMsg(cid, ed.id, text); } catch { toast('Изменения заработают после обновления правил базы'); } }
+      return;
+    }
     if (!text && !track) return;
-    if (blockedByMe(uid)) { toast('Сначала разблокируйте собеседника'); return; }
-    if (blockedMe(uid)) { toast(`${u.nick || 'Собеседник'} ограничил(а) сообщения`); return; }
-    input.value = ''; input.style.height = ''; paintBar();
+    if (blockedNow()) { toast(blockedByMe(uid) ? 'Сначала разблокируйте собеседника' : `${u.nick || 'Собеседник'} ограничил(а) сообщения`); return; }
+    const re = replyTo; replyTo = null;
+    input.value = ''; input.style.height = ''; paintReply();
     if (keepFocus) input.focus({ preventScroll: true });
     keepFocus = false;
-    try { await send(cid, track ? (text || 'Послушай') : text, track); }
+    try { await send(cv, track ? (text || 'Послушай') : text, track, null, null, re); }
     catch { toast('Не отправилось. Проверьте интернет и попробуйте ещё раз'); if (!input.value) { input.value = text; paintBar(); } }
   };
   sendBtn.addEventListener('click', () => doSend());
   shareBtn.addEventListener('click', () => { const t = player.queue.current; if (!t) { toast('Сейчас ничего не играет'); return; } doSend(t); });
-  input.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey && !matchMedia('(pointer: coarse)').matches) { e.preventDefault(); doSend(); } });
-  input.addEventListener('input', () => { input.style.height = ''; input.style.height = `${Math.min(120, input.scrollHeight)}px`; paintBar(); });
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey && !matchMedia('(pointer: coarse)').matches) { e.preventDefault(); doSend(); }
+    if (e.key === 'Escape' && (replyTo || editing)) { if (editing) input.value = ''; replyTo = null; editing = null; paintReply(); }
+    // стрелка вверх в пустом поле — изменить своё последнее сообщение
+    if (e.key === 'ArrowUp' && !input.value && lastDocs) {
+      const mine = lastDocs.find((d) => d.data().from === me() && !isCallMsg(d.data().text) && d.data().text && !d.data().voice);
+      if (mine) { e.preventDefault(); setEdit(mine.id, mine.data()); }
+    }
+  });
+  input.addEventListener('input', () => { input.style.height = ''; input.style.height = `${Math.min(120, input.scrollHeight)}px`; paintBar(); if (input.value.trim() && !editing) typing(cid, 'text'); });
+  input.addEventListener('blur', () => { if (!input.value.trim()) typingOff(cid); });
 
   // ---- запись голосового: нажали микрофон — пишем, «отправить» или «отмена» ----
   let rec = null;
@@ -382,14 +602,15 @@ export async function openChat(uid, card) {
   const stopRec = (sendIt) => {
     if (!rec) return;
     const r = rec; rec = null;
-    clearInterval(r.timer); clearTimeout(r.cap);
+    clearInterval(r.timer); clearTimeout(r.cap); clearInterval(r.typ);
     r.sendIt = sendIt;
     try { if (r.mr.state !== 'inactive') r.mr.stop(); } catch { /* ignore */ }
     bar.classList.remove('rec');
+    if (!sendIt) typingOff(cid);
   };
   micBtn.addEventListener('click', async () => {
     if (rec) return;
-    if (blockedByMe(uid) || blockedMe(uid)) { toast('Переписка ограничена'); return; }
+    if (blockedNow()) { toast('Переписка ограничена'); return; }
     let stream;
     try { stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } }); }
     catch { toast('Нет доступа к микрофону. Разрешите его в настройках браузера'); return; }
@@ -397,179 +618,323 @@ export async function openChat(uid, card) {
     let mr;
     try { mr = new MediaRecorder(stream, { ...(mime ? { mimeType: mime } : {}), audioBitsPerSecond: 32000 }); }
     catch { try { mr = new MediaRecorder(stream); } catch { stream.getTracks().forEach((t) => t.stop()); toast('Этот браузер не умеет записывать голос'); return; } }
-    const chunks = [], t0 = srvNow();
-    const r = { mr, stream, t0, sendIt: false, timer: 0, cap: 0 };
+    const chunks = [], t0 = Date.now();
+    const re = replyTo;
+    const r = { mr, stream, t0, sendIt: false, timer: 0, cap: 0, typ: 0 };
     rec = r;
     mr.ondataavailable = (e) => { if (e.data && e.data.size) chunks.push(e.data); };
     mr.onstop = async () => {
       stream.getTracks().forEach((t) => t.stop());
-      const dur = (srvNow() - t0) / 1000;
+      const sec = (Date.now() - t0) / 1000;
       if (!r.sendIt) return;
-      if (dur < 0.7) { toast('Слишком коротко — держите запись подольше'); return; }
+      if (sec < 0.7) { toast('Слишком коротко — держите запись подольше'); typingOff(cid); return; }
       const blob = new Blob(chunks, { type: (mr.mimeType || mime || 'audio/webm').split(';')[0] });
       if (blob.size > 290000) { toast('Слишком длинное голосовое'); return; }
       const data = await new Promise((res) => { const fr = new FileReader(); fr.onload = () => res(String(fr.result)); fr.onerror = () => res(''); fr.readAsDataURL(blob); });
       if (!data) return;
-      try { await send(cid, '', null, null, { data, dur }); } catch { toast('Голосовое не отправилось. Попробуйте ещё раз'); }
+      if (re === replyTo) { replyTo = null; paintReply(); }
+      try { await send(cv, '', null, null, { data, dur: sec }, re); } catch { toast('Голосовое не отправилось. Попробуйте ещё раз'); }
     };
     mr.start(250);
     if (player.st.playing) player.pause();
+    typing(cid, 'voice');
     const tm = h('b', { class: 'ch-rec-t', text: '0:00' });
     recUi.replaceChildren(
       h('button', { type: 'button', class: 'ch-rec-x', 'aria-label': 'Отменить', onclick: () => stopRec(false) }, mi('close')),
       h('i', { class: 'ch-rec-dot' }), tm, h('span', { class: 'ch-rec-hint', text: 'Идёт запись…' }),
       h('button', { type: 'button', class: 'ch-send ch-rec-send', 'aria-label': 'Отправить голосовое', onclick: () => stopRec(true) }, mi('send')));
     bar.classList.add('rec');
-    r.timer = setInterval(() => { tm.textContent = mmss((srvNow() - t0) / 1000); }, 250);
+    r.timer = setInterval(() => { tm.textContent = mmss((Date.now() - t0) / 1000); }, 250);
+    r.typ = setInterval(() => typing(cid, 'voice'), 3600);
     r.cap = setTimeout(() => stopRec(true), VOICE_MAX * 1000);
   });
   bar.appendChild(recUi);
 
-  // ---- шапка: нажали на ник или фото — открывается профиль собеседника ----
-  const openProfile = () => openUserPage(uid, u);
+  // ---- шапка ----
+  const openProfile = () => (cv.group ? groupSheet(cv) : openUserPage(uid, u));
   const banner = h('div', { class: 'ch-block' });
+  const avBtn = h('button', { type: 'button', class: 'ch-av', 'aria-label': cv.group ? 'Участники' : 'Профиль', onclick: openProfile },
+    cv.group ? groupAvatar({ members: cv.members }, cv.cards) : h('img', { src: avSrc(u.avatar), alt: '' }));
+  const whoName = h('span', { text: cv.title });
+  const whoSmall = h('small');
   p.replaceChildren(
     h('header', { class: 'ch-head' },
-      h('button', { class: 'icon-btn', type: 'button', 'aria-label': 'Назад', onclick: closeChat }, mi('close')),
-      h('button', { type: 'button', class: 'ch-av', 'aria-label': 'Профиль', onclick: openProfile }, h('img', { src: avSrc(u.avatar), alt: '' }), isOnline(u.seen) ? h('i', { class: 'online-dot' }) : null),
-      h('div', { class: 'ch-who', role: 'button', tabindex: '0', onclick: (e) => { if (!e.target.closest('.fire')) openProfile(); } }, h('b', {}, h('span', { text: u.nick || 'друг' }), h('span', { class: 'ch-fire' })), h('small', { text: isOnline(u.seen) && u.now ? `Слушает: ${u.now}` : seenText(u.seen) || '' })),
-      h('button', { class: 'icon-btn ch-callbtn', type: 'button', 'aria-label': 'Позвонить', title: 'Позвонить', onclick: () => { if (isBlocked(uid)) { toast('Звонки ограничены'); return; } startCall([uid]); } }, mi('phone')),
-      h('button', { class: 'icon-btn ch-bgbtn', type: 'button', 'aria-label': 'Фон чата', title: 'Фон чата', onclick: () => bgMenu(list, cid) }, mi('palette'))),
+      h('button', { class: 'icon-btn ch-back', type: 'button', 'aria-label': 'Назад', onclick: closeChat }, mi('close')),
+      avBtn,
+      h('div', { class: 'ch-who', role: 'button', tabindex: '0', onclick: (e) => { if (!e.target.closest('.fire')) openProfile(); } }, h('b', {}, whoName, h('span', { class: 'ch-fire' })), whoSmall),
+      h('button', { class: 'icon-btn ch-callbtn', type: 'button', 'aria-label': 'Позвонить', title: cv.group ? 'Позвонить группе (до 4 человек)' : 'Позвонить', onclick: () => {
+        if (cv.group) { startCall(cv.members.filter((x) => x !== me() && isFriend(x)).slice(0, 3)); return; }
+        if (isBlocked(uid)) { toast('Звонки ограничены'); return; }
+        startCall([uid]);
+      } }, mi('phone')),
+      h('button', { class: 'icon-btn ch-morebtn', type: 'button', 'aria-label': 'Ещё', title: 'Слушать вместе, общий плейлист, огонёк, фон', onclick: () => convMenu(cv, list) }, mi('more'))),
+    h('div', { class: 'ch-tg' }),
     list,
     h('div', { class: 'ch-firecta' }),
     banner,
+    replyBar,
     bar);
   paintBar();
   paintBg(list, cid);
   requestAnimationFrame(() => p.classList.add('open'));
   document.body.classList.add('chat-open');
-  document.querySelectorAll('.cl-row').forEach((r) => r.classList.toggle('on', r.dataset.uid === uid));
+  document.querySelectorAll('.cl-row').forEach((r) => r.classList.toggle('on', r.dataset.cid === cid));
   offKb = fitKeyboard(p, list);
+  // «Слушаете вместе»
+  const tg = togetherBar(cid, cv.members, nickOf);
+  p.querySelector('.ch-tg').appendChild(tg.el);
+  offTg = tg.stop;
 
-  if (!meCard) cardOf(me()).then((c) => { if (c) meCard = c; }).catch(() => {});
-  if (unsubMsgs) unsubMsgs();
-  const drawn = new Map(); let first = true; let lastDocs = null; let viewKey = '';
-  // галочки: одна — доставлено, две — прочитано (друг открыл чат после этого сообщения)
-  const ticks = new Map();
-  const paintTicks = () => {
-    const c = chatWith(uid); const readAt = Number(c && c.read && c.read[uid]) || 0;
-    ticks.forEach(({ at, el }) => { const r = readAt >= at; if (el.dataset.r !== String(r)) { el.dataset.r = String(r); el.classList.toggle('read', r); el.title = r ? 'Прочитано' : 'Доставлено'; } });
+  // ---- статус в шапке: в сети / слушает / печатает ----
+  let peerSeen = u.seen, peerNow = u.now;
+  const paintStatus = () => {
+    const c = chatById(cid);
+    const ty = typers(c);
+    whoSmall.classList.remove('on', 'ty');
+    if (ty.length) {
+      whoSmall.classList.add('ty');
+      const voice = ty.some((x) => x.kind === 'voice');
+      const who = cv.group ? `${ty.map((x) => nickOf(x.uid)).slice(0, 2).join(', ')} ` : '';
+      whoSmall.replaceChildren(h('span', { text: `${who}${voice ? 'записывает голосовое' : 'печатает'}` }), h('i', { class: 'ty-dots' }, h('i'), h('i'), h('i')));
+      return;
+    }
+    if (cv.group) { whoSmall.textContent = `${(c ? c.members : cv.members).length} участников`; return; }
+    const on = isOnline(peerSeen);
+    whoSmall.textContent = on && peerNow ? `Слушает: ${peerNow}` : on ? 'в сети' : seenText(peerSeen) || '';
+    whoSmall.classList.toggle('on', on);
+    const dot = avBtn.querySelector('.online-dot');
+    if (on && !dot) avBtn.appendChild(h('i', { class: 'online-dot' })); else if (!on && dot) dot.remove();
   };
+  let unsubPeer = () => {};
+  if (!cv.group) { try { unsubPeer = onSnapshot(doc(db, 'profiles', uid), (d) => { const x = d.exists() ? d.data() : {}; if (x.seen != null) peerSeen = x.seen; if (x.now != null) peerNow = x.now; paintStatus(); }, () => {}); } catch { /* ignore */ } }
+  const peerT = setInterval(paintStatus, 2000);
+  offPeer = () => { try { unsubPeer(); } catch { /* ignore */ } clearInterval(peerT); offPeer = null; };
+
   // блокировка: плашка вместо поля ввода
   const paintBlock = () => {
+    if (cv.group) { banner.replaceChildren(); p.classList.remove('blocked'); return; }
     const mine = blockedByMe(uid), theirs = blockedMe(uid);
     p.classList.toggle('blocked', Boolean(mine || theirs));
     if (mine) banner.replaceChildren(h('span', { text: `Вы заблокировали ${u.nick || 'собеседника'}` }), h('button', { type: 'button', class: 'btn tonal', onclick: async () => { try { await setBlocked(uid, false); toast('Разблокировано'); } catch { toast('Не получилось'); } } }, 'Разблокировать'));
     else if (theirs) banner.replaceChildren(h('span', { text: `${u.nick || 'Собеседник'} ограничил(а) сообщения и звонки` }));
     else banner.replaceChildren();
   };
-  // огонёк в шапке чата
+  // огонёк
   const fireSlot = p.querySelector('.ch-fire');
   const cta = p.querySelector('.ch-firecta');
   const paintFire = () => {
-    if (!fireSlot) return;
-    const c = chatWith(uid); const stt = streakOf(c, me(), uid);
-    // кнопка «Завести MKW огонёк», пока огонька нет (или он погас)
-    if (cta) {
-      if (c && !isBlocked(uid) && (stt.state === 'none' || stt.state === 'lost')) {
-        if (cta.dataset.s !== stt.state) {
-          cta.dataset.s = stt.state;
-          const go = h('button', { class: 'ch-fire-go', type: 'button', onclick: async () => {
-            if (stt.state === 'lost') { openStreak(cid, chatWith(uid) || { read: {} }, me(), uid, u.nick || 'другом'); return; }
-            go.disabled = true;
-            try { await startStreak(cid, me()); } catch { go.disabled = false; toast('Не получилось. Проверьте интернет'); }
-          } }, fireIcon({ state: 'lit', level: { l: 1 } }, true), h('span', { text: stt.state === 'lost' ? 'Огонёк погас — восстановить или завести заново' : 'Завести MKW огонёк' }));
-          cta.replaceChildren(go);
-        }
-      } else if (cta.dataset.s) { cta.dataset.s = ''; cta.replaceChildren(); }
-    }
-    playFire(p, cid, stt, c, u.nick || 'другом');
+    const c = chatById(cid); const stt = streakAny(c, me(), uid);
+    if (c && !blockedNow() && (stt.state === 'none' || stt.state === 'lost')) {
+      if (cta.dataset.s !== stt.state) {
+        cta.dataset.s = stt.state;
+        const go = h('button', { class: 'ch-fire-go', type: 'button', onclick: async () => {
+          if (stt.state === 'lost') { openStreak(cid, chatById(cid) || { read: {} }, me(), uid, cv.group ? 'группой' : (u.nick || 'другом')); return; }
+          go.disabled = true;
+          try { await startStreak(cid, me(), cv.group); } catch { go.disabled = false; toast('Не получилось. Проверьте интернет'); }
+        } }, fireIcon({ state: 'lit', level: { l: 1 } }, true), h('span', { text: stt.state === 'lost' ? 'Огонёк погас — восстановить или завести заново' : cv.group ? 'Завести огонёк группы' : 'Завести MKW огонёк' }));
+        cta.replaceChildren(go);
+      }
+    } else if (cta.dataset.s) { cta.dataset.s = ''; cta.replaceChildren(); }
+    playFire(p, cid, stt, c, cv.group ? cv.title : (u.nick || 'другом'));
     if (stt.state === 'none') { fireSlot.replaceChildren(); return; }
     const f = fireIcon(stt); f.setAttribute('role', 'button'); f.tabIndex = 0;
-    f.addEventListener('click', () => openStreak(cid, c || { read: {} }, me(), uid, u.nick || 'другом'));
+    f.addEventListener('click', () => openStreak(cid, chatById(cid) || { read: {} }, me(), uid, cv.group ? 'группой' : (u.nick || 'другом')));
     fireSlot.replaceChildren(f);
   };
-  const keyOf = () => { const c = chatWith(uid); return `${clearedAt(c)}|${blockedByMe(uid)}`; };
-  // рисуем сообщения (уже нарисованные не пересоздаём — фото и голосовые не мигают)
+
+  // ---- сообщения ----
+  const drawn = new Map(); let first = true; let lastDocs = null; let viewKey = '';
+  const byId = new Map();
+  const ticks = new Map();
+  const readBy = () => {
+    const c = chatById(cid); const r = rd(c);
+    return Math.max(0, ...(c ? c.members : cv.members).filter((x) => x !== me()).map((x) => Number(r[x]) || 0));
+  };
+  const paintTicks = () => {
+    const readAt = readBy();
+    ticks.forEach(({ at, el }) => { const r = readAt >= at; if (el.dataset.r !== String(r)) { el.dataset.r = String(r); el.classList.toggle('read', r); el.title = r ? 'Прочитано' : 'Доставлено'; } });
+  };
+  const keyOf = () => { const c = chatById(cid); return `${clearedAt(c)}|${cv.group ? '' : blockedByMe(uid)}`; };
+  const sigOf = (m) => `${m.text}|${m.ed || 0}|${JSON.stringify(m.rx || {})}|${(m.re && m.re.id) || ''}`;
+  const rxRow = (id, m) => {
+    const rx = m.rx || {}; const groups = {};
+    Object.entries(rx).forEach(([who, e]) => { if (e) (groups[e] = groups[e] || []).push(who); });
+    const keys = Object.keys(groups);
+    if (!keys.length) return null;
+    const mineR = rx[me()];
+    return h('div', { class: 'ch-rx' }, ...keys.map((e) => h('button', { type: 'button', class: `ch-rxc${groups[e].includes(me()) ? ' on' : ''}`, title: groups[e].map(nickOf).join(', '), onclick: (ev) => { ev.stopPropagation(); react(cid, id, e, mineR).catch(() => toast('Реакции заработают после обновления правил базы')); } },
+      h('span', { text: e }), groups[e].length > 1 || cv.group ? h('small', { text: String(groups[e].length) }) : null)));
+  };
+  const flash = (id) => { const x = drawn.get(id); if (!x) { toast('Это сообщение выше — пролистайте'); return; } x.el.scrollIntoView({ block: 'center', behavior: 'smooth' }); x.el.classList.remove('flash'); void x.el.offsetWidth; x.el.classList.add('flash'); };
+  const build = (id, m) => {
+    if (isCallMsg(m.text)) {
+      const ev = parseCall(m.text); const mine = m.from === me();
+      const label = ev.kind === 'missed' ? (mine ? 'Звонок без ответа' : 'Пропущенный звонок')
+        : ev.kind === 'declined' ? `${ev.nick || 'Друг'} отклонил(а) звонок`
+        : `${mine ? 'Исходящий' : 'Входящий'} звонок · ${dur(ev.sec)}`;
+      return h('div', { class: `ch-call ${ev.kind}${mine ? ' me' : ''}${first ? '' : ' new'}`, 'data-id': id },
+        h('span', { class: 'ch-call-ic' }, mi(ev.kind === 'ended' ? 'phone' : 'call-end')),
+        h('span', { class: 'ch-call-t' }, h('b', { text: label }), h('small', { text: timeOf(m.at) })),
+        h('button', { class: 'ch-call-again', type: 'button', title: 'Позвонить', 'aria-label': 'Позвонить', onclick: () => (cv.group ? startCall(cv.members.filter((x) => x !== me() && isFriend(x)).slice(0, 3)) : startCall([uid])) }, mi('phone')));
+    }
+    const mineMsg = m.from === me();
+    const voiceSrc = typeof m.voice === 'string' && m.voice.startsWith('data:audio/') ? m.voice : typeof m.img === 'string' && m.img.startsWith('data:audio/') ? m.img : '';
+    const photoOnly = m.img && !voiceSrc && !m.text && !m.track && !m.re;
+    const img = !voiceSrc && m.img && safeUrl(m.img).startsWith('data:image/') ? h('img', { class: 'ch-img', src: m.img, alt: 'Фото', decoding: 'async', onclick: () => openImage(m.img, '') }) : null;
+    if (img) img.addEventListener('load', () => { if (list.scrollHeight - list.scrollTop - list.clientHeight < 400) list.scrollTop = list.scrollHeight; }, { once: true });
+    const text = voiceSrc && m.text === VOICE_TXT ? '' : m.text;
+    const meta = h('div', { class: 'ch-meta' }, h('img', { src: avSrc(avOf(m.from)), alt: '', loading: 'lazy' }), h('b', { text: nickOf(m.from) }), h('span', { text: `${dayOf(m.at)}, ${timeOf(m.at)}` }));
+    const quote = m.re && m.re.id ? h('button', { type: 'button', class: 'ch-quote', onclick: (e) => { e.stopPropagation(); flash(m.re.id); } }, h('b', { text: nickOf(m.re.from) }), h('span', { text: m.re.text || '…' })) : null;
+    let tk = null;
+    if (mineMsg) { tk = h('span', { class: 'ch-tick', 'aria-hidden': 'true' }, h('i'), h('i')); ticks.set(id, { at: Number(m.at) || 0, el: tk }); }
+    const hov = fine ? h('span', { class: 'ch-hov' },
+      h('button', { type: 'button', title: 'Реакция', 'data-act': 'menu' }, mi('emoji')),
+      h('button', { type: 'button', title: 'Ответить', 'data-act': 'reply' }, mi('reply')),
+      mineMsg && text && !voiceSrc ? h('button', { type: 'button', title: 'Изменить', 'data-act': 'edit' }, mi('edit')) : null,
+      h('button', { type: 'button', title: 'Ещё', 'data-act': 'menu' }, mi('more'))) : null;
+    return h('div', { class: `ch-msg${mineMsg ? ' me' : ''}${img ? ' has-img' : ''}${photoOnly ? ' photo' : ''}${voiceSrc ? ' voice' : ''}${first ? '' : ' new'}`, 'data-id': id },
+      meta,
+      cv.group && !mineMsg ? h('div', { class: 'ch-from', text: nickOf(m.from) }) : null,
+      quote,
+      m.track ? h('button', { class: 'ch-track', type: 'button', onclick: () => playTrack(m.track) }, mi('play-circle'), h('span', {}, h('b', { text: m.track.title }), h('small', { text: m.track.artist }))) : null,
+      img,
+      voiceSrc ? voiceBubble(voiceSrc, Number(m.vdur) || 0) : null,
+      text ? h('div', { class: 'ch-text', text }) : null,
+      rxRow(id, m),
+      h('time', {}, m.ed ? h('em', { text: 'изм. ' }) : null, timeOf(m.at), tk),
+      hov);
+  };
   const render = () => {
     if (!lastDocs) return;
     viewKey = keyOf();
-    const c = chatWith(uid), from = clearedAt(c), bl = blockedByMe(uid);
+    const c = chatById(cid), from = clearedAt(c), bl = cv.group ? 0 : blockedByMe(uid);
     const docs = lastDocs.slice().reverse().filter((d) => { const m = d.data(); const at = Number(m.at) || 0; return at > from && !(bl && m.from === uid && at > bl); });
+    byId.clear(); docs.forEach((d) => byId.set(d.id, d.data()));
     const atBottom = list.scrollHeight - list.scrollTop - list.clientHeight < 80;
-    if (!docs.length) { list.replaceChildren(h('p', { class: 'ch-empty', text: from ? 'Здесь пока пусто — чат очищен.' : `Напишите ${u.nick || 'другу'} первым. Можно отправить трек, который сейчас играет — кнопка с нотой, или голосовое — кнопка с микрофоном.` })); return; }
+    if (!docs.length) { list.replaceChildren(h('p', { class: 'ch-empty', text: from ? 'Здесь пока пусто — чат очищен.' : cv.group ? 'Группа создана. Напишите первым!' : `Напишите ${u.nick || 'другу'} первым. Можно отправить трек, который сейчас играет — кнопка с нотой, или голосовое — кнопка с микрофоном.` })); return; }
     let day = '', prevFrom = '', prevAt = 0;
     const nodes = [];
     docs.forEach((d) => {
       const m = d.data();
       const dd = dayOf(m.at); if (dd !== day) { day = dd; prevFrom = ''; nodes.push(h('div', { class: 'ch-day', text: dd })); }
-      let el = drawn.get(d.id);
-      if (!el && isCallMsg(m.text)) {
-        const ev = parseCall(m.text); const mine = m.from === me();
-        const label = ev.kind === 'missed' ? (mine ? 'Звонок без ответа' : 'Пропущенный звонок')
-          : ev.kind === 'declined' ? `${ev.nick || 'Друг'} отклонил(а) звонок`
-          : `${mine ? 'Исходящий' : 'Входящий'} звонок · ${dur(ev.sec)}`;
-        el = h('div', { class: `ch-call ${ev.kind}${mine ? ' me' : ''}${first ? '' : ' new'}` },
-          h('span', { class: 'ch-call-ic' }, mi(ev.kind === 'ended' ? 'phone' : 'call-end')),
-          h('span', { class: 'ch-call-t' }, h('b', { text: label }), h('small', { text: timeOf(m.at) })),
-          h('button', { class: 'ch-call-again', type: 'button', title: 'Позвонить', 'aria-label': 'Позвонить', onclick: () => startCall([uid]) }, mi('phone')));
-        drawn.set(d.id, el);
-      }
-      if (!el) {
-        const mineMsg = m.from === me();
-        const voiceSrc = typeof m.voice === 'string' && m.voice.startsWith('data:audio/') ? m.voice : typeof m.img === 'string' && m.img.startsWith('data:audio/') ? m.img : '';
-        const photoOnly = m.img && !voiceSrc && !m.text && !m.track;
-        const img = !voiceSrc && m.img && safeUrl(m.img).startsWith('data:image/') ? h('img', { class: 'ch-img', src: m.img, alt: 'Фото', decoding: 'async', onclick: () => openImage(m.img, '') }) : null;
-        if (img) img.addEventListener('load', () => { if (list.scrollHeight - list.scrollTop - list.clientHeight < 400) list.scrollTop = list.scrollHeight; }, { once: true });
-        const text = voiceSrc && m.text === VOICE_TXT ? '' : m.text;
-        // для компьютера: фото, ник и время над сообщением (как в Discord); на телефоне скрыто
-        const who = mineMsg ? (meCard || { nick: myNick(), avatar: '' }) : u;
-        const meta = h('div', { class: 'ch-meta' }, h('img', { src: avSrc(who.avatar), alt: '', loading: 'lazy' }), h('b', { text: who.nick || (mineMsg ? 'Вы' : 'друг') }), h('span', { text: `${dayOf(m.at)}, ${timeOf(m.at)}` }));
-        el = h('div', { class: `ch-msg${mineMsg ? ' me' : ''}${img ? ' has-img' : ''}${photoOnly ? ' photo' : ''}${voiceSrc ? ' voice' : ''}${first ? '' : ' new'}` },
-          meta,
-          m.track ? h('button', { class: 'ch-track', type: 'button', onclick: () => playTrack(m.track) }, mi('play-circle'), h('span', {}, h('b', { text: m.track.title }), h('small', { text: m.track.artist }))) : null,
-          img,
-          voiceSrc ? voiceBubble(voiceSrc, Number(m.vdur) || 0) : null,
-          text ? h('div', { class: 'ch-text', text }) : null,
-          h('time', {}, timeOf(m.at), mineMsg ? (() => { const tk = h('span', { class: 'ch-tick', 'aria-hidden': 'true' }, h('i'), h('i')); ticks.set(d.id, { at: Number(m.at) || 0, el: tk }); return tk; })() : null));
-        drawn.set(d.id, el);
-      }
-      // подряд от одного человека (в пределах 7 минут) — без повторного ника и фото
+      const sig = sigOf(m);
+      let x = drawn.get(d.id);
+      if (!x || x.sig !== sig) { x = { el: build(d.id, m), sig }; drawn.set(d.id, x); }
       const at = Number(m.at) || 0, call = isCallMsg(m.text);
-      el.classList.toggle('grp', !call && prevFrom === m.from && at - prevAt < 420000);
+      x.el.classList.toggle('grp', !call && prevFrom === m.from && at - prevAt < 420000);
       prevFrom = call ? '' : m.from; prevAt = at;
-      nodes.push(el);
+      nodes.push(x.el);
     });
     first = false;
     list.replaceChildren(...nodes);
     paintTicks();
     if (atBottom || list.dataset.first !== '1') { list.scrollTop = list.scrollHeight; list.dataset.first = '1'; }
   };
-  // «в сети» и «слушает» в шапке — вживую, без переоткрытия чата
-  if (offPeer) offPeer();
-  const whoSmall = p.querySelector('.ch-who small'), avBox = p.querySelector('.ch-head .ch-av');
-  const paintPeer = () => {
-    const on = isOnline(u.seen);
-    whoSmall.textContent = on && u.now ? `Слушает: ${u.now}` : on ? 'в сети' : seenText(u.seen) || '';
-    whoSmall.classList.toggle('on', on);
-    const dot = avBox.querySelector('.online-dot');
-    if (on && !dot) avBox.appendChild(h('i', { class: 'online-dot' })); else if (!on && dot) dot.remove();
+
+  // ---- меню сообщения: реакции, ответить, копировать, изменить, удалить ----
+  const openMenu = (el) => {
+    const id = el && el.dataset.id; const m = id && byId.get(id);
+    if (!m || isCallMsg(m.text)) return;
+    if (closeMenu) closeMenu();
+    const mine = m.from === me();
+    const myR = (m.rx || {})[me()];
+    const isVoice = Boolean(m.voice || (typeof m.img === 'string' && m.img.startsWith('data:audio/')));
+    const close = () => { wrap.classList.remove('show'); el.classList.remove('picked'); setTimeout(() => wrap.remove(), 180); closeMenu = null; };
+    const item = (ic, label, fn, danger) => h('button', { type: 'button', class: `ch-mi${danger ? ' danger' : ''}`, onclick: () => { close(); fn(); } }, mi(ic), h('span', { text: label }));
+    const panel = h('div', { class: 'ch-mm-p' },
+      h('div', { class: 'ch-mm-rx' }, ...REACTIONS.map((e) => h('button', { type: 'button', class: myR === e ? 'on' : '', onclick: () => { close(); react(cid, id, e, myR).catch(() => toast('Реакции заработают после обновления правил базы')); } }, e))),
+      h('div', { class: 'ch-mm-list' }, ...[
+        item('reply', 'Ответить', () => setReply(id, m)),
+        m.text && !isVoice ? item('copy', 'Копировать', () => { try { navigator.clipboard.writeText(m.text); toast('Скопировано'); } catch { toast('Не получилось скопировать'); } }) : null,
+        mine && m.text && !isVoice && !m.track ? item('edit', 'Изменить', () => setEdit(id, m)) : null,
+        mine ? item('trash', 'Удалить у всех', () => deleteMsg(cid, id).catch(() => toast('Удаление заработает после обновления правил базы')), true) : null,
+      ].filter(Boolean)));
+    const wrap = h('div', { class: 'ch-mm' }, h('div', { class: 'ch-mm-bg', onclick: close }), panel);
+    p.appendChild(wrap);
+    el.classList.add('picked');
+    const r = el.getBoundingClientRect(), pr = p.getBoundingClientRect();
+    const ph = 300, below = r.bottom + ph < pr.bottom - 8;
+    panel.style.top = `${Math.max(8, Math.min(pr.height - ph - 8, (below ? r.bottom + 8 : r.top - ph - 8) - pr.top))}px`;
+    const left = el.classList.contains('me') && !fine ? r.right - pr.left - 290 : r.left - pr.left;
+    panel.style.left = `${Math.max(8, Math.min(pr.width - 298, left))}px`;
+    requestAnimationFrame(() => wrap.classList.add('show'));
+    closeMenu = close;
   };
-  let unsubPeer = () => {};
-  try { unsubPeer = onSnapshot(doc(db, 'profiles', uid), (d) => { const x = d.exists() ? d.data() : {}; if (x.seen != null) u.seen = x.seen; if (x.now != null) u.now = x.now; paintPeer(); }, () => {}); } catch { /* ignore */ }
-  const peerT = setInterval(paintPeer, 30000);
-  offPeer = () => { try { unsubPeer(); } catch { /* ignore */ } clearInterval(peerT); offPeer = null; };
-  paintPeer();
-  paintFire(); paintBlock();
+  // компьютер: правая кнопка мыши и кнопки при наведении
+  list.addEventListener('contextmenu', (e) => { const el = e.target.closest('.ch-msg'); if (!el) return; e.preventDefault(); openMenu(el); });
+  list.addEventListener('click', (e) => {
+    const b = e.target.closest('.ch-hov button'); if (!b) return;
+    const el = b.closest('.ch-msg'); const id = el.dataset.id; const m = byId.get(id); if (!m) return;
+    const act = b.dataset.act;
+    if (act === 'reply') setReply(id, m); else if (act === 'edit') setEdit(id, m); else openMenu(el);
+  });
+  list.addEventListener('dblclick', (e) => {
+    const el = e.target.closest('.ch-msg'); if (!el || e.target.closest('button, img, .ch-voice')) return;
+    const id = el.dataset.id, m = byId.get(id); if (!m) return;
+    react(cid, id, '❤️', (m.rx || {})[me()]).catch(() => {});
+  });
+  // телефон: свайп влево — ответить, долгое нажатие — меню, двойное касание — ❤️
+  let g = null, lastTap = { id: '', t: 0 };
+  list.addEventListener('touchstart', (e) => {
+    const el = e.target.closest('.ch-msg');
+    if (!el || e.touches.length !== 1) { g = null; return; }
+    const t = e.touches[0];
+    g = { el, x: t.clientX, y: t.clientY, dx: 0, mode: '', timer: 0 };
+    g.timer = setTimeout(() => { if (g && !g.mode) { g.mode = 'long'; if (navigator.vibrate) navigator.vibrate(12); openMenu(el); } }, 430);
+  }, { passive: true });
+  list.addEventListener('touchmove', (e) => {
+    if (!g) return;
+    const t = e.touches[0]; const mx = t.clientX - g.x, my = t.clientY - g.y;
+    if (!g.mode) {
+      if (Math.abs(mx) < 9 && Math.abs(my) < 9) return;
+      clearTimeout(g.timer);
+      g.mode = mx < 0 && Math.abs(mx) > Math.abs(my) * 1.4 ? 'swipe' : 'scroll';
+    }
+    if (g.mode === 'swipe') {
+      e.preventDefault();
+      g.dx = Math.max(-96, Math.min(0, mx));
+      g.el.style.transform = `translateX(${g.dx}px)`;
+      const ok = g.dx < -58;
+      if (ok !== g.el.classList.contains('swipe-ok')) { g.el.classList.toggle('swipe-ok', ok); if (ok && navigator.vibrate) navigator.vibrate(8); }
+    }
+  }, { passive: false });
+  const touchEnd = () => {
+    if (!g) return;
+    clearTimeout(g.timer);
+    const el = g.el;
+    if (g.mode === 'swipe') {
+      el.style.transition = 'transform .22s cubic-bezier(.2,.8,.2,1)'; el.style.transform = '';
+      setTimeout(() => { el.style.transition = ''; }, 240);
+      el.classList.remove('swipe-ok');
+      if (g.dx < -58) { const m = byId.get(el.dataset.id); if (m) setReply(el.dataset.id, m); }
+    } else if (!g.mode) {
+      const now = Date.now(), id = el.dataset.id;
+      if (lastTap.id === id && now - lastTap.t < 300) { const m = byId.get(id); if (m) react(cid, id, '❤️', (m.rx || {})[me()]).catch(() => {}); lastTap = { id: '', t: 0 }; }
+      else lastTap = { id, t: now };
+    }
+    g = null;
+  };
+  list.addEventListener('touchend', touchEnd); list.addEventListener('touchcancel', touchEnd);
+
+  paintStatus(); paintFire(); paintBlock();
   if (offTicks) offTicks();
-  offTicks = onChats(() => { paintTicks(); paintFire(); paintBlock(); if (keyOf() !== viewKey) render(); });
+  offTicks = onChats(() => {
+    const c = chatById(cid);
+    if (cv.group && c) {
+      if (!(c.members || []).includes(me())) { closeChat(); return; }
+      if (c.name && c.name !== cv.title) { cv.title = c.name; whoName.textContent = c.name; }
+      cv.members = c.members;
+    }
+    paintTicks(); paintFire(); paintBlock(); paintStatus();
+    if (keyOf() !== viewKey) render();
+  });
   list.replaceChildren(h('p', { class: 'ch-empty', text: 'Загрузка…' }));
   try {
-    unsubMsgs = onSnapshot(query(collection(db, 'chats', cid, 'msgs'), orderBy('at', 'desc'), limit(80)), (s) => {
+    unsubMsgs = onSnapshot(query(collection(db, 'chats', cid, 'msgs'), orderBy('at', 'desc'), limit(100)), (s) => {
       lastDocs = s.docs;
       render();
-      if (chatWith(uid)) markRead(cid);
+      if (chatById(cid) && !document.hidden) markRead(cid);
     }, () => { list.replaceChildren(h('p', { class: 'ch-empty', text: 'Чат недоступен. Проверьте интернет и откройте снова.' })); });
   } catch { /* ignore */ }
-  if (!matchMedia('(pointer: coarse)').matches) setTimeout(() => input.focus({ preventScroll: true }), 350);
+  if (fine) setTimeout(() => input.focus({ preventScroll: true }), 350);
 }

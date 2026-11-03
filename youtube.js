@@ -1,8 +1,8 @@
 // Поиск видео на YouTube для трека и загрузка IFrame Player API.
-import { db } from './firebase.js?v=0.33.1';
+import { db } from './firebase.js?v=0.34.0';
 import { doc, getDoc, setDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
-import { YOUTUBE_API_KEY } from './config.js?v=0.33.1';
-import { RECOGNIZE_URL } from './shazam-config.js?v=0.33.1';
+import { YOUTUBE_API_KEY } from './config.js?v=0.34.0';
+import { RECOGNIZE_URL } from './shazam-config.js?v=0.34.0';
 
 // Полные треки ищем без ключа и без дневного лимита: через сервер MKW (Worker) и открытые зеркала YouTube.
 // Ключ YouTube Data API — запасной путь, если всё остальное недоступно.
@@ -14,10 +14,21 @@ async function getJ(url, ms = 8000) {
   try { const r = await fetch(url, { signal: c.signal }); if (!r.ok) throw new Error(String(r.status)); return await r.json(); } finally { clearTimeout(t); }
 }
 // единый вид результата: { id, title, channel, dur }
+// Сначала спрашиваем сервер MKW (у всех одинаковый ответ), и только если он молчит — зеркала.
+// Раньше зеркала опрашивались наперегонки в случайном порядке, и у разных людей один трек находил разные видео.
 async function searchFree(q) {
+  if (WK()) {
+    try {
+      const j = await getJ(`${WK()}/ytsearch?q=${encodeURIComponent(q)}`, 4500);
+      const it = (j.items || []).filter((x) => x.id);
+      if (it.length) return it;
+    } catch { /* сервер не ответил — пробуем зеркала */ }
+  }
+  return searchMirrors(q);
+}
+async function searchMirrors(q) {
   const tries = [];
-  if (WK()) tries.push(getJ(`${WK()}/ytsearch?q=${encodeURIComponent(q)}`).then((j) => { const it = (j.items || []).filter((x) => x.id); if (!it.length) throw new Error('пусто'); return it; }));
-  for (const m of [...MIRRORS].sort(() => Math.random() - 0.5).slice(0, 3)) {
+  for (const m of MIRRORS.slice(0, 3)) {
     tries.push(getJ(`${m}/api/v1/search?q=${encodeURIComponent(q)}&type=video&fields=videoId,title,author,lengthSeconds`, 7000).then((j) => {
       const it = (Array.isArray(j) ? j : []).filter((x) => x.videoId).map((x) => ({ id: x.videoId, title: x.title || '', channel: x.author || '', dur: Number(x.lengthSeconds) || 0 }));
       if (!it.length) throw new Error('пусто'); return it;
@@ -58,24 +69,45 @@ function saveMemo() {
   } catch { /* хранилище недоступно, не страшно */ }
 }
 
+// Общий ключ песни для всех: «исполнитель|название» без регистра и знаков. Один и тот же трек в разных
+// странах iTunes и в Deezer имеет разные id — по ключу все слушатели получают одно и то же видео.
+const nk = (s) => String(s || '').toLowerCase().replace(/ё/g, 'е').replace(/\s*[([]\s*(feat|ft|при уч)\.?[^)\]]*[)\]]/g, '').replace(/\s(feat|ft)\.?\s.*$/, '').replace(/[^a-zа-я0-9]+/g, '');
+const firstArtist = (a) => String(a || '').split(/,|&| feat\.? | ft\.? | x | и /i)[0];
+function fnv(str, seed) { let h = seed >>> 0; for (let i = 0; i < str.length; i++) h = Math.imul(h ^ str.charCodeAt(i), 0x01000193) >>> 0; return h.toString(36); }
+export function canonKey(track) {
+  const k = `${nk(firstArtist(track.artist))}|${nk(track.title)}`;
+  if (k.length < 3) return '';
+  return `k_${fnv(k, 0x811c9dc5)}${fnv(k, 0x2b992ddf)}`;
+}
+async function cacheGet(key) {
+  try { const snap = await getDoc(doc(db, 'trackCache', key)); return snap.exists() ? snap.data().youtubeId || null : null; } catch { return null; }
+}
+// записать выбор для всех; если кто-то успел раньше — берём его выбор, чтобы у всех было одинаково
+async function cachePut(key, id) {
+  try { await setDoc(doc(db, 'trackCache', key), { youtubeId: id, cachedAt: Date.now() }); return id; }
+  catch { return (await cacheGet(key)) || id; }
+}
+
 // Возвращает id видео (11 символов) или null.
 export async function findYouTubeId(track) {
   const m = loadMemo();
-  if (m[track.id]) return m[track.id];
+  const ck = canonKey(track);
+  if (ck && m[ck]) return m[ck];
+  if (m[track.id] && !ck) return m[track.id];
 
-  try {
-    const snap = await getDoc(doc(db, 'trackCache', track.id));
-    const id = snap.exists() ? snap.data().youtubeId : null;
-    if (id) { m[track.id] = id; saveMemo(); return id; }
-  } catch { /* кэш недоступен, идём в API */ }
+  // 1) общий выбор по ключу песни, 2) старый кэш по id трека
+  if (ck) { const id = await cacheGet(ck); if (id) { m[ck] = id; m[track.id] = id; saveMemo(); return id; } }
+  if (m[track.id]) { if (ck) { m[ck] = m[track.id]; saveMemo(); cachePut(ck, m[track.id]); } return m[track.id]; }
+  { const id = await cacheGet(track.id); if (id) { m[track.id] = id; if (ck) { m[ck] = await cachePut(ck, id); } saveMemo(); return m[ck] || id; } }
 
   const q = `${track.artist} - ${track.title}`;
   // 1) без ключа и без лимита: сервер MKW или зеркала
   try {
     const items = await searchFree(q);
     if (items.length) {
-      const id = pickFree(items, track);
-      m[track.id] = id; saveMemo();
+      let id = pickFree(items, track);
+      if (ck) id = await cachePut(ck, id);
+      m[track.id] = id; if (ck) m[ck] = id; saveMemo();
       setDoc(doc(db, 'trackCache', track.id), { youtubeId: id, cachedAt: Date.now() }).catch(() => {});
       return id;
     }
@@ -93,8 +125,9 @@ export async function findYouTubeId(track) {
     const data = await res.json();
     const items = (data.items || []).filter((i) => i.id && i.id.videoId);
     if (!items.length) return null;
-    const id = await pickBest(items, track);
-    m[track.id] = id;
+    let id = await pickBest(items, track);
+    if (ck) id = await cachePut(ck, id);
+    m[track.id] = id; if (ck) m[ck] = id;
     saveMemo();
     setDoc(doc(db, 'trackCache', track.id), { youtubeId: id, cachedAt: Date.now() }).catch(() => {});
     return id;
@@ -189,20 +222,19 @@ export async function searchYouTube(term) {
 
 // Id видео из памяти (мгновенно, без сети). Нужен, чтобы запустить трек сразу по нажатию.
 export function peekYouTubeId(track) {
-  return loadMemo()[track.id] || null;
+  const m = loadMemo(); const ck = canonKey(track);
+  return (ck && m[ck]) || m[track.id] || null;
 }
 
 // Заранее подтягиваем из общего кэша id видео для показанных треков (дешёвое чтение, без квоты YouTube).
 export async function prefetchYouTubeIds(tracks) {
   const m = loadMemo();
   let changed = false;
-  const todo = tracks.filter((t) => !t.ytId && !m[t.id] && /^\d+$/.test(t.id)).slice(0, 15);
+  const todo = tracks.filter((t) => !t.ytId && !peekYouTubeId(t)).slice(0, 15);
   await Promise.allSettled(todo.map(async (t) => {
-    try {
-      const snap = await getDoc(doc(db, 'trackCache', t.id));
-      const id = snap.exists() ? snap.data().youtubeId : null;
-      if (id) { m[t.id] = id; changed = true; }
-    } catch { /* ignore */ }
+    const ck = canonKey(t);
+    const id = (ck && await cacheGet(ck)) || (/^\d+$/.test(t.id) ? await cacheGet(t.id) : null);
+    if (id) { m[t.id] = id; if (ck) m[ck] = id; changed = true; }
   }));
   if (changed) saveMemo();
 }
