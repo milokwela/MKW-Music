@@ -1,0 +1,99 @@
+/* MKW Music 0.32 — чаты: голосовые, профиль собеседника, блокировка, клавиатура, ПК в две колонки */
+
+/* шапка чата: фото и ник — кнопка «открыть профиль» */
+.ch-head .ch-av { border: 0; padding: 0; background: none; cursor: pointer; border-radius: 50%; }
+.ch-head .ch-who { flex: 1; cursor: pointer; border-radius: 12px; padding: 2px 4px; margin: -2px -4px; }
+.ch-head .ch-who:active { background: color-mix(in srgb, var(--on-bg) 8%, transparent); }
+.ch-head .ch-callbtn { margin-left: auto; }
+
+/* фото в переписке больше не сжимается в тонкую полоску */
+.ch-msg.has-img { width: min(78%, 340px); }
+.ch-msg.has-img .ch-img { width: 100%; min-height: 120px; }
+
+/* поле ввода: пока пусто — кнопка микрофона, начали печатать — «отправить» */
+.ch-bar { position: relative; }
+.ch-bar .ch-mic { display: none; }
+.ch-bar:not(.typing) .ch-send:not(.ch-mic):not(.ch-rec-send) { display: none; }
+.ch-bar:not(.typing) .ch-mic { display: grid; }
+.ch-send, .ch-mic { transition: transform .18s cubic-bezier(.3,1.4,.5,1); }
+.ch-send:active { transform: scale(.88); }
+
+/* запись голосового */
+.ch-rec { position: absolute; inset: 0; z-index: 2; display: none; align-items: center; gap: 10px; padding: 10px 12px calc(10px + env(safe-area-inset-bottom)); background: var(--surface, #18151d); }
+.ch-bar.rec .ch-rec { display: flex; animation: recIn .22s ease both; }
+.ch-rec-x { flex: none; width: 44px; height: 44px; border: 0; border-radius: 50%; display: grid; place-items: center; background: color-mix(in srgb, #ff3b5c 16%, transparent); color: #ff5a74; cursor: pointer; }
+.ch-rec-x .mi { width: 22px; height: 22px; }
+.ch-rec-dot { width: 10px; height: 10px; border-radius: 50%; background: #ff3b5c; box-shadow: 0 0 0 0 rgba(255,59,92,.6); animation: recDot 1.2s infinite; flex: none; }
+.ch-rec-t { font: 700 16px var(--font, inherit); font-variant-numeric: tabular-nums; min-width: 42px; }
+.ch-rec-hint { flex: 1; color: var(--on-surface-var); font-size: 13.5px; }
+.ch-rec-send { margin-left: auto; }
+@keyframes recIn { from { opacity: 0; transform: translateY(6px); } }
+@keyframes recDot { 70% { box-shadow: 0 0 0 9px rgba(255,59,92,0); } }
+
+/* голосовое в переписке */
+.ch-msg.voice { min-width: 220px; }
+.ch-voice { display: flex; align-items: center; gap: 10px; padding: 2px 0 2px; --p: 0; }
+.ch-vplay { flex: none; width: 40px; height: 40px; border: 0; border-radius: 50%; display: grid; place-items: center; cursor: pointer; background: color-mix(in srgb, var(--on-bg) 14%, transparent); color: inherit; }
+.ch-msg.me .ch-vplay { background: color-mix(in srgb, var(--on-primary) 18%, transparent); }
+.ch-vplay .mi { width: 22px; height: 22px; }
+.ch-vbars { flex: 1; height: 28px; display: flex; align-items: center; gap: 2px; cursor: pointer; min-width: 110px;
+  -webkit-mask: linear-gradient(90deg, #000 calc(var(--p) * 100%), rgba(0,0,0,.4) calc(var(--p) * 100%)); mask: linear-gradient(90deg, #000 calc(var(--p) * 100%), rgba(0,0,0,.4) calc(var(--p) * 100%)); }
+.ch-voice:not(.playing) .ch-vbars { -webkit-mask: none; mask: none; opacity: .75; }
+.ch-vbars i { flex: 1; min-width: 2px; border-radius: 2px; background: currentColor; }
+.ch-vtime { flex: none; font-size: 12px; opacity: .75; font-variant-numeric: tabular-nums; min-width: 32px; }
+
+/* блокировка */
+.ch-block:empty { display: none; }
+.ch-block { display: flex; align-items: center; justify-content: center; gap: 12px; flex-wrap: wrap; padding: 14px 16px calc(14px + env(safe-area-inset-bottom)); background: var(--surface, #18151d); color: var(--on-surface-var); font-size: 14px; text-align: center; }
+.ch-block .btn { padding: 8px 16px; min-height: 0; }
+#chat-page.blocked .ch-bar, #chat-page.blocked .ch-firecta { display: none !important; }
+.cl-row.blocked .cl-prev { color: #ff6b81; }
+
+/* профиль собеседника: поверх чата и с действиями */
+#user-page.over-chat { z-index: 66; }
+.up-chat { display: grid; gap: 10px; margin: 6px 0 4px; }
+.up-chat .section-title { margin-bottom: 0; }
+.up-chat-list { display: grid; gap: 2px; border-radius: 22px; overflow: hidden; background: var(--surface-high, rgba(255,255,255,.06)); }
+.up-ca { display: flex; align-items: center; gap: 14px; width: 100%; padding: 15px 18px; border: 0; background: none; color: inherit; font: 600 15px var(--font, inherit); text-align: left; cursor: pointer; }
+.up-ca + .up-ca { border-top: 1px solid color-mix(in srgb, var(--on-bg) 8%, transparent); }
+.up-ca .mi { width: 22px; height: 22px; opacity: .85; }
+.up-ca.danger { color: #ff5a74; }
+.up-ca:active { background: color-mix(in srgb, var(--on-bg) 8%, transparent); }
+.up-ca[data-sure="1"] { background: color-mix(in srgb, #ff3b5c 14%, transparent); }
+.up-blocked { display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-radius: 18px; background: color-mix(in srgb, #ff3b5c 14%, transparent); color: #ff8fa0; font-size: 14px; }
+.up-blocked .mi { width: 20px; height: 20px; flex: none; }
+
+/* клавиатура открыта (iPhone): окно чата подогнано под видимую часть, лишних отступов снизу нет */
+#chat-page.kb .ch-bar, #chat-page.kb .ch-rec, #chat-page.kb .ch-block { padding-bottom: 10px; }
+#chat-page { overscroll-behavior: contain; }
+#chat-page .ch-list { overscroll-behavior: contain; }
+
+/* iPhone: приложение на весь экран, учёт «чёлки» и полоски снизу */
+@supports (-webkit-touch-callout: none) {
+  #chat-page .ch-input, .sheet-input, input, textarea { font-size: max(16px, 1em); } /* без авто-увеличения при вводе */
+}
+
+/* ---------- компьютер: чаты в две колонки, как в мессенджере ---------- */
+@media (min-width: 980px) and (pointer: fine) {
+  :root { --cl-w: 380px; --pane-l: max(16px, calc(50vw - 600px)); }
+  body.on-chats #app { max-width: none; margin: 0; }
+  body.on-chats #view-chats { max-width: var(--cl-w); margin-left: var(--pane-l); }
+  body.on-chats #chat-page { left: calc(var(--pane-l) + var(--cl-w) + 16px); right: max(16px, calc(50vw - 600px)); top: 16px; bottom: 112px; border-radius: 28px; overflow: hidden; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--on-bg) 10%, transparent), 0 20px 60px rgba(0,0,0,.35); z-index: 30; transform: translateX(24px); opacity: 0; transition: transform .3s var(--m3-emph, ease), opacity .25s, visibility 0s .3s; }
+  body.on-chats #chat-page.open { transform: none; opacity: 1; transition-delay: 0s; }
+  body.on-chats #chat-page .ch-head { padding-top: 12px; }
+  body.on-chats #chat-page .ch-bar, body.on-chats #chat-page .ch-rec, body.on-chats #chat-page .ch-block { padding-bottom: 12px; }
+  body.on-chats #chat-page .ch-msg { max-width: min(70%, 560px); }
+  body.on-chats #chat-page .ch-head > .icon-btn:first-child { display: none; }
+  /* пока чат не выбран — подсказка справа */
+  body.on-chats::after { content: 'Выберите чат слева — переписка откроется здесь'; position: fixed; left: calc(var(--pane-l) + var(--cl-w) + 16px); right: max(16px, calc(50vw - 600px)); top: 16px; bottom: 112px; display: grid; place-items: center; border-radius: 28px; border: 1px dashed color-mix(in srgb, var(--on-bg) 14%, transparent); color: var(--on-surface-var); font-size: 15px; pointer-events: none; z-index: 0; }
+  body.on-chats.chat-open::after { opacity: 0; }
+  .cl-row.on { background: color-mix(in srgb, var(--primary) 16%, transparent); }
+  /* сообщение по Enter, перевод строки — Shift+Enter (подсказка) */
+  body.on-chats #chat-page .ch-input::placeholder { color: var(--on-surface-var); }
+  /* профиль собеседника на компьютере — по центру, аккуратной колонкой */
+  #user-page.over-chat .artist-inner, #user-page .artist-inner { max-width: 760px !important; }
+
+}
+@media (min-width: 980px) and (pointer: fine) and (max-width: 1240px) {
+  :root { --cl-w: 340px; }
+}

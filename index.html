@@ -2,7 +2,12 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="MKW Music">
+<meta name="format-detection" content="telephone=no">
 <meta name="theme-color" content="#a8326a">
 <title>MKW Music — бесплатный музыкальный плеер и MKW Волна</title>
 <meta name="description" content="MKW Music — бесплатный музыкальный плеер: бесконечная MKW Волна под ваш вкус, текст песен в реальном времени, друзья, лайки и плейлисты. Работает в браузере и устанавливается на телефон и компьютер.">
@@ -48,7 +53,7 @@ if(mem<=2||cpu<=4&&/Android/.test(u)){c.push('weak');try{if(localStorage.getItem
 if(!CSS.supports('backdrop-filter','blur(1px)')&&!CSS.supports('-webkit-backdrop-filter','blur(1px)'))c.push('no-blur');
 d.className+=' '+c.join(' ');})();
 </script>
-<link rel="stylesheet" href="app.css?v=0.31.0">
+<link rel="stylesheet" href="app.css?v=0.32.0">
 </head>
 <body>
 <script>
@@ -269,6 +274,6 @@ document.addEventListener('click',function(){var e=s();if(e&&e.parentNode)e.pare
 <audio id="preview-player" preload="none"></audio>
 <div id="yt-holder" style="position:fixed;width:1px;height:1px;left:-10px;top:-10px;overflow:hidden;opacity:0;pointer-events:none"><div id="yt-target"></div></div>
 
-<script type="module" src="app.js?v=0.31.0"></script>
+<script type="module" src="app.js?v=0.32.0"></script>
 </body>
 </html>

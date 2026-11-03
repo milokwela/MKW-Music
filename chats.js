@@ -1,15 +1,15 @@
 // Раздел «Чаты» в нижнем меню: все переписки с друзьями, как в мессенджере.
 // Сверху — недавние и непрочитанные, ниже — друзья, с которыми ещё не переписывались.
-import { $, h } from './ui.js?v=0.31.0';
-import { mi } from './icons2.js?v=0.31.0';
-import { chatList, isUnread, onChats, openChat, otherOf } from './chat.js?v=0.31.0';
-import { me, friendIds, friendCards, loadFriends, friendsLoaded, onFriends, requestIds } from './friends.js?v=0.31.0';
-import { avSrc } from './avatar.js?v=0.31.0';
-import { nickMarks } from './dev.js?v=0.31.0';
-import { seenText, isOnline } from './userpage.js?v=0.31.0';
-import { pickAndCall } from './call.js?v=0.31.0';
-import { streakOf, fireIcon } from './streak.js?v=0.31.0';
-import { setNotify } from './notify.js?v=0.31.0';
+import { $, h } from './ui.js?v=0.32.0';
+import { mi } from './icons2.js?v=0.32.0';
+import { chatList, isUnread, onChats, openChat, otherOf, clearedAt, blockedByMe, openUid as openId } from './chat.js?v=0.32.0';
+import { me, friendIds, friendCards, loadFriends, friendsLoaded, onFriends, requestIds } from './friends.js?v=0.32.0';
+import { avSrc } from './avatar.js?v=0.32.0';
+import { nickMarks } from './dev.js?v=0.32.0';
+import { seenText, isOnline } from './userpage.js?v=0.32.0';
+import { pickAndCall } from './call.js?v=0.32.0';
+import { streakOf, fireIcon } from './streak.js?v=0.32.0';
+import { setNotify } from './notify.js?v=0.32.0';
 
 let watching = false, filter = '', busy = false, again = false;
 
@@ -24,12 +24,14 @@ function when(t) {
 function row(u, c, i) {
   const unread = c && isUnread(c);
   const mine = c && c.last && c.last.from === me();
-  const preview = c && c.last ? `${mine ? 'Вы: ' : ''}${c.last.text}` : isOnline(u.seen) && u.now ? `Слушает: ${u.now}` : seenText(u.seen) || 'Напишите первым';
-  return h('button', { type: 'button', class: `cl-row${unread ? ' unread' : ''}`, style: `animation-delay:${Math.min(i, 10) * 30}ms`, onclick: () => openChat(u.uid, u) },
+  const cleared = c && c.last && (Number(c.last.at) || 0) <= clearedAt(c);
+  const blocked = c && blockedByMe(u.uid);
+  const preview = blocked ? 'Заблокирован(а)' : cleared ? 'Нет сообщений' : c && c.last ? `${mine ? 'Вы: ' : ''}${c.last.text}` : isOnline(u.seen) && u.now ? `Слушает: ${u.now}` : seenText(u.seen) || 'Напишите первым';
+  return h('button', { type: 'button', 'data-uid': u.uid, class: `cl-row${unread && !cleared ? ' unread' : ''}${blocked ? ' blocked' : ''}${openId() === u.uid ? ' on' : ''}`, style: `animation-delay:${Math.min(i, 10) * 30}ms`, onclick: () => openChat(u.uid, u) },
     h('span', { class: 'cl-av' }, h('img', { src: avSrc(u.avatar), alt: '', loading: 'lazy' }), isOnline(u.seen) ? h('i', { class: 'online-dot' }) : null),
     h('span', { class: 'cl-body' },
       h('span', { class: 'cl-top' }, h('b', { text: u.nick || 'друг' }), ...nickMarks(u), ...(() => { const st = streakOf(c, me(), u.uid); return st.state === 'lit' || st.state === 'grey' ? [fireIcon(st)] : []; })(), c ? h('time', { text: when(c.at) }) : null),
-      h('span', { class: 'cl-prev' }, h('span', { text: preview }), unread ? h('i', { class: 'cl-dot' }) : null)));
+      h('span', { class: 'cl-prev' }, h('span', { text: preview }), unread && !cleared ? h('i', { class: 'cl-dot' }) : null)));
 }
 
 export async function renderChats() {

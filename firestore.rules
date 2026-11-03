@@ -57,6 +57,18 @@ service cloud.firestore {
         && a in get(/databases/$(database)/documents/friends/$(b)).data.list;
     }
     // чат двух друзей: id = uidA_uidB (по алфавиту)
+    // в read хранятся: прочитано (uid), огонёк (g_*, gs…), очистка (x_<uid>, xa) и блокировка (b_<uid>)
+    function rd(d) { return d.get('read', {}); }
+    // чужие пометки «заблокировал» и «очистил у себя» менять нельзя
+    function keepFlags(o) {
+      return rd(request.resource.data).get('b_' + o, 0) == rd(resource.data).get('b_' + o, 0)
+        && rd(request.resource.data).get('x_' + o, 0) == rd(resource.data).get('x_' + o, 0);
+    }
+    function notBlocked(cid) {
+      return !exists(/databases/$(database)/documents/chats/$(cid))
+        || (rd(get(/databases/$(database)/documents/chats/$(cid)).data).get('b_' + cid.split('_')[0], 0) == 0
+          && rd(get(/databases/$(database)/documents/chats/$(cid)).data).get('b_' + cid.split('_')[1], 0) == 0);
+    }
     match /chats/{cid} {
       allow get: if request.auth != null && request.auth.uid in cid.split('_');
       allow list: if request.auth != null && request.auth.uid in resource.data.members;
@@ -67,18 +79,24 @@ service cloud.firestore {
         && mutual(cid.split('_')[0], cid.split('_')[1]);
       allow update: if request.auth != null && request.auth.uid in resource.data.members
         && request.resource.data.members == resource.data.members
-        && request.resource.data.keys().hasOnly(['members', 'last', 'at', 'read']);
+        && request.resource.data.keys().hasOnly(['members', 'last', 'at', 'read'])
+        && (cid.split('_')[0] == request.auth.uid || keepFlags(cid.split('_')[0]))
+        && (cid.split('_')[1] == request.auth.uid || keepFlags(cid.split('_')[1]));
       allow delete: if false;
       match /msgs/{mid} {
         allow read: if request.auth != null && request.auth.uid in cid.split('_');
         allow create: if request.auth != null && request.auth.uid in cid.split('_')
           && request.resource.data.from == request.auth.uid
-          && request.resource.data.keys().hasOnly(['from', 'text', 'at', 'track', 'img'])
+          && request.resource.data.keys().hasOnly(['from', 'text', 'at', 'track', 'img', 'voice', 'vdur'])
           && request.resource.data.text is string && request.resource.data.text.size() <= 500
           && (!('img' in request.resource.data) || (request.resource.data.img is string && request.resource.data.img.size() <= 400000))
+          && (!('voice' in request.resource.data) || (request.resource.data.voice is string && request.resource.data.voice.size() <= 400000))
           && request.resource.data.at is number
-          && mutual(cid.split('_')[0], cid.split('_')[1]);
-        allow update, delete: if false;
+          && mutual(cid.split('_')[0], cid.split('_')[1])
+          && notBlocked(cid);
+        // «удалить чат у всех» — стирает любой из двух
+        allow delete: if request.auth != null && request.auth.uid in cid.split('_');
+        allow update: if false;
       }
     }
     // «Мне нравится MKW»: номер фаната по порядку. Счётчик и номер пишутся одной транзакцией,
