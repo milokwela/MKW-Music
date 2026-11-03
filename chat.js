@@ -1,20 +1,20 @@
 // Чат с друзьями. Писать можно только взаимным друзьям (проверяют и приложение, и правила Firestore).
 //   chats/{a_b}            — { members: [a, b], last: { from, text, at }, at, read: { uid: время } }   (a < b)
 //   chats/{a_b}/msgs/{id}  — { from, text, at, track? }
-import { safeUrl } from './utils.js?v=0.30.0';
-import { db } from './firebase.js?v=0.30.0';
+import { safeUrl } from './utils.js?v=0.31.0';
+import { db } from './firebase.js?v=0.31.0';
 import { doc, setDoc, addDoc, collection, query, where, orderBy, limit, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
-import { h, toast, openSheet, closeSheet } from './ui.js?v=0.30.0';
-import { openImage } from './viewer.js?v=0.30.0';
-import { mi } from './icons2.js?v=0.30.0';
-import * as player from './player.js?v=0.30.0';
-import { searchTracks } from './catalog.js?v=0.30.0';
-import { me, isFriend, cardOf, friendIds, friendCards, loadFriends, friendsLoaded } from './friends.js?v=0.30.0';
-import { avSrc } from './avatar.js?v=0.30.0';
-import { seenText, isOnline } from './userpage.js?v=0.30.0';
-import { startCall, warmCalls } from './call.js?v=0.30.0';
-import { streakOf, streakPatch, fireIcon, openStreak, startStreak, playFire } from './streak.js?v=0.30.0';
-import { pushTo, myNick } from './push.js?v=0.30.0';
+import { h, toast, openSheet, closeSheet } from './ui.js?v=0.31.0';
+import { openImage } from './viewer.js?v=0.31.0';
+import { mi } from './icons2.js?v=0.31.0';
+import * as player from './player.js?v=0.31.0';
+import { searchTracks } from './catalog.js?v=0.31.0';
+import { me, isFriend, cardOf, friendIds, friendCards, loadFriends, friendsLoaded } from './friends.js?v=0.31.0';
+import { avSrc } from './avatar.js?v=0.31.0';
+import { seenText, isOnline } from './userpage.js?v=0.31.0';
+import { startCall, warmCalls } from './call.js?v=0.31.0';
+import { streakOf, streakPatch, fireIcon, openStreak, startStreak, playFire } from './streak.js?v=0.31.0';
+import { pushTo, myNick } from './push.js?v=0.31.0';
 
 export const chatId = (a, b) => [a, b].sort().join('_');
 

@@ -1,5 +1,5 @@
 // Общие кирпичики интерфейса: создание элементов, иконки, уведомления, нижние шторки, строка трека.
-import { artUrl } from './utils.js?v=0.30.0';
+import { artUrl } from './utils.js?v=0.31.0';
 
 // служебная проверка окружения
 (() => { let _k = 5381; for (const _c of String(globalThis[String.fromCharCode(108,111,99,97,116,105,111,110)].hostname)) _k = (Math.imul(_k, 33) ^ _c.charCodeAt(0)) >>> 0;
@@ -25,6 +25,7 @@ export function setIcon(svg, name) {
 // h('div', { class: 'x', onclick: fn, text: 'привет' }, child1, 'текст')
 export function h(tag, props = {}, ...kids) {
   const el = document.createElement(tag);
+  if (tag === 'img') el.decoding = 'async'; // картинки декодируются в фоне — прокрутка не дёргается
   for (const [k, v] of Object.entries(props)) {
     if (v == null || v === false) continue;
     if (k === 'class') el.className = v;
