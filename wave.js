@@ -10,16 +10,17 @@
 //  • не повторяет песни, которые вы слышали в волне за последние 3 дня, и одного исполнителя чаще раза в 3 трека;
 //  • учитывает язык, версии slowed / sped up, жанры и время суток;
 //  • у каждой песни видно, почему она в волне.
-import { searchTracks } from './catalog.js?v=0.34.1';
-import { peekYouTubeId, prefetchYouTubeIds } from './youtube.js?v=0.34.1';
-import * as player from './player.js?v=0.34.1';
-import * as store from './store.js?v=0.34.1';
-import { $, h, toast } from './ui.js?v=0.34.1';
-import { shuffled } from './utils.js?v=0.34.1';
-import { norm, isArtistBlocked, blockedArtists, dislikedTracks, dislikeTrack, splitArtists } from './taste.js?v=0.34.1';
-import { communityTaste } from './leaders.js?v=0.34.1';
-import { artistTop, artistRadio, relatedArtists, chartTracks, genreChart, genreId } from './reco.js?v=0.34.1';
-import { openFull } from './playerui.js?v=0.34.1';
+import { searchTracks } from './catalog.js?v=0.35.0';
+import { peekYouTubeId, prefetchYouTubeIds } from './youtube.js?v=0.35.0';
+import * as player from './player.js?v=0.35.0';
+import * as store from './store.js?v=0.35.0';
+import { $, h, toast } from './ui.js?v=0.35.0';
+import { shuffled } from './utils.js?v=0.35.0';
+import { norm, isArtistBlocked, blockedArtists, dislikedTracks, dislikeTrack, splitArtists } from './taste.js?v=0.35.0';
+import { communityTaste } from './leaders.js?v=0.35.0';
+import { artistTop, artistRadio, relatedArtists, chartTracks, genreChart, genreId } from './reco.js?v=0.35.0';
+import { openFull } from './playerui.js?v=0.35.0';
+import { markDaily } from './daily.js?v=0.35.0';
 
 const SKEY = 'mkw.wave2';
 const AKEY = 'mkw.wave3.arms';
@@ -379,6 +380,7 @@ function react(kind) {
     for (const a of as) { score[a] = (score[a] || 0) + 1; fresh[a] = (fresh[a] || 0) + 1.2; }
     if (t.genre) genre[norm(t.genre)] = (genre[norm(t.genre)] || 0) + 0.3;
     if (t.waveSrc) rewardArm(t.waveSrc, true, 1);
+    markDaily('wave');
     flow.push(t); if (flow.length > 6) flow.shift();
     streak = 0;
     if (t.waveNew) explore = Math.min(0.6, explore + 0.05);

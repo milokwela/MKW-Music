@@ -1,17 +1,18 @@
 // Главная: «Друзья в сети» и умные миксы, которые собираются из вашей музыки, времени суток и друзей.
-import { $, h, toast } from './ui.js?v=0.34.1';
-import * as store from './store.js?v=0.34.1';
-import * as player from './player.js?v=0.34.1';
-import { searchTracks } from './catalog.js?v=0.34.1';
-import { shuffled } from './utils.js?v=0.34.1';
-import { splitArtists, norm } from './taste.js?v=0.34.1';
-import { mi } from './icons2.js?v=0.34.1';
-import { avSrc } from './avatar.js?v=0.34.1';
-import { loadFriends, friendIds, friendCards, onFriends } from './friends.js?v=0.34.1';
-import { getProfile, communityTaste, communityTracks } from './leaders.js?v=0.34.1';
-import { openUserPage, isOnline } from './userpage.js?v=0.34.1';
-import { recapCard } from './recap.js?v=0.34.1';
-import { artistTop, artistRadio, relatedArtists } from './reco.js?v=0.34.1';
+import { $, h, toast } from './ui.js?v=0.35.0';
+import * as store from './store.js?v=0.35.0';
+import * as player from './player.js?v=0.35.0';
+import { searchTracks } from './catalog.js?v=0.35.0';
+import { shuffled } from './utils.js?v=0.35.0';
+import { splitArtists, norm } from './taste.js?v=0.35.0';
+import { mi } from './icons2.js?v=0.35.0';
+import { avSrc } from './avatar.js?v=0.35.0';
+import { loadFriends, friendIds, friendCards, onFriends, friendsLoaded } from './friends.js?v=0.35.0';
+import { getProfile, communityTaste, communityTracks } from './leaders.js?v=0.35.0';
+import { openUserPage, isOnline } from './userpage.js?v=0.35.0';
+import { recapCard } from './recap.js?v=0.35.0';
+import { dailyCard, onDaily, setFriendsCheck, initDaily } from './daily.js?v=0.35.0';
+import { artistTop, artistRadio, relatedArtists } from './reco.js?v=0.35.0';
 
 const part = () => { const hr = new Date().getHours(); return hr < 6 ? 0 : hr < 12 ? 1 : hr < 18 ? 2 : 3; };
 const PARTS = [
@@ -166,14 +167,34 @@ function renderRecap() {
   if (has && !box.firstChild) box.appendChild(recapCard());
 }
 
+// ежедневные задания — под итогами
+let dailyInit = false;
+function renderDaily() {
+  const anchor = $('#recap-entry') || $('#wave-moods') || $('#wave-btn');
+  if (!anchor || !store.state.uid) return;
+  let box = $('#daily-entry');
+  if (!box) { box = h('div', { id: 'daily-entry' }); anchor.after(box); }
+  else if (box.previousElementSibling !== anchor) anchor.after(box);
+  box.replaceChildren(dailyCard());
+}
+
 export function initHome() {
+  if (!dailyInit) {
+    dailyInit = true;
+    setFriendsCheck(() => friendIds().length > 0, () => friendsLoaded());
+    initDaily();
+    onDaily(renderDaily);
+    store.onStore((w) => { if (w === 'profile') renderDaily(); });
+    setInterval(() => { if (!document.hidden && $('#view-search') && !$('#view-search').hidden) renderDaily(); }, 30000);
+  }
   renderMixes();
   renderRecap();
+  renderDaily();
   renderPopular();
   if (!inited) {
     inited = true;
     store.onStore((w) => { if (w === 'likes' || w === 'history') { clearTimeout(mixT); mixT = setTimeout(() => { renderMixes(); renderRecap(); }, 1500); } });
-    onFriends(() => renderStrip());
+    onFriends(() => { renderStrip(); renderDaily(); });
   }
   renderStrip();
   clearInterval(stripTimer);

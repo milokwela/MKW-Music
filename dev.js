@@ -1,6 +1,7 @@
 // Престиж разработчика: MiloKwel (ник milokq) — создатель MKW Music. Видно всем: профиль, топ, друзья.
 // Значок чёрный, со звездой MKW. Разработчик может его спрятать (Изменить → Значки у ника).
-import { h } from './ui.js?v=0.34.1';
+import { h } from './ui.js?v=0.35.0';
+import { nickEmo } from './stickers.js?v=0.35.0';
 
 const DEV_NICKS = new Set(['milokq']);
 export const isDev = (nick) => DEV_NICKS.has(String(nick || '').trim().toLowerCase());
@@ -21,5 +22,5 @@ export function fanBadge(n, small = false) {
 // значки рядом с ником в списках
 export function nickMarks(u) {
   // у разработчика в списках хватает «DEV», иначе ник не помещается
-  return [showDev(u) ? devBadge(true) : null, validFan(u) && !showDev(u) ? fanBadge(Number(u.fan), true) : null].filter(Boolean);
+  return [nickEmo(u && u.nemo), showDev(u) ? devBadge(true) : null, validFan(u) && !showDev(u) ? fanBadge(Number(u.fan), true) : null].filter(Boolean);
 }

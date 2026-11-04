@@ -1,7 +1,7 @@
 // Рейтинг слушателей: у каждого публичная карточка leaders/{uid} (ник, часы, статус, значки, маленькое фото).
-import { db, auth } from './firebase.js?v=0.34.1';
+import { db, auth } from './firebase.js?v=0.35.0';
 import { doc, getDoc, setDoc, deleteDoc, collection, query, orderBy, limit, getDocs, where } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
-import { srvNow, offlineStamp, onlineStamp } from './clock.js?v=0.34.1';
+import { srvNow, offlineStamp, onlineStamp } from './clock.js?v=0.35.0';
 
 const KEY = 'mkw.leaders.hide';
 export const hiddenFromBoard = () => { try { return localStorage.getItem(KEY) === '1'; } catch { return false; } };
@@ -54,8 +54,10 @@ export async function publishCard(card) {
     fan: Math.max(0, Math.floor(Number(card.fan) || 0)),
     devOff: Boolean(card.devOff),
   };
-  const sig = JSON.stringify(data);
+  const nemo = String(card.nemo || '').slice(0, 4);
+  const sig = JSON.stringify(data) + nemo;
   if (sig === lastSent) return;
+  try { await setDoc(doc(db, 'leaders', uid), { ...data, nemo, seen: onlineStamp(), updatedAt: srvNow() }); lastSent = sig; lastSeenAt = srvNow(); return; } catch { /* правила без эмодзи у ника — без него */ }
   try { await setDoc(doc(db, 'leaders', uid), { ...data, seen: onlineStamp(), updatedAt: srvNow() }); lastSent = sig; lastSeenAt = srvNow(); }
   catch (e) {
     // старые правила Firestore не знают новых полей — пишем в прежнем виде, пока админ не обновит правила
@@ -102,8 +104,10 @@ export async function publishProfile(p) {
     days: Math.floor(Number(p.days) || 0), achCount: Math.floor(Number(p.achCount) || 0),
     fan: Math.max(0, Math.floor(Number(p.fan) || 0)), devOff: Boolean(p.devOff),
   };
-  const sig = JSON.stringify(data);
+  const nemo = String(p.nemo || '').slice(0, 4);
+  const sig = JSON.stringify(data) + nemo;
   if (sig === lastPub) return;
+  try { await setDoc(doc(db, 'profiles', uid), { ...data, nemo, seen: onlineStamp(), updatedAt: srvNow() }); lastPub = sig; return; } catch { /* правила без эмодзи у ника */ }
   try { await setDoc(doc(db, 'profiles', uid), { ...data, seen: onlineStamp(), updatedAt: srvNow() }); lastPub = sig; }
   catch (e) {
     const { bio, nickStyle, shape, effect, now, fan, devOff, ...old } = data;

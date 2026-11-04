@@ -1,12 +1,12 @@
 // Интерфейс плеера: мини-плеер, большой плеер, очередь, таймер сна.
-import { $, h, icon, setIcon, artEl, trackRow, openSheet, closeSheet, sheetItem, highlightCurrent, toast, emptyState } from './ui.js?v=0.34.1';
-import { openArtistFor, openArtist, artistLinks } from './artist.js?v=0.34.1';
-import { renderCarousel, initCarousel } from './carousel.js?v=0.34.1';
-import * as player from './player.js?v=0.34.1';
-import * as store from './store.js?v=0.34.1';
-import { likeToggle, openTrackMenu } from './menu.js?v=0.34.1';
-import { formatTime, safeUrl } from './utils.js?v=0.34.1';
-import { youtubeEnabled } from './youtube.js?v=0.34.1';
+import { $, h, icon, setIcon, artEl, trackRow, openSheet, closeSheet, sheetItem, highlightCurrent, toast, emptyState } from './ui.js?v=0.35.0';
+import { openArtistFor, openArtist, artistLinks } from './artist.js?v=0.35.0';
+import { renderCarousel, initCarousel } from './carousel.js?v=0.35.0';
+import * as player from './player.js?v=0.35.0';
+import * as store from './store.js?v=0.35.0';
+import { likeToggle, openTrackMenu } from './menu.js?v=0.35.0';
+import { formatTime, safeUrl } from './utils.js?v=0.35.0';
+import { youtubeEnabled } from './youtube.js?v=0.35.0';
 
 const { queue, st } = player;
 let seeking = false;
@@ -20,16 +20,26 @@ function initDrag() {
   const full = $('#full-player');
   const mini = $('#mini-player');
   const H = () => window.innerHeight;
-  let sx0 = 0, sy = 0, dy = 0, t0 = 0, mode = null, on = false;
+  let sx0 = 0, sy = 0, dy = 0, dx = 0, t0 = 0, mode = null, on = false, hs = false;
   const start = (m) => (e) => {
     if (m === 'close' && e.target.closest('button, input, .fp-seek') && !e.target.closest('.fp-top')) return;
     if (m === 'close' && e.target.closest('#fp-art') && !e.target.closest('.fp-top')) { /* вертикаль разрешена, горизонталь отменит move */ }
     if (m === 'close' && full.querySelector('.fp-inner').scrollTop > 0) return;
-    const pt = e.touches[0]; sy = pt.clientY; sx0 = pt.clientX; dy = 0; t0 = Date.now(); mode = m; on = true;
+    const pt = e.touches[0]; sy = pt.clientY; sx0 = pt.clientX; dy = 0; dx = 0; hs = false; t0 = Date.now(); mode = m; on = true;
   };
   const move = (e) => {
     if (!on) return;
     dy = e.touches[0].clientY - sy;
+    dx = e.touches[0].clientX - sx0;
+    // мини-плеер вбок — смахнуть (убрать и поставить на паузу)
+    if (mode === 'open' && !full.classList.contains('dragging') && (hs || (Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy) * 1.2))) {
+      hs = true;
+      if (e.cancelable) e.preventDefault();
+      mini.classList.add('hswipe');
+      mini.style.transform = `translateX(${dx}px) rotate(${dx / 60}deg)`;
+      mini.style.opacity = String(Math.max(0.25, 1 - Math.abs(dx) / (mini.offsetWidth || 360)));
+      return;
+    }
     if (mode === 'close' && !full.classList.contains('dragging') && Math.abs(e.touches[0].clientX - sx0) > Math.abs(dy)) { on = false; return; }
     if (mode === 'open') {
       if (dy > 0) dy = 0;
@@ -43,6 +53,16 @@ function initDrag() {
   };
   const end = () => {
     if (!on) return; on = false;
+    if (hs) {
+      hs = false;
+      const w = mini.offsetWidth || 360;
+      const v = Math.abs(dx) / Math.max(1, Date.now() - t0);
+      mini.classList.remove('hswipe');
+      swallow = true; setTimeout(() => { swallow = false; }, 350);
+      if (Math.abs(dx) > w * 0.33 || (v > 0.6 && Math.abs(dx) > 40)) dismissMini(dx > 0 ? 1 : -1);
+      else { mini.style.transform = ''; mini.style.opacity = ''; }
+      return;
+    }
     const dragging = full.classList.contains('dragging');
     const v = Math.abs(dy) / Math.max(1, Date.now() - t0);
     if (!dragging) return;
@@ -91,10 +111,34 @@ function initDock() {
 export function isFullOpen() { return $('#full-player').classList.contains('open'); }
 export { closeFull, openFull };
 
+// смахнули мини-плеер: пауза и прячем, пока снова не включат музыку
+let miniGone = false;
+function dismissMini(dir) {
+  const mini = $('#mini-player');
+  mini.classList.add('gone');
+  mini.style.transform = `translateX(${dir * 120}%) rotate(${dir * 8}deg)`;
+  mini.style.opacity = '0';
+  try { if (player.st.playing) player.pause(); } catch { /* ignore */ }
+  if (navigator.vibrate) navigator.vibrate(10);
+  setTimeout(() => {
+    miniGone = true;
+    mini.hidden = true; document.body.classList.remove('has-mini');
+    mini.classList.remove('gone'); mini.style.transform = ''; mini.style.opacity = '';
+  }, 260);
+}
+function showMiniAgain() {
+  if (!miniGone || !queue.current) return;
+  miniGone = false;
+  const mini = $('#mini-player');
+  mini.hidden = false; document.body.classList.add('has-mini');
+  mini.classList.add('back'); setTimeout(() => mini.classList.remove('back'), 400);
+}
+
 function renderTrack() {
   const t = queue.current;
-  document.body.classList.toggle('has-mini', Boolean(t));
-  $('#mini-player').hidden = !t;
+  if (miniGone && t && player.st.playing) miniGone = false;
+  document.body.classList.toggle('has-mini', Boolean(t) && !miniGone);
+  $('#mini-player').hidden = !t || miniGone;
   if (!t) { closeFull(); lastTrackId = null; return; }
 
   $('#mini-title').textContent = t.title;
@@ -231,6 +275,7 @@ export function initPlayerUI() {
 
   player.onPlayer((ev) => {
     if (ev === 'track') renderTrack();
+    if ((ev === 'state' || ev === 'track') && miniGone && player.st.playing) showMiniAgain();
     else if (ev === 'state' || ev === 'queue' || ev === 'sleep') { renderState(); if (ev === 'queue' && queue.current) renderCarousel(); }
     else if (ev === 'time') renderTime();
     else if (ev === 'error') { toast(st.message); renderState(); }
