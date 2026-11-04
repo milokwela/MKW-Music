@@ -4,27 +4,28 @@
 //   chats/{id}/msgs/{id}   — { from, text, at, track?, img?, voice?, vdur?, re?: {id, from, text}, rx?: {uid: эмодзи}, ed? }
 // В read хранится всё «служебное»: прочитано (uid), огонёк (g_*, gs, gd…), очистка (x_*), блокировка (b_*),
 // «печатает…» (t_<uid> — когда, tk_<uid> — что: text | voice).
-import { safeUrl } from './utils.js?v=0.35.1';
-import { db } from './firebase.js?v=0.35.1';
+import { safeUrl } from './utils.js?v=0.35.2';
+import { db } from './firebase.js?v=0.35.2';
 import { doc, getDoc, setDoc, addDoc, updateDoc, deleteDoc, getDocs, collection, query, where, orderBy, limit, onSnapshot, deleteField } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
-import { h, toast, openSheet, closeSheet } from './ui.js?v=0.35.1';
-import { openImage } from './viewer.js?v=0.35.1';
-import { mi } from './icons2.js?v=0.35.1';
-import * as player from './player.js?v=0.35.1';
-import { searchTracks } from './catalog.js?v=0.35.1';
-import { me, isFriend, cardOf, friendIds, friendCards, loadFriends, friendsLoaded } from './friends.js?v=0.35.1';
-import { avSrc } from './avatar.js?v=0.35.1';
-import { seenText, isOnline, openUserPage, closeUserPage } from './userpage.js?v=0.35.1';
-import { startCall, warmCalls } from './call.js?v=0.35.1';
-import { streakAny, streakPatch, groupPatch, fireIcon, openStreak, startStreak, playFire } from './streak.js?v=0.35.1';
-import { pushTo, myNick } from './push.js?v=0.35.1';
-import { srvNow, realSeen } from './clock.js?v=0.35.1';
-import { togetherBar, startTogether } from './together.js?v=0.35.1';
-import { ensureShared } from './shared.js?v=0.35.1';
-import { STICKER_TXT, stickerOf, nickEmo, catOf, catName, rxNode, emojiPicker, QUICK_RX } from './stickers.js?v=0.35.1';
-import { markDaily } from './daily.js?v=0.35.1';
-import { pcmCapture, loadLame, encodeMp3, decodeBlob, blobToDataUrl, toWavUrl, wavUrl } from './voicerec.js?v=0.35.1';
-import { openSharedSheet } from './sharedui.js?v=0.35.1';
+import { h, toast, openSheet, closeSheet } from './ui.js?v=0.35.2';
+import { openImage } from './viewer.js?v=0.35.2';
+import { mi } from './icons2.js?v=0.35.2';
+import * as player from './player.js?v=0.35.2';
+import { searchTracks } from './catalog.js?v=0.35.2';
+import { me, isFriend, cardOf, friendIds, friendCards, loadFriends, friendsLoaded } from './friends.js?v=0.35.2';
+import { avSrc } from './avatar.js?v=0.35.2';
+import { seenText, isOnline, openUserPage, closeUserPage } from './userpage.js?v=0.35.2';
+import { startCall, warmCalls } from './call.js?v=0.35.2';
+import { streakAny, streakPatch, groupPatch, fireIcon, openStreak, startStreak, playFire } from './streak.js?v=0.35.2';
+import { pushTo, myNick } from './push.js?v=0.35.2';
+import { srvNow, realSeen } from './clock.js?v=0.35.2';
+import { togetherBar, startTogether } from './together.js?v=0.35.2';
+import { ensureShared } from './shared.js?v=0.35.2';
+import { STICKER_TXT, stickerOf, nickEmo, catOf, catName, rxNode, emojiPicker, QUICK_RX } from './stickers.js?v=0.35.2';
+import { markDaily } from './daily.js?v=0.35.2';
+import { openPhotoEditor } from './photoedit.js?v=0.35.2';
+import { pcmCapture, loadLame, encodeMp3, decodeBlob, blobToDataUrl, toWavUrl, wavUrl } from './voicerec.js?v=0.35.2';
+import { openSharedSheet } from './sharedui.js?v=0.35.2';
 
 export const chatId = (a, b) => [a, b].sort().join('_');
 const isGroupId = (cid) => String(cid || '').startsWith('g') && !String(cid).includes('_');
@@ -364,15 +365,19 @@ function voiceBubble(src, durSec) {
   let seed = src.length;
   const bars = h('span', { class: 'ch-vbars' }, ...Array.from({ length: 30 }, (_, i) => { seed = (seed * 9301 + 49297 + i) % 233280; return h('i', { style: `height:${28 + Math.round((seed / 233280) * 72)}%` }); }));
   const time = h('small', { class: 'ch-vtime', text: mmss(durSec || 0) });
-  const box = h('span', { class: 'ch-voice' }, btn, bars, time);
+  const knob = h('i', { class: 'ch-vknob', 'aria-hidden': 'true' });
+  const box = h('span', { class: 'ch-voice' }, btn, bars, time, knob);
   const ui = { box, btn, time, dur: durSec || 0 };
+  // белый «бегунок» на волне — ездит вместе с перемоткой и воспроизведением
+  const setP = (f) => { box.style.setProperty('--p', String(f)); box.style.setProperty('--kx', `${bars.offsetLeft + f * bars.offsetWidth}px`); };
+  ui.setP = setP;
   btn.addEventListener('click', () => {
     if (vUi === ui) { stopVoice(); return; }
     stopVoice();
     const a = new Audio(); a.preload = 'auto'; a.src = ui.wav || src; vAudio = a; vUi = ui;
     box.classList.add('playing'); btn.replaceChildren(mi('pause'));
     a.addEventListener('loadedmetadata', () => { if (!ui.dur && Number.isFinite(a.duration)) ui.dur = a.duration; });
-    a.addEventListener('timeupdate', () => { if (box.classList.contains('scrub')) return; const d = ui.dur || a.duration || 1; box.style.setProperty('--p', String(Math.min(1, a.currentTime / d))); time.textContent = mmss(a.currentTime); });
+    a.addEventListener('timeupdate', () => { if (box.classList.contains('scrub')) return; const d = ui.dur || (Number.isFinite(a.duration) ? a.duration : 0) || 1; setP(Math.min(1, a.currentTime / d)); time.textContent = mmss(a.currentTime); });
     a.addEventListener('ended', stopVoice);
     if (player.st.playing) player.pause();
     const oldFmt = () => { if (vUi === ui) stopVoice(); toast('Это голосовое записано в старом формате, и этот телефон его не открывает. Новые голосовые играют везде'); };
@@ -392,7 +397,7 @@ function voiceBubble(src, durSec) {
   let scrub = false;
   const seekTo = (e) => {
     const r = bars.getBoundingClientRect(); const f = Math.max(0, Math.min(1, (e.clientX - r.left) / r.width));
-    box.style.setProperty('--p', String(f));
+    setP(f);
     const d = ui.dur || (vAudio && Number.isFinite(vAudio.duration) ? vAudio.duration : 0);
     time.textContent = mmss(f * d);
     if (vUi === ui && vAudio && d) { try { vAudio.currentTime = f * d; } catch { /* ignore */ } }
@@ -623,25 +628,33 @@ async function openConv(cv) {
   const setReply = (id, m) => { editing = null; replyTo = { id, from: m.from, text: quoteText(m) }; paintReply(); input.focus({ preventScroll: true }); };
   const setEdit = (id, m) => { replyTo = null; editing = { id, text: String(m.text || '').slice(0, 80) }; input.value = m.text || ''; input.style.height = ''; input.style.height = `${Math.min(120, input.scrollHeight)}px`; paintReply(); input.focus({ preventScroll: true }); };
 
-  photoIn.addEventListener('change', async () => {
-    const f = photoIn.files && photoIn.files[0]; photoIn.value = ''; if (!f) return;
-    let d;
-    try { d = await shrink(f); } catch { toast('Не получилось открыть это фото'); return; }
-    const cap = h('input', { class: 'ch-pc-cap', type: 'text', maxlength: '500', placeholder: 'Подпись (необязательно)', value: input.value.trim() });
-    const close = () => { box.classList.remove('show'); setTimeout(() => box.remove(), 260); };
-    const ok = h('button', { class: 'btn', type: 'button', onclick: async () => {
-      ok.disabled = true; ok.textContent = 'Отправляю…';
-      try { await send(cv, cap.value.trim(), null, d, null, replyTo); input.value = ''; replyTo = null; paintReply(); close(); }
-      catch { ok.disabled = false; ok.textContent = 'Отправить'; toast('Фото не отправилось. Попробуйте ещё раз'); }
-    } }, mi('send'), h('span', { text: 'Отправить' }));
-    const box = h('div', { class: 'ch-pc', role: 'dialog', 'aria-label': 'Отправить фото?' },
-      h('div', { class: 'ch-pc-card' },
-        h('b', { class: 'ch-pc-t', text: `Отправить фото ${cv.group ? `в «${cv.title}»` : (u.nick || 'другу')}?` }),
-        h('img', { src: d, alt: '' }), cap,
-        h('div', { class: 'ch-pc-btns' }, h('button', { class: 'btn tonal', type: 'button', onclick: close }, 'Отмена'), ok)));
-    box.addEventListener('click', (e) => { if (e.target === box) close(); });
-    cap.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); ok.click(); } });
-    p.appendChild(box); requestAnimationFrame(() => box.classList.add('show'));
+  // фото: несколько сразу, обрезка, поворот и рисование — в редакторе перед отправкой
+  const editPhotos = (files) => {
+    if (blockedNow()) { toast('Переписка ограничена'); return; }
+    openPhotoEditor(files, {
+      title: `Фото ${cv.group ? `в «${cv.title}»` : `для ${u.nick || 'друга'}`}`,
+      caption: input.value.trim(),
+      onSend: async (list, capText) => {
+        const re = replyTo;
+        for (let i = 0; i < list.length; i += 1) await send(cv, i === list.length - 1 ? capText : '', null, list[i], null, i === 0 ? re : null);
+        if (capText) { input.value = ''; input.style.height = ''; }
+        replyTo = null; paintReply(); paintBar();
+      },
+    });
+  };
+  photoIn.multiple = true;
+  photoIn.addEventListener('change', () => { const fl = [...(photoIn.files || [])]; photoIn.value = ''; if (fl.length) editPhotos(fl); });
+  // компьютер: вставить картинку из буфера (Ctrl+V) или перетащить в чат
+  input.addEventListener('paste', (e) => {
+    const fl = [...((e.clipboardData && e.clipboardData.files) || [])].filter((f) => /^image\//.test(f.type));
+    if (fl.length) { e.preventDefault(); editPhotos(fl); }
+  });
+  list.addEventListener('dragover', (e) => { if (e.dataTransfer && [...e.dataTransfer.types].includes('Files')) { e.preventDefault(); list.classList.add('drop'); } });
+  list.addEventListener('dragleave', (e) => { if (!list.contains(e.relatedTarget)) list.classList.remove('drop'); });
+  list.addEventListener('drop', (e) => {
+    list.classList.remove('drop');
+    const fl = [...((e.dataTransfer && e.dataTransfer.files) || [])].filter((f) => /^image\//.test(f.type));
+    if (fl.length) { e.preventDefault(); editPhotos(fl); }
   });
   // клавиатура не прячется после отправки: кнопка не забирает фокус у поля ввода
   let keepFocus = false;

@@ -444,3 +444,165 @@ body.on-chats #chat-page .ch-pin { background: transparent; padding: 8px 16px; }
 .cl-mute-row { display: flex; flex-wrap: wrap; gap: 6px; }
 .cl-mute-row .chip { padding: 9px 14px; }
 .cl-row { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+
+/* ---------- 0.36: исправления ---------- */
+/* бегунок голосового */
+.ch-voice { position: relative; }
+.ch-voice.scrub .ch-vbars { -webkit-mask: linear-gradient(90deg, #000 calc(var(--p) * 100%), rgba(0,0,0,.4) calc(var(--p) * 100%)); mask: linear-gradient(90deg, #000 calc(var(--p) * 100%), rgba(0,0,0,.4) calc(var(--p) * 100%)); opacity: 1; }
+.ch-vknob { position: absolute; top: 50%; left: var(--kx, 0px); width: 12px; height: 12px; margin: -6px 0 0 -6px; border-radius: 50%; background: currentColor; box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 22%, transparent), 0 2px 6px rgba(0,0,0,.35); opacity: 0; transform: scale(.4); transition: opacity .15s, transform .15s; pointer-events: none; }
+.ch-voice.playing .ch-vknob, .ch-voice.scrub .ch-vknob { opacity: 1; transform: none; }
+.ch-voice.scrub .ch-vknob { transform: scale(1.3); }
+/* зелёная точка «в сети» — снаружи рамки, не обрезается */
+.hero-avatar { overflow: visible !important; }
+.hero-avatar > img { width: 100%; height: 100%; object-fit: cover; border-radius: inherit; display: block; }
+.hero-avatar .online-dot { right: 0; bottom: 2px; width: 20px; height: 20px; border: 3px solid var(--bg, #111); }
+.phero[data-shape="squircle"] .hero-avatar .online-dot, .phero[data-shape="flower"] .hero-avatar .online-dot { right: -4px; bottom: -4px; }
+/* друзья: заголовки разделов — на всю ширину сетки */
+.lb-list > .section-title { grid-column: 1 / -1; }
+/* эффекты профиля видны всем: и с «уменьшить движение», и на слабых телефонах (без анимации — просто стоят) */
+.lowpower .phero-fx { display: block !important; }
+@media (prefers-reduced-motion: reduce) {
+  .phero[data-effect="crosses"] .phero-fx i { opacity: .85 !important; }
+  .phero[data-effect="snow"] .phero-fx i { top: 35% !important; }
+  .phero[data-effect="snow"] .phero-fx i:nth-child(2n) { top: 62% !important; }
+  .phero[data-effect="hearts"] .phero-fx i { bottom: 30% !important; }
+}
+/* мини-плеер и меню видны поверх страницы человека и исполнителя; в профиле тоже не прячем */
+body.on-profile #mini-player { animation: none !important; pointer-events: auto !important; }
+/* #app — отдельный слой (z-index 1); пока открыта страница исполнителя/человека, снимаем его, чтобы меню и плеер были сверху */
+body:has(#artist-page.open) #app, body:has(#user-page.open) #app { z-index: auto; }
+body:has(#artist-page.open) #dock, body:has(#user-page.open) #dock { z-index: 48; }
+#artist-page, #user-page { padding-bottom: calc(170px + env(safe-area-inset-bottom)); box-sizing: border-box; }
+#full-player.open, #full-player.dragging { z-index: 49; }
+/* ---------- чаты на компьютере: на весь экран и ширина списка тянется мышкой ---------- */
+@media (min-width: 980px) and (pointer: fine) {
+  :root { --pane-l: 12px; }
+  body.on-chats #view-chats:not([hidden]) { top: 12px; transition: width .0s; }
+  body.on-chats #chat-page, body.on-chats::after { right: 12px !important; top: 12px !important; }
+  #cl-resize { position: fixed; z-index: 31; top: 12px; bottom: var(--pane-b); left: calc(var(--pane-l) + var(--cl-w) - 5px); width: 10px; cursor: col-resize; display: none; touch-action: none; }
+  body.on-chats #cl-resize { display: block; }
+  #cl-resize::after { content: ''; position: absolute; left: 4px; top: 0; bottom: 0; width: 2px; border-radius: 1px; background: transparent; transition: background .15s; }
+  #cl-resize:hover::after, #cl-resize.drag::after { background: var(--primary); }
+  html.cl-dragging, html.cl-dragging * { cursor: col-resize !important; user-select: none !important; }
+  /* узкий список — только аватарки, как в мессенджерах */
+  html.cl-narrow body.on-chats #view-chats .cl-body, html.cl-narrow body.on-chats #view-chats .cl-search, html.cl-narrow body.on-chats #view-chats .section-title,
+  html.cl-narrow body.on-chats #view-chats .cl-head .view-title, html.cl-narrow body.on-chats #view-chats .cl-callbtn span, html.cl-narrow body.on-chats #view-chats .cl-req { display: none !important; }
+  html.cl-narrow body.on-chats #view-chats:not([hidden]) { padding: 12px 6px !important; }
+  html.cl-narrow body.on-chats #view-chats .cl-head { flex-direction: column; gap: 6px; padding: 0; }
+  html.cl-narrow body.on-chats #view-chats .cl-callbtn { width: 46px; height: 40px; padding: 0; justify-content: center; }
+  html.cl-narrow body.on-chats .cl-row { justify-content: center; padding: 6px 0 !important; position: relative; }
+  html.cl-narrow body.on-chats .cl-row .cl-av { width: 46px !important; height: 46px !important; }
+  html.cl-narrow body.on-chats .cl-row.unread::after { content: ''; position: absolute; right: 8px; top: 8px; width: 10px; height: 10px; border-radius: 50%; background: var(--primary); }
+}
+/* ---------- итоги на компьютере: широкий формат, картинка слева — текст справа ---------- */
+@media (min-width: 900px) and (min-height: 560px) {
+  .rc { width: min(1040px, 92vw); height: min(640px, 88vh); border-radius: 32px; }
+  .rc-stage { padding: 70px 56px 48px; }
+  .rc-s { width: min(880px, 100%); gap: 12px; }
+  .rc-big { font-size: clamp(110px, 14vw, 190px); }
+  .rc-s h2 { font-size: clamp(34px, 3.6vw, 52px); }
+  .rc-s.rc-artist, .rc-s.rc-track { grid-template-columns: minmax(0, 340px) minmax(0, 1fr); column-gap: 48px; align-items: center; justify-items: start; text-align: left; }
+  .rc-s.rc-artist > *, .rc-s.rc-track > * { grid-column: 2; }
+  .rc-s.rc-artist > .rc-ph, .rc-s.rc-track > .rc-cover { grid-column: 1; grid-row: 1 / span 6; width: 100%; max-width: 340px; justify-self: center; }
+  .rc-s.rc-artist > p, .rc-s.rc-track > p { align-self: end; }
+  .rc-s.rc-list .rc-ol { grid-template-columns: 1fr 1fr; }
+  .rc-s.rc-list .rc-ol li:first-child { grid-column: 1 / -1; padding: 12px 16px; }
+  .rc-s.rc-list .rc-ol li:first-child img { width: 64px; height: 64px; }
+  .rc-grid { grid-template-columns: repeat(4, 1fr); }
+  .rc-grid > div { padding: 24px 14px; }
+  .rc-s.rc-final .rc-card { max-width: 560px; }
+  .rc-x { top: 18px; right: 18px; }
+  .rc-bars { left: 28px; right: 80px; top: 26px; }
+}
+/* ---------- страница человека и исполнителя на компьютере: широко, в две колонки ---------- */
+@media (min-width: 980px) and (pointer: fine) {
+  #user-page .artist-inner, #user-page.over-chat .artist-inner { max-width: 1180px !important; padding-left: 32px; padding-right: 32px; }
+  .up-cols { display: grid; grid-template-columns: 400px minmax(0, 1fr); gap: 28px; align-items: start; }
+  .up-left { position: sticky; top: 16px; display: grid; gap: 12px; }
+  .up-left .up-hero { margin: 0; }
+  .up-left .up-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+  .up-left .up-actions .btn { flex: 1 1 auto; justify-content: center; }
+  .up-right { display: grid; gap: 10px; align-content: start; min-width: 0; }
+  .up-right > .section-title:first-child { margin-top: 0; }
+  .up-right .up-stats { grid-template-columns: repeat(4, 1fr); }
+  .up-right .up-stats .up-stat { padding: 18px 16px; }
+  .up-right .up-stats .up-stat b { font-size: 30px; }
+  .up-right .fav-artists { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); }
+  .up-right .list { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 14px; }
+  #artist-page .artist-inner { max-width: 1180px; padding-left: 32px; padding-right: 32px; }
+  #artist-page .list { grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)) !important; }
+}
+/* ---------- О MKW: обращение и опрос ---------- */
+.beta-card { display: flex; gap: 14px; align-items: center; margin: 12px 0; padding: 14px; border-radius: 20px; background: color-mix(in srgb, var(--primary) 10%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--primary) 22%, transparent); }
+.beta-st { width: 84px; height: 84px; flex: none; object-fit: contain; }
+.beta-card b { display: block; font-size: 15.5px; margin-bottom: 4px; }
+.beta-card p { margin: 0; font-size: 13.5px; line-height: 1.45; color: var(--on-surface-var); }
+.poll-card { display: grid; gap: 8px; margin: 12px 0 16px; padding: 14px; border-radius: 20px; background: color-mix(in srgb, var(--on-bg) 5%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--on-bg) 8%, transparent); }
+.poll-head { display: flex; align-items: center; gap: 8px; }
+.poll-head b { font-size: 15.5px; }
+.poll-tag { margin-left: auto; padding: 2px 10px; border-radius: 999px; background: var(--primary); color: var(--on-primary); font-size: 11.5px; font-weight: 800; }
+.poll-opts { display: grid; gap: 6px; }
+.poll-opt { position: relative; overflow: hidden; display: flex; align-items: center; gap: 12px; padding: 12px; border: 0; border-radius: 16px; background: color-mix(in srgb, var(--on-bg) 6%, transparent); color: inherit; text-align: left; cursor: pointer; font: inherit; isolation: isolate; transition: transform .15s; }
+.poll-opt:active { transform: scale(.98); }
+.poll-opt::before { content: ''; position: absolute; inset: 0 auto 0 0; width: var(--w, 0%); background: color-mix(in srgb, var(--primary) 24%, transparent); z-index: -1; transition: width .6s cubic-bezier(.2,.8,.2,1); }
+.poll-opt.mine { box-shadow: inset 0 0 0 1.5px var(--primary); }
+.poll-ic { width: 36px; height: 36px; flex: none; border-radius: 12px; display: grid; place-items: center; background: color-mix(in srgb, var(--primary) 18%, transparent); color: var(--primary); }
+.poll-ic .mi { width: 20px; height: 20px; }
+.poll-t { flex: 1; min-width: 0; display: grid; }
+.poll-t b { font-size: 14.5px; }
+.poll-t small { font-size: 12px; color: var(--on-surface-var); }
+.poll-pct { font-weight: 800; font-size: 15px; font-variant-numeric: tabular-nums; }
+.poll-ck { width: 22px; height: 22px; flex: none; border-radius: 50%; display: grid; place-items: center; background: var(--primary); color: var(--on-primary); }
+.poll-ck .mi { width: 15px; height: 15px; }
+.poll-foot { color: var(--on-surface-var); font-size: 12px; text-align: center; }
+.beta-pop { position: fixed; inset: 0; z-index: 420; display: grid; place-items: center; padding: 20px; background: rgba(0,0,0,.55); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); opacity: 0; transition: opacity .3s; }
+.beta-pop.show { opacity: 1; }
+.beta-pop-c { width: min(380px, 100%); display: grid; justify-items: center; gap: 8px; padding: 22px 20px 18px; border-radius: 28px; background: var(--surface-high, #222); text-align: center; transform: scale(.9) translateY(14px); transition: transform .4s cubic-bezier(.2,1.3,.4,1); }
+.beta-pop.show .beta-pop-c { transform: none; }
+.beta-pop-st { width: 140px; height: 140px; object-fit: contain; animation: stIn .5s cubic-bezier(.3,1.5,.5,1) both; }
+.beta-pop-c b { font-size: 19px; }
+.beta-pop-c p { margin: 0; font-size: 14px; line-height: 1.5; color: var(--on-surface-var); }
+.beta-pop-c .beta-pop-s { font-size: 13px; }
+.beta-pop-c .btn { margin-top: 6px; min-width: 160px; justify-content: center; }
+/* ---------- фото перед отправкой: обрезка, рисование, несколько сразу ---------- */
+.pe2 { position: fixed; inset: 0; z-index: 430; display: grid; grid-template-rows: auto minmax(0, 1fr) auto auto auto; background: #050505; color: #fff; opacity: 0; transition: opacity .22s; padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom); touch-action: none; }
+.pe2.show { opacity: 1; }
+.pe2.busy { pointer-events: none; }
+.pe2.busy .pe2-send { opacity: .6; }
+.pe2-head { display: flex; align-items: center; gap: 10px; padding: 10px 12px; }
+.pe2-x { width: 42px; height: 42px; border: 0; border-radius: 50%; display: grid; place-items: center; background: rgba(255,255,255,.12); color: #fff; cursor: pointer; }
+.pe2-x .mi { width: 22px; height: 22px; }
+.pe2-title { font-size: 16px; }
+.pe2-stage { position: relative; min-height: 0; overflow: hidden; }
+.pe2-cv { position: absolute; inset: 0; touch-action: none; cursor: crosshair; }
+.pe2[data-mode="crop"] .pe2-cv { cursor: move; }
+.pe2-tools { display: flex; justify-content: center; gap: 6px; padding: 8px 10px 4px; overflow-x: auto; scrollbar-width: none; }
+.pe2-tool { flex: none; display: grid; justify-items: center; gap: 3px; min-width: 64px; padding: 7px 8px; border: 0; border-radius: 14px; background: none; color: rgba(255,255,255,.8); font: 600 11.5px var(--font, inherit); cursor: pointer; }
+.pe2-tool .mi { width: 22px; height: 22px; }
+.pe2-tool.on { background: rgba(255,255,255,.14); color: #fff; }
+.pe2-pal { display: none; align-items: center; justify-content: center; gap: 8px; padding: 4px 12px 6px; }
+.pe2[data-mode="draw"] .pe2-pal { display: flex; }
+.pe2-col { width: 28px; height: 28px; flex: none; border: 2px solid rgba(255,255,255,.35); border-radius: 50%; background: var(--c); cursor: pointer; transition: transform .12s; }
+.pe2-col.on { border-color: #fff; transform: scale(1.18); box-shadow: 0 0 0 3px rgba(255,255,255,.18); }
+.pe2-size { width: 110px; accent-color: #fff; }
+.pe2-bottom { display: grid; gap: 8px; padding: 6px 12px 12px; }
+.pe2-thumbs { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; padding: 4px 2px; }
+.pe2-thumbs:empty { display: none; }
+.pe2-th { position: relative; flex: none; width: 56px; height: 56px; border-radius: 12px; overflow: hidden; display: grid; place-items: center; background: #1a1a1a; box-shadow: inset 0 0 0 2px transparent; cursor: pointer; }
+.pe2-th canvas { max-width: 100%; max-height: 100%; }
+.pe2-th.on { box-shadow: 0 0 0 2.5px var(--primary, #fff); }
+.pe2-th-x { position: absolute; right: 2px; top: 2px; width: 20px; height: 20px; border: 0; border-radius: 50%; display: grid; place-items: center; background: rgba(0,0,0,.65); color: #fff; padding: 0; cursor: pointer; }
+.pe2-th-x .mi { width: 13px; height: 13px; }
+.pe2-add { flex: none; width: 56px; height: 56px; border: 1.5px dashed rgba(255,255,255,.35); border-radius: 12px; display: grid; place-items: center; background: none; color: #fff; cursor: pointer; }
+.pe2-add .mi { width: 24px; height: 24px; }
+.pe2-row { display: flex; gap: 8px; align-items: center; }
+.pe2-cap { flex: 1; min-width: 0; height: 46px; padding: 0 16px; border: 0; border-radius: 23px; background: rgba(255,255,255,.12); color: #fff; font: 15px var(--font, inherit); outline: none; }
+.pe2-send { position: relative; flex: none; width: 52px; height: 52px; border: 0; border-radius: 50%; display: grid; place-items: center; background: var(--primary, #ff7ad9); color: var(--on-primary, #111); cursor: pointer; }
+.pe2-send .mi { width: 24px; height: 24px; }
+.pe2-n { position: absolute; right: -4px; top: -4px; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 10px; background: #fff; color: #111; font-size: 12px; line-height: 20px; }
+.pe2-n:empty { display: none; }
+@media (min-width: 980px) and (pointer: fine) {
+  .pe2 { background: rgba(0,0,0,.88); }
+  .pe2-bottom { width: min(760px, 100%); margin: 0 auto; }
+}
+.ch-list.drop { box-shadow: inset 0 0 0 3px var(--primary); }

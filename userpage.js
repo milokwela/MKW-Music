@@ -1,25 +1,25 @@
 // Страница другого слушателя: баннер, фото, статус, значки, статистика, любимые исполнители и треки.
-import { $, h, trackRow, animateIn } from './ui.js?v=0.35.1';
-import * as player from './player.js?v=0.35.1';
-import { openTrackMenu } from './menu.js?v=0.35.1';
-import { getProfile } from './leaders.js?v=0.35.1';
-import { ACH, bannerCss, formatListened } from './profile.js?v=0.35.1';
-import { artistPic } from './artistpic.js?v=0.35.1';
-import { openArtist } from './artist.js?v=0.35.1';
-import { mi } from './icons2.js?v=0.35.1';
-import { plural } from './utils.js?v=0.35.1';
-import { openImage } from './viewer.js?v=0.35.1';
-import { isDev, devBadge, showDev, validFan, fanBadge } from './dev.js?v=0.35.1';
-import { friendState, addFriend, removeFriend, loadFriends, friendsLoaded, ONLINE_MS } from './friends.js?v=0.35.1';
-import { openChat, chatActions } from './chat.js?v=0.35.1';
+import { $, h, trackRow, animateIn } from './ui.js?v=0.35.2';
+import * as player from './player.js?v=0.35.2';
+import { openTrackMenu } from './menu.js?v=0.35.2';
+import { getProfile } from './leaders.js?v=0.35.2';
+import { ACH, bannerCss, formatListened } from './profile.js?v=0.35.2';
+import { artistPic } from './artistpic.js?v=0.35.2';
+import { openArtist } from './artist.js?v=0.35.2';
+import { mi } from './icons2.js?v=0.35.2';
+import { plural } from './utils.js?v=0.35.2';
+import { openImage } from './viewer.js?v=0.35.2';
+import { isDev, devBadge, showDev, validFan, fanBadge } from './dev.js?v=0.35.2';
+import { friendState, addFriend, removeFriend, loadFriends, friendsLoaded, ONLINE_MS } from './friends.js?v=0.35.2';
+import { openChat, chatActions } from './chat.js?v=0.35.2';
 // удалить друга — двойное нажатие за 3 секунды, чтобы не убрать случайно
 let rmAsk = '';
 function confirmRemove(u) { if (rmAsk === u.uid) { rmAsk = ''; return true; } rmAsk = u.uid; setTimeout(() => { if (rmAsk === u.uid) rmAsk = ''; }, 3000); toast('Нажмите ещё раз, чтобы убрать из друзей'); return false; }
-import { avSrc } from './avatar.js?v=0.35.1';
-import { toast } from './ui.js?v=0.35.1';
-import { searchTracks } from './catalog.js?v=0.35.1';
-import { srvNow, realSeen, seenOnline } from './clock.js?v=0.35.1';
-import { nickEmo } from './stickers.js?v=0.35.1';
+import { avSrc } from './avatar.js?v=0.35.2';
+import { toast } from './ui.js?v=0.35.2';
+import { searchTracks } from './catalog.js?v=0.35.2';
+import { srvNow, realSeen, seenOnline } from './clock.js?v=0.35.2';
+import { nickEmo } from './stickers.js?v=0.35.2';
 
 export function seenText(seen) {
   const t = realSeen(seen);
@@ -112,6 +112,14 @@ function render(u, isMe) {
   return kids;
 }
 
+// компьютер: две колонки — слева карточка человека и кнопки, справа статистика, исполнители и треки
+function pcLayout(kids) {
+  if (!matchMedia('(min-width: 980px) and (pointer: fine)').matches) return kids;
+  const left = [], right = [];
+  for (const k of kids.filter(Boolean)) (k.classList && (k.classList.contains('up-hero') || k.classList.contains('up-actions') || k.classList.contains('up-chat')) ? left : right).push(k);
+  return [h('div', { class: 'up-cols' }, h('div', { class: 'up-left' }, ...left), h('div', { class: 'up-right' }, ...right))];
+}
+
 export async function openUserPage(uid, basic, isMe = false) {
   if (basic && !basic.uid) basic = { ...basic, uid };
   const page = $('#user-page'), body = $('#user-body');
@@ -120,10 +128,10 @@ export async function openUserPage(uid, basic, isMe = false) {
   page.classList.toggle('over-chat', Boolean(ch && ch.classList.contains('open')));
   page.classList.add('open');
   page.scrollTop = 0;
-  body.replaceChildren(...(basic ? render(basic, isMe) : [h('div', { class: 'phero up-hero sk' })]));
+  body.replaceChildren(...pcLayout(basic ? render(basic, isMe) : [h('div', { class: 'phero up-hero sk' })]));
   const full = uid ? await getProfile(uid) : null;
   if (mine !== seq) return;
-  if (full) body.replaceChildren(...render({ ...(basic || {}), ...full, uid, full: true }, isMe));
+  if (full) body.replaceChildren(...pcLayout(render({ ...(basic || {}), ...full, uid, full: true }, isMe)));
   else if (!basic) body.replaceChildren(h('p', { class: 'profile-note center', text: isMe ? 'Профиль ещё не опубликован. Подождите несколько секунд и откройте снова.' : 'Профиль скрыт или недоступен.' }));
 }
 

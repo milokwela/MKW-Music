@@ -1,10 +1,10 @@
 // Экран общего плейлиста: треки, «играть», добавить то, что играет сейчас, убрать трек.
-import { h, toast, openSheet, closeSheet, trackRow, askText } from './ui.js?v=0.35.1';
-import { mi } from './icons2.js?v=0.35.1';
-import * as player from './player.js?v=0.35.1';
-import { getShared, onShared, watchShared, addToShared, removeFromShared, renameShared, sharedList } from './shared.js?v=0.35.1';
-import { tracksWord } from './utils.js?v=0.35.1';
-import { me, cardOf } from './friends.js?v=0.35.1';
+import { h, toast, openSheet, closeSheet, trackRow, askText } from './ui.js?v=0.35.2';
+import { mi } from './icons2.js?v=0.35.2';
+import * as player from './player.js?v=0.35.2';
+import { getShared, onShared, watchShared, addToShared, removeFromShared, renameShared, sharedList } from './shared.js?v=0.35.2';
+import { tracksWord } from './utils.js?v=0.35.2';
+import { me, cardOf } from './friends.js?v=0.35.2';
 
 export function openSharedSheet(id) {
   watchShared();

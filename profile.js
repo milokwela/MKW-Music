@@ -1,40 +1,41 @@
 // Экран «Профиль»: карточка с баннером, витрина (любимые исполнители и треки), вкладки Обзор / Слушатели / Настройки / О MKW.
-import { seenOnline } from './clock.js?v=0.35.1';
-import { nickEmo } from './stickers.js?v=0.35.1';
-import { $, $$, h, icon, openSheet, closeSheet, toast, sheetItem, trackRow } from './ui.js?v=0.35.1';
-import * as store from './store.js?v=0.35.1';
-import * as player from './player.js?v=0.35.1';
-import { ACCENTS, getTheme, getAccent, getCustomHue, setCustomColor, setTheme, setAccent, hslHex, getNeutral } from './theme.js?v=0.35.1';
-import { CHANGELOG, VERSION, STAGE, KNOWN_ISSUES } from './changelog.js?v=0.35.1';
-import { plural, pickTrack, safeUrl } from './utils.js?v=0.35.1';
-import { youtubeEnabled, youtubeQuotaOut } from './youtube.js?v=0.35.1';
-import { audiusEnabled } from './audius.js?v=0.35.1';
-import { SOURCE_MODES, getSourceMode, setSourceMode } from './sources.js?v=0.35.1';
-import { gesturesOn, setGestures, showGestureGuide } from './gestures.js?v=0.35.1';
-import { listenerStats } from './stats.js?v=0.35.1';
-import { liveBg, setLiveBg } from './viz.js?v=0.35.1';
-import { lowPower, setLowPower } from './perf.js?v=0.35.1';
-import { logOut, changePassword, changeNick, authErrorText } from './auth.js?v=0.35.1';
-import { connectionCountry } from './geo.js?v=0.35.1';
-import { goOffline, publishCard, publishProfile, myCard, getProfile, topListeners, hiddenFromBoard, setHidden, myUid } from './leaders.js?v=0.35.1';
-import { mi } from './icons2.js?v=0.35.1';
-import { artistPic } from './artistpic.js?v=0.35.1';
-import { openArtist } from './artist.js?v=0.35.1';
-import { openUserPage, favArtistsRow, favTracksList, isOnline } from './userpage.js?v=0.35.1';
-import { voiceOn, setVoice, showVoiceGuide, voiceSupported } from './voice.js?v=0.35.1';
-import { openImage } from './viewer.js?v=0.35.1';
-import { isDev, devBadge, fanBadge, nickMarks } from './dev.js?v=0.35.1';
-import { fanNumber, restoreFan, becomeFan } from './fans.js?v=0.35.1';
-import { ping } from './leaders.js?v=0.35.1';
-import { streamsOn, setStreams, checkBackground } from './stream.js?v=0.35.1';
-import { DEF_AV, avSrc, isDefAv } from './avatar.js?v=0.35.1';
-import { ONLINE_MS, loadFriends, friendIds, addFriend, removeFriend, findByNick, friendCards, onFriends, declineRequest, acceptRequest, requestIds, sentIds, friendState, friendsLoaded } from './friends.js?v=0.35.1';
-import { openChat, chatWith, isUnread, onChats } from './chat.js?v=0.35.1';
-import { notifyOn, setNotify } from './notify.js?v=0.35.1';
-import { openInstall, standalone } from './install.js?v=0.35.1';
-import { getRingtone, clearRingtone } from './ringtone.js?v=0.35.1';
-import { searchTracks } from './catalog.js?v=0.35.1';
-import { seenText } from './userpage.js?v=0.35.1';
+import { seenOnline } from './clock.js?v=0.35.2';
+import { nickEmo } from './stickers.js?v=0.35.2';
+import { betaCard, pollCard } from './poll.js?v=0.35.2';
+import { $, $$, h, icon, openSheet, closeSheet, toast, sheetItem, trackRow } from './ui.js?v=0.35.2';
+import * as store from './store.js?v=0.35.2';
+import * as player from './player.js?v=0.35.2';
+import { ACCENTS, getTheme, getAccent, getCustomHue, setCustomColor, setTheme, setAccent, hslHex, getNeutral } from './theme.js?v=0.35.2';
+import { CHANGELOG, VERSION, STAGE, KNOWN_ISSUES } from './changelog.js?v=0.35.2';
+import { plural, pickTrack, safeUrl } from './utils.js?v=0.35.2';
+import { youtubeEnabled, youtubeQuotaOut } from './youtube.js?v=0.35.2';
+import { audiusEnabled } from './audius.js?v=0.35.2';
+import { SOURCE_MODES, getSourceMode, setSourceMode } from './sources.js?v=0.35.2';
+import { gesturesOn, setGestures, showGestureGuide } from './gestures.js?v=0.35.2';
+import { listenerStats } from './stats.js?v=0.35.2';
+import { liveBg, setLiveBg } from './viz.js?v=0.35.2';
+import { lowPower, setLowPower } from './perf.js?v=0.35.2';
+import { logOut, changePassword, changeNick, authErrorText } from './auth.js?v=0.35.2';
+import { connectionCountry } from './geo.js?v=0.35.2';
+import { goOffline, publishCard, publishProfile, myCard, getProfile, topListeners, hiddenFromBoard, setHidden, myUid } from './leaders.js?v=0.35.2';
+import { mi } from './icons2.js?v=0.35.2';
+import { artistPic } from './artistpic.js?v=0.35.2';
+import { openArtist } from './artist.js?v=0.35.2';
+import { openUserPage, favArtistsRow, favTracksList, isOnline } from './userpage.js?v=0.35.2';
+import { voiceOn, setVoice, showVoiceGuide, voiceSupported } from './voice.js?v=0.35.2';
+import { openImage } from './viewer.js?v=0.35.2';
+import { isDev, devBadge, fanBadge, nickMarks } from './dev.js?v=0.35.2';
+import { fanNumber, restoreFan, becomeFan } from './fans.js?v=0.35.2';
+import { ping } from './leaders.js?v=0.35.2';
+import { streamsOn, setStreams, checkBackground } from './stream.js?v=0.35.2';
+import { DEF_AV, avSrc, isDefAv } from './avatar.js?v=0.35.2';
+import { ONLINE_MS, loadFriends, friendIds, addFriend, removeFriend, findByNick, friendCards, onFriends, declineRequest, acceptRequest, requestIds, sentIds, friendState, friendsLoaded } from './friends.js?v=0.35.2';
+import { openChat, chatWith, isUnread, onChats } from './chat.js?v=0.35.2';
+import { notifyOn, setNotify } from './notify.js?v=0.35.2';
+import { openInstall, standalone } from './install.js?v=0.35.2';
+import { getRingtone, clearRingtone } from './ringtone.js?v=0.35.2';
+import { searchTracks } from './catalog.js?v=0.35.2';
+import { seenText } from './userpage.js?v=0.35.2';
 
 // s: sec, likes, playlists, plays, days, artists, night, styled, showcase, rank
 export const ACHIEVEMENTS = [
@@ -875,6 +876,8 @@ export function buildProfile(nick) {
     h('div', { class: 'ppane', 'data-pane': 'about', hidden: '' },
       h('div', { class: 'about-card' },
         h('div', { class: 'about-top' }, h('img', { src: 'mkw-logo.png', alt: '', class: 'about-logo' }), h('div', {}, h('b', { text: 'MKW Music' }), h('span', { class: 'beta-badge', text: `${STAGE} · v${VERSION}` }))),
+        betaCard(),
+        pollCard(),
         refs.listeners,
         h('p', { class: 'profile-note', text: 'MKW Music — название сервиса. MiloKwel — его создатель: он делает все обновления и разработку. Бета-версия: что-то может ломаться, всё чиним.' }),
         CHANGELOG.map((e, i) => changelogEntry(e, i === 0)),

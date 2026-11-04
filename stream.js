@@ -1,9 +1,9 @@
 // Полный трек обычным аудиопотоком вместо видеоплеера YouTube.
 // Зачем: видео браузер ставит на паузу, когда экран выключен или приложение свёрнуто, а обычный звук играет дальше.
 // Откуда: ваш Cloudflare Worker (/bg: YouTube напрямую, SoundCloud, зеркала) и открытые зеркала YouTube (Invidious, Piped).
-import { RECOGNIZE_URL } from './shazam-config.js?v=0.35.1';
+import { RECOGNIZE_URL } from './shazam-config.js?v=0.35.2';
 
-const KEY = 'mkw.bgplay'; // «Слушать в фоне с выключенным экраном» — бета, по умолчанию выключено
+const KEY = 'mkw.bgplay'; // «Слушать в фоне с выключенным экраном»: телефон — по умолчанию включено
 const GKEY = 'mkw.stream.good';
 const INV = [
   'https://inv.nadeko.net', 'https://invidious.nerdvpn.de', 'https://yewtu.be', 'https://invidious.f5.si',
@@ -17,7 +17,9 @@ const meta = new Map();   // ссылка → { src, label, id } — откуд�
 const done = new Map();   // id видео → string[] (уже найдено)
 let lastOk = (() => { try { return localStorage.getItem(GKEY) || ''; } catch { return ''; } })();
 
-export const streamsOn = () => { try { return localStorage.getItem(KEY) === '1'; } catch { return false; } };
+// На телефоне «Слушать в фоне» включено по умолчанию (выключить можно в Настройках), на компьютере — по желанию
+const touch = () => { try { return matchMedia('(pointer: coarse)').matches; } catch { return false; } };
+export const streamsOn = () => { try { const v = localStorage.getItem(KEY); if (v === '1') return true; if (v === '0') return false; } catch { /* ignore */ } return touch(); };
 export function setStreams(v) { try { localStorage.setItem(KEY, v ? '1' : '0'); } catch { /* ignore */ } }
 export const peekStream = (vid) => done.get(vid) || null;
 
