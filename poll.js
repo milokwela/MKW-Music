@@ -1,13 +1,13 @@
 // «О MKW»: обращение к слушателям (бета) и опрос «какое обновление следующее».
 // Голос хранится в polls/{id}/votes/{uid} — один голос на человека, можно передумать.
-import { db } from './firebase.js?v=0.35.2';
+import { db } from './firebase.js?v=0.35.3';
 import { doc, setDoc, getDocs, collection } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
-import { h, toast } from './ui.js?v=0.35.2';
-import { mi } from './icons2.js?v=0.35.2';
-import * as store from './store.js?v=0.35.2';
-import { stSrc } from './stickers.js?v=0.35.2';
-import { srvNow } from './clock.js?v=0.35.2';
-import { plural } from './utils.js?v=0.35.2';
+import { h, toast } from './ui.js?v=0.35.3';
+import { mi } from './icons2.js?v=0.35.3';
+import * as store from './store.js?v=0.35.3';
+import { stSrc } from './stickers.js?v=0.35.3';
+import { srvNow } from './clock.js?v=0.35.3';
+import { plural } from './utils.js?v=0.35.3';
 
 export const POLL_ID = 'next-2026-11';
 const OPTIONS = [

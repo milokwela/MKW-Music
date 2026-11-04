@@ -1,14 +1,14 @@
 // Меню действий над треком и выбор плейлиста.
-import { h, openSheet, closeSheet, sheetItem, askText, toast } from './ui.js?v=0.35.2';
-import * as store from './store.js?v=0.35.2';
-import { shareTrack } from './share.js?v=0.35.2';
-import { openArtistFor, openArtist } from './artist.js?v=0.35.2';
-import { splitArtists } from './taste.js?v=0.35.2';
-import * as player from './player.js?v=0.35.2';
-import { pickFriendFor } from './chat.js?v=0.35.2';
-import { pickSharedFor } from './sharedui.js?v=0.35.2';
-import { startWave } from './wave.js?v=0.35.2';
-import { setRingtone } from './ringtone.js?v=0.35.2';
+import { h, openSheet, closeSheet, sheetItem, askText, toast } from './ui.js?v=0.35.3';
+import * as store from './store.js?v=0.35.3';
+import { shareTrack } from './share.js?v=0.35.3';
+import { openArtistFor, openArtist } from './artist.js?v=0.35.3';
+import { splitArtists } from './taste.js?v=0.35.3';
+import * as player from './player.js?v=0.35.3';
+import { pickFriendFor } from './chat.js?v=0.35.3';
+import { pickSharedFor } from './sharedui.js?v=0.35.3';
+import { startWave } from './wave.js?v=0.35.3';
+import { setRingtone } from './ringtone.js?v=0.35.3';
 
 function fail(e) {
   console.error(e);
