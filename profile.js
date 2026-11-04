@@ -1,39 +1,40 @@
 // Экран «Профиль»: карточка с баннером, витрина (любимые исполнители и треки), вкладки Обзор / Слушатели / Настройки / О MKW.
-import { seenOnline } from './clock.js?v=0.34.1';
-import { $, $$, h, icon, openSheet, closeSheet, toast, sheetItem, trackRow } from './ui.js?v=0.34.1';
-import * as store from './store.js?v=0.34.1';
-import * as player from './player.js?v=0.34.1';
-import { ACCENTS, getTheme, getAccent, getCustomHue, setCustomColor, setTheme, setAccent, hslHex, getNeutral } from './theme.js?v=0.34.1';
-import { CHANGELOG, VERSION, STAGE, KNOWN_ISSUES } from './changelog.js?v=0.34.1';
-import { plural, pickTrack, safeUrl } from './utils.js?v=0.34.1';
-import { youtubeEnabled, youtubeQuotaOut } from './youtube.js?v=0.34.1';
-import { audiusEnabled } from './audius.js?v=0.34.1';
-import { SOURCE_MODES, getSourceMode, setSourceMode } from './sources.js?v=0.34.1';
-import { gesturesOn, setGestures, showGestureGuide } from './gestures.js?v=0.34.1';
-import { listenerStats } from './stats.js?v=0.34.1';
-import { liveBg, setLiveBg } from './viz.js?v=0.34.1';
-import { lowPower, setLowPower } from './perf.js?v=0.34.1';
-import { logOut, changePassword, changeNick, authErrorText } from './auth.js?v=0.34.1';
-import { connectionCountry } from './geo.js?v=0.34.1';
-import { goOffline, publishCard, publishProfile, myCard, getProfile, topListeners, hiddenFromBoard, setHidden, myUid } from './leaders.js?v=0.34.1';
-import { mi } from './icons2.js?v=0.34.1';
-import { artistPic } from './artistpic.js?v=0.34.1';
-import { openArtist } from './artist.js?v=0.34.1';
-import { openUserPage, favArtistsRow, favTracksList, isOnline } from './userpage.js?v=0.34.1';
-import { voiceOn, setVoice, showVoiceGuide, voiceSupported } from './voice.js?v=0.34.1';
-import { openImage } from './viewer.js?v=0.34.1';
-import { isDev, devBadge, fanBadge, nickMarks } from './dev.js?v=0.34.1';
-import { fanNumber, restoreFan, becomeFan } from './fans.js?v=0.34.1';
-import { ping } from './leaders.js?v=0.34.1';
-import { streamsOn, setStreams, checkBackground } from './stream.js?v=0.34.1';
-import { DEF_AV, avSrc, isDefAv } from './avatar.js?v=0.34.1';
-import { ONLINE_MS, loadFriends, friendIds, addFriend, removeFriend, findByNick, friendCards, onFriends, declineRequest, acceptRequest, requestIds, sentIds, friendState, friendsLoaded } from './friends.js?v=0.34.1';
-import { openChat, chatWith, isUnread, onChats } from './chat.js?v=0.34.1';
-import { notifyOn, setNotify } from './notify.js?v=0.34.1';
-import { openInstall, standalone } from './install.js?v=0.34.1';
-import { getRingtone, clearRingtone } from './ringtone.js?v=0.34.1';
-import { searchTracks } from './catalog.js?v=0.34.1';
-import { seenText } from './userpage.js?v=0.34.1';
+import { seenOnline } from './clock.js?v=0.35.0';
+import { nickEmo } from './stickers.js?v=0.35.0';
+import { $, $$, h, icon, openSheet, closeSheet, toast, sheetItem, trackRow } from './ui.js?v=0.35.0';
+import * as store from './store.js?v=0.35.0';
+import * as player from './player.js?v=0.35.0';
+import { ACCENTS, getTheme, getAccent, getCustomHue, setCustomColor, setTheme, setAccent, hslHex, getNeutral } from './theme.js?v=0.35.0';
+import { CHANGELOG, VERSION, STAGE, KNOWN_ISSUES } from './changelog.js?v=0.35.0';
+import { plural, pickTrack, safeUrl } from './utils.js?v=0.35.0';
+import { youtubeEnabled, youtubeQuotaOut } from './youtube.js?v=0.35.0';
+import { audiusEnabled } from './audius.js?v=0.35.0';
+import { SOURCE_MODES, getSourceMode, setSourceMode } from './sources.js?v=0.35.0';
+import { gesturesOn, setGestures, showGestureGuide } from './gestures.js?v=0.35.0';
+import { listenerStats } from './stats.js?v=0.35.0';
+import { liveBg, setLiveBg } from './viz.js?v=0.35.0';
+import { lowPower, setLowPower } from './perf.js?v=0.35.0';
+import { logOut, changePassword, changeNick, authErrorText } from './auth.js?v=0.35.0';
+import { connectionCountry } from './geo.js?v=0.35.0';
+import { goOffline, publishCard, publishProfile, myCard, getProfile, topListeners, hiddenFromBoard, setHidden, myUid } from './leaders.js?v=0.35.0';
+import { mi } from './icons2.js?v=0.35.0';
+import { artistPic } from './artistpic.js?v=0.35.0';
+import { openArtist } from './artist.js?v=0.35.0';
+import { openUserPage, favArtistsRow, favTracksList, isOnline } from './userpage.js?v=0.35.0';
+import { voiceOn, setVoice, showVoiceGuide, voiceSupported } from './voice.js?v=0.35.0';
+import { openImage } from './viewer.js?v=0.35.0';
+import { isDev, devBadge, fanBadge, nickMarks } from './dev.js?v=0.35.0';
+import { fanNumber, restoreFan, becomeFan } from './fans.js?v=0.35.0';
+import { ping } from './leaders.js?v=0.35.0';
+import { streamsOn, setStreams, checkBackground } from './stream.js?v=0.35.0';
+import { DEF_AV, avSrc, isDefAv } from './avatar.js?v=0.35.0';
+import { ONLINE_MS, loadFriends, friendIds, addFriend, removeFriend, findByNick, friendCards, onFriends, declineRequest, acceptRequest, requestIds, sentIds, friendState, friendsLoaded } from './friends.js?v=0.35.0';
+import { openChat, chatWith, isUnread, onChats } from './chat.js?v=0.35.0';
+import { notifyOn, setNotify } from './notify.js?v=0.35.0';
+import { openInstall, standalone } from './install.js?v=0.35.0';
+import { getRingtone, clearRingtone } from './ringtone.js?v=0.35.0';
+import { searchTracks } from './catalog.js?v=0.35.0';
+import { seenText } from './userpage.js?v=0.35.0';
 
 // s: sec, likes, playlists, plays, days, artists, night, styled, showcase, rank
 export const ACHIEVEMENTS = [
@@ -268,6 +269,8 @@ function statsNow() {
 }
 
 let pushTimer = 0, lastCardAt = 0;
+// поменяли эмодзи у ника — сразу показываем его всем
+window.addEventListener('mkw-nemo', () => { if (curNick) { try { paintMarks(getCustom()); } catch { /* ignore */ } pushCard(true); } });
 // бережём бесплатный лимит Firestore: рейтинг пишется не чаще раза в 3 минуты, страница профиля — при изменениях и раз в 15 минут
 function pushCard(full) {
   if (full !== true && Date.now() - lastCardAt < 180000) return;
@@ -276,13 +279,13 @@ function pushCard(full) {
   pushTimer = setTimeout(async () => {
     const c = getCustom(), s = statsNow(), av = getAvatar(curNick);
     const small = await imageTo(av, 72, 72, 0.7);
-    publishCard({ nick: curNick, sec: s.sec, plays: s.plays, likes: s.likes, status: c.status, banner: c.bannerImg ? 'img' : c.banner, frame: c.frame, badges: c.badges, avatar: small, shape: c.shape, now: nowPlaying(), ...marksOut(c) });
+    publishCard({ nick: curNick, sec: s.sec, plays: s.plays, likes: s.likes, status: c.status, banner: c.bannerImg ? 'img' : c.banner, frame: c.frame, badges: c.badges, avatar: small, shape: c.shape, now: nowPlaying(), nemo: (store.state.profile || {}).nemo || '', ...marksOut(c) });
     if (full !== false) {
       publishProfile({
         nick: curNick, status: c.status, banner: c.banner, bannerImg: c.bannerImg, frame: c.frame, badges: c.badges,
         avatar: await imageTo(av, 360, 360, 0.8), favArtists: c.favArtists, favTracks: c.favTracks.map(pickTrack),
         bio: c.bio, nickStyle: c.nickStyle, shape: c.shape, effect: c.effect, now: nowPlaying(),
-        sec: s.sec, plays: s.plays, likes: s.likes, days: s.days, achCount: ACHIEVEMENTS.filter((a) => achDone(a, s)).length, ...marksOut(c),
+        sec: s.sec, plays: s.plays, likes: s.likes, days: s.days, achCount: ACHIEVEMENTS.filter((a) => achDone(a, s)).length, nemo: (store.state.profile || {}).nemo || '', ...marksOut(c),
       });
     }
   }, 1500);
@@ -293,7 +296,7 @@ const marksOut = (c) => ({ fan: c.fanBadge !== false ? fanNumber(curNick) : 0, d
 function paintMarks(c) {
   if (!refs.marks) return;
   const n = fanNumber(curNick);
-  refs.marks.replaceChildren(...[isDev(curNick) && c.devBadge !== false ? devBadge() : null, n && c.fanBadge !== false ? fanBadge(n) : null].filter(Boolean));
+  refs.marks.replaceChildren(...[nickEmo((store.state.profile || {}).nemo, 'nick-emo big'), isDev(curNick) && c.devBadge !== false ? devBadge() : null, n && c.fanBadge !== false ? fanBadge(n) : null].filter(Boolean));
   refs.marks.hidden = !refs.marks.children.length;
   if (refs.fanCard) refs.fanCard.hidden = Boolean(n);
 }

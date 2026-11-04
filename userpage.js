@@ -1,24 +1,25 @@
 // Страница другого слушателя: баннер, фото, статус, значки, статистика, любимые исполнители и треки.
-import { $, h, trackRow, animateIn } from './ui.js?v=0.34.1';
-import * as player from './player.js?v=0.34.1';
-import { openTrackMenu } from './menu.js?v=0.34.1';
-import { getProfile } from './leaders.js?v=0.34.1';
-import { ACH, bannerCss, formatListened } from './profile.js?v=0.34.1';
-import { artistPic } from './artistpic.js?v=0.34.1';
-import { openArtist } from './artist.js?v=0.34.1';
-import { mi } from './icons2.js?v=0.34.1';
-import { plural } from './utils.js?v=0.34.1';
-import { openImage } from './viewer.js?v=0.34.1';
-import { isDev, devBadge, showDev, validFan, fanBadge } from './dev.js?v=0.34.1';
-import { friendState, addFriend, removeFriend, loadFriends, friendsLoaded, ONLINE_MS } from './friends.js?v=0.34.1';
-import { openChat, chatActions } from './chat.js?v=0.34.1';
+import { $, h, trackRow, animateIn } from './ui.js?v=0.35.0';
+import * as player from './player.js?v=0.35.0';
+import { openTrackMenu } from './menu.js?v=0.35.0';
+import { getProfile } from './leaders.js?v=0.35.0';
+import { ACH, bannerCss, formatListened } from './profile.js?v=0.35.0';
+import { artistPic } from './artistpic.js?v=0.35.0';
+import { openArtist } from './artist.js?v=0.35.0';
+import { mi } from './icons2.js?v=0.35.0';
+import { plural } from './utils.js?v=0.35.0';
+import { openImage } from './viewer.js?v=0.35.0';
+import { isDev, devBadge, showDev, validFan, fanBadge } from './dev.js?v=0.35.0';
+import { friendState, addFriend, removeFriend, loadFriends, friendsLoaded, ONLINE_MS } from './friends.js?v=0.35.0';
+import { openChat, chatActions } from './chat.js?v=0.35.0';
 // удалить друга — двойное нажатие за 3 секунды, чтобы не убрать случайно
 let rmAsk = '';
 function confirmRemove(u) { if (rmAsk === u.uid) { rmAsk = ''; return true; } rmAsk = u.uid; setTimeout(() => { if (rmAsk === u.uid) rmAsk = ''; }, 3000); toast('Нажмите ещё раз, чтобы убрать из друзей'); return false; }
-import { avSrc } from './avatar.js?v=0.34.1';
-import { toast } from './ui.js?v=0.34.1';
-import { searchTracks } from './catalog.js?v=0.34.1';
-import { srvNow, realSeen, seenOnline } from './clock.js?v=0.34.1';
+import { avSrc } from './avatar.js?v=0.35.0';
+import { toast } from './ui.js?v=0.35.0';
+import { searchTracks } from './catalog.js?v=0.35.0';
+import { srvNow, realSeen, seenOnline } from './clock.js?v=0.35.0';
+import { nickEmo } from './stickers.js?v=0.35.0';
 
 export function seenText(seen) {
   const t = realSeen(seen);
@@ -65,7 +66,7 @@ function render(u, isMe) {
       h('div', { class: 'phero-row' }, h('button', { type: 'button', class: 'hero-avatar', 'aria-label': 'Открыть фото', onclick: () => openImage(avSrc(u.avatar), u.nick) }, h('img', { src: avSrc(u.avatar), alt: '' }), isOnline(u.seen) ? h('span', { class: 'online-dot' }) : null)),
       h('div', { class: 'phero-info' },
         h('div', { class: 'hero-nick', 'data-style': u.nickStyle || 'plain', text: u.nick || 'Слушатель' }),
-        showDev(u) || validFan(u) ? h('div', { class: 'nick-marks' }, showDev(u) ? devBadge() : null, validFan(u) ? fanBadge(Number(u.fan)) : null) : null,
+        showDev(u) || validFan(u) || nickEmo(u.nemo) ? h('div', { class: 'nick-marks' }, nickEmo(u.nemo, 'nick-emo big'), showDev(u) ? devBadge() : null, validFan(u) ? fanBadge(Number(u.fan)) : null) : null,
         u.seen ? h('div', { class: `hero-seen${isOnline(u.seen) ? ' on' : ''}`, text: seenText(u.seen) }) : null,
         u.status ? h('div', { class: 'hero-status', text: u.status }) : null,
         u.bio ? h('div', { class: 'hero-bio', text: u.bio }) : null,

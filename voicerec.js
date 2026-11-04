@@ -1,7 +1,7 @@
 // Голосовые сообщения. Раньше каждый телефон записывал в своём формате (Android — webm/mp4-фрагменты,
 // iPhone — m4a), и часть голосовых не играла на других телефонах. Теперь пишем звук сами
 // и кодируем в MP3 — его понимают все телефоны, планшеты и компьютеры.
-import { VERSION } from './changelog.js?v=0.34.1';
+import { VERSION } from './changelog.js?v=0.35.0';
 
 const AC = () => window.AudioContext || window.webkitAudioContext;
 const OUT_RATE = 16000; // голосу хватает, а файл маленький
@@ -114,7 +114,13 @@ export async function toWavUrl(src) {
     const blob = await (await fetch(src)).blob();
     const d = await decodeBlob(blob);
     if (!d) return '';
-    const pcm = resample(d.f32, d.rate);
+    return wavUrl(d.f32, d.rate);
+  } catch { return ''; }
+}
+// звук → WAV-ссылка (для прослушивания записи перед отправкой)
+export function wavUrl(f32, rate) {
+  try {
+    const pcm = resample(f32, rate);
     const n = pcm.length, buf = new ArrayBuffer(44 + n * 2), v = new DataView(buf);
     const w = (o, s) => { for (let i = 0; i < s.length; i += 1) v.setUint8(o + i, s.charCodeAt(i)); };
     w(0, 'RIFF'); v.setUint32(4, 36 + n * 2, true); w(8, 'WAVE'); w(12, 'fmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);

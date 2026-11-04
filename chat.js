@@ -4,26 +4,27 @@
 //   chats/{id}/msgs/{id}   — { from, text, at, track?, img?, voice?, vdur?, re?: {id, from, text}, rx?: {uid: эмодзи}, ed? }
 // В read хранится всё «служебное»: прочитано (uid), огонёк (g_*, gs, gd…), очистка (x_*), блокировка (b_*),
 // «печатает…» (t_<uid> — когда, tk_<uid> — что: text | voice).
-import { safeUrl } from './utils.js?v=0.34.1';
-import { db } from './firebase.js?v=0.34.1';
+import { safeUrl } from './utils.js?v=0.35.0';
+import { db } from './firebase.js?v=0.35.0';
 import { doc, getDoc, setDoc, addDoc, updateDoc, deleteDoc, getDocs, collection, query, where, orderBy, limit, onSnapshot, deleteField } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
-import { h, toast, openSheet, closeSheet } from './ui.js?v=0.34.1';
-import { openImage } from './viewer.js?v=0.34.1';
-import { mi } from './icons2.js?v=0.34.1';
-import * as player from './player.js?v=0.34.1';
-import { searchTracks } from './catalog.js?v=0.34.1';
-import { me, isFriend, cardOf, friendIds, friendCards, loadFriends, friendsLoaded } from './friends.js?v=0.34.1';
-import { avSrc } from './avatar.js?v=0.34.1';
-import { seenText, isOnline, openUserPage, closeUserPage } from './userpage.js?v=0.34.1';
-import { startCall, warmCalls } from './call.js?v=0.34.1';
-import { streakAny, streakPatch, groupPatch, fireIcon, openStreak, startStreak, playFire } from './streak.js?v=0.34.1';
-import { pushTo, myNick } from './push.js?v=0.34.1';
-import { srvNow, realSeen } from './clock.js?v=0.34.1';
-import { togetherBar, startTogether } from './together.js?v=0.34.1';
-import { ensureShared } from './shared.js?v=0.34.1';
-import { STICKER_TXT, catOf, catSrc, catName, rxNode, emojiPicker, QUICK_RX } from './stickers.js?v=0.34.1';
-import { pcmCapture, loadLame, encodeMp3, decodeBlob, blobToDataUrl, toWavUrl } from './voicerec.js?v=0.34.1';
-import { openSharedSheet } from './sharedui.js?v=0.34.1';
+import { h, toast, openSheet, closeSheet } from './ui.js?v=0.35.0';
+import { openImage } from './viewer.js?v=0.35.0';
+import { mi } from './icons2.js?v=0.35.0';
+import * as player from './player.js?v=0.35.0';
+import { searchTracks } from './catalog.js?v=0.35.0';
+import { me, isFriend, cardOf, friendIds, friendCards, loadFriends, friendsLoaded } from './friends.js?v=0.35.0';
+import { avSrc } from './avatar.js?v=0.35.0';
+import { seenText, isOnline, openUserPage, closeUserPage } from './userpage.js?v=0.35.0';
+import { startCall, warmCalls } from './call.js?v=0.35.0';
+import { streakAny, streakPatch, groupPatch, fireIcon, openStreak, startStreak, playFire } from './streak.js?v=0.35.0';
+import { pushTo, myNick } from './push.js?v=0.35.0';
+import { srvNow, realSeen } from './clock.js?v=0.35.0';
+import { togetherBar, startTogether } from './together.js?v=0.35.0';
+import { ensureShared } from './shared.js?v=0.35.0';
+import { STICKER_TXT, stickerOf, nickEmo, catOf, catName, rxNode, emojiPicker, QUICK_RX } from './stickers.js?v=0.35.0';
+import { markDaily } from './daily.js?v=0.35.0';
+import { pcmCapture, loadLame, encodeMp3, decodeBlob, blobToDataUrl, toWavUrl, wavUrl } from './voicerec.js?v=0.35.0';
+import { openSharedSheet } from './sharedui.js?v=0.35.0';
 
 export const chatId = (a, b) => [a, b].sort().join('_');
 const isGroupId = (cid) => String(cid || '').startsWith('g') && !String(cid).includes('_');
@@ -159,7 +160,7 @@ function typers(c) {
 
 // ---------- отправка ----------
 const VOICE_TXT = '🎤 Голосовое сообщение';
-const quoteText = (m) => (catOf(m.img) ? STICKER_TXT : m.voice || (typeof m.img === 'string' && m.img.startsWith('data:audio/')) ? '🎤 Голосовое' : m.img && !m.text ? '📷 Фото' : m.track && !m.text ? `♪ ${m.track.artist} — ${m.track.title}` : String(m.text || '')).slice(0, 120);
+const quoteText = (m) => (stickerOf(m.img) ? STICKER_TXT : m.voice || (typeof m.img === 'string' && m.img.startsWith('data:audio/')) ? '🎤 Голосовое' : m.img && !m.text ? '📷 Фото' : m.track && !m.text ? `♪ ${m.track.artist} — ${m.track.title}` : String(m.text || '')).slice(0, 120);
 async function send(cv, text, track, img, voice, re) {
   const cid = cv.cid;
   const at = srvNow(), from = me();
@@ -179,6 +180,7 @@ async function send(cv, text, track, img, voice, re) {
     try { await addDoc(collection(db, 'chats', cid, 'msgs'), msg); }
     catch (e) { if (msg.re) { delete msg.re; await addDoc(collection(db, 'chats', cid, 'msgs'), msg); } else throw e; }
   }
+  try { markDaily('msg'); if (track) markDaily('share'); if (voice) markDaily('voice'); if (stickerOf(img)) markDaily('sticker'); } catch { /* ignore */ }
   const preview = (voice ? VOICE_TXT : img && !msg.text ? 'Фото' : track && !msg.text ? `♪ ${msg.track.artist} — ${msg.track.title}` : msg.text).slice(0, 140);
   typingSent = { cid: '', kind: '', at: 0 };
   if (cv.group) {
@@ -193,11 +195,22 @@ async function send(cv, text, track, img, voice, re) {
   if (to) pushTo(to, 'msg', myNick(), preview, `chat-${cid}`, `./#chat=${from}`);
 }
 
+// закреп: хранится в чате как read.pin = { id, t (текст), f (кто написал), by, at }
+async function pinMsg(cid, id, m) {
+  await setDoc(doc(db, 'chats', cid), { read: { pin: { id, t: quoteText(m), f: m.from || '', by: me(), at: srvNow() } } }, { merge: true });
+}
+async function unpinMsg(cid) { await updateDoc(doc(db, 'chats', cid), { 'read.pin': deleteField() }); }
+const pinOf = (c) => { const x = rd(c).pin; return x && typeof x === 'object' && x.id ? x : null; };
+
 // правка, удаление, реакции
 async function editMsg(cid, id, text) { await updateDoc(doc(db, 'chats', cid, 'msgs', id), { text: String(text).slice(0, 500), ed: srvNow() }); }
-async function deleteMsg(cid, id) { await deleteDoc(doc(db, 'chats', cid, 'msgs', id)); }
+async function deleteMsg(cid, id) {
+  await deleteDoc(doc(db, 'chats', cid, 'msgs', id));
+  if ((pinOf(chatById(cid)) || {}).id === id) unpinMsg(cid).catch(() => {});
+}
 async function react(cid, id, emoji, mine) {
   await updateDoc(doc(db, 'chats', cid, 'msgs', id), { [`rx.${me()}`]: mine === emoji ? deleteField() : emoji });
+  if (mine !== emoji) markDaily('react');
 }
 
 // ---------- группы ----------
@@ -276,7 +289,7 @@ export async function pickFriendFor(track) {
       try { await sendTrackTo(u.uid, track); closeSheet(); toast(`Отправлено ${u.nick}`); }
       catch { toast('Не отправилось. Проверьте интернет'); b.disabled = false; }
     } }, h('span', { class: 'lb-av' }, h('img', { src: avSrc(u.avatar), alt: '', loading: 'lazy' }), isOnline(u.seen) ? h('i', { class: 'online-dot' }) : null),
-      h('div', { class: 'lb-body' }, h('div', { class: 'lb-nick' }, h('span', { text: u.nick })), h('div', { class: 'lb-status', text: isOnline(u.seen) ? 'в сети' : seenText(u.seen) })),
+      h('div', { class: 'lb-body' }, h('div', { class: 'lb-nick' }, h('span', { text: u.nick }), nickEmo(u.nemo)), h('div', { class: 'lb-status', text: isOnline(u.seen) ? 'в сети' : seenText(u.seen) })),
       h('span', { class: 'fr-send' }, mi('send')))));
 }
 
@@ -359,7 +372,7 @@ function voiceBubble(src, durSec) {
     const a = new Audio(); a.preload = 'auto'; a.src = ui.wav || src; vAudio = a; vUi = ui;
     box.classList.add('playing'); btn.replaceChildren(mi('pause'));
     a.addEventListener('loadedmetadata', () => { if (!ui.dur && Number.isFinite(a.duration)) ui.dur = a.duration; });
-    a.addEventListener('timeupdate', () => { const d = ui.dur || a.duration || 1; box.style.setProperty('--p', String(Math.min(1, a.currentTime / d))); time.textContent = mmss(a.currentTime); });
+    a.addEventListener('timeupdate', () => { if (box.classList.contains('scrub')) return; const d = ui.dur || a.duration || 1; box.style.setProperty('--p', String(Math.min(1, a.currentTime / d))); time.textContent = mmss(a.currentTime); });
     a.addEventListener('ended', stopVoice);
     if (player.st.playing) player.pause();
     const oldFmt = () => { if (vUi === ui) stopVoice(); toast('Это голосовое записано в старом формате, и этот телефон его не открывает. Новые голосовые играют везде'); };
@@ -375,7 +388,28 @@ function voiceBubble(src, durSec) {
       a.play().catch(oldFmt);
     });
   });
-  bars.addEventListener('click', (e) => { if (vUi !== ui || !vAudio) return; const r = bars.getBoundingClientRect(); vAudio.currentTime = ((e.clientX - r.left) / r.width) * (ui.dur || vAudio.duration || 0); });
+  // перемотка пальцем или мышкой: тянем по волне
+  let scrub = false;
+  const seekTo = (e) => {
+    const r = bars.getBoundingClientRect(); const f = Math.max(0, Math.min(1, (e.clientX - r.left) / r.width));
+    box.style.setProperty('--p', String(f));
+    const d = ui.dur || (vAudio && Number.isFinite(vAudio.duration) ? vAudio.duration : 0);
+    time.textContent = mmss(f * d);
+    if (vUi === ui && vAudio && d) { try { vAudio.currentTime = f * d; } catch { /* ignore */ } }
+  };
+  bars.style.touchAction = 'none';
+  bars.addEventListener('pointerdown', (e) => {
+    e.preventDefault(); e.stopPropagation();
+    if (vUi !== ui) btn.click(); // ещё не играет — включаем и сразу перематываем
+    scrub = true; box.classList.add('scrub');
+    try { bars.setPointerCapture(e.pointerId); } catch { /* ignore */ }
+    const ev = { clientX: e.clientX };
+    setTimeout(() => seekTo(ev), vUi === ui && vAudio && vAudio.readyState > 0 ? 0 : 120);
+  });
+  bars.addEventListener('pointermove', (e) => { if (scrub) { e.stopPropagation(); seekTo(e); } });
+  const endScrub = () => { scrub = false; box.classList.remove('scrub'); };
+  bars.addEventListener('pointerup', endScrub); bars.addEventListener('pointercancel', endScrub);
+  bars.addEventListener('click', (e) => e.stopPropagation());
   return box;
 }
 
@@ -553,6 +587,11 @@ async function openConv(cv) {
       h('button', { type: 'button', class: 'ch-reply-x', 'aria-label': 'Отменить', onclick: () => { if (editing) { input.value = ''; input.style.height = ''; } replyTo = null; editing = null; paintReply(); } }, mi('close')));
     paintBar();
   };
+  const sendSticker = async (v) => {
+    closeEmo();
+    const re = replyTo; replyTo = null; paintReply();
+    try { await send(cv, STICKER_TXT, null, v, null, re); } catch { toast('Стикер не отправился. Попробуйте ещё раз'); }
+  };
   const closeEmo = () => { if (emoBox.hidden) return; emoBox.hidden = true; emoBox.replaceChildren(); emoBtn.classList.remove('on'); p.classList.remove('emo-open'); };
   const openEmo = () => {
     if (!emoBox.hidden) { closeEmo(); input.focus({ preventScroll: true }); return; }
@@ -560,12 +599,9 @@ async function openConv(cv) {
     const atBottom = list.scrollHeight - list.scrollTop - list.clientHeight < 80;
     if (!fine) input.blur();
     emoBox.replaceChildren(emojiPicker({
-      tab: (() => { try { return localStorage.getItem('mkw.emo.tab') || 'cats'; } catch { return 'cats'; } })(),
-      onCat: async (n) => {
-        closeEmo();
-        const re = replyTo; replyTo = null; paintReply();
-        try { await send(cv, STICKER_TXT, null, `mkw:${n}`, null, re); } catch { toast('Стикер не отправился. Попробуйте ещё раз'); }
-      },
+      tab: (() => { try { return localStorage.getItem('mkw.emo.tab2') || 'stickers'; } catch { return 'stickers'; } })(),
+      onSticker: (n) => sendSticker(`st:${n}`),
+      onCat: (n) => sendSticker(`mkw:${n}`),
       onEmoji: (e) => {
         const a = input.selectionStart ?? input.value.length, b = input.selectionEnd ?? a;
         input.value = `${input.value.slice(0, a)}${e}${input.value.slice(b)}`.slice(0, 500);
@@ -573,7 +609,7 @@ async function openConv(cv) {
         paintBar(); typing(cid, 'text');
       },
     }));
-    emoBox.querySelectorAll('.emo-tab').forEach((t) => t.addEventListener('click', () => { try { localStorage.setItem('mkw.emo.tab', t.dataset.t); } catch { /* ignore */ } }));
+    emoBox.querySelectorAll('.emo-tab').forEach((t) => t.addEventListener('click', () => { try { localStorage.setItem('mkw.emo.tab2', t.dataset.t); } catch { /* ignore */ } }));
     emoBox.hidden = false; emoBtn.classList.add('on'); p.classList.add('emo-open');
     if (atBottom) requestAnimationFrame(() => { list.scrollTop = list.scrollHeight; });
   };
@@ -632,85 +668,239 @@ async function openConv(cv) {
     if (e.key === 'Escape' && (replyTo || editing)) { if (editing) input.value = ''; replyTo = null; editing = null; paintReply(); }
     // стрелка вверх в пустом поле — изменить своё последнее сообщение
     if (e.key === 'ArrowUp' && !input.value && lastDocs) {
-      const mine = lastDocs.find((d) => d.data().from === me() && !isCallMsg(d.data().text) && d.data().text && !d.data().voice && !catOf(d.data().img));
+      const mine = lastDocs.find((d) => d.data().from === me() && !isCallMsg(d.data().text) && d.data().text && !d.data().voice && !stickerOf(d.data().img));
       if (mine) { e.preventDefault(); setEdit(mine.id, mine.data()); }
     }
   });
   input.addEventListener('input', () => { input.style.height = ''; input.style.height = `${Math.min(120, input.scrollHeight)}px`; paintBar(); if (input.value.trim() && !editing) typing(cid, 'text'); });
   input.addEventListener('blur', () => { if (!input.value.trim()) typingOff(cid); });
 
-  // ---- запись голосового: нажали микрофон — пишем, «отправить» или «отмена» ----
+  // ---- голосовые ----
+  // Телефон: держите микрофон — идёт запись, отпустили — отправилось. Влево — отмена, вверх — замок (можно отпустить).
+  // Компьютер: нажали — запись. В записи с замком и на компьютере можно остановить, послушать, обрезать и отправить.
   let rec = null;
   const recUi = h('div', { class: 'ch-rec' });
-  const stopRec = (sendIt) => {
-    if (!rec) return;
-    const r = rec; rec = null;
+  const holdMode = !fine && 'PointerEvent' in window;
+  const endRec = () => { bar.classList.remove('rec', 'hold', 'locked', 'pv'); recUi.replaceChildren(); recUi.style.removeProperty('--dx'); recUi.style.removeProperty('--dy'); };
+  const stopCapture = (r) => new Promise((res) => {
+    if (r.stopped) { res(); return; }
+    r.stopped = true;
     clearInterval(r.timer); clearTimeout(r.cap); clearInterval(r.typ);
-    r.sendIt = sendIt;
-    let waiting = false;
-    try { if (r.mr && r.mr.state !== 'inactive') { r.mr.stop(); waiting = true; } } catch { /* ignore */ }
-    if (waiting) setTimeout(() => r.finish(), 2500); else r.finish();
-    bar.classList.remove('rec');
-    if (!sendIt) typingOff(cid);
+    let done = false;
+    const fin = () => {
+      if (done) return; done = true;
+      if (r.stream) r.stream.getTracks().forEach((t) => t.stop());
+      r.sec = r.t0 ? (Date.now() - r.t0) / 1000 : 0;
+      r.samples = r.pc && r.pc.ok ? r.pc.samples() : null;
+      r.rate = r.pc ? r.pc.rate : 0;
+      if (r.pc) r.pc.stop();
+      res();
+    };
+    try { if (r.mr && r.mr.state !== 'inactive') { r.mr.onstop = fin; r.mr.stop(); setTimeout(fin, 2500); } else fin(); } catch { fin(); }
+  });
+  const pcmOf = async (r) => {
+    r.blob = r.chunks.length ? new Blob(r.chunks, { type: ((r.mr && r.mr.mimeType) || r.mime || 'audio/webm').split(';')[0] }) : null;
+    if (r.samples && r.samples.length) {
+      let pk = 0; for (let i = 0; i < r.samples.length; i += 32) pk = Math.max(pk, Math.abs(r.samples[i]));
+      if (pk > 0.003) return { f32: r.samples, rate: r.rate };
+    }
+    return r.blob ? decodeBlob(r.blob) : null;
   };
-  micBtn.addEventListener('click', async () => {
-    if (rec) return;
-    if (blockedNow()) { toast('Переписка ограничена'); return; }
-    const pc = pcmCapture(); // звук пишем сами и кодируем в MP3 — так голосовое играет на любом телефоне
+  const sendRec = async (r, pcm, a = 0, b = 1) => {
+    endRec();
+    let data = '', dur = r.sec;
+    if (pcm) {
+      const from = Math.floor(pcm.f32.length * a), to = Math.ceil(pcm.f32.length * b);
+      if ((to - from) / pcm.rate < 0.5) { toast('Слишком коротко'); typingOff(cid); return; }
+      try { const out = await encodeMp3(pcm.f32.subarray(from, to), pcm.rate); if (out) { data = await blobToDataUrl(out.blob); dur = out.dur; } } catch { data = ''; }
+    }
+    if (!data && r.blob && a === 0 && b === 1) data = await blobToDataUrl(r.blob);
+    if (!data) { toast('Не получилось записать голосовое. Проверьте микрофон'); typingOff(cid); return; }
+    if (data.length > 395000) { toast('Слишком длинное голосовое'); typingOff(cid); return; }
+    if (r.re && r.re === replyTo) { replyTo = null; paintReply(); }
+    try { await send(cv, '', null, null, { data, dur }, r.re); } catch { toast('Голосовое не отправилось. Попробуйте ещё раз'); }
+  };
+  const cancelRec = async () => {
+    const r = rec; rec = null;
+    endRec(); typingOff(cid);
+    if (r) await stopCapture(r);
+    if (navigator.vibrate) navigator.vibrate(8);
+  };
+  const finishSend = async () => {
+    const r = rec; rec = null;
+    if (!r) return;
+    await stopCapture(r);
+    if (r.sec < 0.7) { endRec(); typingOff(cid); toast(holdMode ? 'Удерживайте микрофон, пока говорите' : 'Слишком коротко'); return; }
+    await sendRec(r, await pcmOf(r));
+  };
+  const toPreview = async () => {
+    const r = rec; rec = null;
+    if (!r) return;
+    await stopCapture(r);
+    if (r.sec < 0.7) { endRec(); typingOff(cid); toast('Слишком коротко'); return; }
+    const pcm = await pcmOf(r);
+    if (!pcm) { await sendRec(r, null); return; }
+    showPreview(r, pcm);
+  };
+  const recTime = () => h('b', { class: 'ch-rec-t', text: '0:00' });
+  const paintHold = (r) => {
+    bar.classList.add('rec', 'hold');
+    r.tm = recTime();
+    recUi.replaceChildren(
+      h('i', { class: 'ch-rec-dot' }), r.tm,
+      h('span', { class: 'ch-rec-slide' }, h('span', { text: '‹ Влево — отмена' })),
+      h('span', { class: 'ch-rec-lock' }, mi('lock'), mi('up')),
+      h('span', { class: 'ch-rec-mic' }, mi('mic')));
+  };
+  const paintLocked = (r) => {
+    bar.classList.remove('hold'); bar.classList.add('rec', 'locked');
+    const tm = r.tm || recTime(); r.tm = tm;
+    recUi.style.removeProperty('--dx'); recUi.style.removeProperty('--dy');
+    recUi.replaceChildren(
+      h('button', { type: 'button', class: 'ch-rec-x', 'aria-label': 'Удалить запись', title: 'Удалить', onclick: cancelRec }, mi('trash')),
+      h('i', { class: 'ch-rec-dot' }), tm, h('span', { class: 'ch-rec-hint', text: 'Идёт запись…' }),
+      h('button', { type: 'button', class: 'ch-rec-stop', 'aria-label': 'Остановить и прослушать', title: 'Остановить — прослушать и обрезать', onclick: toPreview }, mi('stop')),
+      h('button', { type: 'button', class: 'ch-send ch-rec-send', 'aria-label': 'Отправить голосовое', onclick: finishSend }, mi('send')));
+  };
+  // прослушать запись и обрезать: тянем края пальцем или мышкой
+  const showPreview = (r, pcm) => {
+    bar.classList.remove('hold', 'locked'); bar.classList.add('rec', 'pv');
+    const total = pcm.f32.length / pcm.rate;
+    const N = 34, step = Math.max(1, Math.floor(pcm.f32.length / N));
+    const peaks = Array.from({ length: N }, (_, i) => { let m = 0; for (let k = i * step; k < Math.min(pcm.f32.length, (i + 1) * step); k += 8) m = Math.max(m, Math.abs(pcm.f32[k])); return m; });
+    const mx = Math.max(0.02, ...peaks);
+    let a = 0, b = 1;
+    const box = h('div', { class: 'ch-pv' }, h('span', { class: 'ch-pv-wave' }, ...peaks.map((v) => h('i', { style: `height:${14 + (v / mx) * 86}%` }))),
+      h('span', { class: 'ch-pv-dim l' }), h('span', { class: 'ch-pv-dim r' }), h('span', { class: 'ch-pv-h l' }), h('span', { class: 'ch-pv-h r' }), h('span', { class: 'ch-pv-head' }));
+    const tm = h('b', { class: 'ch-rec-t' });
+    const url = wavUrl(pcm.f32, pcm.rate);
+    const au = url ? new Audio(url) : null;
+    const playBtn = h('button', { type: 'button', class: 'ch-pv-play', 'aria-label': 'Прослушать' }, mi('play'));
+    const paint = () => { box.style.setProperty('--a', String(a)); box.style.setProperty('--b', String(b)); tm.textContent = mmss(total * (b - a)); };
+    const stopPlay = () => { if (au) au.pause(); playBtn.replaceChildren(mi('play')); box.classList.remove('playing'); };
+    if (au) {
+      au.addEventListener('timeupdate', () => { box.style.setProperty('--t', String(au.currentTime / total)); if (au.currentTime >= total * b) stopPlay(); });
+      au.addEventListener('ended', stopPlay);
+    }
+    playBtn.addEventListener('click', () => {
+      if (!au) { toast('Прослушать здесь не получится — можно сразу отправить'); return; }
+      if (!au.paused) { stopPlay(); return; }
+      if (au.currentTime < total * a || au.currentTime >= total * b - 0.05) au.currentTime = total * a;
+      if (player.st.playing) player.pause();
+      au.play().then(() => { playBtn.replaceChildren(mi('pause')); box.classList.add('playing'); }).catch(() => toast('Не получилось воспроизвести'));
+    });
+    let drag = '';
+    const pos = (e) => { const rc = box.getBoundingClientRect(); return Math.max(0, Math.min(1, (e.clientX - rc.left) / rc.width)); };
+    const minGap = Math.min(0.9, 0.6 / total);
+    box.addEventListener('pointerdown', (e) => {
+      e.preventDefault(); e.stopPropagation();
+      const x = pos(e);
+      drag = Math.abs(x - a) <= Math.abs(x - b) ? 'a' : 'b';
+      try { box.setPointerCapture(e.pointerId); } catch { /* ignore */ }
+      box.classList.add('drag');
+    });
+    box.addEventListener('pointermove', (e) => {
+      if (!drag) return;
+      const x = pos(e);
+      if (drag === 'a') a = Math.min(x, b - minGap); else b = Math.max(x, a + minGap);
+      a = Math.max(0, a); b = Math.min(1, b);
+      paint();
+      if (au) { au.currentTime = total * (drag === 'a' ? a : Math.max(a, b - 1.2)); box.style.setProperty('--t', String(au.currentTime / total)); }
+    });
+    const upH = () => { drag = ''; box.classList.remove('drag'); };
+    box.addEventListener('pointerup', upH); box.addEventListener('pointercancel', upH);
+    const done = () => { stopPlay(); if (url) setTimeout(() => URL.revokeObjectURL(url), 2000); };
+    recUi.replaceChildren(
+      h('button', { type: 'button', class: 'ch-rec-x', 'aria-label': 'Удалить запись', title: 'Удалить', onclick: () => { done(); endRec(); typingOff(cid); } }, mi('trash')),
+      playBtn, box, tm,
+      h('button', { type: 'button', class: 'ch-send ch-rec-send', 'aria-label': 'Отправить голосовое', onclick: () => { done(); sendRec(r, pcm, a, b); } }, mi('send')));
+    paint();
+  };
+  const startRec = async (mode) => {
+    if (rec) return null;
+    if (blockedNow()) { toast('Переписка ограничена'); return null; }
+    const pc = pcmCapture(); // AudioContext — прямо в нажатии, иначе iPhone его не запустит
     loadLame().catch(() => {});
+    const r = { mode, pc, chunks: [], t0: 0, re: replyTo, stopped: false, ready: false };
+    rec = r;
     let stream;
     try { stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } }); }
-    catch { if (pc) pc.stop(); toast('Нет доступа к микрофону. Разрешите его в настройках браузера'); return; }
+    catch { if (pc) pc.stop(); if (rec === r) rec = null; toast('Нет доступа к микрофону. Разрешите его в настройках браузера'); return null; }
+    if (rec !== r) { stream.getTracks().forEach((t) => t.stop()); if (pc) pc.stop(); return null; }
+    r.stream = stream;
     if (pc) pc.attach(stream);
-    const mime = voiceMime();
-    let mr = null;
-    try { mr = new MediaRecorder(stream, { ...(mime ? { mimeType: mime } : {}), audioBitsPerSecond: 32000 }); }
-    catch { try { mr = new MediaRecorder(stream); } catch { mr = null; } }
-    if (!mr && !(pc && pc.ok)) { stream.getTracks().forEach((t) => t.stop()); if (pc) pc.stop(); toast('Этот браузер не умеет записывать голос'); return; }
-    const chunks = [], t0 = Date.now();
-    const re = replyTo;
-    const r = { mr, stream, t0, sendIt: false, timer: 0, cap: 0, typ: 0, done: false };
-    rec = r;
-    r.finish = async () => {
-      if (r.done) return;
-      r.done = true;
-      stream.getTracks().forEach((t) => t.stop());
-      const sec = (Date.now() - t0) / 1000;
-      const samples = pc && pc.ok ? pc.samples() : null;
-      const rate = pc ? pc.rate : 0;
-      if (pc) pc.stop();
-      if (!r.sendIt) return;
-      if (sec < 0.7) { toast('Слишком коротко — держите запись подольше'); typingOff(cid); return; }
-      const mrBlob = chunks.length ? new Blob(chunks, { type: ((mr && mr.mimeType) || mime || 'audio/webm').split(';')[0] }) : null;
-      let out = null;
-      try { if (samples) out = await encodeMp3(samples, rate); } catch { out = null; }
-      if (!out && mrBlob) { const d = await decodeBlob(mrBlob); if (d) { try { out = await encodeMp3(d.f32, d.rate); } catch { out = null; } } }
-      let data = '', dur = sec;
-      if (out) { data = await blobToDataUrl(out.blob); dur = out.dur; }
-      else if (mrBlob) data = await blobToDataUrl(mrBlob);
-      if (!data) { toast('Не получилось записать голосовое. Проверьте микрофон'); typingOff(cid); return; }
-      if (data.length > 395000) { toast('Слишком длинное голосовое'); typingOff(cid); return; }
-      if (re === replyTo) { replyTo = null; paintReply(); }
-      try { await send(cv, '', null, null, { data, dur }, re); } catch { toast('Голосовое не отправилось. Попробуйте ещё раз'); }
-    };
-    if (mr) {
-      mr.ondataavailable = (e) => { if (e.data && e.data.size) chunks.push(e.data); };
-      mr.onstop = () => r.finish();
-      try { mr.start(250); } catch { r.mr = null; }
-    }
+    r.mime = voiceMime();
+    try { r.mr = new MediaRecorder(stream, { ...(r.mime ? { mimeType: r.mime } : {}), audioBitsPerSecond: 32000 }); }
+    catch { try { r.mr = new MediaRecorder(stream); } catch { r.mr = null; } }
+    if (!r.mr && !(pc && pc.ok)) { stream.getTracks().forEach((t) => t.stop()); if (pc) pc.stop(); rec = null; toast('Этот браузер не умеет записывать голос'); return null; }
+    if (r.mr) { r.mr.ondataavailable = (e) => { if (e.data && e.data.size) r.chunks.push(e.data); }; try { r.mr.start(250); } catch { r.mr = null; } }
+    r.t0 = Date.now();
+    r.ready = true;
     if (player.st.playing) player.pause();
     typing(cid, 'voice');
-    const tm = h('b', { class: 'ch-rec-t', text: '0:00' });
-    recUi.replaceChildren(
-      h('button', { type: 'button', class: 'ch-rec-x', 'aria-label': 'Отменить', onclick: () => stopRec(false) }, mi('close')),
-      h('i', { class: 'ch-rec-dot' }), tm, h('span', { class: 'ch-rec-hint', text: 'Идёт запись…' }),
-      h('button', { type: 'button', class: 'ch-send ch-rec-send', 'aria-label': 'Отправить голосовое', onclick: () => stopRec(true) }, mi('send')));
-    bar.classList.add('rec');
-    r.timer = setInterval(() => { tm.textContent = mmss((Date.now() - t0) / 1000); }, 250);
+    if (mode === 'hold') paintHold(r); else paintLocked(r);
+    r.timer = setInterval(() => { if (r.tm) r.tm.textContent = mmss((Date.now() - r.t0) / 1000); }, 250);
     r.typ = setInterval(() => typing(cid, 'voice'), 3600);
-    r.cap = setTimeout(() => stopRec(true), VOICE_MAX * 1000);
-  });
+    r.cap = setTimeout(() => { if (rec === r) finishSend(); }, VOICE_MAX * 1000);
+    return r;
+  };
+  if (holdMode) {
+    // держим микрофон пальцем
+    let g = null;
+    micBtn.addEventListener('contextmenu', (e) => e.preventDefault());
+    micBtn.addEventListener('pointerdown', async (e) => {
+      if (rec) return;
+      e.preventDefault();
+      try { micBtn.setPointerCapture(e.pointerId); } catch { /* ignore */ }
+      const gg = { x: e.clientX, y: e.clientY, id: e.pointerId, up: false, locked: false };
+      g = gg;
+      if (navigator.vibrate) navigator.vibrate(10);
+      const r = await startRec('hold');
+      if (!r) { if (g === gg) g = null; return; }
+      if (gg.up) {
+        // отпустили, пока включался микрофон (например, спрашивали разрешение)
+        rec = null; endRec(); typingOff(cid); await stopCapture(r);
+        toast('Удерживайте микрофон, пока говорите');
+      }
+    });
+    micBtn.addEventListener('pointermove', (e) => {
+      if (!g || e.pointerId !== g.id || !rec || !rec.ready || rec.mode !== 'hold' || g.locked) return;
+      const dx = e.clientX - g.x, dy = e.clientY - g.y;
+      recUi.style.setProperty('--dx', `${Math.max(-130, Math.min(0, dx))}px`);
+      recUi.style.setProperty('--dy', `${Math.max(-90, Math.min(0, dy))}px`);
+      if (dx < -110) { g = null; cancelRec(); toast('Запись отменена'); return; }
+      if (dy < -70) { g.locked = true; rec.mode = 'locked'; paintLocked(rec); if (navigator.vibrate) navigator.vibrate(15); }
+    });
+    const up = (e, cancel) => {
+      if (!g || e.pointerId !== g.id) return;
+      g.up = true;
+      const locked = g.locked; g = null;
+      if (!rec || !rec.ready || locked || rec.mode !== 'hold') return;
+      if (cancel) cancelRec(); else finishSend();
+    };
+    micBtn.addEventListener('pointerup', (e) => up(e, false));
+    micBtn.addEventListener('pointercancel', (e) => up(e, true));
+  } else {
+    micBtn.addEventListener('click', () => startRec('click'));
+  }
   bar.appendChild(recUi);
+
+  // ---- закреплённое сообщение ----
+  const pinBar = h('div', { class: 'ch-pin', hidden: '' });
+  let pinSig = '';
+  const paintPin = () => {
+    const x = pinOf(chatById(cid));
+    const sig = x ? `${x.id}|${x.t}` : '';
+    if (sig === pinSig) return;
+    pinSig = sig;
+    if (!x) { pinBar.hidden = true; pinBar.replaceChildren(); return; }
+    pinBar.hidden = false;
+    pinBar.replaceChildren(
+      h('button', { type: 'button', class: 'ch-pin-go', onclick: () => flashPin(x.id) }, h('span', { class: 'ch-pin-ic' }, mi('pin')),
+        h('span', { class: 'ch-pin-t' }, h('b', { text: 'Закреплённое сообщение' }), h('small', { text: x.t || '…' }))),
+      h('button', { type: 'button', class: 'ch-pin-x', 'aria-label': 'Открепить', title: 'Открепить', onclick: () => unpinMsg(cid).then(() => toast('Сообщение откреплено')).catch(() => toast('Не получилось открепить')) }, mi('close')));
+  };
+  let flashPin = () => {};
 
   // ---- шапка ----
   const openProfile = () => (cv.group ? groupSheet(cv) : openUserPage(uid, u));
@@ -723,7 +913,7 @@ async function openConv(cv) {
     h('header', { class: 'ch-head' },
       h('button', { class: 'icon-btn ch-back', type: 'button', 'aria-label': 'Назад', onclick: closeChat }, mi('close')),
       avBtn,
-      h('div', { class: 'ch-who', role: 'button', tabindex: '0', onclick: (e) => { if (!e.target.closest('.fire')) openProfile(); } }, h('b', {}, whoName, h('span', { class: 'ch-fire' })), whoSmall),
+      h('div', { class: 'ch-who', role: 'button', tabindex: '0', onclick: (e) => { if (!e.target.closest('.fire')) openProfile(); } }, h('b', {}, whoName, cv.group ? null : nickEmo(u.nemo), h('span', { class: 'ch-fire' })), whoSmall),
       h('button', { class: 'icon-btn ch-callbtn', type: 'button', 'aria-label': 'Позвонить', title: cv.group ? 'Позвонить группе (до 4 человек)' : 'Позвонить', onclick: () => {
         if (cv.group) { startCall(cv.members.filter((x) => x !== me() && isFriend(x)).slice(0, 3)); return; }
         if (isBlocked(uid)) { toast('Звонки ограничены'); return; }
@@ -731,6 +921,7 @@ async function openConv(cv) {
       } }, mi('phone')),
       h('button', { class: 'icon-btn ch-morebtn', type: 'button', 'aria-label': 'Ещё', title: 'Слушать вместе, общий плейлист, огонёк, фон', onclick: () => convMenu(cv, list) }, mi('more'))),
     h('div', { class: 'ch-tg' }),
+    pinBar,
     list,
     h('div', { class: 'ch-firecta' }),
     banner,
@@ -848,12 +1039,12 @@ async function openConv(cv) {
     }
     const mineMsg = m.from === me();
     const voiceSrc = typeof m.voice === 'string' && m.voice.startsWith('data:audio/') ? m.voice : typeof m.img === 'string' && m.img.startsWith('data:audio/') ? m.img : '';
-    const cat = catOf(m.img);
+    const cat = stickerOf(m.img);
     const photoOnly = m.img && !voiceSrc && !cat && !m.text && !m.track && !m.re;
     const img = !voiceSrc && m.img && safeUrl(m.img).startsWith('data:image/') ? h('img', { class: 'ch-img', src: m.img, alt: 'Фото', decoding: 'async', onclick: () => openImage(m.img, '') }) : null;
     if (img) img.addEventListener('load', () => { if (list.scrollHeight - list.scrollTop - list.clientHeight < 400) list.scrollTop = list.scrollHeight; }, { once: true });
     const text = (voiceSrc && m.text === VOICE_TXT) || (cat && m.text === STICKER_TXT) ? '' : m.text;
-    const sticker = cat ? h('img', { class: 'ch-sticker', src: catSrc(cat), alt: catName(cat), title: catName(cat), draggable: 'false' }) : null;
+    const sticker = cat ? h('img', { class: `ch-sticker${cat.big ? ' big' : ''}`, src: cat.src, alt: cat.name, title: cat.name, draggable: 'false' }) : null;
     const meta = h('div', { class: 'ch-meta' }, h('img', { src: avSrc(avOf(m.from)), alt: '', loading: 'lazy' }), h('b', { text: nickOf(m.from) }), h('span', { text: `${dayOf(m.at)}, ${timeOf(m.at)}` }));
     const quote = m.re && m.re.id ? h('button', { type: 'button', class: 'ch-quote', onclick: (e) => { e.stopPropagation(); flash(m.re.id); } }, h('b', { text: nickOf(m.re.from) }), h('span', { text: m.re.text || '…' })) : null;
     let tk = null;
@@ -913,7 +1104,7 @@ async function openConv(cv) {
     const isVoice = Boolean(m.voice || (typeof m.img === 'string' && m.img.startsWith('data:audio/')));
     const close = () => { wrap.classList.remove('show'); el.classList.remove('picked'); setTimeout(() => wrap.remove(), 180); closeMenu = null; };
     const item = (ic, label, fn, danger) => h('button', { type: 'button', class: `ch-mi${danger ? ' danger' : ''}`, onclick: () => { close(); fn(); } }, mi(ic), h('span', { text: label }));
-    const isCat = Boolean(catOf(m.img));
+    const isCat = Boolean(stickerOf(m.img));
     const doReact = (e) => { close(); react(cid, id, e, myR).catch(() => toast('Реакции заработают после обновления правил базы')); };
     const more = h('button', { type: 'button', class: 'ch-mm-more', 'aria-label': 'Все реакции', title: 'Все реакции и котики', onclick: (ev) => {
       ev.stopPropagation();
@@ -926,6 +1117,9 @@ async function openConv(cv) {
     } }, mi('add'));
     const listBox = h('div', { class: 'ch-mm-list' }, ...[
         item('reply', 'Ответить', () => setReply(id, m)),
+        (pinOf(chatById(cid)) || {}).id === id
+          ? item('pin', 'Открепить', () => unpinMsg(cid).then(() => toast('Сообщение откреплено')).catch(() => toast('Не получилось открепить')))
+          : item('pin', 'Закрепить', () => pinMsg(cid, id, m).then(() => toast('Сообщение закреплено')).catch(() => toast('Не получилось закрепить'))),
         m.text && !isVoice && !isCat ? item('copy', 'Копировать', () => { try { navigator.clipboard.writeText(m.text); toast('Скопировано'); } catch { toast('Не получилось скопировать'); } }) : null,
         mine && m.text && !isVoice && !m.track && !isCat ? item('edit', 'Изменить', () => setEdit(id, m)) : null,
         mine ? item('trash', 'Удалить у всех', () => deleteMsg(cid, id).catch(() => toast('Удаление заработает после обновления правил базы')), true) : null,
@@ -961,7 +1155,7 @@ async function openConv(cv) {
   let g = null, lastTap = { id: '', t: 0 };
   list.addEventListener('touchstart', (e) => {
     const el = e.target.closest('.ch-msg');
-    if (!el || e.touches.length !== 1) { g = null; return; }
+    if (!el || e.touches.length !== 1 || e.target.closest('.ch-vbars, .ch-vplay')) { g = null; return; }
     const t = e.touches[0];
     g = { el, x: t.clientX, y: t.clientY, dx: 0, mode: '', timer: 0 };
     g.timer = setTimeout(() => { if (g && !g.mode) { g.mode = 'long'; if (navigator.vibrate) navigator.vibrate(12); openMenu(el); } }, 430);
@@ -1000,7 +1194,8 @@ async function openConv(cv) {
   };
   list.addEventListener('touchend', touchEnd); list.addEventListener('touchcancel', touchEnd);
 
-  paintStatus(); paintFire(); paintBlock();
+  flashPin = (id) => flash(id);
+  paintStatus(); paintFire(); paintBlock(); paintPin();
   if (offTicks) offTicks();
   offTicks = onChats(() => {
     const c = chatById(cid);
@@ -1009,7 +1204,7 @@ async function openConv(cv) {
       if (c.name && c.name !== cv.title) { cv.title = c.name; whoName.textContent = c.name; }
       cv.members = c.members;
     }
-    paintTicks(); paintFire(); paintBlock(); paintStatus();
+    paintTicks(); paintFire(); paintBlock(); paintStatus(); paintPin();
     if (keyOf() !== viewKey) render();
   });
   list.replaceChildren(h('p', { class: 'ch-empty', text: 'Загрузка…' }));
