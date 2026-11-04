@@ -4,27 +4,27 @@
 //   chats/{id}/msgs/{id}   — { from, text, at, track?, img?, voice?, vdur?, re?: {id, from, text}, rx?: {uid: эмодзи}, ed? }
 // В read хранится всё «служебное»: прочитано (uid), огонёк (g_*, gs, gd…), очистка (x_*), блокировка (b_*),
 // «печатает…» (t_<uid> — когда, tk_<uid> — что: text | voice).
-import { safeUrl } from './utils.js?v=0.35.0';
-import { db } from './firebase.js?v=0.35.0';
+import { safeUrl } from './utils.js?v=0.35.1';
+import { db } from './firebase.js?v=0.35.1';
 import { doc, getDoc, setDoc, addDoc, updateDoc, deleteDoc, getDocs, collection, query, where, orderBy, limit, onSnapshot, deleteField } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
-import { h, toast, openSheet, closeSheet } from './ui.js?v=0.35.0';
-import { openImage } from './viewer.js?v=0.35.0';
-import { mi } from './icons2.js?v=0.35.0';
-import * as player from './player.js?v=0.35.0';
-import { searchTracks } from './catalog.js?v=0.35.0';
-import { me, isFriend, cardOf, friendIds, friendCards, loadFriends, friendsLoaded } from './friends.js?v=0.35.0';
-import { avSrc } from './avatar.js?v=0.35.0';
-import { seenText, isOnline, openUserPage, closeUserPage } from './userpage.js?v=0.35.0';
-import { startCall, warmCalls } from './call.js?v=0.35.0';
-import { streakAny, streakPatch, groupPatch, fireIcon, openStreak, startStreak, playFire } from './streak.js?v=0.35.0';
-import { pushTo, myNick } from './push.js?v=0.35.0';
-import { srvNow, realSeen } from './clock.js?v=0.35.0';
-import { togetherBar, startTogether } from './together.js?v=0.35.0';
-import { ensureShared } from './shared.js?v=0.35.0';
-import { STICKER_TXT, stickerOf, nickEmo, catOf, catName, rxNode, emojiPicker, QUICK_RX } from './stickers.js?v=0.35.0';
-import { markDaily } from './daily.js?v=0.35.0';
-import { pcmCapture, loadLame, encodeMp3, decodeBlob, blobToDataUrl, toWavUrl, wavUrl } from './voicerec.js?v=0.35.0';
-import { openSharedSheet } from './sharedui.js?v=0.35.0';
+import { h, toast, openSheet, closeSheet } from './ui.js?v=0.35.1';
+import { openImage } from './viewer.js?v=0.35.1';
+import { mi } from './icons2.js?v=0.35.1';
+import * as player from './player.js?v=0.35.1';
+import { searchTracks } from './catalog.js?v=0.35.1';
+import { me, isFriend, cardOf, friendIds, friendCards, loadFriends, friendsLoaded } from './friends.js?v=0.35.1';
+import { avSrc } from './avatar.js?v=0.35.1';
+import { seenText, isOnline, openUserPage, closeUserPage } from './userpage.js?v=0.35.1';
+import { startCall, warmCalls } from './call.js?v=0.35.1';
+import { streakAny, streakPatch, groupPatch, fireIcon, openStreak, startStreak, playFire } from './streak.js?v=0.35.1';
+import { pushTo, myNick } from './push.js?v=0.35.1';
+import { srvNow, realSeen } from './clock.js?v=0.35.1';
+import { togetherBar, startTogether } from './together.js?v=0.35.1';
+import { ensureShared } from './shared.js?v=0.35.1';
+import { STICKER_TXT, stickerOf, nickEmo, catOf, catName, rxNode, emojiPicker, QUICK_RX } from './stickers.js?v=0.35.1';
+import { markDaily } from './daily.js?v=0.35.1';
+import { pcmCapture, loadLame, encodeMp3, decodeBlob, blobToDataUrl, toWavUrl, wavUrl } from './voicerec.js?v=0.35.1';
+import { openSharedSheet } from './sharedui.js?v=0.35.1';
 
 export const chatId = (a, b) => [a, b].sort().join('_');
 const isGroupId = (cid) => String(cid || '').startsWith('g') && !String(cid).includes('_');
@@ -569,9 +569,10 @@ async function openConv(cv) {
   // стикеры и эмодзи: кнопка в поле ввода, панель над ним
   const emoBtn = h('button', { class: 'ch-emobtn', type: 'button', 'aria-label': 'Стикеры и эмодзи', title: 'Стикеры и эмодзи' }, mi('emoji'));
   const emoBox = h('div', { class: 'ch-emo', hidden: '' });
+  const stBtn = h('button', { class: 'ch-share ch-stbtn', type: 'button', title: 'Стикеры MKW', 'aria-label': 'Стикеры' }, mi('sticker'));
   const field = h('div', { class: 'ch-field' }, input, emoBtn);
-  const bar = h('div', { class: 'ch-bar' }, photoIn, photoBtn, shareBtn, field, sendBtn, canVoice() ? micBtn : null);
-  const paintBar = () => bar.classList.toggle('typing', Boolean(input.value.trim()) || !canVoice() || Boolean(editing));
+  const bar = h('div', { class: 'ch-bar' }, photoIn, photoBtn, shareBtn, stBtn, field, sendBtn, canVoice() ? micBtn : null);
+  const paintBar = () => { bar.classList.toggle('typing', Boolean(input.value.trim()) || !canVoice() || Boolean(editing)); bar.classList.toggle('has-text', Boolean(input.value.trim())); };
 
   // ответ и правка: плашка над полем ввода
   const replyBar = h('div', { class: 'ch-reply', hidden: '' });
@@ -592,15 +593,17 @@ async function openConv(cv) {
     const re = replyTo; replyTo = null; paintReply();
     try { await send(cv, STICKER_TXT, null, v, null, re); } catch { toast('Стикер не отправился. Попробуйте ещё раз'); }
   };
-  const closeEmo = () => { if (emoBox.hidden) return; emoBox.hidden = true; emoBox.replaceChildren(); emoBtn.classList.remove('on'); p.classList.remove('emo-open'); };
-  const openEmo = () => {
-    if (!emoBox.hidden) { closeEmo(); input.focus({ preventScroll: true }); return; }
+  let emoKind = '';
+  const closeEmo = () => { if (emoBox.hidden) return; emoBox.hidden = true; emoBox.replaceChildren(); emoBtn.classList.remove('on'); stBtn.classList.remove('on'); p.classList.remove('emo-open'); emoKind = ''; };
+  // kind: 'emoji' — эмодзи и эмодзи MKW (кнопка в поле), 'stickers' — стикеры (отдельная кнопка слева)
+  const openEmo = (kind = 'emoji') => {
+    if (!emoBox.hidden && emoKind === kind) { closeEmo(); if (kind === 'emoji') input.focus({ preventScroll: true }); return; }
     if (blockedNow()) { toast('Переписка ограничена'); return; }
     const atBottom = list.scrollHeight - list.scrollTop - list.clientHeight < 80;
     if (!fine) input.blur();
-    emoBox.replaceChildren(emojiPicker({
-      tab: (() => { try { return localStorage.getItem('mkw.emo.tab2') || 'stickers'; } catch { return 'stickers'; } })(),
-      onSticker: (n) => sendSticker(`st:${n}`),
+    emoKind = kind;
+    emoBox.replaceChildren(kind === 'stickers' ? emojiPicker({ onSticker: (n) => sendSticker(`st:${n}`), only: 'stickers' }) : emojiPicker({
+      tab: (() => { try { return localStorage.getItem('mkw.emo.tab3') || 'cats'; } catch { return 'cats'; } })(),
       onCat: (n) => sendSticker(`mkw:${n}`),
       onEmoji: (e) => {
         const a = input.selectionStart ?? input.value.length, b = input.selectionEnd ?? a;
@@ -609,11 +612,12 @@ async function openConv(cv) {
         paintBar(); typing(cid, 'text');
       },
     }));
-    emoBox.querySelectorAll('.emo-tab').forEach((t) => t.addEventListener('click', () => { try { localStorage.setItem('mkw.emo.tab2', t.dataset.t); } catch { /* ignore */ } }));
-    emoBox.hidden = false; emoBtn.classList.add('on'); p.classList.add('emo-open');
+    emoBox.querySelectorAll('.emo-tab').forEach((t) => t.addEventListener('click', () => { try { localStorage.setItem('mkw.emo.tab3', t.dataset.t); } catch { /* ignore */ } }));
+    emoBox.hidden = false; (kind === 'stickers' ? stBtn : emoBtn).classList.add('on'); (kind === 'stickers' ? emoBtn : stBtn).classList.remove('on'); p.classList.add('emo-open');
     if (atBottom) requestAnimationFrame(() => { list.scrollTop = list.scrollHeight; });
   };
-  emoBtn.addEventListener('click', (e) => { e.preventDefault(); openEmo(); });
+  emoBtn.addEventListener('click', (e) => { e.preventDefault(); openEmo('emoji'); });
+  stBtn.addEventListener('click', (e) => { e.preventDefault(); openEmo('stickers'); });
   emoBtn.addEventListener('mousedown', (e) => e.preventDefault()); // не забираем фокус у поля на компьютере
   input.addEventListener('focus', () => { if (!fine) closeEmo(); });
   const setReply = (id, m) => { editing = null; replyTo = { id, from: m.from, text: quoteText(m) }; paintReply(); input.focus({ preventScroll: true }); };
@@ -1067,13 +1071,17 @@ async function openConv(cv) {
       h('time', {}, m.ed ? h('em', { text: 'изм. ' }) : null, timeOf(m.at), tk),
       hov);
   };
+  // чат «прилипает» к низу: пока вы внизу (или печатаете), новые сообщения и рост поля ввода не уводят ленту вверх
+  let stick = true;
+  list.addEventListener('scroll', () => { stick = list.scrollHeight - list.scrollTop - list.clientHeight < 120; }, { passive: true });
+  try { new ResizeObserver(() => { if (stick) list.scrollTop = list.scrollHeight; }).observe(list); } catch { /* старый браузер */ }
   const render = () => {
     if (!lastDocs) return;
     viewKey = keyOf();
     const c = chatById(cid), from = clearedAt(c), bl = cv.group ? 0 : blockedByMe(uid);
     const docs = lastDocs.slice().reverse().filter((d) => { const m = d.data(); const at = Number(m.at) || 0; return at > from && !(bl && m.from === uid && at > bl); });
     byId.clear(); docs.forEach((d) => byId.set(d.id, d.data()));
-    const atBottom = list.scrollHeight - list.scrollTop - list.clientHeight < 80;
+    const atBottom = stick || document.activeElement === input || list.scrollHeight - list.scrollTop - list.clientHeight < 160;
     if (!docs.length) { list.replaceChildren(h('p', { class: 'ch-empty', text: from ? 'Здесь пока пусто — чат очищен.' : cv.group ? 'Группа создана. Напишите первым!' : `Напишите ${u.nick || 'другу'} первым. Можно отправить трек, который сейчас играет — кнопка с нотой, или голосовое — кнопка с микрофоном.` })); return; }
     let day = '', prevFrom = '', prevAt = 0;
     const nodes = [];
@@ -1091,7 +1099,7 @@ async function openConv(cv) {
     first = false;
     list.replaceChildren(...nodes);
     paintTicks();
-    if (atBottom || list.dataset.first !== '1') { list.scrollTop = list.scrollHeight; list.dataset.first = '1'; }
+    if (atBottom || list.dataset.first !== '1') { list.scrollTop = list.scrollHeight; list.dataset.first = '1'; stick = true; requestAnimationFrame(() => { if (stick) list.scrollTop = list.scrollHeight; }); }
   };
 
   // ---- меню сообщения: реакции, ответить, копировать, изменить, удалить ----

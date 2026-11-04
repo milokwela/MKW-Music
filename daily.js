@@ -1,11 +1,11 @@
 // Ежедневные задания: три задания в день. Выполнили все три — выбираете любой эмодзи или стикер MKW
 // и ставите его рядом с ником (видят все: в профиле, в топе, в чатах). Каждый день — ещё один в коллекцию.
-import { db } from './firebase.js?v=0.35.0';
+import { db } from './firebase.js?v=0.35.1';
 import { doc, setDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
-import * as store from './store.js?v=0.35.0';
-import { h, toast, openSheet, closeSheet } from './ui.js?v=0.35.0';
-import { mi } from './icons2.js?v=0.35.0';
-import { CATS, STICKERS, catSrc, stSrc, nickEmoSrc } from './stickers.js?v=0.35.0';
+import * as store from './store.js?v=0.35.1';
+import { h, toast, openSheet, closeSheet } from './ui.js?v=0.35.1';
+import { mi } from './icons2.js?v=0.35.1';
+import { CATS, STICKERS, catSrc, stSrc, nickEmoSrc } from './stickers.js?v=0.35.1';
 
 const KEY = 'mkw.daily.v1';
 const ymd = (d = new Date()) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -73,7 +73,7 @@ export function check() {
   for (const t of list) if (t.done && !st.told.includes(t.id)) { st.told.push(t.id); changed = true; toast(`Задание выполнено: ${t.title.toLowerCase()} ✓`); }
   if (changed) {
     save();
-    if (list.every((t) => t.done) && !st.claimed) setTimeout(() => toast('Все задания на сегодня выполнены — выберите эмодзи MKW для ника!'), 1800);
+    if (list.every((t) => t.done) && !st.claimed) setTimeout(() => toast('Все задания выполнены! В Профиле выберите эмодзи MKW для ника'), 1800);
     emit();
   }
 }

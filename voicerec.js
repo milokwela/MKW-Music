@@ -1,7 +1,7 @@
 // Голосовые сообщения. Раньше каждый телефон записывал в своём формате (Android — webm/mp4-фрагменты,
 // iPhone — m4a), и часть голосовых не играла на других телефонах. Теперь пишем звук сами
 // и кодируем в MP3 — его понимают все телефоны, планшеты и компьютеры.
-import { VERSION } from './changelog.js?v=0.35.0';
+import { VERSION } from './changelog.js?v=0.35.1';
 
 const AC = () => window.AudioContext || window.webkitAudioContext;
 const OUT_RATE = 16000; // голосу хватает, а файл маленький

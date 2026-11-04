@@ -1,18 +1,18 @@
 // Главная: «Друзья в сети» и умные миксы, которые собираются из вашей музыки, времени суток и друзей.
-import { $, h, toast } from './ui.js?v=0.35.0';
-import * as store from './store.js?v=0.35.0';
-import * as player from './player.js?v=0.35.0';
-import { searchTracks } from './catalog.js?v=0.35.0';
-import { shuffled } from './utils.js?v=0.35.0';
-import { splitArtists, norm } from './taste.js?v=0.35.0';
-import { mi } from './icons2.js?v=0.35.0';
-import { avSrc } from './avatar.js?v=0.35.0';
-import { loadFriends, friendIds, friendCards, onFriends, friendsLoaded } from './friends.js?v=0.35.0';
-import { getProfile, communityTaste, communityTracks } from './leaders.js?v=0.35.0';
-import { openUserPage, isOnline } from './userpage.js?v=0.35.0';
-import { recapCard } from './recap.js?v=0.35.0';
-import { dailyCard, onDaily, setFriendsCheck, initDaily } from './daily.js?v=0.35.0';
-import { artistTop, artistRadio, relatedArtists } from './reco.js?v=0.35.0';
+import { $, h, toast } from './ui.js?v=0.35.1';
+import * as store from './store.js?v=0.35.1';
+import * as player from './player.js?v=0.35.1';
+import { searchTracks } from './catalog.js?v=0.35.1';
+import { shuffled } from './utils.js?v=0.35.1';
+import { splitArtists, norm } from './taste.js?v=0.35.1';
+import { mi } from './icons2.js?v=0.35.1';
+import { avSrc } from './avatar.js?v=0.35.1';
+import { loadFriends, friendIds, friendCards, onFriends, friendsLoaded } from './friends.js?v=0.35.1';
+import { getProfile, communityTaste, communityTracks } from './leaders.js?v=0.35.1';
+import { openUserPage, isOnline } from './userpage.js?v=0.35.1';
+import { recapCard } from './recap.js?v=0.35.1';
+import { dailyCard, onDaily, setFriendsCheck, initDaily } from './daily.js?v=0.35.1';
+import { artistTop, artistRadio, relatedArtists } from './reco.js?v=0.35.1';
 
 const part = () => { const hr = new Date().getHours(); return hr < 6 ? 0 : hr < 12 ? 1 : hr < 18 ? 2 : 3; };
 const PARTS = [
@@ -169,12 +169,10 @@ function renderRecap() {
 
 // ежедневные задания — под итогами
 let dailyInit = false;
+// задания живут в профиле (Обзор) — здесь только обновляем карточку, если она есть
 function renderDaily() {
-  const anchor = $('#recap-entry') || $('#wave-moods') || $('#wave-btn');
-  if (!anchor || !store.state.uid) return;
-  let box = $('#daily-entry');
-  if (!box) { box = h('div', { id: 'daily-entry' }); anchor.after(box); }
-  else if (box.previousElementSibling !== anchor) anchor.after(box);
+  const box = $('#daily-entry');
+  if (!box || !store.state.uid) return;
   box.replaceChildren(dailyCard());
 }
 
@@ -185,7 +183,8 @@ export function initHome() {
     initDaily();
     onDaily(renderDaily);
     store.onStore((w) => { if (w === 'profile') renderDaily(); });
-    setInterval(() => { if (!document.hidden && $('#view-search') && !$('#view-search').hidden) renderDaily(); }, 30000);
+    setInterval(() => { if (!document.hidden && $('#view-profile') && !$('#view-profile').hidden) renderDaily(); }, 30000);
+    window.addEventListener('mkw-daily-paint', renderDaily);
   }
   renderMixes();
   renderRecap();

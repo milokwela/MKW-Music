@@ -10,17 +10,17 @@
 //  • не повторяет песни, которые вы слышали в волне за последние 3 дня, и одного исполнителя чаще раза в 3 трека;
 //  • учитывает язык, версии slowed / sped up, жанры и время суток;
 //  • у каждой песни видно, почему она в волне.
-import { searchTracks } from './catalog.js?v=0.35.0';
-import { peekYouTubeId, prefetchYouTubeIds } from './youtube.js?v=0.35.0';
-import * as player from './player.js?v=0.35.0';
-import * as store from './store.js?v=0.35.0';
-import { $, h, toast } from './ui.js?v=0.35.0';
-import { shuffled } from './utils.js?v=0.35.0';
-import { norm, isArtistBlocked, blockedArtists, dislikedTracks, dislikeTrack, splitArtists } from './taste.js?v=0.35.0';
-import { communityTaste } from './leaders.js?v=0.35.0';
-import { artistTop, artistRadio, relatedArtists, chartTracks, genreChart, genreId } from './reco.js?v=0.35.0';
-import { openFull } from './playerui.js?v=0.35.0';
-import { markDaily } from './daily.js?v=0.35.0';
+import { searchTracks } from './catalog.js?v=0.35.1';
+import { peekYouTubeId, prefetchYouTubeIds } from './youtube.js?v=0.35.1';
+import * as player from './player.js?v=0.35.1';
+import * as store from './store.js?v=0.35.1';
+import { $, h, toast } from './ui.js?v=0.35.1';
+import { shuffled } from './utils.js?v=0.35.1';
+import { norm, isArtistBlocked, blockedArtists, dislikedTracks, dislikeTrack, splitArtists } from './taste.js?v=0.35.1';
+import { communityTaste } from './leaders.js?v=0.35.1';
+import { artistTop, artistRadio, relatedArtists, chartTracks, genreChart, genreId } from './reco.js?v=0.35.1';
+import { openFull } from './playerui.js?v=0.35.1';
+import { markDaily } from './daily.js?v=0.35.1';
 
 const SKEY = 'mkw.wave2';
 const AKEY = 'mkw.wave3.arms';
@@ -499,7 +499,7 @@ export function initWave() {
     if (what === 'skip' || what === 'done') react(what);
     if (what === 'queue' && active) {
       const cur = player.queue.current;
-      if (cur && !cur.wave) setActive(false);   // человек запустил своё — волна заканчивается
+      if (!cur || !cur.wave) setActive(false);   // запустили своё или остановили — волна заканчивается
     }
     if (what === 'track') { paintWhy(); if (active && remaining() < 5) refill(10); }
   });
