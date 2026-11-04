@@ -1,4 +1,4 @@
-import { safeUrl } from './utils.js?v=0.35.5';
+import { safeUrl } from './utils.js?v=0.35.6';
 // Аватар по умолчанию — силуэт человека (не логотип MKW).
 export const DEF_AV = 'avatar.svg';
 // старые карточки могли сохранить логотип как «фото» — считаем это отсутствием фото

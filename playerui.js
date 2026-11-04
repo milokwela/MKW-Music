@@ -1,12 +1,12 @@
 // Интерфейс плеера: мини-плеер, большой плеер, очередь, таймер сна.
-import { $, h, icon, setIcon, artEl, trackRow, openSheet, closeSheet, sheetItem, highlightCurrent, toast, emptyState } from './ui.js?v=0.35.5';
-import { openArtistFor, openArtist, artistLinks } from './artist.js?v=0.35.5';
-import { renderCarousel, initCarousel } from './carousel.js?v=0.35.5';
-import * as player from './player.js?v=0.35.5';
-import * as store from './store.js?v=0.35.5';
-import { likeToggle, openTrackMenu } from './menu.js?v=0.35.5';
-import { formatTime, safeUrl } from './utils.js?v=0.35.5';
-import { youtubeEnabled } from './youtube.js?v=0.35.5';
+import { $, h, icon, setIcon, artEl, trackRow, openSheet, closeSheet, sheetItem, highlightCurrent, toast, emptyState } from './ui.js?v=0.35.6';
+import { openArtistFor, openArtist, artistLinks } from './artist.js?v=0.35.6';
+import { renderCarousel, initCarousel } from './carousel.js?v=0.35.6';
+import * as player from './player.js?v=0.35.6';
+import * as store from './store.js?v=0.35.6';
+import { likeToggle, openTrackMenu } from './menu.js?v=0.35.6';
+import { formatTime, safeUrl } from './utils.js?v=0.35.6';
+import { youtubeEnabled } from './youtube.js?v=0.35.6';
 
 const { queue, st } = player;
 let seeking = false;
