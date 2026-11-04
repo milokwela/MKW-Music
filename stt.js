@@ -1,7 +1,7 @@
 // Распознавание речи через сервер MKW (Cloudflare Worker → Whisper).
 // Нужен там, где у браузера нет своего распознавания: Яндекс Браузер, Opera, Brave, Firefox.
 // Микрофон слушаем на устройстве и отправляем только короткие кусочки, когда человек что-то сказал (2–6 секунд).
-import { RECOGNIZE_URL } from './shazam-config.js?v=0.35.4';
+import { RECOGNIZE_URL } from './shazam-config.js?v=0.35.5';
 
 const W = () => String(RECOGNIZE_URL || '').replace(/\/$/, '');
 const AC = window.AudioContext || window.webkitAudioContext;

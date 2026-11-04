@@ -4,28 +4,28 @@
 //   chats/{id}/msgs/{id}   — { from, text, at, track?, img?, voice?, vdur?, re?: {id, from, text}, rx?: {uid: эмодзи}, ed? }
 // В read хранится всё «служебное»: прочитано (uid), огонёк (g_*, gs, gd…), очистка (x_*), блокировка (b_*),
 // «печатает…» (t_<uid> — когда, tk_<uid> — что: text | voice).
-import { safeUrl } from './utils.js?v=0.35.4';
-import { db } from './firebase.js?v=0.35.4';
+import { safeUrl } from './utils.js?v=0.35.5';
+import { db } from './firebase.js?v=0.35.5';
 import { doc, getDoc, setDoc, addDoc, updateDoc, deleteDoc, getDocs, collection, query, where, orderBy, limit, onSnapshot, deleteField } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
-import { h, toast, openSheet, closeSheet } from './ui.js?v=0.35.4';
-import { openImage } from './viewer.js?v=0.35.4';
-import { mi } from './icons2.js?v=0.35.4';
-import * as player from './player.js?v=0.35.4';
-import { searchTracks } from './catalog.js?v=0.35.4';
-import { me, isFriend, cardOf, friendIds, friendCards, loadFriends, friendsLoaded } from './friends.js?v=0.35.4';
-import { avSrc } from './avatar.js?v=0.35.4';
-import { seenText, isOnline, openUserPage, closeUserPage } from './userpage.js?v=0.35.4';
-import { startCall, warmCalls } from './call.js?v=0.35.4';
-import { streakAny, streakPatch, groupPatch, fireIcon, openStreak, startStreak, playFire } from './streak.js?v=0.35.4';
-import { pushTo, myNick } from './push.js?v=0.35.4';
-import { srvNow, realSeen } from './clock.js?v=0.35.4';
-import { togetherBar, startTogether } from './together.js?v=0.35.4';
-import { ensureShared } from './shared.js?v=0.35.4';
-import { STICKER_TXT, stickerOf, nickEmo, catOf, catName, rxNode, emojiPicker, QUICK_RX } from './stickers.js?v=0.35.4';
-import { markDaily } from './daily.js?v=0.35.4';
-import { openPhotoEditor } from './photoedit.js?v=0.35.4';
-import { pcmCapture, loadLame, encodeMp3, decodeBlob, blobToDataUrl, toWavUrl, wavUrl } from './voicerec.js?v=0.35.4';
-import { openSharedSheet } from './sharedui.js?v=0.35.4';
+import { h, toast, openSheet, closeSheet } from './ui.js?v=0.35.5';
+import { openImage } from './viewer.js?v=0.35.5';
+import { mi } from './icons2.js?v=0.35.5';
+import * as player from './player.js?v=0.35.5';
+import { searchTracks } from './catalog.js?v=0.35.5';
+import { me, isFriend, cardOf, friendIds, friendCards, loadFriends, friendsLoaded } from './friends.js?v=0.35.5';
+import { avSrc } from './avatar.js?v=0.35.5';
+import { seenText, isOnline, openUserPage, closeUserPage } from './userpage.js?v=0.35.5';
+import { startCall, warmCalls } from './call.js?v=0.35.5';
+import { streakAny, streakPatch, groupPatch, fireIcon, openStreak, startStreak, playFire } from './streak.js?v=0.35.5';
+import { pushTo, myNick } from './push.js?v=0.35.5';
+import { srvNow, realSeen } from './clock.js?v=0.35.5';
+import { togetherBar, startTogether } from './together.js?v=0.35.5';
+import { ensureShared } from './shared.js?v=0.35.5';
+import { STICKER_TXT, stickerOf, nickEmo, catOf, catName, rxNode, emojiPicker, QUICK_RX } from './stickers.js?v=0.35.5';
+import { markDaily } from './daily.js?v=0.35.5';
+import { openPhotoEditor } from './photoedit.js?v=0.35.5';
+import { pcmCapture, loadLame, encodeMp3, decodeBlob, blobToDataUrl, toWavUrl, wavUrl } from './voicerec.js?v=0.35.5';
+import { openSharedSheet } from './sharedui.js?v=0.35.5';
 
 export const chatId = (a, b) => [a, b].sort().join('_');
 const isGroupId = (cid) => String(cid || '').startsWith('g') && !String(cid).includes('_');
@@ -699,7 +699,7 @@ async function openConv(cv) {
   // Компьютер: нажали — запись. В записи с замком и на компьютере можно остановить, послушать, обрезать и отправить.
   let rec = null;
   const recUi = h('div', { class: 'ch-rec' });
-  const holdMode = !fine && 'PointerEvent' in window;
+  const holdMode = 'PointerEvent' in window; // и на телефоне, и мышкой: держать — запись, коротко нажать — запись с замком
   const endRec = () => { bar.classList.remove('rec', 'hold', 'locked', 'pv'); recUi.replaceChildren(); recUi.style.removeProperty('--dx'); recUi.style.removeProperty('--dy'); };
   const stopCapture = (r) => new Promise((res) => {
     if (r.stopped) { res(); return; }
@@ -871,15 +871,15 @@ async function openConv(cv) {
       if (rec) return;
       e.preventDefault();
       try { micBtn.setPointerCapture(e.pointerId); } catch { /* ignore */ }
-      const gg = { x: e.clientX, y: e.clientY, id: e.pointerId, up: false, locked: false };
+      if (e.pointerType === 'mouse' && e.button !== 0) return;
+      const gg = { x: e.clientX, y: e.clientY, id: e.pointerId, up: false, locked: false, t0: Date.now() };
       g = gg;
       if (navigator.vibrate) navigator.vibrate(10);
       const r = await startRec('hold');
       if (!r) { if (g === gg) g = null; return; }
       if (gg.up) {
-        // отпустили, пока включался микрофон (например, спрашивали разрешение)
-        rec = null; endRec(); typingOff(cid); await stopCapture(r);
-        toast('Удерживайте микрофон, пока говорите');
+        // отпустили, пока включался микрофон (или просто коротко нажали) — запись продолжается «с замком»
+        r.mode = 'locked'; paintLocked(r);
       }
     });
     micBtn.addEventListener('pointermove', (e) => {
@@ -893,9 +893,12 @@ async function openConv(cv) {
     const up = (e, cancel) => {
       if (!g || e.pointerId !== g.id) return;
       g.up = true;
-      const locked = g.locked; g = null;
+      const locked = g.locked, quick = Date.now() - g.t0 < 400; g = null;
       if (!rec || !rec.ready || locked || rec.mode !== 'hold') return;
-      if (cancel) cancelRec(); else finishSend();
+      if (cancel) { cancelRec(); return; }
+      // коротко нажали — не отправляем пустое, а пишем дальше с замком (кнопки «стоп» и «отправить»)
+      if (quick) { rec.mode = 'locked'; paintLocked(rec); return; }
+      finishSend();
     };
     micBtn.addEventListener('pointerup', (e) => up(e, false));
     micBtn.addEventListener('pointercancel', (e) => up(e, true));
