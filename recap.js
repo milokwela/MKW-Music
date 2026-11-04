@@ -1,32 +1,38 @@
 // Итоги недели и месяца в стиле сторис: время, любимые исполнители и треки, привычки — и картинка «поделиться».
-import { db } from './firebase.js?v=0.34.0';
+import { db } from './firebase.js?v=0.34.1';
 import { collection, query, where, orderBy, limit, getDocs } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
-import { h, toast } from './ui.js?v=0.34.0';
-import { mi } from './icons2.js?v=0.34.0';
-import * as store from './store.js?v=0.34.0';
-import * as player from './player.js?v=0.34.0';
-import { artistPic } from './artistpic.js?v=0.34.0';
-import { splitArtists } from './taste.js?v=0.34.0';
-import { artUrl, plural } from './utils.js?v=0.34.0';
+import { h, toast } from './ui.js?v=0.34.1';
+import { mi } from './icons2.js?v=0.34.1';
+import * as store from './store.js?v=0.34.1';
+import * as player from './player.js?v=0.34.1';
+import { artistPic } from './artistpic.js?v=0.34.1';
+import { splitArtists } from './taste.js?v=0.34.1';
+import { artUrl, plural } from './utils.js?v=0.34.1';
 
 const DAY = 86400000;
 const ymd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 const fmtDate = (d) => d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
 function range(kind, back = 0) {
   const now = new Date();
-  if (kind === 'month') {
-    const s = new Date(now.getFullYear(), now.getMonth() - back, 1);
-    const e = back ? new Date(now.getFullYear(), now.getMonth() - back + 1, 1) : now;
-    return { start: s, end: e, title: s.toLocaleDateString('ru-RU', { month: 'long' }) };
-  }
-  const e = new Date(now.getTime() - back * 7 * DAY);
-  const s = new Date(e.getTime() - 7 * DAY);
+  // неделя — последние 7 дней, месяц — последние 30 (а не «с 1-го числа»: иначе в начале месяца
+  // итоги месяца выходили меньше недельных)
+  const len = kind === 'month' ? 30 : 7;
+  const e = new Date(now.getTime() - back * len * DAY);
+  const s = new Date(e.getTime() - len * DAY);
   return { start: s, end: e, title: `${fmtDate(s)} — ${fmtDate(e)}` };
 }
-function secondsIn(r) {
-  const d = store.diaryDays(); let sec = 0;
-  for (let t = new Date(r.start); t < r.end; t = new Date(t.getTime() + DAY)) sec += d[ymd(t)] || 0;
-  return sec;
+// Сколько реально слушали: число включений × среднее время одного включения (общее время ÷ все включения)
+// или точное время по дням, если оно записано на этом устройстве. Итог не больше общего времени в профиле.
+function secondsIn(r, plays) {
+  const d = store.diaryDays();
+  let diary = 0;
+  for (let t = new Date(r.start); t < r.end; t = new Date(t.getTime() + DAY)) diary += d[ymd(t)] || 0;
+  const total = store.listenedTotal();
+  const n = Number((store.state.profile || {}).plays) || 0;
+  const avg = n > 0 && total > 0 ? Math.min(210, total / n) : 45;
+  // дневник ведётся на этом устройстве, история — на всех; берём большее
+  const sec = Math.max(diary, plays.length * avg);
+  return total > 0 ? Math.min(sec, total) : sec;
 }
 const hm = (sec) => { const m = Math.round(sec / 60); return m < 60 ? { big: String(m), unit: plural(m, 'минута', 'минуты', 'минут') } : { big: String(Math.floor(m / 60)), unit: `${plural(Math.floor(m / 60), 'час', 'часа', 'часов')}${m % 60 ? ` ${m % 60} мин` : ''}` }; };
 const PARTS = ['ночью', 'утром', 'днём', 'вечером'];
@@ -53,9 +59,8 @@ async function collect(kind) {
   const topA = [...artists.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5);
   const topT = [...tracks.values()].sort((a, b) => b.n - a.n).slice(0, 5);
   const newArtists = [...artists.keys()].filter((a) => !known.has(a)).length;
-  let sec = secondsIn(r);
-  if (sec < 60) sec = inR.reduce((s, p) => s + Math.min(Number(p.duration) || 180, 240) * 0.8, 0); // нет дневника — оценка по истории
-  const prevSec = secondsIn(prev);
+  const sec = secondsIn(r, inR);
+  const prevSec = secondsIn(prev, plays.filter((p) => Number(p.playedAt) >= prev.start.getTime() && Number(p.playedAt) < prev.end.getTime()));
   const likes = store.state.likes.filter((t) => Number(t.likedAt) >= r.start.getTime()).length;
   const best = parts.indexOf(Math.max(...parts));
   return { kind, r, plays: inR.length, sec, prevSec, topA, topT, newArtists, likes, part: best, uniqueArtists: artists.size };
@@ -76,7 +81,7 @@ function slides(d, pics) {
   const diff = d.prevSec > 300 ? Math.round(((d.sec - d.prevSec) / d.prevSec) * 100) : null;
   const a1 = d.topA[0], t1 = d.topT[0];
   const S = [];
-  S.push({ cls: 'rc-intro', html: [h('div', { class: 'rc-logo', text: 'MKW' }), h('h2', { text: d.kind === 'month' ? `Твой ${d.r.title}` : 'Твоя неделя' }), h('p', { text: d.kind === 'month' ? 'в MKW Music' : d.r.title }), h('div', { class: 'rc-big', text: String(d.plays) }), h('small', { text: plural(d.plays, 'трек включён', 'трека включено', 'треков включено') })] });
+  S.push({ cls: 'rc-intro', html: [h('div', { class: 'rc-logo', text: 'MKW' }), h('h2', { text: d.kind === 'month' ? 'Твой месяц' : 'Твоя неделя' }), h('p', { text: d.r.title }), h('div', { class: 'rc-big', text: String(d.plays) }), h('small', { text: plural(d.plays, 'трек включён', 'трека включено', 'треков включено') })] });
   S.push({ cls: 'rc-time', html: [h('p', { text: `За ${d.kind === 'month' ? 'месяц' : 'неделю'} ты слушал(а) музыку` }), h('div', { class: 'rc-big', text: t.big }), h('h3', { text: t.unit }),
     diff != null ? h('div', { class: `rc-pill${diff >= 0 ? ' up' : ''}`, text: `${diff >= 0 ? '+' : ''}${diff}% ${d.kind === 'month' ? 'к прошлому месяцу' : 'к прошлой неделе'}` }) : null] });
   if (a1) S.push({ cls: 'rc-artist', bg: pics.get(a1[0]), html: [h('p', { text: `Исполнитель ${d.kind === 'month' ? 'месяца' : 'недели'}` }), h('div', { class: 'rc-ph' }, h('img', { src: pics.get(a1[0]) || 'mkw-logo.png', alt: '' })), h('h2', { text: a1[0] }), h('small', { text: `${a1[1]} ${plural(a1[1], 'включение', 'включения', 'включений')}` })] });
@@ -150,13 +155,20 @@ function loadImg(src) {
 async function shareImage(d, pics) {
   const c = document.createElement('canvas'); c.width = 1080; c.height = 1920;
   const x = c.getContext('2d');
-  const prim = getComputedStyle(document.documentElement).getPropertyValue('--primary').trim() || '#ff5aa0';
-  const g = x.createLinearGradient(0, 0, 1080, 1920); g.addColorStop(0, '#0b0710'); g.addColorStop(0.5, '#1a0d24'); g.addColorStop(1, '#050307');
+  // цвета — из палитры приложения (у кого чёрная — картинка тоже чёрная)
+  const cs = getComputedStyle(document.documentElement);
+  const neutral = document.documentElement.dataset.neutral === '1';
+  const hue = (v) => { const m = /hsl\(\s*([\d.]+)/.exec(v || ''); return m ? Number(m[1]) : 330; };
+  const H = hue(cs.getPropertyValue('--primary'));
+  const g = x.createLinearGradient(0, 0, 1080, 1920);
+  if (neutral) { g.addColorStop(0, '#111111'); g.addColorStop(0.5, '#070707'); g.addColorStop(1, '#000000'); }
+  else { g.addColorStop(0, `hsl(${H} 35% 9%)`); g.addColorStop(0.5, `hsl(${H} 40% 12%)`); g.addColorStop(1, `hsl(${H} 30% 4%)`); }
   x.fillStyle = g; x.fillRect(0, 0, 1080, 1920);
-  const rg = x.createRadialGradient(540, 520, 40, 540, 520, 700); rg.addColorStop(0, `${prim}66`); rg.addColorStop(1, 'transparent'); x.fillStyle = rg; x.fillRect(0, 0, 1080, 1920);
+  const rg = x.createRadialGradient(540, 520, 40, 540, 520, 700);
+  rg.addColorStop(0, neutral ? 'rgba(255,255,255,.14)' : `hsl(${H} 100% 70% / .35)`); rg.addColorStop(1, 'rgba(0,0,0,0)'); x.fillStyle = rg; x.fillRect(0, 0, 1080, 1920);
   x.textAlign = 'center'; x.fillStyle = '#fff';
   x.font = '900 64px system-ui, sans-serif'; x.fillText('MKW', 540, 150);
-  x.font = '600 42px system-ui, sans-serif'; x.fillStyle = 'rgba(255,255,255,.7)'; x.fillText(d.kind === 'month' ? `Мой ${d.r.title} в MKW Music` : 'Моя неделя в MKW Music', 540, 220);
+  x.font = '600 42px system-ui, sans-serif'; x.fillStyle = 'rgba(255,255,255,.7)'; x.fillText(d.kind === 'month' ? 'Мой месяц в MKW Music' : 'Моя неделя в MKW Music', 540, 220);
   const t1 = d.topT[0], a1 = d.topA[0];
   const cover = await loadImg(t1 ? artUrl(t1.t.artwork, 600) : '');
   try { if (cover) { x.save(); x.beginPath(); x.roundRect(240, 300, 600, 600, 48); x.clip(); x.drawImage(cover, 240, 300, 600, 600); x.restore(); } } catch { /* картинка без разрешения — без обложки */ }
@@ -187,5 +199,5 @@ async function shareImage(d, pics) {
 export function recapCard() {
   return h('div', { class: 'rc-entry' },
     h('button', { type: 'button', class: 'rc-btn', onclick: () => openRecap('week') }, h('span', { class: 'rc-ic' }, mi('story')), h('span', {}, h('b', { text: 'Итоги недели' }), h('small', { text: 'Время, топ исполнителей и треков' }))),
-    h('button', { type: 'button', class: 'rc-btn m', onclick: () => openRecap('month') }, h('span', { class: 'rc-ic' }, mi('calendar')), h('span', {}, h('b', { text: 'Итоги месяца' }), h('small', { text: new Date().toLocaleDateString('ru-RU', { month: 'long' }) }))));
+    h('button', { type: 'button', class: 'rc-btn m', onclick: () => openRecap('month') }, h('span', { class: 'rc-ic' }, mi('calendar')), h('span', {}, h('b', { text: 'Итоги месяца' }), h('small', { text: 'Последние 30 дней' }))));
 }

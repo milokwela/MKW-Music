@@ -2,14 +2,14 @@
 // Документ together/{id переписки}: { members, host, by, track, pos, at, playing, on: [кто слушает], v }
 //  • кто переключил трек, поставил паузу или перемотал — тот и записывает новое состояние;
 //  • остальные подстраиваются: включают тот же трек и встают на ту же секунду (по общему времени сервера).
-import { db } from './firebase.js?v=0.34.0';
+import { db } from './firebase.js?v=0.34.1';
 import { doc, setDoc, updateDoc, deleteDoc, getDoc, onSnapshot, arrayUnion, arrayRemove } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
-import * as player from './player.js?v=0.34.0';
-import { srvNow } from './clock.js?v=0.34.0';
-import { me } from './friends.js?v=0.34.0';
-import { h, toast } from './ui.js?v=0.34.0';
-import { mi } from './icons2.js?v=0.34.0';
-import { pickTrack } from './utils.js?v=0.34.0';
+import * as player from './player.js?v=0.34.1';
+import { srvNow } from './clock.js?v=0.34.1';
+import { me } from './friends.js?v=0.34.1';
+import { h, toast } from './ui.js?v=0.34.1';
+import { mi } from './icons2.js?v=0.34.1';
+import { pickTrack } from './utils.js?v=0.34.1';
 
 let sess = null;            // { cid, unsub, v, quietUntil, lastT, lastAt, timer, data }
 const subs = new Set();

@@ -168,8 +168,11 @@ body.jam-on #mini-player::after { content: '🎧 вместе'; position: absolu
 #recap-entry { margin: 6px 0 2px; }
 #recap-entry[hidden] { display: none; }
 .rc-entry { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.rc-btn { display: flex; align-items: center; gap: 10px; padding: 12px; border: 0; border-radius: 20px; text-align: left; color: #fff; cursor: pointer; background: linear-gradient(135deg, #ff3b7a, #7a3bff); box-shadow: 0 8px 22px rgba(122,59,255,.25); }
-.rc-btn.m { background: linear-gradient(135deg, #ff8a3b, #e0257a); box-shadow: 0 8px 22px rgba(224,37,122,.25); }
+.rc-btn { display: flex; align-items: center; gap: 10px; padding: 12px; border: 0; border-radius: 20px; text-align: left; color: #fff; cursor: pointer; background: linear-gradient(135deg, color-mix(in srgb, var(--primary) 62%, #000), color-mix(in srgb, var(--mix2, #8f6bff) 45%, #0a0a0a)); box-shadow: 0 8px 22px color-mix(in srgb, var(--primary) 18%, transparent); }
+.rc-btn.m { background: linear-gradient(135deg, color-mix(in srgb, var(--mix2, #8f6bff) 50%, #000), color-mix(in srgb, var(--primary) 40%, #0a0a0a)); }
+/* чёрная палитра: всё чёрное */
+:root[data-neutral="1"] .rc-btn, :root[data-neutral="1"] .rc-btn.m { background: linear-gradient(145deg, #1b1b1b, #0a0a0a); box-shadow: inset 0 0 0 1px rgba(255,255,255,.09); }
+:root[data-neutral="1"] .rc-ic { background: rgba(255,255,255,.1); }
 .rc-btn:active { transform: scale(.97); }
 .rc-ic { width: 36px; height: 36px; flex: none; border-radius: 12px; display: grid; place-items: center; background: rgba(255,255,255,.2); }
 .rc-ic .mi { width: 22px; height: 22px; }
@@ -178,9 +181,14 @@ body.jam-on #mini-player::after { content: '🎧 вместе'; position: absolu
 .rc-btn > span:last-child { min-width: 0; }
 
 /* ---------- Итоги: сторис ---------- */
-.rc { position: fixed; inset: 0; z-index: 400; background: #07050a; color: #fff; overflow: hidden; opacity: 0; transform: scale(1.03); transition: opacity .3s, transform .35s cubic-bezier(.2,.8,.2,1); touch-action: manipulation; -webkit-user-select: none; user-select: none; }
+.rc { position: fixed; inset: 0; z-index: 400; background: color-mix(in srgb, var(--primary) 5%, #050505); color: #fff; overflow: hidden; opacity: 0; transform: scale(1.03); transition: opacity .3s, transform .35s cubic-bezier(.2,.8,.2,1); touch-action: manipulation; -webkit-user-select: none; user-select: none; }
 .rc.show { opacity: 1; transform: none; }
-.rc::before { content: ''; position: absolute; inset: -20%; background: radial-gradient(45% 35% at 30% 25%, color-mix(in srgb, var(--primary) 55%, transparent), transparent 70%), radial-gradient(40% 35% at 75% 75%, rgba(122,59,255,.45), transparent 70%); animation: rcDrift 9s ease-in-out infinite alternate; }
+.rc::before { content: ''; position: absolute; inset: -20%; background: radial-gradient(45% 35% at 30% 25%, color-mix(in srgb, var(--primary) 55%, transparent), transparent 70%), radial-gradient(40% 35% at 75% 75%, color-mix(in srgb, var(--mix2, #8f6bff) 38%, transparent), transparent 70%); animation: rcDrift 9s ease-in-out infinite alternate; }
+:root[data-neutral="1"] .rc { background: #000; }
+:root[data-neutral="1"] .rc::before { background: radial-gradient(45% 35% at 30% 25%, rgba(255,255,255,.13), transparent 70%), radial-gradient(40% 35% at 75% 75%, rgba(255,255,255,.06), transparent 70%); }
+:root[data-neutral="1"] .rc-bgimg { filter: blur(40px) grayscale(1) brightness(.4); }
+:root[data-neutral="1"] .rc-big { background: linear-gradient(180deg, #fff, #9a9a9a); -webkit-background-clip: text; background-clip: text; }
+:root[data-neutral="1"] .rc-pill.up { background: rgba(255,255,255,.16); }
 .rc-bgimg { position: absolute; inset: -40px; background: center / cover no-repeat; filter: blur(40px) saturate(1.4) brightness(.55); opacity: .9; transition: background-image .4s; }
 @keyframes rcDrift { to { transform: translate(5%, 4%) rotate(8deg) scale(1.1); } }
 .rc-bars { position: absolute; left: 12px; right: 12px; top: calc(12px + env(safe-area-inset-top)); z-index: 3; display: flex; gap: 4px; }
@@ -237,3 +245,72 @@ body.jam-on #mini-player::after { content: '🎧 вместе'; position: absolu
   .rc-x { top: 22px; }
 }
 @media (max-width: 699px), (max-height: 559px) { .rc-back { display: none; } }
+
+/* ---------- 0.34.1: MKW Волна на главной в чёрной палитре — тёмная, без цветных пятен ---------- */
+:root[data-neutral="1"] .wave-btn { background: linear-gradient(145deg, #161616, #050505) !important; box-shadow: 0 14px 40px rgba(0,0,0,.6), inset 0 0 0 1px rgba(255,255,255,.08) !important; }
+:root[data-neutral="1"] .wave-bg i { background: #fff !important; filter: blur(40px); opacity: .07; }
+:root[data-neutral="1"] .wave-btn .wave-ico { background: #fff; color: #000; }
+
+/* ---------- 0.34.1: котики MKW и эмодзи ---------- */
+.ch-mm-p { width: 312px; max-width: calc(100% - 16px); }
+.ch-mm-rx { padding: 5px 6px; gap: 0; align-items: center; }
+.ch-mm-rx button { width: 32px; height: 32px; font-size: 21px; display: grid; place-items: center; padding: 0; flex: none; }
+.ch-mm-rx button.cat img, .ch-mm-rx button img { width: 30px; height: 30px; object-fit: contain; }
+.ch-mm-more { width: 32px; height: 32px; flex: none; border: 0; border-radius: 50%; display: grid; place-items: center; background: color-mix(in srgb, var(--on-bg) 10%, transparent); color: var(--on-bg); cursor: pointer; }
+.ch-mm-more .mi { width: 20px; height: 20px; }
+.ch-mm-p.wide .emo-pick { border-radius: 20px; background: var(--surface-high, #2a2530); box-shadow: 0 12px 30px rgba(0,0,0,.4); }
+.ch-mm-p.wide .emo-body { max-height: min(300px, 42vh); }
+.rx-cat { width: 22px; height: 22px; object-fit: contain; display: block; }
+.ch-rxc .rx-cat { width: 24px; height: 24px; margin: -2px 0; }
+
+/* стикер в сообщении — без пузыря */
+.ch-sticker { display: block; width: 150px; height: 150px; object-fit: contain; margin: 2px 0; -webkit-user-drag: none; user-select: none; animation: stIn .35s cubic-bezier(.3,1.5,.5,1) both; }
+@keyframes stIn { from { transform: scale(.6) rotate(-6deg); opacity: 0; } }
+.ch-msg.sticker { background: transparent !important; box-shadow: none !important; }
+@media not all and (min-width: 980px) and (pointer: fine) { .ch-msg.sticker { padding: 0 !important; } }
+body:not(.on-chats) .ch-msg.sticker { padding: 0 !important; }
+.ch-msg.sticker time { align-self: flex-end; padding: 2px 8px; border-radius: 999px; background: rgba(0,0,0,.45); color: #fff !important; font-size: 11px; }
+.ch-msg.sticker .ch-quote { background: var(--surface-high); }
+body.on-chats #chat-page .ch-msg.sticker .ch-sticker { width: 140px; height: 140px; }
+
+/* поле ввода с кнопкой стикеров */
+.ch-field { flex: 1; min-width: 0; position: relative; display: flex; }
+.ch-field .ch-input { flex: 1; min-width: 0; width: 100%; padding-right: 44px; }
+.ch-emobtn { position: absolute; right: 4px; bottom: 4px; width: 36px; height: 36px; border: 0; border-radius: 50%; display: grid; place-items: center; background: none; color: var(--on-surface-var); cursor: pointer; transition: color .15s, transform .15s; }
+.ch-emobtn .mi { width: 24px; height: 24px; }
+.ch-emobtn:active { transform: scale(.9); }
+.ch-emobtn.on { color: var(--primary); }
+body.on-chats #chat-page .ch-emobtn { bottom: 5px; }
+.ch-emo { padding: 0 10px 6px; background: color-mix(in srgb, var(--surface) 88%, transparent); }
+.ch-emo[hidden] { display: none; }
+.ch-emo .emo-pick { border-radius: 20px; background: var(--surface-high); animation: emoIn .22s cubic-bezier(.2,.9,.3,1) both; }
+@keyframes emoIn { from { transform: translateY(14px); opacity: 0; } }
+body.on-chats #chat-page .ch-emo { padding: 0 16px 8px; background: transparent; }
+
+/* сам выбор: вкладки и сетки */
+.emo-pick { display: grid; grid-template-rows: auto 1fr; overflow: hidden; }
+.emo-tabs { display: flex; gap: 6px; padding: 8px 8px 4px; }
+.emo-tab { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px 6px 8px; border: 0; border-radius: 999px; background: transparent; color: var(--on-surface-var); font: 600 13px var(--font, inherit); cursor: pointer; }
+.emo-tab img { width: 22px; height: 22px; object-fit: contain; }
+.emo-tab-e { font-size: 17px; line-height: 1; }
+.emo-tab.on { background: color-mix(in srgb, var(--on-bg) 11%, transparent); color: var(--on-bg); }
+.emo-body { max-height: 260px; overflow-y: auto; overscroll-behavior: contain; padding: 4px 8px 10px; scrollbar-width: thin; }
+.emo-cats { display: grid; grid-template-columns: repeat(auto-fill, minmax(76px, 1fr)); gap: 4px; }
+.emo-cat { aspect-ratio: 1; border: 0; border-radius: 16px; background: none; padding: 4px; cursor: pointer; transition: transform .15s, background .15s; }
+.emo-cat img { width: 100%; height: 100%; object-fit: contain; pointer-events: none; }
+.emo-cat:hover { background: color-mix(in srgb, var(--on-bg) 7%, transparent); }
+.emo-cat:active { transform: scale(.9); }
+.emo-sec small { display: block; margin: 8px 4px 4px; color: var(--on-surface-var); font-size: 12px; font-weight: 600; }
+.emo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(40px, 1fr)); }
+.emo-e { height: 42px; border: 0; border-radius: 12px; background: none; font-size: 26px; line-height: 1; cursor: pointer; transition: transform .12s; }
+.emo-e:hover { background: color-mix(in srgb, var(--on-bg) 7%, transparent); }
+.emo-e:active { transform: scale(1.25); }
+.emo-pick.compact .emo-cats { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.emo-pick.compact .emo-grid { grid-template-columns: repeat(7, minmax(0, 1fr)); }
+.emo-pick { min-width: 0; }
+.emo-cat { min-width: 0; }
+.emo-pick.compact .emo-e { height: 38px; font-size: 23px; }
+/* чёрная палитра: большой плеер Волны — тёмный, без цветного фона */
+:root[data-neutral="1"] #full-player.wave-mode, :root[data-neutral="1"] #full-player.wave-mode.pal { background: radial-gradient(130% 90% at 50% 0%, #1c1c1c, #000 70%) !important; }
+:root[data-neutral="1"] #full-player.wave-mode #fp-glow i { filter: grayscale(1) blur(70px) !important; opacity: calc(.18 + var(--beat, 0) * .12) !important; }
+:root[data-neutral="1"] #full-player.wave-mode .fp-meta .icon-btn.on { color: #000; }

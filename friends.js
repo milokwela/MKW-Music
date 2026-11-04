@@ -2,9 +2,9 @@
 // Друзья — только взаимно: я есть в его списке, а он в моём. То есть дружба начинается, когда второй нажал «Принять».
 //   заявка ко мне  — он добавил меня, я его ещё нет;
 //   моя заявка     — я добавил его, он меня ещё нет.
-import { db, auth } from './firebase.js?v=0.34.0';
+import { db, auth } from './firebase.js?v=0.34.1';
 import { doc, getDoc, setDoc, collection, query, where, getDocs, limit, onSnapshot, documentId } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
-import { srvNow } from './clock.js?v=0.34.0';
+import { srvNow, seenOnline, realSeen } from './clock.js?v=0.34.1';
 
 // «В сети»: отметка свежее 3.5 минуты (пинг раз в 2 минуты, при уходе из приложения — сразу «не в сети»)
 export const ONLINE_MS = 190000;
@@ -125,8 +125,8 @@ export async function friendCards(uids, maxAge = 60000) {
     try { const s = await getDoc(doc(db, 'leaders', uid)); const v = s.exists() ? { uid, ...s.data() } : { uid, nick: 'слушатель', hidden: true }; cache.set(uid, { v, at: srvNow() }); return v; }
     catch { return { uid, nick: 'слушатель', hidden: true }; }
   }));
-  const online = (u) => srvNow() - (Number(u.seen) || 0) < ONLINE_MS;
-  return out.sort((a, b) => (online(b) - online(a)) || ((Number(b.seen) || 0) - (Number(a.seen) || 0)));
+  const online = (u) => seenOnline(u.seen);
+  return out.sort((a, b) => (online(b) - online(a)) || (realSeen(b.seen) - realSeen(a.seen)));
 }
 export async function cardOf(uid) { return (await friendCards([uid], 300000))[0]; }
 
