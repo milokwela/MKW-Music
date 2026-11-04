@@ -1,16 +1,17 @@
 // Уведомления: заявки в друзья, принятые заявки, новые сообщения.
 // Внутри приложения — всплывашка и счётчик на вкладке «Профиль». Если приложение свёрнуто и вы разрешили —
 // системное уведомление телефона/компьютера (работает, пока приложение открыто в фоне).
-import { h, toast } from './ui.js?v=0.35.0';
-import { avSrc } from './avatar.js?v=0.35.0';
-import { watchFriends, stopWatchFriends, requestIds, onFriends, cardOf, watchPresence, stopPresence, friendsLoaded, loadFriends } from './friends.js?v=0.35.0';
-import { watchCalls, stopCalls, warmCalls } from './call.js?v=0.35.0';
-import { enablePush, disablePush, pushSupported } from './push.js?v=0.35.0';
-import { watchChats, stopChats, unreadCount, onChats, openChat, openGroup, chatOpen, chatList, otherOf } from './chat.js?v=0.35.0';
-import { watchShared, stopShared } from './shared.js?v=0.35.0';
-import { leaveTogether } from './together.js?v=0.35.0';
-import { greyReminders } from './streak.js?v=0.35.0';
-import { me as meUid } from './friends.js?v=0.35.0';
+import { isMuted } from './chatprefs.js?v=0.35.1';
+import { h, toast } from './ui.js?v=0.35.1';
+import { avSrc } from './avatar.js?v=0.35.1';
+import { watchFriends, stopWatchFriends, requestIds, onFriends, cardOf, watchPresence, stopPresence, friendsLoaded, loadFriends } from './friends.js?v=0.35.1';
+import { watchCalls, stopCalls, warmCalls } from './call.js?v=0.35.1';
+import { enablePush, disablePush, pushSupported } from './push.js?v=0.35.1';
+import { watchChats, stopChats, unreadCount, onChats, openChat, openGroup, chatOpen, chatList, otherOf } from './chat.js?v=0.35.1';
+import { watchShared, stopShared } from './shared.js?v=0.35.1';
+import { leaveTogether } from './together.js?v=0.35.1';
+import { greyReminders } from './streak.js?v=0.35.1';
+import { me as meUid } from './friends.js?v=0.35.1';
 
 const KEY = 'mkw.notify';
 export const notifyOn = () => { try { return localStorage.getItem(KEY) !== '0'; } catch { return true; } };
@@ -63,7 +64,7 @@ export function startNotify() {
     else { toast(`${nick} принял(а) вашу заявку. Теперь вы друзья`); system('Теперь вы друзья', `${nick} принял(а) вашу заявку`, `fr-${uid}`); }
   });
   watchChats(async (c, uid) => {
-    if (!notifyOn() || chatOpen()) return;
+    if (!notifyOn() || chatOpen() || isMuted(c.id)) return;
     if (c.group) {
       const text = c.last && c.last.text ? `${c.last.nick || 'Кто-то'}: ${c.last.text}` : 'Новое сообщение';
       showPop({ avatar: '' }, c.name || 'Группа', text, () => openGroup(c.id));

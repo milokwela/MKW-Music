@@ -1,40 +1,40 @@
 // Экран «Профиль»: карточка с баннером, витрина (любимые исполнители и треки), вкладки Обзор / Слушатели / Настройки / О MKW.
-import { seenOnline } from './clock.js?v=0.35.0';
-import { nickEmo } from './stickers.js?v=0.35.0';
-import { $, $$, h, icon, openSheet, closeSheet, toast, sheetItem, trackRow } from './ui.js?v=0.35.0';
-import * as store from './store.js?v=0.35.0';
-import * as player from './player.js?v=0.35.0';
-import { ACCENTS, getTheme, getAccent, getCustomHue, setCustomColor, setTheme, setAccent, hslHex, getNeutral } from './theme.js?v=0.35.0';
-import { CHANGELOG, VERSION, STAGE, KNOWN_ISSUES } from './changelog.js?v=0.35.0';
-import { plural, pickTrack, safeUrl } from './utils.js?v=0.35.0';
-import { youtubeEnabled, youtubeQuotaOut } from './youtube.js?v=0.35.0';
-import { audiusEnabled } from './audius.js?v=0.35.0';
-import { SOURCE_MODES, getSourceMode, setSourceMode } from './sources.js?v=0.35.0';
-import { gesturesOn, setGestures, showGestureGuide } from './gestures.js?v=0.35.0';
-import { listenerStats } from './stats.js?v=0.35.0';
-import { liveBg, setLiveBg } from './viz.js?v=0.35.0';
-import { lowPower, setLowPower } from './perf.js?v=0.35.0';
-import { logOut, changePassword, changeNick, authErrorText } from './auth.js?v=0.35.0';
-import { connectionCountry } from './geo.js?v=0.35.0';
-import { goOffline, publishCard, publishProfile, myCard, getProfile, topListeners, hiddenFromBoard, setHidden, myUid } from './leaders.js?v=0.35.0';
-import { mi } from './icons2.js?v=0.35.0';
-import { artistPic } from './artistpic.js?v=0.35.0';
-import { openArtist } from './artist.js?v=0.35.0';
-import { openUserPage, favArtistsRow, favTracksList, isOnline } from './userpage.js?v=0.35.0';
-import { voiceOn, setVoice, showVoiceGuide, voiceSupported } from './voice.js?v=0.35.0';
-import { openImage } from './viewer.js?v=0.35.0';
-import { isDev, devBadge, fanBadge, nickMarks } from './dev.js?v=0.35.0';
-import { fanNumber, restoreFan, becomeFan } from './fans.js?v=0.35.0';
-import { ping } from './leaders.js?v=0.35.0';
-import { streamsOn, setStreams, checkBackground } from './stream.js?v=0.35.0';
-import { DEF_AV, avSrc, isDefAv } from './avatar.js?v=0.35.0';
-import { ONLINE_MS, loadFriends, friendIds, addFriend, removeFriend, findByNick, friendCards, onFriends, declineRequest, acceptRequest, requestIds, sentIds, friendState, friendsLoaded } from './friends.js?v=0.35.0';
-import { openChat, chatWith, isUnread, onChats } from './chat.js?v=0.35.0';
-import { notifyOn, setNotify } from './notify.js?v=0.35.0';
-import { openInstall, standalone } from './install.js?v=0.35.0';
-import { getRingtone, clearRingtone } from './ringtone.js?v=0.35.0';
-import { searchTracks } from './catalog.js?v=0.35.0';
-import { seenText } from './userpage.js?v=0.35.0';
+import { seenOnline } from './clock.js?v=0.35.1';
+import { nickEmo } from './stickers.js?v=0.35.1';
+import { $, $$, h, icon, openSheet, closeSheet, toast, sheetItem, trackRow } from './ui.js?v=0.35.1';
+import * as store from './store.js?v=0.35.1';
+import * as player from './player.js?v=0.35.1';
+import { ACCENTS, getTheme, getAccent, getCustomHue, setCustomColor, setTheme, setAccent, hslHex, getNeutral } from './theme.js?v=0.35.1';
+import { CHANGELOG, VERSION, STAGE, KNOWN_ISSUES } from './changelog.js?v=0.35.1';
+import { plural, pickTrack, safeUrl } from './utils.js?v=0.35.1';
+import { youtubeEnabled, youtubeQuotaOut } from './youtube.js?v=0.35.1';
+import { audiusEnabled } from './audius.js?v=0.35.1';
+import { SOURCE_MODES, getSourceMode, setSourceMode } from './sources.js?v=0.35.1';
+import { gesturesOn, setGestures, showGestureGuide } from './gestures.js?v=0.35.1';
+import { listenerStats } from './stats.js?v=0.35.1';
+import { liveBg, setLiveBg } from './viz.js?v=0.35.1';
+import { lowPower, setLowPower } from './perf.js?v=0.35.1';
+import { logOut, changePassword, changeNick, authErrorText } from './auth.js?v=0.35.1';
+import { connectionCountry } from './geo.js?v=0.35.1';
+import { goOffline, publishCard, publishProfile, myCard, getProfile, topListeners, hiddenFromBoard, setHidden, myUid } from './leaders.js?v=0.35.1';
+import { mi } from './icons2.js?v=0.35.1';
+import { artistPic } from './artistpic.js?v=0.35.1';
+import { openArtist } from './artist.js?v=0.35.1';
+import { openUserPage, favArtistsRow, favTracksList, isOnline } from './userpage.js?v=0.35.1';
+import { voiceOn, setVoice, showVoiceGuide, voiceSupported } from './voice.js?v=0.35.1';
+import { openImage } from './viewer.js?v=0.35.1';
+import { isDev, devBadge, fanBadge, nickMarks } from './dev.js?v=0.35.1';
+import { fanNumber, restoreFan, becomeFan } from './fans.js?v=0.35.1';
+import { ping } from './leaders.js?v=0.35.1';
+import { streamsOn, setStreams, checkBackground } from './stream.js?v=0.35.1';
+import { DEF_AV, avSrc, isDefAv } from './avatar.js?v=0.35.1';
+import { ONLINE_MS, loadFriends, friendIds, addFriend, removeFriend, findByNick, friendCards, onFriends, declineRequest, acceptRequest, requestIds, sentIds, friendState, friendsLoaded } from './friends.js?v=0.35.1';
+import { openChat, chatWith, isUnread, onChats } from './chat.js?v=0.35.1';
+import { notifyOn, setNotify } from './notify.js?v=0.35.1';
+import { openInstall, standalone } from './install.js?v=0.35.1';
+import { getRingtone, clearRingtone } from './ringtone.js?v=0.35.1';
+import { searchTracks } from './catalog.js?v=0.35.1';
+import { seenText } from './userpage.js?v=0.35.1';
 
 // s: sec, likes, playlists, plays, days, artists, night, styled, showcase, rank
 export const ACHIEVEMENTS = [
@@ -821,6 +821,7 @@ export function buildProfile(nick) {
         h('img', { class: 'fan-star', src: 'mkw-star.png', alt: '' }),
         h('div', { class: 'fan-txt' }, h('b', { text: 'Нравится MKW?' }), h('small', { text: 'Нажмите — и получите значок фаната со своим номером. Его увидят все рядом с вашим ником' })),
         h('button', { class: 'btn', type: 'button', onclick: (e) => likeMkw(e.currentTarget) }, mi('heart'), ' Мне нравится MKW')),
+      h('div', { id: 'daily-entry' }),
       h('div', { class: 'stats-grid' },
         statCard('time', 'Прослушано', 'timer'), statCard('plays', 'Треков сыграно', 'play-circle'),
         statCard('likes', 'В избранном', 'heart'), statCard('playlists', 'Плейлистов', 'playlist')),
@@ -941,6 +942,7 @@ function updateAch() {
 
 export function updateProfile() {
   requestAnimationFrame(() => placeLens(false));
+  window.dispatchEvent(new CustomEvent('mkw-daily-paint'));
   if (!built) return;
   const s = statsNow();
   const t = formatListened(s.sec);

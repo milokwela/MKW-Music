@@ -1,15 +1,16 @@
 // Раздел «Чаты» в нижнем меню: все переписки с друзьями, как в мессенджере.
 // Сверху — недавние и непрочитанные, ниже — друзья, с которыми ещё не переписывались.
-import { $, h } from './ui.js?v=0.35.0';
-import { mi } from './icons2.js?v=0.35.0';
-import { chatList, isUnread, onChats, openChat, otherOf, clearedAt, blockedByMe, openCid, openGroup, groupAvatar, createGroupSheet, chatId } from './chat.js?v=0.35.0';
-import { me, friendIds, friendCards, loadFriends, friendsLoaded, onFriends, requestIds } from './friends.js?v=0.35.0';
-import { avSrc } from './avatar.js?v=0.35.0';
-import { nickMarks } from './dev.js?v=0.35.0';
-import { seenText, isOnline } from './userpage.js?v=0.35.0';
-import { pickAndCall } from './call.js?v=0.35.0';
-import { streakAny, fireIcon } from './streak.js?v=0.35.0';
-import { setNotify } from './notify.js?v=0.35.0';
+import { $, h, toast, openSheet, closeSheet } from './ui.js?v=0.35.1';
+import { pinnedChats, isPinned, togglePin, isMuted, setMute, muteLabel } from './chatprefs.js?v=0.35.1';
+import { mi } from './icons2.js?v=0.35.1';
+import { chatList, isUnread, onChats, openChat, otherOf, clearedAt, blockedByMe, openCid, openGroup, groupAvatar, createGroupSheet, chatId, setBlocked } from './chat.js?v=0.35.1';
+import { me, friendIds, friendCards, loadFriends, friendsLoaded, onFriends, requestIds } from './friends.js?v=0.35.1';
+import { avSrc } from './avatar.js?v=0.35.1';
+import { nickMarks } from './dev.js?v=0.35.1';
+import { seenText, isOnline } from './userpage.js?v=0.35.1';
+import { pickAndCall } from './call.js?v=0.35.1';
+import { streakAny, fireIcon } from './streak.js?v=0.35.1';
+import { setNotify } from './notify.js?v=0.35.1';
 
 let watching = false, filter = '', busy = false, again = false;
 
@@ -32,7 +33,41 @@ function row(u, c, i) {
     h('span', { class: 'cl-av' }, h('img', { src: avSrc(u.avatar), alt: '', loading: 'lazy' }), isOnline(u.seen) ? h('i', { class: 'online-dot' }) : null),
     h('span', { class: 'cl-body' },
       h('span', { class: 'cl-top' }, h('b', { text: u.nick || 'друг' }), ...nickMarks(u), ...(() => { const st = streakAny(c, me(), u.uid); return st.state === 'lit' || st.state === 'grey' ? [fireIcon(st)] : []; })(), c ? h('time', { text: when(c.at) }) : null),
-      h('span', { class: 'cl-prev' }, h('span', { text: preview }), unread && !cleared ? h('i', { class: 'cl-dot' }) : null)));
+      h('span', { class: 'cl-prev' }, h('span', { text: preview }), ...flags(cidOf), unread && !cleared ? h('i', { class: `cl-dot${isMuted(cidOf) ? ' muted' : ''}` }) : null)));
+}
+// значки «закреплён» и «без уведомлений»
+const flags = (cid) => [isMuted(cid) ? h('span', { class: 'cl-flag', title: muteLabel(cid) }, mi('bell-off')) : null, isPinned(cid) ? h('span', { class: 'cl-flag pin', title: 'Закреплён' }, mi('pin')) : null].filter(Boolean);
+
+// удержание (или правая кнопка мыши) на человеке — меню: закрепить, без уведомлений, заблокировать
+function rowMenu(cid, title, uid) {
+  const btn = (ic, text, fn, danger) => h('button', { type: 'button', class: `ch-sm${danger ? ' danger' : ''}`, onclick: async () => { closeSheet(); try { await fn(); } catch { toast('Не получилось'); } renderChats(); } }, mi(ic), h('span', { text }));
+  const H = 3600000;
+  const muted = isMuted(cid);
+  const items = [
+    btn('pin', isPinned(cid) ? 'Открепить' : 'Закрепить сверху', async () => { const on = await togglePin(cid); toast(on ? 'Чат закреплён сверху' : 'Чат откреплён'); }),
+    muted
+      ? btn('bell', `Включить уведомления (${muteLabel(cid).toLowerCase()})`, async () => { await setMute(cid, 0); toast('Уведомления включены'); })
+      : h('div', { class: 'cl-mute' }, h('small', { text: 'Без уведомлений' }), h('div', { class: 'cl-mute-row' },
+        ...[['1 час', H], ['8 часов', 8 * H], ['1 день', 24 * H], ['Неделю', 7 * 24 * H], ['Навсегда', Infinity]].map(([t, ms]) => h('button', { type: 'button', class: 'chip', onclick: async () => {
+          closeSheet(); try { await setMute(cid, ms); toast(ms === Infinity ? 'Уведомления выключены' : `Без уведомлений на ${t.toLowerCase()}`); } catch { toast('Не получилось'); } renderChats();
+        } }, t)))),
+    uid ? (blockedByMe(uid)
+      ? btn('block', 'Разблокировать', async () => { await setBlocked(uid, false); toast('Разблокирован(а)'); })
+      : btn('block', 'Заблокировать', async () => { await setBlocked(uid, true); toast('Заблокирован(а): сообщения и звонки от него(неё) не придут'); }, true)) : null,
+  ].filter(Boolean);
+  if (navigator.vibrate) navigator.vibrate(12);
+  openSheet(title, h('div', { class: 'cl-menu' }, ...items));
+}
+// жест на строке: долгое нажатие на телефоне, правая кнопка на компьютере
+function holdable(el, open) {
+  let t = 0, fired = false, x = 0, y = 0;
+  el.addEventListener('touchstart', (e) => { fired = false; const p = e.touches[0]; x = p.clientX; y = p.clientY; clearTimeout(t); t = setTimeout(() => { fired = true; open(); }, 480); }, { passive: true });
+  el.addEventListener('touchmove', (e) => { const p = e.touches[0]; if (Math.abs(p.clientX - x) > 10 || Math.abs(p.clientY - y) > 10) clearTimeout(t); }, { passive: true });
+  el.addEventListener('touchend', (e) => { clearTimeout(t); if (fired && e.cancelable) e.preventDefault(); });
+  el.addEventListener('touchcancel', () => clearTimeout(t));
+  el.addEventListener('contextmenu', (e) => { e.preventDefault(); clearTimeout(t); if (!fired) open(); fired = true; setTimeout(() => { fired = false; }, 400); });
+  el.addEventListener('click', (e) => { if (fired) { e.stopImmediatePropagation(); e.preventDefault(); fired = false; } }, true);
+  return el;
 }
 
 // строка группы
@@ -46,7 +81,7 @@ function groupRow(c, cards, i) {
     h('span', { class: 'cl-av' }, groupAvatar(c, cards)),
     h('span', { class: 'cl-body' },
       h('span', { class: 'cl-top' }, h('b', { text: c.name || 'Группа' }), h('span', { class: 'cl-gtag', text: String((c.members || []).length) }), ...(st.state === 'lit' || st.state === 'grey' ? [fireIcon(st)] : []), h('time', { text: when(c.at) })),
-      h('span', { class: 'cl-prev' }, h('span', { text: preview }), unread && !cleared ? h('i', { class: 'cl-dot' }) : null)));
+      h('span', { class: 'cl-prev' }, h('span', { text: preview }), ...flags(c.id), unread && !cleared ? h('i', { class: `cl-dot${isMuted(c.id) ? ' muted' : ''}` }) : null)));
 }
 
 export async function renderChats() {
@@ -56,6 +91,7 @@ export async function renderChats() {
     watching = true;
     const re = () => { if (!root.hidden) renderChats(); };
     onChats(re); onFriends(re);
+    window.addEventListener('mkw-chatprefs', re);
   }
   if (busy) { again = true; return; }
   busy = true;
@@ -77,7 +113,15 @@ export async function renderChats() {
     const pass = (u) => !filter || String(u.nick || '').toLowerCase().includes(filter);
     // переписки и группы вместе, по времени последнего сообщения
     const talks = chats.map((c) => (c.group ? (!filter || String(c.name || '').toLowerCase().includes(filter) ? { c } : null) : (byId.get(otherOf(c)) && pass(byId.get(otherOf(c))) ? { u: byId.get(otherOf(c)), c } : null))).filter(Boolean);
-    const rest = ids.filter((x) => !withChat.has(x)).map((x) => byId.get(x)).filter((u) => u && pass(u));
+    let rest = ids.filter((x) => !withChat.has(x)).map((x) => byId.get(x)).filter((u) => u && pass(u));
+    // закреплённые — сверху, в порядке закрепления (и друзья без переписки тоже)
+    const pins = pinnedChats();
+    const cidOfT = (x) => (x.u ? chatId(me(), x.u.uid) : x.c.id);
+    const pinnedRest = rest.filter((u) => pins.includes(chatId(me(), u.uid))).map((u) => ({ u, c: null }));
+    rest = rest.filter((u) => !pins.includes(chatId(me(), u.uid)));
+    const all = [...talks, ...pinnedRest];
+    const top = all.filter((x) => pins.includes(cidOfT(x))).sort((a, b) => pins.indexOf(cidOfT(a)) - pins.indexOf(cidOfT(b)));
+    talks.splice(0, talks.length, ...top, ...talks.filter((x) => !pins.includes(cidOfT(x))));
     const req = requestIds().length;
     // уведомления о звонках: браузер должен разрешить — просим одной кнопкой
     const askNotif = 'Notification' in window && Notification.permission === 'default';
@@ -102,8 +146,8 @@ export async function renderChats() {
     } else {
       let i = 0;
       list.replaceChildren(
-        ...talks.map((x) => (x.u ? row(x.u, x.c, i++) : groupRow(x.c, byId, i++))),
-        ...(rest.length ? [h('div', { class: 'section-title', text: talks.length ? 'Друзья' : 'Начните переписку' }), ...rest.map((u) => row(u, null, i++))] : []));
+        ...talks.map((x) => (x.u ? holdable(row(x.u, x.c, i++), () => rowMenu(chatId(me(), x.u.uid), x.u.nick || 'Друг', x.u.uid)) : holdable(groupRow(x.c, byId, i++), () => rowMenu(x.c.id, x.c.name || 'Группа', '')))),
+        ...(rest.length ? [h('div', { class: 'section-title', text: talks.length ? 'Друзья' : 'Начните переписку' }), ...rest.map((u) => holdable(row(u, null, i++), () => rowMenu(chatId(me(), u.uid), u.nick || 'Друг', u.uid)))] : []));
     }
   } finally { busy = false; if (again) { again = false; renderChats(); } }
 }

@@ -1,12 +1,12 @@
 // Интерфейс плеера: мини-плеер, большой плеер, очередь, таймер сна.
-import { $, h, icon, setIcon, artEl, trackRow, openSheet, closeSheet, sheetItem, highlightCurrent, toast, emptyState } from './ui.js?v=0.35.0';
-import { openArtistFor, openArtist, artistLinks } from './artist.js?v=0.35.0';
-import { renderCarousel, initCarousel } from './carousel.js?v=0.35.0';
-import * as player from './player.js?v=0.35.0';
-import * as store from './store.js?v=0.35.0';
-import { likeToggle, openTrackMenu } from './menu.js?v=0.35.0';
-import { formatTime, safeUrl } from './utils.js?v=0.35.0';
-import { youtubeEnabled } from './youtube.js?v=0.35.0';
+import { $, h, icon, setIcon, artEl, trackRow, openSheet, closeSheet, sheetItem, highlightCurrent, toast, emptyState } from './ui.js?v=0.35.1';
+import { openArtistFor, openArtist, artistLinks } from './artist.js?v=0.35.1';
+import { renderCarousel, initCarousel } from './carousel.js?v=0.35.1';
+import * as player from './player.js?v=0.35.1';
+import * as store from './store.js?v=0.35.1';
+import { likeToggle, openTrackMenu } from './menu.js?v=0.35.1';
+import { formatTime, safeUrl } from './utils.js?v=0.35.1';
+import { youtubeEnabled } from './youtube.js?v=0.35.1';
 
 const { queue, st } = player;
 let seeking = false;
@@ -36,7 +36,8 @@ function initDrag() {
       hs = true;
       if (e.cancelable) e.preventDefault();
       mini.classList.add('hswipe');
-      mini.style.transform = `translateX(${dx}px) rotate(${dx / 60}deg)`;
+      // translate/rotate, а не transform: у мини-плеера есть анимация появления, она перебивает transform
+      mini.style.translate = `${dx}px 0`; mini.style.rotate = `${dx / 60}deg`;
       mini.style.opacity = String(Math.max(0.25, 1 - Math.abs(dx) / (mini.offsetWidth || 360)));
       return;
     }
@@ -60,7 +61,7 @@ function initDrag() {
       mini.classList.remove('hswipe');
       swallow = true; setTimeout(() => { swallow = false; }, 350);
       if (Math.abs(dx) > w * 0.33 || (v > 0.6 && Math.abs(dx) > 40)) dismissMini(dx > 0 ? 1 : -1);
-      else { mini.style.transform = ''; mini.style.opacity = ''; }
+      else { mini.style.translate = ''; mini.style.rotate = ''; mini.style.opacity = ''; }
       return;
     }
     const dragging = full.classList.contains('dragging');
@@ -116,15 +117,14 @@ let miniGone = false;
 function dismissMini(dir) {
   const mini = $('#mini-player');
   mini.classList.add('gone');
-  mini.style.transform = `translateX(${dir * 120}%) rotate(${dir * 8}deg)`;
+  mini.style.translate = `${dir * 115}% 0`; mini.style.rotate = `${dir * 9}deg`;
   mini.style.opacity = '0';
-  try { if (player.st.playing) player.pause(); } catch { /* ignore */ }
   if (navigator.vibrate) navigator.vibrate(10);
   setTimeout(() => {
-    miniGone = true;
-    mini.hidden = true; document.body.classList.remove('has-mini');
-    mini.classList.remove('gone'); mini.style.transform = ''; mini.style.opacity = '';
-  }, 260);
+    // музыка останавливается совсем: плеер прячется, а песня в списках больше не горит как играющая
+    try { player.stop(); } catch { /* ignore */ }
+    mini.classList.remove('gone'); mini.style.translate = ''; mini.style.rotate = ''; mini.style.opacity = '';
+  }, 300);
 }
 function showMiniAgain() {
   if (!miniGone || !queue.current) return;
@@ -139,7 +139,7 @@ function renderTrack() {
   if (miniGone && t && player.st.playing) miniGone = false;
   document.body.classList.toggle('has-mini', Boolean(t) && !miniGone);
   $('#mini-player').hidden = !t || miniGone;
-  if (!t) { closeFull(); lastTrackId = null; return; }
+  if (!t) { closeFull(); lastTrackId = null; highlightCurrent(''); return; }
 
   $('#mini-title').textContent = t.title;
   $('#mini-artist').textContent = t.artist;

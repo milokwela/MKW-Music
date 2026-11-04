@@ -407,7 +407,7 @@ body.on-chats #chat-page .ch-pin { background: transparent; padding: 8px 16px; }
 .ch-vbars { touch-action: none; }
 
 /* смахнуть мини-плеер */
-#mini-player { transition: transform .26s cubic-bezier(.2,.8,.2,1), opacity .26s; }
+#mini-player { transition: transform .35s cubic-bezier(.2,.8,.2,1), translate .3s cubic-bezier(.2,.8,.2,1), rotate .3s ease, opacity .3s; }
 #mini-player.hswipe { transition: none; }
 #mini-player.back { animation: miniBack .35s cubic-bezier(.2,1.3,.4,1); }
 @keyframes miniBack { from { transform: translateY(30px) scale(.9); opacity: 0; } }
@@ -417,3 +417,30 @@ body.on-chats #chat-page .ch-pin { background: transparent; padding: 8px 16px; }
 .emo-tabs { overflow-x: auto; scrollbar-width: none; }
 .emo-tabs::-webkit-scrollbar { display: none; }
 .emo-tab { flex: none; white-space: nowrap; }
+
+/* ---------- 0.35.1 ---------- */
+/* длинная цитата больше не раздувает ответ на всю ширину */
+.ch-quote { width: 0; min-width: 100%; box-sizing: border-box; overflow: hidden; }
+.ch-msg:has(> .ch-quote) { min-width: min(220px, 70vw); }
+.ch-quote span { display: block; }
+/* стикеры — отдельная кнопка слева; пока пишете, кнопки слева прячутся, чтобы полю хватало места */
+.ch-stbtn .mi { width: 22px; height: 22px; }
+.ch-share.on { background: var(--primary); color: var(--on-primary); }
+@media (max-width: 520px) {
+  .ch-bar { gap: 6px; }
+  .ch-bar .ch-share { width: 40px; height: 40px; }
+  .ch-bar.has-text .ch-share { display: none; }
+}
+.emo-title { padding: 10px 14px 2px; font-weight: 800; font-size: 14px; color: var(--on-surface-var); }
+.emo-pick.only .emo-body { max-height: 300px; }
+/* список чатов: закреп, без уведомлений, меню по удержанию */
+.cl-prev .cl-flag, .cl-flag { flex: none; display: inline-grid; place-items: center; width: 18px; height: 18px; margin-left: 4px; color: var(--on-surface-var); opacity: .8; }
+.cl-flag .mi { width: 15px; height: 15px; }
+.cl-flag.pin { color: var(--on-surface-var); transform: rotate(35deg); }
+.cl-dot.muted { background: var(--outline) !important; }
+.cl-menu { display: grid; gap: 4px; }
+.cl-mute { padding: 8px 4px 4px; }
+.cl-mute small { display: block; margin: 0 6px 8px; color: var(--on-surface-var); font-weight: 600; }
+.cl-mute-row { display: flex; flex-wrap: wrap; gap: 6px; }
+.cl-mute-row .chip { padding: 9px 14px; }
+.cl-row { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }

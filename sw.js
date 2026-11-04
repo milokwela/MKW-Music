@@ -46,10 +46,16 @@ self.addEventListener('push', (e) => {
     // приложение открыто на экране — звонок и сообщение и так всплывут внутри
     if (d.kind !== 'missed' && wins.some((c) => c.visibilityState === 'visible' && c.focused)) return;
     const call = d.kind === 'call';
+    // чат «без уведомлений» — показываем тихо, без звука и вибрации
+    let quiet = false;
+    try {
+      const m = /^chat-(.+)$/.exec(String(d.tag || ''));
+      if (m && !call) { const r = await caches.match('/__mkw_mute'); const mm = r ? await r.json() : {}; quiet = Number(mm[m[1]]) > Date.now(); }
+    } catch { quiet = false; }
     await self.registration.showNotification(d.title || 'MKW Music', {
-      body: d.body || '', tag: d.tag || d.kind || 'mkw', renotify: d.kind !== 'missed', silent: d.kind === 'missed',
+      body: d.body || '', tag: d.tag || d.kind || 'mkw', renotify: d.kind !== 'missed' && !quiet, silent: d.kind === 'missed' || quiet,
       icon: 'ic5-192.png', badge: 'fav-96.png', data: { url: d.url || './' }, timestamp: d.at || Date.now(),
-      requireInteraction: call, vibrate: call ? [400, 200, 400, 200, 400, 200, 400] : [150],
+      requireInteraction: call, vibrate: call ? [400, 200, 400, 200, 400, 200, 400] : quiet ? [] : [150],
       actions: call ? [{ action: 'open', title: 'Ответить' }] : [],
     });
   })());

@@ -5,21 +5,21 @@
 // Каждый с каждым соединяется напрямую (при 4 людях — 6 соединений).
 // Чтобы звонок подключался сразу: звонящий готовит соединение заранее, пока у друга звонит телефон,
 // поэтому после «Принять» остаётся один короткий ответ.
-import { db } from './firebase.js?v=0.35.0';
+import { db } from './firebase.js?v=0.35.1';
 import { doc, setDoc, updateDoc, deleteDoc, addDoc, collection, query, where, limit, onSnapshot, arrayUnion, arrayRemove } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
-import { h, toast, openSheet, closeSheet } from './ui.js?v=0.35.0';
-import { mi } from './icons2.js?v=0.35.0';
-import { me, isFriend, friendIds, friendCards, cardOf } from './friends.js?v=0.35.0';
-import { avSrc } from './avatar.js?v=0.35.0';
-import { RECOGNIZE_URL } from './shazam-config.js?v=0.35.0';
-import { pushTo, myNick } from './push.js?v=0.35.0';
-import * as player from './player.js?v=0.35.0';
-import { getRingtone } from './ringtone.js?v=0.35.0';
-import { postCallEvent, isBlocked } from './chat.js?v=0.35.0';
-import * as store from './store.js?v=0.35.0';
-import { pickTrack } from './utils.js?v=0.35.0';
-import { enablePush } from './push.js?v=0.35.0';
-import { srvNow, seenOnline } from './clock.js?v=0.35.0';
+import { h, toast, openSheet, closeSheet } from './ui.js?v=0.35.1';
+import { mi } from './icons2.js?v=0.35.1';
+import { me, isFriend, friendIds, friendCards, cardOf } from './friends.js?v=0.35.1';
+import { avSrc } from './avatar.js?v=0.35.1';
+import { RECOGNIZE_URL } from './shazam-config.js?v=0.35.1';
+import { pushTo, myNick } from './push.js?v=0.35.1';
+import * as player from './player.js?v=0.35.1';
+import { getRingtone } from './ringtone.js?v=0.35.1';
+import { postCallEvent, isBlocked } from './chat.js?v=0.35.1';
+import * as store from './store.js?v=0.35.1';
+import { pickTrack } from './utils.js?v=0.35.1';
+import { enablePush } from './push.js?v=0.35.1';
+import { srvNow, seenOnline } from './clock.js?v=0.35.1';
 
 const MAX = 4;
 let ice = null, iceP = null;

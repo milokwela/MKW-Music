@@ -1,9 +1,9 @@
 // Рекомендации на данных Deezer (открытое API, без ключа): популярные треки исполнителя, «радио» похожих песен,
 // похожие исполнители, чарт. Если Deezer недоступен напрямую — через сервер MKW.
-import { jsonp } from './jsonp.js?v=0.35.0';
-import { RECOGNIZE_URL } from './shazam-config.js?v=0.35.0';
-import { mapDeezer } from './catalog.js?v=0.35.0';
-import { ITUNES_COUNTRIES } from './config.js?v=0.35.0';
+import { jsonp } from './jsonp.js?v=0.35.1';
+import { RECOGNIZE_URL } from './shazam-config.js?v=0.35.1';
+import { mapDeezer } from './catalog.js?v=0.35.1';
+import { ITUNES_COUNTRIES } from './config.js?v=0.35.1';
 
 const W = () => String(RECOGNIZE_URL || '').replace(/\/$/, '');
 const n = (s) => String(s || '').toLowerCase().replace(/ё/g, 'е').replace(/[^a-zа-я0-9]+/g, '');
