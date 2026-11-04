@@ -1,10 +1,10 @@
 // Данные пользователя в Firestore: лайки, плейлисты, история.
 // users/{uid}/likes/{trackId}, users/{uid}/playlists/{id}, users/{uid}/history/{auto}
-import { db } from './firebase.js?v=0.35.2';
+import { db } from './firebase.js?v=0.35.3';
 import {
   collection, doc, setDoc, deleteDoc, addDoc, updateDoc, onSnapshot, query, orderBy, limit, increment,
 } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
-import { pickTrack } from './utils.js?v=0.35.2';
+import { pickTrack } from './utils.js?v=0.35.3';
 
 const MAX_PLAYLIST = 300;
 const HISTORY_LIMIT = 50;

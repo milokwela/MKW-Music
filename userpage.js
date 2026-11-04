@@ -1,25 +1,25 @@
 // Страница другого слушателя: баннер, фото, статус, значки, статистика, любимые исполнители и треки.
-import { $, h, trackRow, animateIn } from './ui.js?v=0.35.2';
-import * as player from './player.js?v=0.35.2';
-import { openTrackMenu } from './menu.js?v=0.35.2';
-import { getProfile } from './leaders.js?v=0.35.2';
-import { ACH, bannerCss, formatListened } from './profile.js?v=0.35.2';
-import { artistPic } from './artistpic.js?v=0.35.2';
-import { openArtist } from './artist.js?v=0.35.2';
-import { mi } from './icons2.js?v=0.35.2';
-import { plural } from './utils.js?v=0.35.2';
-import { openImage } from './viewer.js?v=0.35.2';
-import { isDev, devBadge, showDev, validFan, fanBadge } from './dev.js?v=0.35.2';
-import { friendState, addFriend, removeFriend, loadFriends, friendsLoaded, ONLINE_MS } from './friends.js?v=0.35.2';
-import { openChat, chatActions } from './chat.js?v=0.35.2';
+import { $, h, trackRow, animateIn } from './ui.js?v=0.35.3';
+import * as player from './player.js?v=0.35.3';
+import { openTrackMenu } from './menu.js?v=0.35.3';
+import { getProfile } from './leaders.js?v=0.35.3';
+import { ACH, bannerCss, formatListened } from './profile.js?v=0.35.3';
+import { artistPic } from './artistpic.js?v=0.35.3';
+import { openArtist } from './artist.js?v=0.35.3';
+import { mi } from './icons2.js?v=0.35.3';
+import { plural } from './utils.js?v=0.35.3';
+import { openImage } from './viewer.js?v=0.35.3';
+import { isDev, devBadge, showDev, validFan, fanBadge } from './dev.js?v=0.35.3';
+import { friendState, addFriend, removeFriend, loadFriends, friendsLoaded, ONLINE_MS } from './friends.js?v=0.35.3';
+import { openChat, chatActions } from './chat.js?v=0.35.3';
 // удалить друга — двойное нажатие за 3 секунды, чтобы не убрать случайно
 let rmAsk = '';
 function confirmRemove(u) { if (rmAsk === u.uid) { rmAsk = ''; return true; } rmAsk = u.uid; setTimeout(() => { if (rmAsk === u.uid) rmAsk = ''; }, 3000); toast('Нажмите ещё раз, чтобы убрать из друзей'); return false; }
-import { avSrc } from './avatar.js?v=0.35.2';
-import { toast } from './ui.js?v=0.35.2';
-import { searchTracks } from './catalog.js?v=0.35.2';
-import { srvNow, realSeen, seenOnline } from './clock.js?v=0.35.2';
-import { nickEmo } from './stickers.js?v=0.35.2';
+import { avSrc } from './avatar.js?v=0.35.3';
+import { toast } from './ui.js?v=0.35.3';
+import { searchTracks } from './catalog.js?v=0.35.3';
+import { srvNow, realSeen, seenOnline } from './clock.js?v=0.35.3';
+import { nickEmo } from './stickers.js?v=0.35.3';
 
 export function seenText(seen) {
   const t = realSeen(seen);
@@ -123,6 +123,7 @@ function pcLayout(kids) {
 export async function openUserPage(uid, basic, isMe = false) {
   if (basic && !basic.uid) basic = { ...basic, uid };
   const page = $('#user-page'), body = $('#user-body');
+  const fp = document.getElementById('full-player'); if (fp) { fp.classList.remove('open', 'dragging'); fp.style.transform = ''; }
   const mine = ++seq;
   const ch = document.getElementById('chat-page');
   page.classList.toggle('over-chat', Boolean(ch && ch.classList.contains('open')));

@@ -1,14 +1,14 @@
 // Страница исполнителя: треки, слушать, перемешать, «не рекомендовать».
-import { searchTracks, mapItunes, mapDeezer } from './catalog.js?v=0.35.2';
-import { jsonp } from './jsonp.js?v=0.35.2';
-import { prefetchYouTubeIds } from './youtube.js?v=0.35.2';
-import { $, h, icon, trackRow, skeleton, animateIn, toast, openSheet, closeSheet, sheetItem } from './ui.js?v=0.35.2';
-import { openTrackMenu } from './menu.js?v=0.35.2';
-import * as player from './player.js?v=0.35.2';
-import { splitArtists, isArtistBlocked, blockArtist, unblockArtist, norm } from './taste.js?v=0.35.2';
-import { shuffled, plural, safeUrl } from './utils.js?v=0.35.2';
-import { artistPic } from './artistpic.js?v=0.35.2';
-import { mi } from './icons2.js?v=0.35.2';
+import { searchTracks, mapItunes, mapDeezer } from './catalog.js?v=0.35.3';
+import { jsonp } from './jsonp.js?v=0.35.3';
+import { prefetchYouTubeIds } from './youtube.js?v=0.35.3';
+import { $, h, icon, trackRow, skeleton, animateIn, toast, openSheet, closeSheet, sheetItem } from './ui.js?v=0.35.3';
+import { openTrackMenu } from './menu.js?v=0.35.3';
+import * as player from './player.js?v=0.35.3';
+import { splitArtists, isArtistBlocked, blockArtist, unblockArtist, norm } from './taste.js?v=0.35.3';
+import { shuffled, plural, safeUrl } from './utils.js?v=0.35.3';
+import { artistPic } from './artistpic.js?v=0.35.3';
+import { mi } from './icons2.js?v=0.35.3';
 
 let seq = 0;
 const infoCache = new Map();
@@ -128,6 +128,8 @@ export function openArtistFor(artistString) {
 export async function openArtist(name) {
   const page = $('#artist-page');
   const mine = ++seq;
+  // большой плеер закрываем, иначе страница исполнителя открылась бы под ним
+  const fp = document.getElementById('full-player'); if (fp) { fp.classList.remove('open', 'dragging'); fp.style.transform = ''; }
   const body = $('#artist-body');
   page.classList.add('open');
   page.scrollTop = 0;

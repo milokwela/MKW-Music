@@ -1,6 +1,6 @@
 // Фото перед отправкой, как в мессенджерах: несколько сразу, обрезка рамкой, поворот и рисование пальцем.
-import { h, toast } from './ui.js?v=0.35.2';
-import { mi } from './icons2.js?v=0.35.2';
+import { h, toast } from './ui.js?v=0.35.3';
+import { mi } from './icons2.js?v=0.35.3';
 
 const MAX_FILES = 10;
 const COLORS = ['#ffffff', '#111111', '#ff3b5c', '#ffcc00', '#34d17a', '#3b8cff', '#ff7ad9'];

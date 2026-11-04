@@ -1,12 +1,12 @@
 // Интерфейс плеера: мини-плеер, большой плеер, очередь, таймер сна.
-import { $, h, icon, setIcon, artEl, trackRow, openSheet, closeSheet, sheetItem, highlightCurrent, toast, emptyState } from './ui.js?v=0.35.2';
-import { openArtistFor, openArtist, artistLinks } from './artist.js?v=0.35.2';
-import { renderCarousel, initCarousel } from './carousel.js?v=0.35.2';
-import * as player from './player.js?v=0.35.2';
-import * as store from './store.js?v=0.35.2';
-import { likeToggle, openTrackMenu } from './menu.js?v=0.35.2';
-import { formatTime, safeUrl } from './utils.js?v=0.35.2';
-import { youtubeEnabled } from './youtube.js?v=0.35.2';
+import { $, h, icon, setIcon, artEl, trackRow, openSheet, closeSheet, sheetItem, highlightCurrent, toast, emptyState } from './ui.js?v=0.35.3';
+import { openArtistFor, openArtist, artistLinks } from './artist.js?v=0.35.3';
+import { renderCarousel, initCarousel } from './carousel.js?v=0.35.3';
+import * as player from './player.js?v=0.35.3';
+import * as store from './store.js?v=0.35.3';
+import { likeToggle, openTrackMenu } from './menu.js?v=0.35.3';
+import { formatTime, safeUrl } from './utils.js?v=0.35.3';
+import { youtubeEnabled } from './youtube.js?v=0.35.3';
 
 const { queue, st } = player;
 let seeking = false;
@@ -256,7 +256,7 @@ export function initPlayerUI() {
   $('#fp-sleep').addEventListener('click', openSleep);
   $('#fp-like').addEventListener('click', () => { if (queue.current) likeToggle(queue.current); });
   // у каждого исполнителя своя ссылка; нажали мимо имён — список исполнителей
-  $('#fp-artist').addEventListener('click', (e) => { const one = e.target.closest('.ar-link'); if (one) { openArtist(one.dataset.artist); return; } if (queue.current) openArtistFor(queue.current.artist); });
+  $('#fp-artist').addEventListener('click', (e) => { const one = e.target.closest('.ar-link'); if (one) { openArtist(one.dataset.artist); return; } if (queue.current && e.currentTarget.querySelectorAll('.ar-link').length <= 1) openArtistFor(queue.current.artist); });
   $('#fp-artist').addEventListener('keydown', (e) => { const one = e.target.closest('.ar-link'); if (one && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); e.stopPropagation(); openArtist(one.dataset.artist); } });
   $('#fp-more').addEventListener('click', () => { if (queue.current) openTrackMenu(queue.current); });
 

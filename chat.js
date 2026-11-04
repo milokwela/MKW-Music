@@ -4,28 +4,28 @@
 //   chats/{id}/msgs/{id}   — { from, text, at, track?, img?, voice?, vdur?, re?: {id, from, text}, rx?: {uid: эмодзи}, ed? }
 // В read хранится всё «служебное»: прочитано (uid), огонёк (g_*, gs, gd…), очистка (x_*), блокировка (b_*),
 // «печатает…» (t_<uid> — когда, tk_<uid> — что: text | voice).
-import { safeUrl } from './utils.js?v=0.35.2';
-import { db } from './firebase.js?v=0.35.2';
+import { safeUrl } from './utils.js?v=0.35.3';
+import { db } from './firebase.js?v=0.35.3';
 import { doc, getDoc, setDoc, addDoc, updateDoc, deleteDoc, getDocs, collection, query, where, orderBy, limit, onSnapshot, deleteField } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
-import { h, toast, openSheet, closeSheet } from './ui.js?v=0.35.2';
-import { openImage } from './viewer.js?v=0.35.2';
-import { mi } from './icons2.js?v=0.35.2';
-import * as player from './player.js?v=0.35.2';
-import { searchTracks } from './catalog.js?v=0.35.2';
-import { me, isFriend, cardOf, friendIds, friendCards, loadFriends, friendsLoaded } from './friends.js?v=0.35.2';
-import { avSrc } from './avatar.js?v=0.35.2';
-import { seenText, isOnline, openUserPage, closeUserPage } from './userpage.js?v=0.35.2';
-import { startCall, warmCalls } from './call.js?v=0.35.2';
-import { streakAny, streakPatch, groupPatch, fireIcon, openStreak, startStreak, playFire } from './streak.js?v=0.35.2';
-import { pushTo, myNick } from './push.js?v=0.35.2';
-import { srvNow, realSeen } from './clock.js?v=0.35.2';
-import { togetherBar, startTogether } from './together.js?v=0.35.2';
-import { ensureShared } from './shared.js?v=0.35.2';
-import { STICKER_TXT, stickerOf, nickEmo, catOf, catName, rxNode, emojiPicker, QUICK_RX } from './stickers.js?v=0.35.2';
-import { markDaily } from './daily.js?v=0.35.2';
-import { openPhotoEditor } from './photoedit.js?v=0.35.2';
-import { pcmCapture, loadLame, encodeMp3, decodeBlob, blobToDataUrl, toWavUrl, wavUrl } from './voicerec.js?v=0.35.2';
-import { openSharedSheet } from './sharedui.js?v=0.35.2';
+import { h, toast, openSheet, closeSheet } from './ui.js?v=0.35.3';
+import { openImage } from './viewer.js?v=0.35.3';
+import { mi } from './icons2.js?v=0.35.3';
+import * as player from './player.js?v=0.35.3';
+import { searchTracks } from './catalog.js?v=0.35.3';
+import { me, isFriend, cardOf, friendIds, friendCards, loadFriends, friendsLoaded } from './friends.js?v=0.35.3';
+import { avSrc } from './avatar.js?v=0.35.3';
+import { seenText, isOnline, openUserPage, closeUserPage } from './userpage.js?v=0.35.3';
+import { startCall, warmCalls } from './call.js?v=0.35.3';
+import { streakAny, streakPatch, groupPatch, fireIcon, openStreak, startStreak, playFire } from './streak.js?v=0.35.3';
+import { pushTo, myNick } from './push.js?v=0.35.3';
+import { srvNow, realSeen } from './clock.js?v=0.35.3';
+import { togetherBar, startTogether } from './together.js?v=0.35.3';
+import { ensureShared } from './shared.js?v=0.35.3';
+import { STICKER_TXT, stickerOf, nickEmo, catOf, catName, rxNode, emojiPicker, QUICK_RX } from './stickers.js?v=0.35.3';
+import { markDaily } from './daily.js?v=0.35.3';
+import { openPhotoEditor } from './photoedit.js?v=0.35.3';
+import { pcmCapture, loadLame, encodeMp3, decodeBlob, blobToDataUrl, toWavUrl, wavUrl } from './voicerec.js?v=0.35.3';
+import { openSharedSheet } from './sharedui.js?v=0.35.3';
 
 export const chatId = (a, b) => [a, b].sort().join('_');
 const isGroupId = (cid) => String(cid || '').startsWith('g') && !String(cid).includes('_');
@@ -407,12 +407,14 @@ function voiceBubble(src, durSec) {
     e.preventDefault(); e.stopPropagation();
     if (vUi !== ui) btn.click(); // ещё не играет — включаем и сразу перематываем
     scrub = true; box.classList.add('scrub');
+    if (vAudio) vAudio.muted = true; // пока тянете — тишина, звук с нового места после отпускания
+    setTimeout(() => { if (scrub && vAudio) vAudio.muted = true; }, 0);
     try { bars.setPointerCapture(e.pointerId); } catch { /* ignore */ }
     const ev = { clientX: e.clientX };
     setTimeout(() => seekTo(ev), vUi === ui && vAudio && vAudio.readyState > 0 ? 0 : 120);
   });
   bars.addEventListener('pointermove', (e) => { if (scrub) { e.stopPropagation(); seekTo(e); } });
-  const endScrub = () => { scrub = false; box.classList.remove('scrub'); };
+  const endScrub = () => { scrub = false; box.classList.remove('scrub'); if (vUi === ui && vAudio) vAudio.muted = false; };
   bars.addEventListener('pointerup', endScrub); bars.addEventListener('pointercancel', endScrub);
   bars.addEventListener('click', (e) => e.stopPropagation());
   return box;

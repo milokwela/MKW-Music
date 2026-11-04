@@ -1,6 +1,6 @@
-import { jsonp } from './jsonp.js?v=0.35.2';
+import { jsonp } from './jsonp.js?v=0.35.3';
 // Каталог треков: iTunes Search API (бесплатно, без ключа, есть превью 30 сек).
-import { ITUNES_COUNTRIES } from './config.js?v=0.35.2';
+import { ITUNES_COUNTRIES } from './config.js?v=0.35.3';
 
 export function mapItunes(r) {
   return {
