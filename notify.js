@@ -1,17 +1,17 @@
 // Уведомления: заявки в друзья, принятые заявки, новые сообщения.
 // Внутри приложения — всплывашка и счётчик на вкладке «Профиль». Если приложение свёрнуто и вы разрешили —
 // системное уведомление телефона/компьютера (работает, пока приложение открыто в фоне).
-import { isMuted } from './chatprefs.js?v=0.35.6';
-import { h, toast } from './ui.js?v=0.35.6';
-import { avSrc } from './avatar.js?v=0.35.6';
-import { watchFriends, stopWatchFriends, requestIds, onFriends, cardOf, watchPresence, stopPresence, friendsLoaded, loadFriends } from './friends.js?v=0.35.6';
-import { watchCalls, stopCalls, warmCalls } from './call.js?v=0.35.6';
-import { enablePush, disablePush, pushSupported } from './push.js?v=0.35.6';
-import { watchChats, stopChats, unreadCount, onChats, openChat, openGroup, chatOpen, chatList, otherOf } from './chat.js?v=0.35.6';
-import { watchShared, stopShared } from './shared.js?v=0.35.6';
-import { leaveTogether } from './together.js?v=0.35.6';
-import { greyReminders } from './streak.js?v=0.35.6';
-import { me as meUid } from './friends.js?v=0.35.6';
+import { isMuted } from './chatprefs.js?v=0.35.7';
+import { h, toast } from './ui.js?v=0.35.7';
+import { avSrc } from './avatar.js?v=0.35.7';
+import { watchFriends, stopWatchFriends, requestIds, onFriends, cardOf, watchPresence, stopPresence, friendsLoaded, loadFriends } from './friends.js?v=0.35.7';
+import { watchCalls, stopCalls, warmCalls } from './call.js?v=0.35.7';
+import { enablePush, disablePush, pushSupported } from './push.js?v=0.35.7';
+import { watchChats, stopChats, unreadCount, onChats, openChat, openGroup, chatOpen, chatList, otherOf } from './chat.js?v=0.35.7';
+import { watchShared, stopShared } from './shared.js?v=0.35.7';
+import { leaveTogether } from './together.js?v=0.35.7';
+import { greyReminders } from './streak.js?v=0.35.7';
+import { me as meUid } from './friends.js?v=0.35.7';
 
 const KEY = 'mkw.notify';
 export const notifyOn = () => { try { return localStorage.getItem(KEY) !== '0'; } catch { return true; } };

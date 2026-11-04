@@ -1,6 +1,6 @@
 // Фото перед отправкой, как в мессенджерах: несколько сразу, обрезка рамкой, поворот и рисование пальцем.
-import { h, toast } from './ui.js?v=0.35.6';
-import { mi } from './icons2.js?v=0.35.6';
+import { h, toast } from './ui.js?v=0.35.7';
+import { mi } from './icons2.js?v=0.35.7';
 
 const MAX_FILES = 10;
 const COLORS = ['#ffffff', '#111111', '#ff3b5c', '#ffcc00', '#34d17a', '#3b8cff', '#ff7ad9'];
@@ -75,18 +75,28 @@ export function openPhotoEditor(files, { title = 'Фото', caption = '', onSen
   const sendBtn = h('button', { type: 'button', class: 'pe2-send', 'aria-label': 'Отправить' }, mi('send'), h('b', { class: 'pe2-n' }));
   const more = h('input', { type: 'file', accept: 'image/*', multiple: '', hidden: '' });
   const tool = (id, ic, label) => h('button', { type: 'button', class: 'pe2-tool', 'data-m': id, title: label, onclick: () => setMode(id) }, mi(ic), h('span', { text: label }));
-  const undoBtn = h('button', { type: 'button', class: 'pe2-tool', title: 'Отменить', onclick: () => { const it = items[cur]; if (it && it.strokes.length) { it.strokes.pop(); paint(); } } }, mi('reply'), h('span', { text: 'Назад' }));
+  // «Назад» отменяет последнее действие: штрих, рамку, сброс или поворот
+  const snap = (it) => { (it.hist || (it.hist = [])).push({ base: it.base, strokes: it.strokes.slice(), crop: { ...it.crop } }); if (it.hist.length > 40) it.hist.shift(); paintUndo(); };
+  const undo = () => {
+    const it = items[cur]; if (!it || !it.hist || !it.hist.length) return;
+    const p = it.hist.pop(); const rot = p.base !== it.base;
+    it.base = p.base; it.strokes = p.strokes; it.crop = p.crop;
+    if (rot) { fit(); paintThumbs(); } else paint();
+    paintUndo();
+  };
+  const undoBtn = h('button', { type: 'button', class: 'pe2-tool pe2-undo', title: 'Отменить', onclick: undo }, mi('reply'), h('span', { text: 'Назад' }));
+  function paintUndo() { const it = items[cur]; undoBtn.classList.toggle('off', !(it && it.hist && it.hist.length)); }
   const tools = h('div', { class: 'pe2-tools' },
     tool('crop', 'fullscreen', 'Обрезать'), tool('draw', 'edit', 'Рисовать'),
-    h('button', { type: 'button', class: 'pe2-tool', title: 'Повернуть', onclick: () => { const it = items[cur]; if (it) { rotateItem(it); fit(); paintThumbs(); } } }, mi('screen'), h('span', { text: 'Повернуть' })),
-    h('button', { type: 'button', class: 'pe2-tool', title: 'Сбросить рамку', onclick: () => { const it = items[cur]; if (it) { it.crop = { x: 0, y: 0, w: 1, h: 1 }; paint(); } } }, mi('close'), h('span', { text: 'Сброс' })),
+    h('button', { type: 'button', class: 'pe2-tool', title: 'Повернуть', onclick: () => { const it = items[cur]; if (it) { snap(it); rotateItem(it); fit(); paintThumbs(); } } }, mi('screen'), h('span', { text: 'Повернуть' })),
+    h('button', { type: 'button', class: 'pe2-tool', title: 'Сбросить рамку', onclick: () => { const it = items[cur]; if (it) { snap(it); it.crop = { x: 0, y: 0, w: 1, h: 1 }; it.strokes = []; paint(); } } }, mi('close'), h('span', { text: 'Сброс' })),
     undoBtn);
   const palette = h('div', { class: 'pe2-pal' }, ...COLORS.map((c) => h('button', { type: 'button', class: 'pe2-col', style: `--c:${c}`, 'data-c': c, onclick: () => { color = c; paintPal(); } })),
     h('input', { type: 'range', class: 'pe2-size', min: '4', max: '40', value: '12', oninput: (e) => { size = Number(e.target.value) / 1000; } }));
   const head = h('div', { class: 'pe2-head' },
     h('button', { type: 'button', class: 'pe2-x', 'aria-label': 'Закрыть', onclick: () => close() }, mi('close')),
     h('b', { class: 'pe2-title', text: title }));
-  const box = h('div', { class: 'pe2', role: 'dialog', 'aria-label': 'Отправка фото' }, head, stage, tools, palette,
+  const box = h('div', { class: 'phx', role: 'dialog', 'aria-label': 'Отправка фото' }, head, stage, tools, palette,
     h('div', { class: 'pe2-bottom' }, thumbs, h('div', { class: 'pe2-row' }, cap, sendBtn)), more);
   const close = () => { box.classList.remove('show'); window.removeEventListener('resize', fit); setTimeout(() => box.remove(), 250); };
 
@@ -109,7 +119,10 @@ export function openPhotoEditor(files, { title = 'Фото', caption = '', onSen
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.drawImage(it.base, ox, oy, w, hh);
+    // рисунок не вылезает за фото
+    ctx.save(); ctx.beginPath(); ctx.rect(ox, oy, w, hh); ctx.clip();
     drawStrokes(ctx, it.strokes, ox, oy, w, hh);
+    ctx.restore();
     const c = it.crop, cx = ox + c.x * w, cy = oy + c.y * hh, cw = c.w * w, ch = c.h * hh;
     // затемняем всё, что не попадёт в фото
     ctx.fillStyle = mode === 'crop' ? 'rgba(0,0,0,.6)' : 'rgba(0,0,0,.45)';
@@ -132,6 +145,7 @@ export function openPhotoEditor(files, { title = 'Фото', caption = '', onSen
     paint();
   }
   function paintThumbs() {
+    paintUndo();
     thumbs.replaceChildren(...items.map((it, i) => {
       const t = document.createElement('canvas'); const k = 56 / Math.max(it.base.width, it.base.height);
       t.width = Math.round(it.base.width * k); t.height = Math.round(it.base.height * k); t.getContext('2d').drawImage(it.base, 0, 0, t.width, t.height);
@@ -150,6 +164,7 @@ export function openPhotoEditor(files, { title = 'Фото', caption = '', onSen
     e.preventDefault();
     try { canvas.setPointerCapture(e.pointerId); } catch { /* ignore */ }
     const [x, y] = toImg(e);
+    snap(it);
     if (mode === 'draw') {
       const s = { c: color, s: size, pts: [[x, y]] }; it.strokes.push(s); drag = { kind: 'draw', s }; paint(); return;
     }
@@ -181,7 +196,12 @@ export function openPhotoEditor(files, { title = 'Фото', caption = '', onSen
     it.crop = { x: L, y: T, w: R - L, h: B - T };
     paint();
   });
-  const up = () => { drag = null; };
+  const up = () => {
+    // просто тапнули по рамке и ничего не сдвинули — отменять нечего
+    const it = items[cur];
+    if (drag && drag.kind !== 'draw' && it && it.hist && it.hist.length) { const p = it.hist[it.hist.length - 1], c = it.crop; if (p.base === it.base && p.crop.x === c.x && p.crop.y === c.y && p.crop.w === c.w && p.crop.h === c.h && p.strokes.length === it.strokes.length) { it.hist.pop(); paintUndo(); } }
+    drag = null;
+  };
   canvas.addEventListener('pointerup', up); canvas.addEventListener('pointercancel', up);
 
   const add = async (list) => {

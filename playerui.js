@@ -1,12 +1,12 @@
 // Интерфейс плеера: мини-плеер, большой плеер, очередь, таймер сна.
-import { $, h, icon, setIcon, artEl, trackRow, openSheet, closeSheet, sheetItem, highlightCurrent, toast, emptyState } from './ui.js?v=0.35.6';
-import { openArtistFor, openArtist, artistLinks } from './artist.js?v=0.35.6';
-import { renderCarousel, initCarousel } from './carousel.js?v=0.35.6';
-import * as player from './player.js?v=0.35.6';
-import * as store from './store.js?v=0.35.6';
-import { likeToggle, openTrackMenu } from './menu.js?v=0.35.6';
-import { formatTime, safeUrl } from './utils.js?v=0.35.6';
-import { youtubeEnabled } from './youtube.js?v=0.35.6';
+import { $, h, icon, setIcon, artEl, trackRow, openSheet, closeSheet, sheetItem, highlightCurrent, toast, emptyState } from './ui.js?v=0.35.7';
+import { openArtistFor, openArtist, artistLinks } from './artist.js?v=0.35.7';
+import { renderCarousel, initCarousel } from './carousel.js?v=0.35.7';
+import * as player from './player.js?v=0.35.7';
+import * as store from './store.js?v=0.35.7';
+import { likeToggle, openTrackMenu } from './menu.js?v=0.35.7';
+import { formatTime, safeUrl } from './utils.js?v=0.35.7';
+import { youtubeEnabled } from './youtube.js?v=0.35.7';
 
 const { queue, st } = player;
 let seeking = false;
@@ -114,6 +114,13 @@ export { closeFull, openFull };
 
 // смахнули мини-плеер: пауза и прячем, пока снова не включат музыку
 let miniGone = false;
+// в Волне кнопка текста стоит в ряду управления — справа от «вперёд»
+function placeLyricsBtn(wave) {
+  const b = $('#fp-lyrics-btn'), row = $('#full-player .fp-controls'), extra = $('#full-player .fp-extra');
+  if (!b || !row || !extra) return;
+  if (wave && b.parentElement !== row) { const nx = $('#fp-next'); if (nx && nx.parentElement === row) nx.after(b); else row.appendChild(b); }
+  else if (!wave && b.parentElement !== extra) extra.prepend(b);
+}
 function dismissMini(dir) {
   const mini = $('#mini-player');
   mini.classList.add('gone');
@@ -147,6 +154,7 @@ function renderTrack() {
   $('#fp-title').textContent = t.title;
   artistLinks($('#fp-artist'), t.artist);
   $('#full-player').classList.toggle('wave-mode', Boolean(t.wave));
+  placeLyricsBtn(Boolean(t.wave));
   renderCarousel();
   $('#fp-dur').textContent = formatTime(st.duration);
   $('#fp-bg').style.backgroundImage = safeUrl(t.artwork) ? `url("${safeUrl(t.artwork)}")` : 'none';
