@@ -54,14 +54,15 @@ if(mem<=2||cpu<=4&&/Android/.test(u)){c.push('weak');try{if(localStorage.getItem
 if(!CSS.supports('backdrop-filter','blur(1px)')&&!CSS.supports('-webkit-backdrop-filter','blur(1px)'))c.push('no-blur');
 d.className+=' '+c.join(' ');})();
 </script>
-<link rel="stylesheet" href="app.css?v=0.36.0">
+<link rel="stylesheet" href="app.css?v=0.36.1">
 </head>
 <body>
 <script>
 /* Страховка: заставка гарантированно исчезает, даже если скрипты приложения загрузились поздно или упали (бывает в Яндекс Браузере) */
 (function(){var s=function(){return document.getElementById('splash')};
-(function(){var e=s(),hr=new Date().getHours();if(e)e.setAttribute('data-tod',hr>=22||hr<6?'night':hr<12?'morning':hr<17?'day':'evening');})();
-setTimeout(function(){var e=s();if(e)e.classList.add('go')},30);
+// время суток по Новосибирску (UTC+7), чтобы у всех была одна заставка
+var tod=function(){var hr=(new Date().getUTCHours()+7)%24;return hr>=22||hr<6?'night':hr<12?'morning':hr<17?'day':'evening';};
+setTimeout(function(){var e=s();if(e){e.setAttribute('data-tod',tod());e.classList.add('go');}},30);
 setTimeout(function(){var e=s();if(e)e.classList.add('out')},2900);
 setTimeout(function(){var e=s();if(e&&e.parentNode)e.parentNode.removeChild(e)},3600);
 document.addEventListener('click',function(){var e=s();if(e&&e.parentNode)e.parentNode.removeChild(e)});})();
@@ -285,6 +286,6 @@ document.addEventListener('click',function(){var e=s();if(e&&e.parentNode)e.pare
 <audio id="preview-player" preload="none"></audio>
 <div id="yt-holder" style="position:fixed;width:1px;height:1px;left:-10px;top:-10px;overflow:hidden;opacity:0;pointer-events:none"><div id="yt-target"></div></div>
 
-<script type="module" src="app.js?v=0.36.0"></script>
+<script type="module" src="app.js?v=0.36.1"></script>
 </body>
 </html>
