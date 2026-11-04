@@ -1,11 +1,11 @@
 // Экран «Библиотека»: лайки, плейлисты, история.
-import { $, $$, h, icon, trackRow, emptyState, askText, toast, openSheet, closeSheet, sheetItem, animateIn } from './ui.js?v=0.35.6';
-import * as store from './store.js?v=0.35.6';
-import * as player from './player.js?v=0.35.6';
-import { openTrackMenu } from './menu.js?v=0.35.6';
-import { plural, tracksWord, timeAgo, artUrl } from './utils.js?v=0.35.6';
-import { sharedList, onShared, watchShared } from './shared.js?v=0.35.6';
-import { openSharedSheet } from './sharedui.js?v=0.35.6';
+import { $, $$, h, icon, trackRow, emptyState, askText, toast, openSheet, closeSheet, sheetItem, animateIn } from './ui.js?v=0.35.7';
+import * as store from './store.js?v=0.35.7';
+import * as player from './player.js?v=0.35.7';
+import { openTrackMenu } from './menu.js?v=0.35.7';
+import { plural, tracksWord, timeAgo, artUrl } from './utils.js?v=0.35.7';
+import { sharedList, onShared, watchShared } from './shared.js?v=0.35.7';
+import { openSharedSheet } from './sharedui.js?v=0.35.7';
 
 let tab = 'likes';
 let openPid = null;

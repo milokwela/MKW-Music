@@ -1,10 +1,10 @@
 // Общие плейлисты: один плейлист на переписку (с другом или группой), пополняют все участники.
 // shared/{id переписки}: { members, owner, name, tracks: [...], at }
-import { db } from './firebase.js?v=0.35.6';
+import { db } from './firebase.js?v=0.35.7';
 import { doc, setDoc, updateDoc, deleteDoc, getDoc, onSnapshot, query, collection, where, limit } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
-import { pickTrack } from './utils.js?v=0.35.6';
-import { me } from './friends.js?v=0.35.6';
-import { srvNow } from './clock.js?v=0.35.6';
+import { pickTrack } from './utils.js?v=0.35.7';
+import { me } from './friends.js?v=0.35.7';
+import { srvNow } from './clock.js?v=0.35.7';
 
 const MAX = 300;
 let list = [];

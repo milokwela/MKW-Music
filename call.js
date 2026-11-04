@@ -5,21 +5,21 @@
 // Каждый с каждым соединяется напрямую (при 4 людях — 6 соединений).
 // Чтобы звонок подключался сразу: звонящий готовит соединение заранее, пока у друга звонит телефон,
 // поэтому после «Принять» остаётся один короткий ответ.
-import { db } from './firebase.js?v=0.35.6';
+import { db } from './firebase.js?v=0.35.7';
 import { doc, setDoc, updateDoc, deleteDoc, addDoc, collection, query, where, limit, onSnapshot, arrayUnion, arrayRemove } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
-import { h, toast, openSheet, closeSheet } from './ui.js?v=0.35.6';
-import { mi } from './icons2.js?v=0.35.6';
-import { me, isFriend, friendIds, friendCards, cardOf } from './friends.js?v=0.35.6';
-import { avSrc } from './avatar.js?v=0.35.6';
-import { RECOGNIZE_URL } from './shazam-config.js?v=0.35.6';
-import { pushTo, myNick } from './push.js?v=0.35.6';
-import * as player from './player.js?v=0.35.6';
-import { getRingtone } from './ringtone.js?v=0.35.6';
-import { postCallEvent, isBlocked } from './chat.js?v=0.35.6';
-import * as store from './store.js?v=0.35.6';
-import { pickTrack } from './utils.js?v=0.35.6';
-import { enablePush } from './push.js?v=0.35.6';
-import { srvNow, seenOnline } from './clock.js?v=0.35.6';
+import { h, toast, openSheet, closeSheet } from './ui.js?v=0.35.7';
+import { mi } from './icons2.js?v=0.35.7';
+import { me, isFriend, friendIds, friendCards, cardOf } from './friends.js?v=0.35.7';
+import { avSrc } from './avatar.js?v=0.35.7';
+import { RECOGNIZE_URL } from './shazam-config.js?v=0.35.7';
+import { pushTo, myNick } from './push.js?v=0.35.7';
+import * as player from './player.js?v=0.35.7';
+import { getRingtone } from './ringtone.js?v=0.35.7';
+import { postCallEvent, isBlocked } from './chat.js?v=0.35.7';
+import * as store from './store.js?v=0.35.7';
+import { pickTrack } from './utils.js?v=0.35.7';
+import { enablePush } from './push.js?v=0.35.7';
+import { srvNow, seenOnline } from './clock.js?v=0.35.7';
 
 const MAX = 4;
 let ice = null, iceP = null;
@@ -92,8 +92,9 @@ async function newPeer(uid, sid) {
     } else {
       // демонстрация экрана (картинка и, если есть, звук вкладки)
       entry.video = s;
-      s.onremovetrack = () => { if (!s.getVideoTracks().length) { entry.video = null; paintScreen(); } };
-      e.track.addEventListener('ended', () => { entry.video = null; paintScreen(); });
+      s.onremovetrack = () => { if (!s.getVideoTracks().length) { entry.video = null; paintScreen(); paint(); } };
+      e.track.addEventListener('ended', () => { if (entry.video === s && !s.getVideoTracks().some((t) => t.readyState === 'live')) entry.video = null; paintScreen(); paint(); });
+      e.track.addEventListener('unmute', () => { paintScreen(); paint(); });
       paintScreen();
     }
     paint();
@@ -241,57 +242,83 @@ function paint() {
   const allDeclined = others.length && others.every((x) => (d.declined || []).includes(x));
   cur.ui.status.textContent = waiting ? (allDeclined ? 'Не отвечает' : 'Звоним…') : timer();
   ringback(waiting && !allDeclined && d.host === me());
+  const owner = ownerOf(d), iOwn = owner === me();
   cur.ui.tiles.replaceChildren(...[me(), ...others].map((uid) => {
     const c = cards.get(uid) || { nick: '…' };
     const here = inn.includes(uid);
+    const off = !here && (d.declined || []).includes(uid);
     const e = cur.pcs.get(uid);
     const st = e ? e.pc.connectionState : '';
-    const t = h('div', { class: `cl-tile${here ? ' here' : ''}${(d.muted || {})[uid] ? ' muted' : ''}${d.screen === uid ? ' sharing' : ''}`, 'data-uid': uid },
+    const shows = sharing(uid);
+    const t = h('div', { class: `cl-tile${here ? ' here' : ''}${off ? ' off' : ''}${(d.muted || {})[uid] ? ' muted' : ''}${shows ? ' sharing' : ''}`, 'data-uid': uid },
       h('span', { class: 'cl-tav' }, h('img', { src: avSrc(c.avatar), alt: '' })),
-      h('b', { text: uid === me() ? 'Вы' : c.nick || 'друг' }),
-      h('small', { text: d.screen === uid ? 'показывает экран' : (d.muted || {})[uid] ? 'микрофон выключен' : here ? (uid === me() || st === 'connected' ? 'в звонке' : st === 'failed' || st === 'disconnected' ? 'переподключение…' : 'соединение…') : (d.declined || []).includes(uid) ? 'отклонил(а)' : 'звоним…' }));
+      h('b', { text: uid === me() ? 'Вы' : c.nick || 'друг' }, uid === owner && members.length > 2 ? h('i', { class: 'cl-own', title: 'Владелец звонка' }, mi('star')) : null),
+      h('small', { text: shows ? 'показывает экран' : (d.muted || {})[uid] ? 'микрофон выключен' : here ? (uid === me() || st === 'connected' ? 'в звонке' : st === 'failed' || st === 'disconnected' ? 'переподключение…' : 'соединение…') : off ? (cur.ever.has(uid) ? 'вышел(а)' : 'не взял(а) трубку') : 'звоним…' }),
+      off && uid !== me() ? h('button', { type: 'button', class: 'cl-act', onclick: () => reinvite(uid) }, mi('phone'), h('span', { text: 'Позвать' })) : null,
+      iOwn && uid !== me() && !off ? h('button', { type: 'button', class: 'cl-kick', title: here ? 'Убрать из звонка' : 'Отменить вызов', 'aria-label': here ? 'Убрать из звонка' : 'Отменить вызов', onclick: () => kick(uid) }, mi('close')) : null);
     if (!cards.has(uid)) nickOf(uid).then(paint);
     return t;
   }));
   cur.ui.mute.classList.toggle('off', cur.muted);
   cur.ui.mute.replaceChildren(mi(cur.muted ? 'mic-off' : 'mic'), h('span', { text: cur.muted ? 'Включить' : 'Микрофон' }));
-  cur.ui.add.hidden = members.length >= MAX;
+  cur.ui.add.hidden = members.length >= MAX && !members.some((x) => x !== me() && !inn.includes(x) && (d.declined || []).includes(x));
   if (cur.ui.share) {
     cur.ui.share.classList.toggle('on', Boolean(cur.screen));
     cur.ui.share.lastChild.textContent = cur.screen ? 'Остановить' : 'Экран';
   }
   paintScreen();
 }
+// владелец звонка: кто позвонил (а если он вышел — кто дольше всех в звонке)
+const ownerOf = (d) => { const inn = (d && d.in) || []; return d && inn.includes(d.host) ? d.host : inn[0] || (d && d.host); };
+const sharing = (uid) => (uid === me() ? Boolean(cur && cur.screen) : liveVideo(cur && cur.pcs.get(uid)));
+const liveVideo = (e) => Boolean(e && e.video && e.video.getVideoTracks().some((t) => t.readyState === 'live'));
+async function kick(uid) {
+  if (!cur || ownerOf(cur.data) !== me() || uid === me()) return;
+  const here = (cur.data.in || []).includes(uid);
+  try {
+    await updateDoc(doc(db, 'calls', cur.id), { in: arrayRemove(uid), declined: arrayUnion(uid) });
+    const c = await nickOf(uid); toast(here ? `${c.nick || 'Друг'} убран(а) из звонка` : `Вызов для ${c.nick || 'друга'} отменён`);
+  } catch { toast('Не получилось'); }
+}
+// позвать снова того, кто не взял трубку, отклонил или вышел
+async function reinvite(uid) {
+  if (!cur || (cur.data.in || []).includes(uid)) return;
+  try {
+    await updateDoc(doc(db, 'calls', cur.id), { declined: arrayRemove(uid), [`ping.${me()}`]: srvNow() });
+    pushTo(uid, 'call', 'Звонок MKW', `${myNick()} зовёт вас в звонок`, `call-${cur.id}`, `./#call=${cur.id}`);
+    const c = await nickOf(uid); toast(`Звоним ${c.nick || 'другу'}…`);
+  } catch { toast('Не получилось позвать'); }
+}
 const timer = () => { const s = Math.floor((srvNow() - (cur.t0 || srvNow())) / 1000); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
 
-// показ экрана: у смотрящих — большое видео, у показывающего — плашка «Вы показываете экран»
+// показ экрана: видно всех, кто показывает (хоть двоих сразу); у показывающего — ещё плашка «Вы показываете экран»
 function paintScreen() {
   if (!cur || !cur.ui) return;
   const area = cur.ui.screen;
-  let who = cur.data && cur.data.screen;
-  if (!who || who === me()) { for (const [uid, e] of cur.pcs) { if (e.video && e.video.getVideoTracks().some((t) => t.readyState === 'live' && !t.muted)) { who = uid; break; } } }
-  if (cur.screen) {
-    area.hidden = false; cur.ui.box.classList.add('has-screen', 'me-share');
-    if (!area.querySelector('.cs-mine')) area.replaceChildren(h('div', { class: 'cs-mine' }, mi('screen'), h('span', { text: 'Вы показываете экран' }), h('button', { class: 'btn tonal', type: 'button', onclick: stopShare }, 'Остановить')));
-    return;
+  const shares = [...cur.pcs].filter(([, e]) => liveVideo(e)).map(([uid, e]) => ({ uid, stream: e.video }));
+  const mine = Boolean(cur.screen);
+  if (!shares.length && !mine) { area.hidden = true; area.replaceChildren(); cur.ui.box.classList.remove('has-screen', 'me-share'); return; }
+  area.hidden = false;
+  cur.ui.box.classList.add('has-screen');
+  cur.ui.box.classList.toggle('me-share', mine && !shares.length);
+  area.classList.toggle('multi', shares.length > 1);
+  const keep = new Map([...area.querySelectorAll('.cs-item')].map((n) => [n.dataset.uid, n]));
+  const kids = [];
+  if (mine) kids.push(area.querySelector('.cs-mine') || h('div', { class: 'cs-mine' }, mi('screen'), h('span', { text: 'Вы показываете экран' }), h('button', { class: 'btn tonal', type: 'button', onclick: stopShare }, 'Остановить')));
+  for (const { uid, stream } of shares) {
+    let n = keep.get(uid);
+    if (!n || n.querySelector('video').srcObject !== stream) {
+      const v = h('video', { autoplay: '', playsinline: '' });
+      v.srcObject = stream;
+      v.play().catch(() => { v.muted = true; v.play().catch(() => {}); });
+      const c = cards.get(uid) || { nick: 'друг' };
+      n = h('div', { class: 'cs-item', 'data-uid': uid }, v,
+        h('div', { class: 'cs-bar' }, h('span', { text: `${c.nick || 'Друг'} показывает экран` }),
+          h('button', { class: 'cs-full', type: 'button', 'aria-label': 'На весь экран', title: 'На весь экран', onclick: () => { (v.requestFullscreen || v.webkitRequestFullscreen || v.webkitEnterFullscreen || (() => {})).call(v); } }, mi('fullscreen'))));
+    }
+    kids.push(n);
   }
-  cur.ui.box.classList.remove('me-share');
-  const e = who && who !== me() ? cur.pcs.get(who) : null;
-  const stream = e && e.video;
-  if (!stream || !stream.getVideoTracks().some((t) => t.readyState === 'live')) {
-    area.hidden = true; area.replaceChildren(); cur.ui.box.classList.remove('has-screen'); return;
-  }
-  area.hidden = false; cur.ui.box.classList.add('has-screen');
-  let v = area.querySelector('video');
-  if (!v || v.srcObject !== stream) {
-    v = h('video', { autoplay: '', playsinline: '' });
-    v.srcObject = stream;
-    v.play().catch(() => { v.muted = true; v.play().catch(() => {}); });
-    const c = cards.get(who) || { nick: 'друг' };
-    area.replaceChildren(v,
-      h('div', { class: 'cs-bar' }, h('span', { text: `${c.nick || 'Друг'} показывает экран` }),
-        h('button', { class: 'cs-full', type: 'button', 'aria-label': 'На весь экран', title: 'На весь экран', onclick: () => { const el = v; (el.requestFullscreen || el.webkitRequestFullscreen || el.webkitEnterFullscreen || (() => {})).call(el); } }, mi('fullscreen'))));
-  }
+  if (kids.length !== area.children.length || kids.some((k, i) => area.children[i] !== k)) area.replaceChildren(...kids);
 }
 
 async function startShare() {
@@ -406,21 +433,23 @@ async function toggleMute() {
 
 async function addPeople() {
   if (!cur) return;
-  const members = cur.data.members || [];
-  const ids = friendIds().filter((x) => !members.includes(x));
-  if (!ids.length) { toast('Больше некого добавить — пригласите друзей в MKW'); return; }
+  const members = cur.data.members || [], inn = cur.data.in || [];
+  const again = members.filter((x) => x !== me() && !inn.includes(x) && (cur.data.declined || []).includes(x));
+  const ids = [...again, ...(members.length < MAX ? friendIds().filter((x) => !members.includes(x)) : [])];
+  if (!ids.length) { toast(members.length >= MAX ? 'В звонке может быть до 4 человек' : 'Больше некого добавить — пригласите друзей в MKW'); return; }
   const list = h('div', { class: 'lb-list' }, h('p', { class: 'profile-note', text: 'Загрузка…' }));
-  openSheet(`Добавить в звонок (ещё ${MAX - members.length})`, list);
+  openSheet(members.length < MAX ? `Добавить в звонок (ещё ${MAX - members.length})` : 'Позвать снова', list);
   const cs = await friendCards(ids.slice(0, 60));
   list.replaceChildren(...cs.map((u) => h('button', { type: 'button', class: 'lb-row fr-pick', onclick: async () => {
     if (!cur) return;
+    if ((cur.data.members || []).includes(u.uid)) { closeSheet(); reinvite(u.uid); return; }
     if ((cur.data.members || []).length >= MAX) { toast('В звонке может быть до 4 человек'); return; }
     try {
       await updateDoc(doc(db, 'calls', cur.id), { members: arrayUnion(u.uid) });
       closeSheet(); toast(`Звоним ${u.nick}…`);
       pushTo(u.uid, 'call', 'Звонок MKW', `${myNick()} зовёт вас в общий звонок`, `call-${cur.id}`, `./#call=${cur.id}`);
     } catch { toast('Не получилось. Админу нужно обновить правила Firestore'); }
-  } }, h('span', { class: 'lb-av' }, h('img', { src: avSrc(u.avatar), alt: '' })), h('div', { class: 'lb-body' }, h('div', { class: 'lb-nick' }, h('span', { text: u.nick }))), h('span', { class: 'fr-send' }, mi('add')))));
+  } }, h('span', { class: 'lb-av' }, h('img', { src: avSrc(u.avatar), alt: '' })), h('div', { class: 'lb-body' }, h('div', { class: 'lb-nick' }, h('span', { text: u.nick })), again.includes(u.uid) ? h('small', { class: 'lb-sub', text: 'позвать снова' }) : null), h('span', { class: 'fr-send' }, mi(again.includes(u.uid) ? 'phone' : 'add')))));
 }
 
 async function getMic() {
@@ -438,7 +467,7 @@ function attach(id) {
     inn.forEach((x) => cur.ever.add(x));
     if (inn.length > 1 && !cur.t0) cur.t0 = srvNow();
     prevIn.filter((x) => !inn.includes(x) && x !== me()).forEach((x) => { dropPeer(x); nickOf(x).then((c) => toast(`${c.nick} вышел(а) из звонка`)); });
-    if (!inn.includes(me()) && cur.joined) { finish('Звонок завершён'); return; }
+    if (!inn.includes(me()) && cur.joined) { if (!cur.leaving) finish((cur.data.declined || []).includes(me()) ? 'Вас убрали из звонка' : 'Звонок завершён'); return; }
     // все остальные вышли — звонок закончен
     if (cur.t0 && inn.length <= 1) { leave('Звонок завершён'); return; }
     if (inn.includes(me())) {
@@ -521,6 +550,7 @@ async function join(id, data) {
 export async function leave(reason) {
   if (!cur) return;
   const c = cur, id = c.id, last = (c.data.in || []).filter((x) => x !== me()).length === 0;
+  c.leaving = true;
   // кто так и не взял трубку — получит «пропущенный звонок»
   if (c.data.host === me()) {
     (c.data.members || []).filter((x) => x !== me() && !c.ever.has(x) && !(c.data.declined || []).includes(x))
@@ -538,7 +568,8 @@ export async function leave(reason) {
   }
   try {
     if (last) await deleteDoc(doc(db, 'calls', id));
-    else await updateDoc(doc(db, 'calls', id), { in: arrayRemove(me()), ...(c.data.screen === me() ? { screen: '' } : {}) });
+    // «вышел» — в declined: иначе общий звонок тут же зазвонит снова (в нём же ещё есть люди)
+    else await updateDoc(doc(db, 'calls', id), { in: arrayRemove(me()), declined: arrayUnion(me()), ...(c.data.screen === me() ? { screen: '' } : {}) });
   } catch { /* ignore */ }
   finish(reason || 'Звонок завершён');
 }
@@ -559,6 +590,7 @@ function finish(text) {
 
 // ---------- входящие звонки ----------
 let unsubIn = null, ringing = null;
+const quiet = new Map(); // звонки, которые уже прозвенели и их не взяли: id → сколько раз звали (по declined)
 export function watchCalls(onRing) {
   if (unsubIn || !me()) return;
   try {
@@ -575,6 +607,7 @@ export function watchCalls(onRing) {
         if ((c.members || []).length === 2 && isBlocked(c.host)) return; // заблокирован — звонок не показываем
         if (cur) { decline(d.id); return; } // уже в другом звонке — «занято»
         if (ringing && ringing.id === d.id) return;
+        if (quiet.has(d.id)) return; // уже звонил и его не взяли — снова только если позовут заново
         ring(d.id, c, onRing);
       });
       if (ringing && !s.docs.some((d) => d.id === ringing.id)) stopRing('Звонок завершён');
@@ -625,7 +658,11 @@ async function ring(id, c, onRing) {
   document.body.appendChild(box);
   requestAnimationFrame(() => box.classList.add('show'));
   ringing.box = box;
-  ringing.t = setTimeout(() => stopRing(), 45000);
+  ringing.t = setTimeout(() => {
+    stopRing();
+    // не взяли трубку: в общем звонке помечаем «не взял(а)», чтобы не звонил по кругу, — позвать снова можно кнопкой
+    if ((c.members || []).length > 2) decline(id); else quiet.set(id, 1);
+  }, 45000);
   ringtone(true);
   if (onRing) onRing(host.nick || 'Друг', many, id);
 }

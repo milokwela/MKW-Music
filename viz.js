@@ -1,8 +1,8 @@
 // Живой фон большого плеера: цвет берётся с обложки, пульсация идёт в ритме, подобранном для трека.
 // Это визуальный эффект: реальный звук YouTube страница анализировать не может.
-import { queue, st, onPlayer } from './player.js?v=0.35.6';
-import { $ } from './ui.js?v=0.35.6';
-import { jsonp } from './jsonp.js?v=0.35.6';
+import { queue, st, onPlayer } from './player.js?v=0.35.7';
+import { $ } from './ui.js?v=0.35.7';
+import { jsonp } from './jsonp.js?v=0.35.7';
 
 export const liveBg = () => { try { return localStorage.getItem('mkw.livebg') !== '0'; } catch { return true; } };
 export function setLiveBg(on) {

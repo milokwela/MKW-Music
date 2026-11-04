@@ -1,8 +1,8 @@
 // Поиск видео на YouTube для трека и загрузка IFrame Player API.
-import { db } from './firebase.js?v=0.35.6';
+import { db } from './firebase.js?v=0.35.7';
 import { doc, getDoc, setDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
-import { YOUTUBE_API_KEY } from './config.js?v=0.35.6';
-import { RECOGNIZE_URL } from './shazam-config.js?v=0.35.6';
+import { YOUTUBE_API_KEY } from './config.js?v=0.35.7';
+import { RECOGNIZE_URL } from './shazam-config.js?v=0.35.7';
 
 // Полные треки ищем без ключа и без дневного лимита: через сервер MKW (Worker) и открытые зеркала YouTube.
 // Ключ YouTube Data API — запасной путь, если всё остальное недоступно.

@@ -1,8 +1,8 @@
 // Свои настройки чатов: закреплённые сверху и «без уведомлений» на время.
 // Хранятся в своём документе users/{uid} (видно только вам) и копией — для фоновых уведомлений.
-import { db } from './firebase.js?v=0.35.6';
+import { db } from './firebase.js?v=0.35.7';
 import { doc, setDoc, deleteField } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
-import * as store from './store.js?v=0.35.6';
+import * as store from './store.js?v=0.35.7';
 
 const FOREVER = 9e15;
 const prof = () => store.state.profile || {};
