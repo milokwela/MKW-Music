@@ -1,17 +1,18 @@
 // Голосовое управление (бета): «MKW, следующая», «MKW, громче», «Музыка, лайк», «MKW, включи Баста».
 // Работает через распознавание речи браузера (Chrome, Яндекс Браузер, Edge, Safari). Слушает, пока вкладка открыта.
-import { toast, openSheet, h } from './ui.js?v=0.34.0';
-import * as player from './player.js?v=0.34.0';
-import * as store from './store.js?v=0.34.0';
-import { dislike, startWave, waveActive } from './wave.js?v=0.34.0';
-import { searchTracks } from './catalog.js?v=0.34.0';
-import { mi } from './icons2.js?v=0.34.0';
-import { openFull, closeFull, isFullOpen } from './playerui.js?v=0.34.0';
-import { startCloud, stopCloud, cloudSttPossible } from './stt.js?v=0.34.0';
-import { friendIds, friendCards, loadFriends, friendsLoaded } from './friends.js?v=0.34.0';
-import { startCall } from './call.js?v=0.34.0';
-import { avSrc } from './avatar.js?v=0.34.0';
-import { closeSheet } from './ui.js?v=0.34.0';
+import { seenOnline } from './clock.js?v=0.34.1';
+import { toast, openSheet, h } from './ui.js?v=0.34.1';
+import * as player from './player.js?v=0.34.1';
+import * as store from './store.js?v=0.34.1';
+import { dislike, startWave, waveActive } from './wave.js?v=0.34.1';
+import { searchTracks } from './catalog.js?v=0.34.1';
+import { mi } from './icons2.js?v=0.34.1';
+import { openFull, closeFull, isFullOpen } from './playerui.js?v=0.34.1';
+import { startCloud, stopCloud, cloudSttPossible } from './stt.js?v=0.34.1';
+import { friendIds, friendCards, loadFriends, friendsLoaded } from './friends.js?v=0.34.1';
+import { startCall } from './call.js?v=0.34.1';
+import { avSrc } from './avatar.js?v=0.34.1';
+import { closeSheet } from './ui.js?v=0.34.1';
 
 const KEY = 'mkw.voice';
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -266,7 +267,7 @@ async function voiceCall(q) {
   openSheet('Кому позвонить? Скажите номер', h('div', { class: 'lb-list vc-pick' }, ...cards.map((u, i) => h('button', { type: 'button', class: 'lb-row fr-pick', onclick: () => callFriend(u) },
     h('span', { class: 'vc-n', text: String(i + 1) }),
     h('span', { class: 'lb-av' }, h('img', { src: avSrc(u.avatar), alt: '' })),
-    h('div', { class: 'lb-body' }, h('div', { class: 'lb-nick' }, h('span', { text: u.nick || 'друг' })), h('small', { class: 'lb-sub', text: Date.now() - (Number(u.seen) || 0) < 210000 ? 'в сети' : 'не в сети' }))))));
+    h('div', { class: 'lb-body' }, h('div', { class: 'lb-nick' }, h('span', { text: u.nick || 'друг' })), h('small', { class: 'lb-sub', text: seenOnline(u.seen) ? 'в сети' : 'не в сети' }))))));
   arm(20000);
   say(q ? 'Не нашла такого друга. Скажите номер из списка' : 'Кому позвонить? Скажите номер');
 }

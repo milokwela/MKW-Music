@@ -27,3 +27,14 @@ export function initClock() {
   syncClock();
   document.addEventListener('visibilitychange', () => { if (!document.hidden) syncClock(); });
 }
+
+// «В сети». Когда человек уходит из приложения, отметку сдвигаем в прошлое на OFF_SHIFT,
+// чтобы друзья сразу видели «не в сети», а в миллисекундах ставим метку 997 — по ней
+// восстанавливаем настоящее время ухода (раньше показывало «был(а) в сети 10 минут назад»).
+export const ONLINE_WIN = 190000;
+const OFF_SHIFT = 200000, MARK = 997;
+export const offlineStamp = () => { const t = srvNow(); return t - (t % 1000) + MARK - OFF_SHIFT; };
+export const onlineStamp = () => { const t = srvNow(); return t % 1000 === MARK ? t + 1 : t; };
+export const isOffMark = (s) => (Number(s) || 0) % 1000 === MARK;
+export const realSeen = (s) => { const n = Number(s) || 0; return n && isOffMark(n) ? n + OFF_SHIFT : n; };
+export const seenOnline = (s) => { const n = Number(s) || 0; return Boolean(n) && !isOffMark(n) && srvNow() - n < ONLINE_WIN; };

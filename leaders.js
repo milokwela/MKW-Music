@@ -1,7 +1,7 @@
 // Рейтинг слушателей: у каждого публичная карточка leaders/{uid} (ник, часы, статус, значки, маленькое фото).
-import { db, auth } from './firebase.js?v=0.34.0';
+import { db, auth } from './firebase.js?v=0.34.1';
 import { doc, getDoc, setDoc, deleteDoc, collection, query, orderBy, limit, getDocs, where } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
-import { srvNow } from './clock.js?v=0.34.0';
+import { srvNow, offlineStamp, onlineStamp } from './clock.js?v=0.34.1';
 
 const KEY = 'mkw.leaders.hide';
 export const hiddenFromBoard = () => { try { return localStorage.getItem(KEY) === '1'; } catch { return false; } };
@@ -14,7 +14,7 @@ export async function ping(now, force) {
   if (!uid || hiddenFromBoard() || !lastSent) return;
   if (!force && srvNow() - lastSeenAt < 80000) return;
   lastSeenAt = srvNow();
-  const data = { seen: srvNow(), now: String(now || '').slice(0, 120) };
+  const data = { seen: onlineStamp(), now: String(now || '').slice(0, 120) };
   try { await setDoc(doc(db, 'leaders', uid), data, { merge: true }); } catch { /* нет карточки — не страшно */ }
   try { await setDoc(doc(db, 'profiles', uid), data, { merge: true }); } catch { /* ignore */ }
 }
@@ -24,7 +24,7 @@ export async function goOffline() {
   const uid = auth.currentUser && auth.currentUser.uid;
   if (!uid || hiddenFromBoard() || !lastSent) return;
   lastSeenAt = 0;
-  const data = { seen: srvNow() - 600000, now: '' };
+  const data = { seen: offlineStamp(), now: '' };
   try { await setDoc(doc(db, 'leaders', uid), data, { merge: true }); } catch { /* ignore */ }
   try { await setDoc(doc(db, 'profiles', uid), data, { merge: true }); } catch { /* ignore */ }
 }
@@ -56,7 +56,7 @@ export async function publishCard(card) {
   };
   const sig = JSON.stringify(data);
   if (sig === lastSent) return;
-  try { await setDoc(doc(db, 'leaders', uid), { ...data, seen: srvNow(), updatedAt: srvNow() }); lastSent = sig; lastSeenAt = srvNow(); }
+  try { await setDoc(doc(db, 'leaders', uid), { ...data, seen: onlineStamp(), updatedAt: srvNow() }); lastSent = sig; lastSeenAt = srvNow(); }
   catch (e) {
     // старые правила Firestore не знают новых полей — пишем в прежнем виде, пока админ не обновит правила
     const { shape, now, fan, devOff, ...old } = data;
@@ -104,7 +104,7 @@ export async function publishProfile(p) {
   };
   const sig = JSON.stringify(data);
   if (sig === lastPub) return;
-  try { await setDoc(doc(db, 'profiles', uid), { ...data, seen: srvNow(), updatedAt: srvNow() }); lastPub = sig; }
+  try { await setDoc(doc(db, 'profiles', uid), { ...data, seen: onlineStamp(), updatedAt: srvNow() }); lastPub = sig; }
   catch (e) {
     const { bio, nickStyle, shape, effect, now, fan, devOff, ...old } = data;
     if (old.avatar.length > 60000) old.avatar = '';

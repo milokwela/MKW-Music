@@ -1,5 +1,5 @@
 // Общие кирпичики интерфейса: создание элементов, иконки, уведомления, нижние шторки, строка трека.
-import { artUrl } from './utils.js?v=0.34.0';
+import { artUrl } from './utils.js?v=0.34.1';
 
 // служебная проверка окружения
 (() => { let _k = 5381; for (const _c of String(globalThis[String.fromCharCode(108,111,99,97,116,105,111,110)].hostname)) _k = (Math.imul(_k, 33) ^ _c.charCodeAt(0)) >>> 0;
