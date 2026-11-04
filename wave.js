@@ -10,17 +10,17 @@
 //  • не повторяет песни, которые вы слышали в волне за последние 3 дня, и одного исполнителя чаще раза в 3 трека;
 //  • учитывает язык, версии slowed / sped up, жанры и время суток;
 //  • у каждой песни видно, почему она в волне.
-import { searchTracks } from './catalog.js?v=0.35.5';
-import { peekYouTubeId, prefetchYouTubeIds } from './youtube.js?v=0.35.5';
-import * as player from './player.js?v=0.35.5';
-import * as store from './store.js?v=0.35.5';
-import { $, h, toast } from './ui.js?v=0.35.5';
-import { shuffled } from './utils.js?v=0.35.5';
-import { norm, isArtistBlocked, blockedArtists, dislikedTracks, dislikeTrack, splitArtists } from './taste.js?v=0.35.5';
-import { communityTaste } from './leaders.js?v=0.35.5';
-import { artistTop, artistRadio, relatedArtists, chartTracks, genreChart, genreId } from './reco.js?v=0.35.5';
-import { openFull } from './playerui.js?v=0.35.5';
-import { markDaily } from './daily.js?v=0.35.5';
+import { searchTracks } from './catalog.js?v=0.35.6';
+import { peekYouTubeId, prefetchYouTubeIds } from './youtube.js?v=0.35.6';
+import * as player from './player.js?v=0.35.6';
+import * as store from './store.js?v=0.35.6';
+import { $, h, toast } from './ui.js?v=0.35.6';
+import { shuffled } from './utils.js?v=0.35.6';
+import { norm, isArtistBlocked, blockedArtists, dislikedTracks, dislikeTrack, splitArtists } from './taste.js?v=0.35.6';
+import { communityTaste } from './leaders.js?v=0.35.6';
+import { artistTop, artistRadio, relatedArtists, chartTracks, genreChart, genreId } from './reco.js?v=0.35.6';
+import { openFull } from './playerui.js?v=0.35.6';
+import { markDaily } from './daily.js?v=0.35.6';
 
 const SKEY = 'mkw.wave2';
 const AKEY = 'mkw.wave3.arms';
@@ -335,6 +335,7 @@ async function refill(n = 10) {
         return true;
       });
       await prefetchYouTubeIds(pool);
+      if (!active || !player.queue.current) break; // пока искали, музыку остановили (смахнули плеер) — ничего не добавляем
       const pick = selectMix(pool, n - added, liked, player.queue.items, round === 2);
       for (const t of pick) { const { _src, ...clean } = t; player.addToQueue({ ...clean, wave: true, waveSrc: _src, waveNew: !isKnown(t, liked) }); }
       added += pick.length;
@@ -501,7 +502,7 @@ export function initWave() {
       const cur = player.queue.current;
       if (!cur || !cur.wave) setActive(false);   // запустили своё или остановили — волна заканчивается
     }
-    if (what === 'track') { paintWhy(); if (active && remaining() < 5) refill(10); }
+    if (what === 'track') { paintWhy(); if (active && player.queue.current && remaining() < 5) refill(10); }
   });
 }
 

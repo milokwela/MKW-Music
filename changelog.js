@@ -1,8 +1,17 @@
 // История версий. Новые записи добавляйте сверху.
-export const VERSION = '0.35.5';
+export const VERSION = '0.35.6';
 export const STAGE = 'beta';
 
 export const CHANGELOG = [
+  {
+    version: '0.35.6',
+    date: '4 ноября 2026',
+    text: 'Исправление для MKW Волны.',
+    new: [],
+    fixed: [
+      'Если смахнуть мини-плеер во время MKW Волны, музыка больше не включается сама через секунду',
+    ],
+  },
   {
     version: '0.35.5',
     date: '4 ноября 2026',
