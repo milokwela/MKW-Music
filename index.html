@@ -54,13 +54,13 @@ if(mem<=2||cpu<=4&&/Android/.test(u)){c.push('weak');try{if(localStorage.getItem
 if(!CSS.supports('backdrop-filter','blur(1px)')&&!CSS.supports('-webkit-backdrop-filter','blur(1px)'))c.push('no-blur');
 d.className+=' '+c.join(' ');})();
 </script>
-<link rel="stylesheet" href="app.css?v=0.35.9">
+<link rel="stylesheet" href="app.css?v=0.36.0">
 </head>
 <body>
 <script>
 /* Страховка: заставка гарантированно исчезает, даже если скрипты приложения загрузились поздно или упали (бывает в Яндекс Браузере) */
 (function(){var s=function(){return document.getElementById('splash')};
-(function(){var e=s(),hr=new Date().getHours();if(e)e.setAttribute('data-tod',hr>=22||hr<6?'night':hr<12?'morning':'day');})();
+(function(){var e=s(),hr=new Date().getHours();if(e)e.setAttribute('data-tod',hr>=22||hr<6?'night':hr<12?'morning':hr<17?'day':'evening');})();
 setTimeout(function(){var e=s();if(e)e.classList.add('go')},30);
 setTimeout(function(){var e=s();if(e)e.classList.add('out')},2900);
 setTimeout(function(){var e=s();if(e&&e.parentNode)e.parentNode.removeChild(e)},3600);
@@ -76,6 +76,8 @@ document.addEventListener('click',function(){var e=s();if(e&&e.parentNode)e.pare
   <div class="sp6-trio"><b class="sp6-tglow"></b><b class="sp6-tbeam"></b><b class="sp6-tring"></b><b class="sp6-tring r2"></b><b class="sp6-tring r3"></b><b class="sp6-tfloor"></b><div class="sp6-tc l"><img src="mkw-st1.webp" alt=""><i class="sp6-note">♪</i><i class="sp6-note n2">♫</i></div><div class="sp6-tc r"><img src="mkw-cat5.webp" alt=""><span class="sp6-glint"><i></i></span></div><div class="sp6-tc c"><img src="mkw-st2.webp" alt=""><span class="sp6-tshine"></span></div><span class="sp6-conf"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span></div>
   <div class="sp6-solo sp6-night"><b class="sp6-moon"></b><img src="mkw-st26.webp" alt=""><i class="sp6-z">z</i><i class="sp6-z z2">z</i><i class="sp6-z z3">Z</i></div>
   <div class="sp6-solo sp6-morning"><b class="sp6-sun"></b><img src="mkw-cat3.webp" alt=""><i class="sp6-note">♪</i><i class="sp6-note n2">♫</i><i class="sp6-note n3">♪</i></div>
+  <div class="sp6-solo sp6-day"><b class="sp6-rays"></b><b class="sp6-vinyl"><i></i></b><img src="mkw-st31.webp" alt=""><i class="sp6-note">♪</i><i class="sp6-note n2">♫</i><i class="sp6-note n3">♬</i></div>
+  <div class="sp6-solo sp6-eve"><b class="sp6-sun"></b><img src="mkw-cat2.webp" alt=""><span class="sp6-hearts"><i>♥</i><i>♥</i><i>♥</i><i>♥</i><i>♥</i><i>♥</i></span></div>
   <div class="sp6-eqb"><u></u><u></u><u></u><u></u><u></u><u></u><u></u><u></u><u></u><u></u><u></u><u></u><u></u><u></u><u></u><u></u><u></u><u></u><u></u><u></u><u></u><u></u><u></u><u></u></div>
   <div class="sp6-title"><span>M</span><span>K</span><span>W</span></div>
   <div class="sp6-sub">MUSIC</div>
@@ -283,6 +285,6 @@ document.addEventListener('click',function(){var e=s();if(e&&e.parentNode)e.pare
 <audio id="preview-player" preload="none"></audio>
 <div id="yt-holder" style="position:fixed;width:1px;height:1px;left:-10px;top:-10px;overflow:hidden;opacity:0;pointer-events:none"><div id="yt-target"></div></div>
 
-<script type="module" src="app.js?v=0.35.9"></script>
+<script type="module" src="app.js?v=0.36.0"></script>
 </body>
 </html>
