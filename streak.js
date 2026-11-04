@@ -4,10 +4,10 @@
 //   read.g_<uid> — последний день, когда этот человек писал;  read.gs — день, когда завели огонёк;
 //   read.gx — огонёк потушен вручную (день);  read.gl — сколько дней было у погасшего огонька; read.gld — день, когда погас.
 // (0.30: старые огоньки на ключах f_/fs сброшены у всех — заводятся заново кнопкой)
-import { db } from './firebase.js?v=0.35.1';
+import { db } from './firebase.js?v=0.35.2';
 import { doc, setDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
-import { h, toast, openSheet, closeSheet } from './ui.js?v=0.35.1';
-import { srvNow } from './clock.js?v=0.35.1';
+import { h, toast, openSheet, closeSheet } from './ui.js?v=0.35.2';
+import { srvNow } from './clock.js?v=0.35.2';
 
 // День огонька — общий для всех, по московскому времени и по часам сервера.
 // Раньше считали по часам и поясу каждого телефона: у друзей в разных часовых поясах «сегодня» не совпадало,

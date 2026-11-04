@@ -210,6 +210,14 @@ service cloud.firestore {
         && request.resource.data.subs is list && request.resource.data.subs.size() <= 6;
       allow delete: if request.auth != null && request.auth.uid == uid;
     }
+    // опросы: один голос на человека (можно передумать), результаты видят все
+    match /polls/{pid}/votes/{uid} {
+      allow read: if request.auth != null;
+      allow create, update: if request.auth != null && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['o', 'at'])
+        && request.resource.data.o is int && request.resource.data.o >= 0 && request.resource.data.o <= 5;
+      allow delete: if request.auth != null && request.auth.uid == uid;
+    }
     match /joined/{uid} {
       allow read: if request.auth != null;
       allow create: if request.auth != null && request.auth.uid == uid

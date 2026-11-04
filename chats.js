@@ -1,16 +1,16 @@
 // Раздел «Чаты» в нижнем меню: все переписки с друзьями, как в мессенджере.
 // Сверху — недавние и непрочитанные, ниже — друзья, с которыми ещё не переписывались.
-import { $, h, toast, openSheet, closeSheet } from './ui.js?v=0.35.1';
-import { pinnedChats, isPinned, togglePin, isMuted, setMute, muteLabel } from './chatprefs.js?v=0.35.1';
-import { mi } from './icons2.js?v=0.35.1';
-import { chatList, isUnread, onChats, openChat, otherOf, clearedAt, blockedByMe, openCid, openGroup, groupAvatar, createGroupSheet, chatId, setBlocked } from './chat.js?v=0.35.1';
-import { me, friendIds, friendCards, loadFriends, friendsLoaded, onFriends, requestIds } from './friends.js?v=0.35.1';
-import { avSrc } from './avatar.js?v=0.35.1';
-import { nickMarks } from './dev.js?v=0.35.1';
-import { seenText, isOnline } from './userpage.js?v=0.35.1';
-import { pickAndCall } from './call.js?v=0.35.1';
-import { streakAny, fireIcon } from './streak.js?v=0.35.1';
-import { setNotify } from './notify.js?v=0.35.1';
+import { $, h, toast, openSheet, closeSheet } from './ui.js?v=0.35.2';
+import { pinnedChats, isPinned, togglePin, isMuted, setMute, muteLabel } from './chatprefs.js?v=0.35.2';
+import { mi } from './icons2.js?v=0.35.2';
+import { chatList, isUnread, onChats, openChat, otherOf, clearedAt, blockedByMe, openCid, openGroup, groupAvatar, createGroupSheet, chatId, setBlocked } from './chat.js?v=0.35.2';
+import { me, friendIds, friendCards, loadFriends, friendsLoaded, onFriends, requestIds } from './friends.js?v=0.35.2';
+import { avSrc } from './avatar.js?v=0.35.2';
+import { nickMarks } from './dev.js?v=0.35.2';
+import { seenText, isOnline } from './userpage.js?v=0.35.2';
+import { pickAndCall } from './call.js?v=0.35.2';
+import { streakAny, fireIcon } from './streak.js?v=0.35.2';
+import { setNotify } from './notify.js?v=0.35.2';
 
 let watching = false, filter = '', busy = false, again = false;
 
@@ -84,9 +84,34 @@ function groupRow(c, cards, i) {
       h('span', { class: 'cl-prev' }, h('span', { text: preview }), ...flags(c.id), unread && !cleared ? h('i', { class: `cl-dot${isMuted(c.id) ? ' muted' : ''}` }) : null)));
 }
 
+// компьютер: ширину списка чатов можно тянуть мышкой (узко — только аватарки)
+const CLW = 'mkw.cl.w';
+function applyClWidth(w) {
+  const max = Math.max(260, Math.min(560, window.innerWidth * 0.45));
+  let v = Math.round(Math.max(76, Math.min(max, w)));
+  if (v < 170) v = 76; // узкий режим
+  document.documentElement.style.setProperty('--cl-w', `${v}px`);
+  document.documentElement.classList.toggle('cl-narrow', v < 170);
+  return v;
+}
+function initResize() {
+  if (document.getElementById('cl-resize')) return;
+  let saved = 0; try { saved = Number(localStorage.getItem(CLW)) || 0; } catch { /* ignore */ }
+  if (saved) applyClWidth(saved);
+  const bar = h('div', { id: 'cl-resize', title: 'Потяните, чтобы изменить ширину. Двойной клик — сбросить' });
+  let on = false;
+  bar.addEventListener('pointerdown', (e) => { on = true; try { bar.setPointerCapture(e.pointerId); } catch { /* ignore */ } bar.classList.add('drag'); document.documentElement.classList.add('cl-dragging'); e.preventDefault(); });
+  bar.addEventListener('pointermove', (e) => { if (!on) return; const left = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--pane-l')) || 12; const raw = e.clientX - left; document.documentElement.style.setProperty('--cl-w', `${Math.max(76, Math.min(Math.max(260, Math.min(560, window.innerWidth * 0.45)), raw))}px`); document.documentElement.classList.toggle('cl-narrow', raw < 170); });
+  const end = (e) => { if (!on) return; on = false; bar.classList.remove('drag'); document.documentElement.classList.remove('cl-dragging'); const left = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--pane-l')) || 12; const v = applyClWidth(e.clientX - left); try { localStorage.setItem(CLW, String(v)); } catch { /* ignore */ } };
+  bar.addEventListener('pointerup', end); bar.addEventListener('pointercancel', end);
+  bar.addEventListener('dblclick', () => { document.documentElement.style.removeProperty('--cl-w'); document.documentElement.classList.remove('cl-narrow'); try { localStorage.removeItem(CLW); } catch { /* ignore */ } });
+  document.body.appendChild(bar);
+}
+
 export async function renderChats() {
   const root = $('#view-chats');
   if (!root) return;
+  initResize();
   if (!watching) {
     watching = true;
     const re = () => { if (!root.hidden) renderChats(); };

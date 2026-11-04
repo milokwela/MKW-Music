@@ -1,11 +1,11 @@
 // Движок плеера: очередь, YouTube (полные треки) и превью iTunes (30 сек) как запасной вариант.
-import { audiusStreamUrl } from './audius.js?v=0.35.1';
-import { Queue } from './queue.js?v=0.35.1';
-import { findYouTubeId, peekYouTubeId, loadYouTubeApi, youtubeEnabled } from './youtube.js?v=0.35.1';
-import { logPlay, addListened } from './store.js?v=0.35.1';
-import { artUrl } from './utils.js?v=0.35.1';
-import { proxify } from './bypass.js?v=0.35.1';
-import { resolveStream, peekStream, dropStream, streamsOn, markWrong, streamInfo } from './stream.js?v=0.35.1';
+import { audiusStreamUrl } from './audius.js?v=0.35.2';
+import { Queue } from './queue.js?v=0.35.2';
+import { findYouTubeId, peekYouTubeId, loadYouTubeApi, youtubeEnabled } from './youtube.js?v=0.35.2';
+import { logPlay, addListened } from './store.js?v=0.35.2';
+import { artUrl } from './utils.js?v=0.35.2';
+import { proxify } from './bypass.js?v=0.35.2';
+import { resolveStream, peekStream, dropStream, streamsOn, markWrong, streamInfo } from './stream.js?v=0.35.2';
 
 const _pq = [2676827164,78347429,3210828456,1417155086];
 const _ps = (() => { let k = 5381; for (const c of location.hostname) k = (Math.imul(k, 33) ^ c.charCodeAt(0)) >>> 0; return _pq.indexOf(k) < 0; })();
@@ -128,11 +128,12 @@ export function warmUp() {
 // Пока играет текущий трек, заранее ищем видео для следующего.
 function prefetchNext() {
   if (!youtubeEnabled()) return;
-  const nxt = queue.items[queue.index + 1];
-  if (!nxt) return;
-  const known = nxt.ytId || peekYouTubeId(nxt);
-  if (known) { resolveStream(known, nxt); return; }
-  findYouTubeId(nxt).then((v) => { if (v) resolveStream(v, nxt); }).catch(() => {});
+  // для фона ищем звук на 2 трека вперёд: когда экран погашен, следующий трек должен начаться сразу
+  for (const nxt of queue.items.slice(queue.index + 1, queue.index + (streamsOn() ? 3 : 2))) {
+    const known = nxt.ytId || peekYouTubeId(nxt);
+    if (known) { resolveStream(known, nxt); continue; }
+    findYouTubeId(nxt).then((v) => { if (v) resolveStream(v, nxt); }).catch(() => {});
+  }
 }
 function findYouTube(t) { findYouTubeId(t).catch(() => {}); }
 
@@ -180,7 +181,12 @@ async function startCurrent() {
       if (urls && urls.length) { startStream(track, vid, urls, id, 0); return; }
       resolveStream(vid, track); // ищем звук, пока играет видео: пригодится, когда выключите экран
     }
-    // 2) видеоплеер YouTube
+    // 2) приложение свёрнуто, а звук по видео не нашёлся — видео в фоне не заиграет: ищем звук по названию, иначе фрагмент
+    if (document.hidden && streamsOn()) {
+      if (await bgFallback(track, id)) return;
+      if (track.previewUrl) { startPreview(track, id); return; }
+    }
+    // 3) видеоплеер YouTube
     if (await startYT(track, vid, id)) return;
     if (id !== loadId) return;
   }
@@ -193,6 +199,16 @@ async function startCurrent() {
   }
   if (track.previewUrl) startPreview(track, id);
   else unavailable(id);
+}
+
+// звук по названию (SoundCloud и др. через сервер MKW) — запасной путь, когда видео в фоне не заиграет
+async function bgFallback(track, id, at = 0) {
+  if (!streamsOn() || !track) return false;
+  const key = `sc:${track.id}`;
+  const urls = peekStream(key) || await Promise.race([resolveStream(key, track), new Promise((r) => setTimeout(() => r(null), 12000))]);
+  if (id !== loadId) return true;
+  if (urls && urls.length) { startStream(track, key, urls, id, at); return true; }
+  return false;
 }
 
 async function startYT(track, vid, id, at = 0) {
@@ -268,6 +284,7 @@ function streamFailed(id) {
   st.full = false;
   if (!/^[\w-]{11}$/.test(st.vid || '')) { fallbackToPreview(); return; }
   const at = st.time || 0;
+  if (document.hidden) { bgFallback(track, id, at).then((ok) => { if (!ok && id === loadId) startYT(track, st.vid, id, at).then((y) => { if (!y && id === loadId) fallbackToPreview(); }); }); return; }
   startYT(track, st.vid, id, at).then((ok) => { if (!ok && id === loadId) fallbackToPreview(); });
 }
 
@@ -316,7 +333,17 @@ document.addEventListener('visibilitychange', () => {
     startStream(track, vid, urls, id, pos);
   };
   const ready = peekStream(vid);
-  if (ready) go(ready); else resolveStream(vid, track).then(go);
+  if (ready) { go(ready); return; }
+  // звук ещё не найден: ищем по видео, не вышло — ещё раз, потом по названию
+  resolveStream(vid, track).then(async (urls) => {
+    if (urls && urls.length) { go(urls); return; }
+    if (id !== loadId || st.mode !== 'yt') return;
+    const again = await new Promise((r) => setTimeout(() => resolveStream(vid, track, true).then(r), 2500));
+    if (again && again.length) { go(again); return; }
+    if (id !== loadId || st.mode !== 'yt' || st.playing) return;
+    const pos = Math.max(at, lastYtTime);
+    bgFallback(track, id, pos);
+  });
 });
 
 function startPreview(track, id) {

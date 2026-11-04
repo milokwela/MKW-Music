@@ -1,11 +1,11 @@
 // Экран «Библиотека»: лайки, плейлисты, история.
-import { $, $$, h, icon, trackRow, emptyState, askText, toast, openSheet, closeSheet, sheetItem, animateIn } from './ui.js?v=0.35.1';
-import * as store from './store.js?v=0.35.1';
-import * as player from './player.js?v=0.35.1';
-import { openTrackMenu } from './menu.js?v=0.35.1';
-import { plural, tracksWord, timeAgo, artUrl } from './utils.js?v=0.35.1';
-import { sharedList, onShared, watchShared } from './shared.js?v=0.35.1';
-import { openSharedSheet } from './sharedui.js?v=0.35.1';
+import { $, $$, h, icon, trackRow, emptyState, askText, toast, openSheet, closeSheet, sheetItem, animateIn } from './ui.js?v=0.35.2';
+import * as store from './store.js?v=0.35.2';
+import * as player from './player.js?v=0.35.2';
+import { openTrackMenu } from './menu.js?v=0.35.2';
+import { plural, tracksWord, timeAgo, artUrl } from './utils.js?v=0.35.2';
+import { sharedList, onShared, watchShared } from './shared.js?v=0.35.2';
+import { openSharedSheet } from './sharedui.js?v=0.35.2';
 
 let tab = 'likes';
 let openPid = null;
@@ -112,6 +112,8 @@ function initSegDrag() {
   seg.addEventListener('pointerdown', (e) => { drag = true; moved = false; sx = e.clientX; pid = e.pointerId; });
   seg.addEventListener('pointermove', (e) => {
     if (!drag) return;
+    // мышь: двигаем «таблетку», только пока кнопка зажата (иначе на компьютере она ездила за курсором)
+    if (e.pointerType === 'mouse' && !e.buttons) { drag = false; moved = false; seg.classList.remove('drag'); render(); return; }
     if (!moved && Math.abs(e.clientX - sx) > 14) { moved = true; seg.classList.add('drag'); try { seg.setPointerCapture(pid); } catch { /* ignore */ } }
     if (moved) seg.style.setProperty('--i', String(idx(e)));
   });
@@ -125,6 +127,7 @@ function initSegDrag() {
     if (navigator.vibrate) navigator.vibrate(8);
   };
   seg.addEventListener('pointerup', end);
+  window.addEventListener('pointerup', () => { if (drag && !moved) drag = false; });
   seg.addEventListener('pointercancel', () => { drag = false; moved = false; seg.classList.remove('drag'); render(); });
   seg.addEventListener('click', (e) => { if (just) { e.stopPropagation(); e.preventDefault(); } }, true);
 }

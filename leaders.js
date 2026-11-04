@@ -1,7 +1,7 @@
 // Рейтинг слушателей: у каждого публичная карточка leaders/{uid} (ник, часы, статус, значки, маленькое фото).
-import { db, auth } from './firebase.js?v=0.35.1';
+import { db, auth } from './firebase.js?v=0.35.2';
 import { doc, getDoc, setDoc, deleteDoc, collection, query, orderBy, limit, getDocs, where } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
-import { srvNow, offlineStamp, onlineStamp } from './clock.js?v=0.35.1';
+import { srvNow, offlineStamp, onlineStamp } from './clock.js?v=0.35.2';
 
 const KEY = 'mkw.leaders.hide';
 export const hiddenFromBoard = () => { try { return localStorage.getItem(KEY) === '1'; } catch { return false; } };
