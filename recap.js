@@ -1,13 +1,13 @@
 // Итоги недели и месяца в стиле сторис: время, любимые исполнители и треки, привычки — и картинка «поделиться».
-import { db } from './firebase.js?v=0.35.3';
+import { db } from './firebase.js?v=0.35.4';
 import { collection, query, where, orderBy, limit, getDocs } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
-import { h, toast } from './ui.js?v=0.35.3';
-import { mi } from './icons2.js?v=0.35.3';
-import * as store from './store.js?v=0.35.3';
-import * as player from './player.js?v=0.35.3';
-import { artistPic } from './artistpic.js?v=0.35.3';
-import { splitArtists } from './taste.js?v=0.35.3';
-import { artUrl, plural } from './utils.js?v=0.35.3';
+import { h, toast } from './ui.js?v=0.35.4';
+import { mi } from './icons2.js?v=0.35.4';
+import * as store from './store.js?v=0.35.4';
+import * as player from './player.js?v=0.35.4';
+import { artistPic } from './artistpic.js?v=0.35.4';
+import { splitArtists } from './taste.js?v=0.35.4';
+import { artUrl, plural } from './utils.js?v=0.35.4';
 
 const DAY = 86400000;
 const ymd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;

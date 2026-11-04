@@ -1,18 +1,18 @@
 // Главная: «Друзья в сети» и умные миксы, которые собираются из вашей музыки, времени суток и друзей.
-import { $, h, toast } from './ui.js?v=0.35.3';
-import * as store from './store.js?v=0.35.3';
-import * as player from './player.js?v=0.35.3';
-import { searchTracks } from './catalog.js?v=0.35.3';
-import { shuffled } from './utils.js?v=0.35.3';
-import { splitArtists, norm } from './taste.js?v=0.35.3';
-import { mi } from './icons2.js?v=0.35.3';
-import { avSrc } from './avatar.js?v=0.35.3';
-import { loadFriends, friendIds, friendCards, onFriends, friendsLoaded } from './friends.js?v=0.35.3';
-import { getProfile, communityTaste, communityTracks } from './leaders.js?v=0.35.3';
-import { openUserPage, isOnline } from './userpage.js?v=0.35.3';
-import { recapCard } from './recap.js?v=0.35.3';
-import { dailyCard, onDaily, setFriendsCheck, initDaily } from './daily.js?v=0.35.3';
-import { artistTop, artistRadio, relatedArtists } from './reco.js?v=0.35.3';
+import { $, h, toast } from './ui.js?v=0.35.4';
+import * as store from './store.js?v=0.35.4';
+import * as player from './player.js?v=0.35.4';
+import { searchTracks } from './catalog.js?v=0.35.4';
+import { shuffled } from './utils.js?v=0.35.4';
+import { splitArtists, norm } from './taste.js?v=0.35.4';
+import { mi } from './icons2.js?v=0.35.4';
+import { avSrc } from './avatar.js?v=0.35.4';
+import { loadFriends, friendIds, friendCards, onFriends, friendsLoaded } from './friends.js?v=0.35.4';
+import { getProfile, communityTaste, communityTracks } from './leaders.js?v=0.35.4';
+import { openUserPage, isOnline } from './userpage.js?v=0.35.4';
+import { recapCard } from './recap.js?v=0.35.4';
+import { dailyCard, onDaily, setFriendsCheck, initDaily } from './daily.js?v=0.35.4';
+import { artistTop, artistRadio, relatedArtists } from './reco.js?v=0.35.4';
 
 const part = () => { const hr = new Date().getHours(); return hr < 6 ? 0 : hr < 12 ? 1 : hr < 18 ? 2 : 3; };
 const PARTS = [
