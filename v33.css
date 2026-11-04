@@ -645,3 +645,5 @@ body:has(#artist-page.open) #dock, body:has(#user-page.open) #dock { z-index: 48
 @media (min-width: 1360px) and (pointer: fine) {
   #view-search:not([hidden]), #view-library:not([hidden]) { max-width: 1240px !important; margin-left: auto; margin-right: auto; }
 }
+.nw-core.img { background: none !important; box-shadow: none !important; width: 150px; height: 150px; }
+.nw-core.img img { width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 10px 24px rgba(0,0,0,.45)); }

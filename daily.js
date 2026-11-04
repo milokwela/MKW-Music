@@ -1,11 +1,11 @@
 // Ежедневные задания: три задания в день. Выполнили все три — выбираете любой эмодзи или стикер MKW
 // и ставите его рядом с ником (видят все: в профиле, в топе, в чатах). Каждый день — ещё один в коллекцию.
-import { db } from './firebase.js?v=0.35.3';
+import { db } from './firebase.js?v=0.35.4';
 import { doc, setDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
-import * as store from './store.js?v=0.35.3';
-import { h, toast, openSheet, closeSheet } from './ui.js?v=0.35.3';
-import { mi } from './icons2.js?v=0.35.3';
-import { CATS, STICKERS, catSrc, stSrc, nickEmoSrc } from './stickers.js?v=0.35.3';
+import * as store from './store.js?v=0.35.4';
+import { h, toast, openSheet, closeSheet } from './ui.js?v=0.35.4';
+import { mi } from './icons2.js?v=0.35.4';
+import { CATS, STICKERS, catSrc, stSrc, nickEmoSrc } from './stickers.js?v=0.35.4';
 
 const KEY = 'mkw.daily.v1';
 const ymd = (d = new Date()) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;

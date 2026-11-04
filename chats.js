@@ -1,16 +1,16 @@
 // Раздел «Чаты» в нижнем меню: все переписки с друзьями, как в мессенджере.
 // Сверху — недавние и непрочитанные, ниже — друзья, с которыми ещё не переписывались.
-import { $, h, toast, openSheet, closeSheet } from './ui.js?v=0.35.3';
-import { pinnedChats, isPinned, togglePin, isMuted, setMute, muteLabel } from './chatprefs.js?v=0.35.3';
-import { mi } from './icons2.js?v=0.35.3';
-import { chatList, isUnread, onChats, openChat, otherOf, clearedAt, blockedByMe, openCid, openGroup, groupAvatar, createGroupSheet, chatId, setBlocked } from './chat.js?v=0.35.3';
-import { me, friendIds, friendCards, loadFriends, friendsLoaded, onFriends, requestIds } from './friends.js?v=0.35.3';
-import { avSrc } from './avatar.js?v=0.35.3';
-import { nickMarks } from './dev.js?v=0.35.3';
-import { seenText, isOnline } from './userpage.js?v=0.35.3';
-import { pickAndCall } from './call.js?v=0.35.3';
-import { streakAny, fireIcon } from './streak.js?v=0.35.3';
-import { setNotify } from './notify.js?v=0.35.3';
+import { $, h, toast, openSheet, closeSheet } from './ui.js?v=0.35.4';
+import { pinnedChats, isPinned, togglePin, isMuted, setMute, muteLabel } from './chatprefs.js?v=0.35.4';
+import { mi } from './icons2.js?v=0.35.4';
+import { chatList, isUnread, onChats, openChat, otherOf, clearedAt, blockedByMe, openCid, openGroup, groupAvatar, createGroupSheet, chatId, setBlocked } from './chat.js?v=0.35.4';
+import { me, friendIds, friendCards, loadFriends, friendsLoaded, onFriends, requestIds } from './friends.js?v=0.35.4';
+import { avSrc } from './avatar.js?v=0.35.4';
+import { nickMarks } from './dev.js?v=0.35.4';
+import { seenText, isOnline } from './userpage.js?v=0.35.4';
+import { pickAndCall } from './call.js?v=0.35.4';
+import { streakAny, fireIcon } from './streak.js?v=0.35.4';
+import { setNotify } from './notify.js?v=0.35.4';
 
 let watching = false, filter = '', busy = false, again = false;
 

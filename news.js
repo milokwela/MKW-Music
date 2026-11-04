@@ -1,19 +1,21 @@
 // Окно «Вышло крупное обновление»: картинки вместо текста, кнопки «Ого!» и «Пропустить». Показывается один раз.
-import { h } from './ui.js?v=0.35.3';
-import { mi } from './icons2.js?v=0.35.3';
-import { VERSION } from './changelog.js?v=0.35.3';
+import { h } from './ui.js?v=0.35.4';
+import { mi } from './icons2.js?v=0.35.4';
+import { VERSION } from './changelog.js?v=0.35.4';
 
 const KEY = 'mkw.news';
+// что нового в последней версии — каждое окно показывается один раз на версию
 const SLIDES = [
-  { tag: 'Новое', title: 'Друзья', text: 'Добавляйте друзей, смотрите, кто в сети и что слушает', icon: 'group', orbit: ['heart', 'note', 'play-circle'], hue: 150 },
-  { tag: 'Главная', title: 'Умные миксы', text: 'Микс дня, под время суток, забытые лайки, друзья слушают', icon: 'sparkle', orbit: ['moon', 'fire', 'heart'], hue: 300 },
-  { tag: 'Бета', title: 'Слушать в фоне', text: 'Включите в Настройках — музыка играет и с выключенным экраном', icon: 'headphones', orbit: ['moon', 'note', 'play-circle'], hue: 260 },
-  { tag: 'MKW Волна', title: 'Волна стала умнее', text: 'Чувствует настроение, время суток и вкусы друзей', icon: 'star', orbit: ['headphones', 'heart', 'globe'], hue: 330 },
-  { tag: 'Бета', title: 'Управляйте голосом', text: '«MKW, следующая», «громче», «лайк» — края экрана засветятся', icon: 'mic', orbit: ['play-circle', 'heart', 'note'], hue: 200, glow: true },
+  { tag: 'Чаты', title: 'Фото как в мессенджере', text: 'Несколько фото сразу, обрезка рамкой, поворот и рисование пальцем перед отправкой', icon: 'image', orbit: ['edit', 'add', 'send'], hue: 330 },
+  { tag: 'Компьютер', title: 'Чаты на весь экран', text: 'Ширину списка можно тянуть мышкой. Фото — Ctrl+V или перетащить в чат', icon: 'chat', orbit: ['screen', 'image', 'group'], hue: 260 },
+  { tag: 'Голосовые', title: 'Чище и удобнее', text: 'Звук лучше, а при перемотке пальцем голосовое молчит, пока не отпустите', icon: 'mic', orbit: ['play', 'note', 'heart'], hue: 200 },
+  { tag: 'Новое', title: 'Заставка с котиком', text: 'Котик MKW в наушниках встречает вас при запуске', img: 'mkw-st1.webp', orbit: ['note', 'star', 'heart'], hue: 300 },
+  { tag: 'О MKW', title: 'Выберите следующее обновление', text: 'Зима, музыка или оптимизация? Голосуйте в Профиль → О MKW, итоги 9 ноября', icon: 'star', orbit: ['sparkle', 'headphones', 'rocket'], hue: 40 },
+  { tag: 'Исправлено', title: 'Меньше багов', text: 'Плеер виден поверх страниц исполнителя, «&» больше не исполнитель, фон на телефоне надёжнее', icon: 'shield', orbit: ['check', 'play-circle', 'phone'], hue: 150 },
 ];
 
 export function showNews() {
-  const ver = '0.20'; // окно новостей показываем для 0.20 (мелкие обновления его не повторяют)
+  const ver = VERSION;
   try { if (localStorage.getItem(KEY) === ver) return; } catch { return; }
   if (document.querySelector('.inc')) { setTimeout(showNews, 8000); return; } // сначала сообщение о сбое
   let i = 0;
@@ -21,7 +23,7 @@ export function showNews() {
   const slides = SLIDES.map((s) => h('div', { class: `nw-slide${s.glow ? ' glow' : ''}`, style: `--h:${s.hue}` },
     h('div', { class: 'nw-art' },
       h('i', { class: 'nw-ring' }), h('i', { class: 'nw-ring r2' }),
-      h('div', { class: 'nw-core' }, mi(s.icon)),
+      h('div', { class: `nw-core${s.img ? ' img' : ''}` }, s.img ? h('img', { src: s.img, alt: '' }) : mi(s.icon)),
       ...s.orbit.map((o, k) => h('span', { class: `nw-orb o${k + 1}` }, mi(o)))),
     h('span', { class: 'nw-tag', text: s.tag }),
     h('h2', { text: s.title }),
@@ -40,7 +42,7 @@ export function showNews() {
   wow.addEventListener('click', () => { if (i < SLIDES.length - 1) go(i + 1); else done(); });
   const box = h('div', { class: 'nw', role: 'dialog', 'aria-label': 'Что нового' },
     h('div', { class: 'nw-card' },
-      h('div', { class: 'nw-head' }, h('b', { text: 'Вышло крупное обновление' }), h('small', { text: `MKW Music ${VERSION}` })),
+      h('div', { class: 'nw-head' }, h('b', { text: 'Что нового' }), h('small', { text: `MKW Music ${VERSION}` })),
       h('div', { class: 'nw-view' }, track), dots,
       h('div', { class: 'nw-btns' }, skip, wow)));
   // листание пальцем или мышью
