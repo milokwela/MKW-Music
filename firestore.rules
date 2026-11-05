@@ -221,7 +221,7 @@ service cloud.firestore {
     // значок Contributor: читают все, выдаёт и забирает только создатель (milokq)
     match /contrib/{uid} {
       allow read: if request.auth != null;
-      allow write: if request.auth != null && request.auth.token.email == 'milokwel@mkw.invalid'
+      allow write: if request.auth != null && request.auth.token.email in ['milokwel@mkw.invalid', 'milokq@mkw.invalid']
         && request.resource.data.keys().hasOnly(['nick', 'on', 'at']) && request.resource.data.on is bool;
     }
     match /joined/{uid} {
