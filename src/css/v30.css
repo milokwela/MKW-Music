@@ -1,0 +1,38 @@
+/* MKW Music 0.31 — буст плавности на телефонах */
+
+/* пауза декоративных анимаций: во время прокрутки/перехода и пока элемент за краем экрана (js/boost.js) */
+[data-zz], [data-zz]::before, [data-zz]::after { animation-play-state: paused !important; }
+
+/* мгновенный отклик на касание, без серой вспышки и задержки двойного тапа */
+html { -webkit-tap-highlight-color: transparent; }
+button, a, input, textarea, select, label, [role="button"], .nav-btn, .chip, .track-row, .icon-btn, .ptab { touch-action: manipulation; }
+
+/* прокрутка как в приложении: без «резинки» всей страницы и с инерцией */
+html, body { overscroll-behavior-y: none; }
+#chat-page .ch-list, #sheet, .view { -webkit-overflow-scrolling: touch; }
+
+/* длинные списки: строки далеко за экраном не рисуются, пока до них не долистали */
+.list > .track-row:nth-child(n+16) { content-visibility: auto; contain-intrinsic-size: auto 62px; }
+/* появляются «волной» только первые строки — остальные сразу, без лишней работы */
+:root:not(.lowpower) .list > *:nth-child(n+13) { animation: none !important; }
+
+/* переходы между вкладками и шторками — только через transform/opacity (их делает видеокарта) */
+.view.m3-in, .view.m3-in-l, .view.m3-in-r { will-change: transform, opacity; }
+#sheet { will-change: transform; }
+#sheet:not(.open) { will-change: auto; }
+
+/* телефон: стекло легче — меньше радиус размытия, картинка та же */
+.touch #mini-player { backdrop-filter: blur(18px) saturate(1.5) !important; -webkit-backdrop-filter: blur(18px) saturate(1.5) !important; }
+.touch #mini-player::before { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
+.touch #bottom-nav { backdrop-filter: blur(16px) saturate(1.6) !important; -webkit-backdrop-filter: blur(16px) saturate(1.6) !important; }
+.touch .ch-head, .touch .ch-bar { backdrop-filter: blur(12px) !important; -webkit-backdrop-filter: blur(12px) !important; }
+/* текст песни: размытие строк — только у ближайших, дальние просто прозрачнее */
+.touch .ly-line { will-change: auto; }
+
+/* слабый телефон (≤4 ГБ памяти или ≤4 ядер): стекло без размытия, без мерцающих фонов */
+.lite #mini-player, .lite #bottom-nav, .lite .ch-head, .lite .ch-bar { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
+.lite #bottom-nav { background: color-mix(in srgb, var(--surface, #18151d) 92%, transparent) !important; }
+.lite #mini-player { background: color-mix(in srgb, var(--primary-container, #3a2a3a) 92%, #000) !important; }
+.lite .ch-head, .lite .ch-bar { background: var(--surface, #18151d) !important; }
+.lite #fp-lyrics::before { filter: blur(24px) !important; }
+.lite .ly-line { filter: none !important; }

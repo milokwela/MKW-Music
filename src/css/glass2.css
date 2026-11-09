@@ -1,0 +1,93 @@
+/* ===== 0.15: прозрачное жидкое стекло, заставка, текст песни, ПК ===== */
+#dock { --gl-edge: rgba(255,255,255,.55); }
+#bottom-nav, #mini-player { position: relative; isolation: isolate; background: color-mix(in srgb, var(--surface, #fff) 6%, transparent) !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important;
+  border: 0 !important; box-shadow: 0 10px 34px rgba(0,0,0,.16), inset 0 1px 0 rgba(255,255,255,.35); }
+#bottom-nav::before, #mini-player::before { content: ""; position: absolute; inset: 0; border-radius: inherit; z-index: -2; padding: 14px; pointer-events: none;
+  background: rgba(255,255,255,.04); backdrop-filter: blur(18px) saturate(1.6); -webkit-backdrop-filter: blur(18px) saturate(1.6);
+  -webkit-mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0); mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0); }
+#bottom-nav::after, #mini-player::after { content: ""; position: absolute; inset: 0; border-radius: inherit; z-index: -1; pointer-events: none;
+  backdrop-filter: blur(2px) saturate(1.25); -webkit-backdrop-filter: blur(2px) saturate(1.25);
+  box-shadow: inset 0 0 0 1px var(--gl-edge), inset 0 0 22px rgba(255,255,255,.12); }
+#bottom-nav > *, #mini-player > * { position: relative; z-index: 1; }
+/* мини-плеер: плотное матовое стекло, чтобы песни под ним не просвечивали */
+#mini-player { background: color-mix(in srgb, var(--surface, #fff) 62%, transparent) !important; }
+#mini-player::before { padding: 0; -webkit-mask: none; mask: none; backdrop-filter: blur(26px) saturate(1.6); -webkit-backdrop-filter: blur(26px) saturate(1.6); }
+#mini-player::after { backdrop-filter: none; -webkit-backdrop-filter: none; }
+body.on-profile #mini-player { animation: miniHide .3s ease both !important; pointer-events: none; }
+@keyframes miniHide { to { opacity: 0; transform: translateY(30px) scale(.94); visibility: hidden; } }
+#mini-player { transition: opacity .3s ease, transform .35s cubic-bezier(.2,.8,.2,1); }
+/* место под мини-плеер и меню, чтобы последние песни не прятались */
+main .view { padding-bottom: calc(190px + env(safe-area-inset-bottom)) !important; }
+#mini-player #mini-progress { position: absolute; }
+#bottom-nav .nav-lens { background: rgba(255,255,255,.2) !important; box-shadow: inset 0 0 0 1px rgba(255,255,255,.45), inset 0 8px 14px rgba(255,255,255,.14) !important; backdrop-filter: blur(3px) brightness(1.12); transition: transform .38s cubic-bezier(.25,.8,.25,1), width .35s ease !important; }
+#bottom-nav .touch .nav-lens { transition: transform .05s linear, width .2s ease !important; }
+/* без отскока иконок */
+#bottom-nav .nav-btn svg, #bottom-nav .nav-btn .icon { transition: color .25s !important; transform: none !important; animation: none !important; }
+#bottom-nav .nav-btn.active, #bottom-nav .nav-btn.on { color: var(--primary); }
+.lowpower #bottom-nav::before, .lowpower #mini-player::before, .lowpower #bottom-nav::after, .lowpower #mini-player::after { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
+.lowpower #bottom-nav, .lowpower #mini-player { background: color-mix(in srgb, var(--surface, #fff) 82%, transparent) !important; }
+
+/* палитра */
+.accent-row { display: flex !important; gap: 14px; justify-content: center; flex-wrap: wrap; padding: 16px 4px 4px; }
+.accent-dot { width: 44px; height: 44px; background: radial-gradient(circle at 30% 25%, rgba(255,255,255,.5), transparent 55%), var(--dot) !important; box-shadow: 0 4px 12px color-mix(in srgb, var(--dot) 45%, transparent); }
+.accent-dot.active { transform: scale(1.1); box-shadow: 0 0 0 3px var(--bg), 0 0 0 5px var(--dot) !important; }
+.accent-dot.active::after { content: "✓"; color: #fff; font-weight: 900; display: grid; place-items: center; height: 100%; text-shadow: 0 1px 3px rgba(0,0,0,.4); }
+.accent-dot.custom { background: conic-gradient(from 0deg, #ff4d6d, #ffb84d, #e6ff4d, #4dff88, #4dd8ff, #6b4dff, #ff4dd8, #ff4d6d) !important; font-size: 22px; color: #fff; text-shadow: 0 1px 4px rgba(0,0,0,.5); }
+.accent-dot.custom.active { background: radial-gradient(circle at 30% 25%, rgba(255,255,255,.5), transparent 55%), var(--dot) !important; }
+.accent-dot.custom.active::after { content: none; }
+.cp { display: grid; gap: 16px; padding: 4px 2px 8px; }
+.cp-prev { height: 96px; border-radius: 24px; background: linear-gradient(135deg, var(--c), color-mix(in srgb, var(--c) 55%, #000)); display: grid; place-items: center; color: #fff; font-weight: 800; font-size: 18px; box-shadow: 0 14px 34px color-mix(in srgb, var(--c) 45%, transparent); transition: background .15s; }
+.cp-lbl { font-size: 13px; color: var(--on-surface-var); margin-bottom: -8px; }
+.cp-range { -webkit-appearance: none; appearance: none; width: 100%; height: 34px; border-radius: 999px; outline: none; margin: 0; border: 2px solid rgba(255,255,255,.25); }
+.cp-range.hue { background: linear-gradient(90deg, hsl(0 85% 60%), hsl(60 85% 60%), hsl(120 85% 60%), hsl(180 85% 60%), hsl(240 85% 60%), hsl(300 85% 60%), hsl(360 85% 60%)); }
+.cp-range.lig { background: linear-gradient(90deg, hsl(var(--h) 85% 30%), hsl(var(--h) 85% 58%), hsl(var(--h) 85% 82%)); }
+.cp-range::-webkit-slider-thumb { -webkit-appearance: none; width: 30px; height: 30px; border-radius: 50%; background: var(--c); border: 4px solid #fff; box-shadow: 0 2px 10px rgba(0,0,0,.35); }
+.cp-range::-moz-range-thumb { width: 26px; height: 26px; border-radius: 50%; background: var(--c); border: 4px solid #fff; box-shadow: 0 2px 10px rgba(0,0,0,.35); }
+.cp-quick { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
+.cp-quick button { width: 34px; height: 34px; border-radius: 50%; border: 2px solid rgba(255,255,255,.3); background: var(--q); }
+
+/* текст песни */
+#fp-lyrics { max-width: 560px; height: auto; flex: 1 1 auto; min-height: 44vh; max-height: 62vh; margin: 4px auto 10px; display: flex; flex-direction: column; }
+#fp-lyrics .ly-scroll { flex: 1; padding: 22vh 10px; }
+.ly-tools { display: flex; gap: 8px; justify-content: center; padding: 6px 0 2px; position: relative; z-index: 2; }
+.ly-tools[hidden] { display: none; }
+.ly-tools button { border: 0; border-radius: 999px; padding: 6px 14px; font: 600 13px inherit; background: rgba(128,128,128,.18); color: inherit; transition: background .2s, color .2s; }
+.ly-tools button.on { background: var(--primary); color: #fff; }
+.ly-line { font-size: clamp(24px, 6.4vw, 32px) !important; line-height: 1.25; font-weight: 800; transform-origin: left center; cursor: pointer; }
+.ly-line.static { font-size: 18px !important; font-weight: 600; opacity: .92; filter: none !important; cursor: default; }
+.ly-line.now .w { color: color-mix(in srgb, var(--primary) 45%, currentColor); }
+.ly-line.now .w.on { color: var(--primary); }
+.ly-msg.small { font-size: 12px; padding: 14px 0; opacity: .6; }
+#full-player.wave-mode #fp-lyrics { color: #fff; }
+#full-player.wave-mode .fp-extra { display: flex !important; justify-content: center; }
+#full-player.wave-mode .fp-extra > :not(#fp-lyrics-btn) { display: none; }
+#full-player.wave-mode #fp-lyrics-btn { width: 52px; height: 52px; border-radius: 50%; background: rgba(255,255,255,.16); color: #fff; }
+#full-player.wave-mode #fp-lyrics-btn.on { background: #fff; color: var(--primary); }
+#full-player.lyrics-on .fp-extra #fp-lyrics-btn { background: color-mix(in srgb, var(--primary) 22%, transparent); }
+#full-player.wave-mode .ly-line.now .w.on { color: #fff; text-shadow: 0 0 22px var(--primary); }
+
+/* домашний низ */
+#search-more .chip, #search-recs .chip { border-radius: 999px; padding: 10px 22px; background: color-mix(in srgb, var(--primary) 14%, transparent); color: var(--primary); font-weight: 700; border: 1px solid color-mix(in srgb, var(--primary) 30%, transparent); }
+.home-logo { display: none !important; }
+
+/* компьютер */
+@media (min-width: 900px) {
+  body::before { content: ""; position: fixed; inset: -20%; z-index: -1; pointer-events: none; background: radial-gradient(35% 35% at 20% 25%, color-mix(in srgb, var(--primary) 22%, transparent), transparent), radial-gradient(30% 30% at 80% 70%, color-mix(in srgb, var(--primary) 14%, transparent), transparent); animation: pcdrift 22s ease-in-out infinite alternate; }
+  .lowpower body::before { animation: none; }
+  .track-row, .pl-card { transition: transform .25s cubic-bezier(.2,.8,.2,1), box-shadow .25s, background .2s; }
+  .track-row:hover, .pl-card:hover { transform: translateY(-2px); box-shadow: 0 10px 28px rgba(0,0,0,.14); }
+  .track-row img, .pl-card img { transition: transform .4s cubic-bezier(.2,.8,.2,1); }
+  .track-row:hover img, .pl-card:hover img { transform: scale(1.06); }
+  #full-player.lyrics-on .fp-inner { max-width: 1040px; display: grid; grid-template-columns: minmax(300px, 420px) 1fr; column-gap: 48px; align-content: center; }
+  #full-player.lyrics-on .fp-top { grid-column: 1 / -1; }
+  #full-player.lyrics-on #fp-art { display: block; grid-column: 1; grid-row: 2; width: min(100%, 380px); max-width: 380px; justify-self: center; }
+  #full-player.lyrics-on #fp-lyrics { grid-column: 2; grid-row: 2 / span 4; max-height: 74vh; height: 74vh; margin: 0; }
+  #full-player.lyrics-on .fp-meta, #full-player.lyrics-on .fp-seek, #full-player.lyrics-on .fp-controls, #full-player.lyrics-on .fp-extra, #full-player.lyrics-on .fp-times { grid-column: 1; }
+}
+@keyframes pcdrift { to { transform: translate(4%, 3%) scale(1.08); } }
+/* 0.16: Волна ровно, без пустого зазора до «Для вас» */
+.search-status:empty { padding: 0 !important; }
+#wave-btn { margin: 8px 0 6px !important; }
+#wave-btn .wave-txt { flex: 1; min-width: 0; }
+#wave-btn .wave-txt small { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#search-recs > .section-title:first-child { margin-top: 18px; }

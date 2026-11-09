@@ -1,0 +1,64 @@
+/* ===== 0.25: раздел «Чаты», ровные фото, шторки поверх чата, баннер ===== */
+
+/* шторки (фон чата, отправить другу) всегда поверх открытого чата */
+#sheet-overlay { z-index: 70 !important; }
+#sheet { z-index: 71 !important; }
+
+/* 4 вкладки в нижнем меню помещаются и на узких телефонах */
+@media (max-width: 400px) { #bottom-nav .nav-btn { font-size: 11px; } }
+
+/* --- раздел «Чаты» --- */
+#view-chats .cl-search { width: 100%; margin: 0 0 12px; }
+.cl-reqbtn { display: flex; align-items: center; gap: 12px; width: 100%; margin: 0 0 12px; padding: 12px 16px; border: 0; border-radius: var(--radius-m); background: color-mix(in srgb, var(--primary) 16%, var(--surface)); color: var(--on-bg); font: 600 14.5px var(--font, inherit); cursor: pointer; text-align: left; }
+.cl-reqbtn .mi { width: 22px; height: 22px; color: var(--primary); }
+.cl-reqbtn i { margin-left: auto; font-style: normal; font-size: 22px; opacity: .6; }
+.cl-list { display: flex; flex-direction: column; gap: 2px; padding-bottom: calc(var(--nav-h) + var(--mini-h) + 24px); }
+.cl-row { display: flex; align-items: center; gap: 14px; width: 100%; padding: 10px 8px; border: 0; border-radius: 20px; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; animation: clIn .4s var(--m3-emph, ease) both; transition: background .2s; }
+.cl-row:hover, .cl-row:active { background: var(--surface); }
+.cl-av { position: relative; width: 54px; height: 54px; flex: none; }
+.cl-av img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
+.cl-av .online-dot { position: absolute; right: 1px; bottom: 1px; }
+.cl-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.cl-top { display: flex; align-items: center; gap: 4px; min-width: 0; }
+.cl-top b { font-size: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cl-top time { margin-left: auto; flex: none; padding-left: 8px; font-size: 12px; color: var(--on-surface-var); }
+.cl-prev { display: flex; align-items: center; gap: 8px; min-width: 0; color: var(--on-surface-var); font-size: 14px; }
+.cl-prev span { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cl-row.unread .cl-prev { color: var(--on-bg); font-weight: 600; }
+.cl-row.unread .cl-top time { color: var(--primary); font-weight: 700; }
+.cl-dot { flex: none; width: 10px; height: 10px; border-radius: 50%; background: var(--primary); box-shadow: 0 0 10px color-mix(in srgb, var(--primary) 70%, transparent); }
+.cl-empty { display: grid; justify-items: center; gap: 8px; margin: 40px auto; max-width: 320px; text-align: center; }
+.cl-empty .mi { width: 54px; height: 54px; color: var(--primary); opacity: .8; }
+.cl-empty b { font-size: 18px; }
+.cl-empty small { color: var(--on-surface-var); line-height: 1.45; }
+@keyframes clIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+/* --- фото в чате: ровная ширина, без лишней рамки --- */
+.ch-msg { animation: none; }
+.ch-msg.new { animation: msgIn .3s var(--m3-emph, ease) both; }
+.ch-msg.has-img { padding: 4px 4px 7px; width: min(270px, 70vw); }
+.ch-msg.has-img .ch-img { display: block; width: 100%; height: auto; max-height: 380px; margin: 0 0 4px; border-radius: 16px; object-fit: cover; background: rgba(0,0,0,.25); }
+.ch-msg.has-img .ch-text, .ch-msg.has-img .ch-track { margin: 0 6px; width: auto; }
+.ch-msg.has-img time { margin-right: 8px; }
+.ch-msg.photo { padding: 0; background: transparent !important; box-shadow: none; }
+.ch-msg.photo .ch-img { margin: 0; border-radius: 20px; box-shadow: 0 8px 24px rgba(0,0,0,.35); }
+.ch-msg.photo.me .ch-img { border-bottom-right-radius: 6px; }
+.ch-msg.photo:not(.me) .ch-img { border-bottom-left-radius: 6px; }
+.ch-msg.photo time { position: absolute; right: 8px; bottom: 8px; margin: 0; padding: 2px 8px; border-radius: 999px; background: rgba(0,0,0,.5); color: #fff; opacity: 1; backdrop-filter: blur(6px); }
+
+/* --- баннер профиля: выше, мягкий переход в карточку --- */
+@media (max-width: 760px) { #view-profile .phero-banner, .up-hero .phero-banner { height: 150px; } }
+.phero-banner::after { background: radial-gradient(60% 90% at 85% 0%, rgba(255,255,255,.18), transparent 60%), linear-gradient(180deg, transparent 40%, color-mix(in srgb, var(--surface) 55%, transparent) 78%, var(--surface)) !important; }
+.phero[data-bimg="1"] .phero-banner { background-size: cover !important; background-position: center !important; animation: bannerIn .8s var(--m3-emph, ease) both; }
+@keyframes bannerIn { from { opacity: 0; filter: blur(10px); } to { opacity: 1; filter: none; } }
+
+/* --- выбор кадра для баннера --- */
+.bc { position: fixed; inset: 0; z-index: 120; display: grid; place-items: center; padding: 16px; background: rgba(0,0,0,.78); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); animation: clIn .25s ease both; }
+.bc-card { width: min(560px, 100%); display: grid; gap: 12px; padding: 18px; border-radius: 28px; background: var(--surface); box-shadow: 0 30px 80px rgba(0,0,0,.6); }
+.bc-title { font-size: 18px; }
+.bc-hint { color: var(--on-surface-var); margin-top: -6px; }
+.bc-frame { position: relative; width: 100%; aspect-ratio: 3 / 1; border-radius: 18px; overflow: hidden; background: #000; touch-action: none; cursor: grab; box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--primary) 60%, transparent); }
+.bc-frame:active { cursor: grabbing; }
+.bc-img { position: absolute; left: 0; top: 0; max-width: none; user-select: none; -webkit-user-drag: none; pointer-events: none; }
+.bc-zoom { width: 100%; accent-color: var(--primary); }
+.bc-btns { display: flex; gap: 10px; justify-content: flex-end; }
