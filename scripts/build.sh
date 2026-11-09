@@ -2,7 +2,6 @@
 # Сборка MKW из src/ в dist/. Запуск из корня репозитория: bash scripts/build.sh 0.36.7 1
 # Нужны: bash, node, npx (esbuild ставится сам через npx). Переменная ESBUILD — свой путь к esbuild.
 set -e
-PY=$(command -v python3 || command -v python)
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 V=$1; D="${OUT:-$ROOT/dist}"
 cd "$ROOT/src"
@@ -31,14 +30,18 @@ CSS=$(grep -o 'href="css/[a-z0-9-]*\.css' $ROOT/src/index.html | sed 's#href="cs
 ( for c in $CSS; do cat $ROOT/src/css/$c; echo; done ) > $D/app.src.css
 $EB $D/app.src.css --minify --loader:.css=css --log-level=warning --outfile=$D/app.css
 rm $D/app.src.css
-"$PY" - "$D/index.html" "$V" <<'PY'
-import re,sys
-p,v=sys.argv[1],sys.argv[2]; s=open(p).read()
-links=re.findall(r'<link rel="stylesheet" href="[a-z0-9-]+\.css\?v=[^"]*">\n?', s)
-s=s.replace(links[0], f'<link rel="stylesheet" href="app.css?v={v}">\n',1)
-for l in links[1:]: s=s.replace(l,'',1)
-open(p,'w').write(s)
-PY
+node - "$D/index.html" "$V" <<'JS'
+const fs = require('fs');
+const [p, v] = process.argv.slice(2);
+let s = fs.readFileSync(p, 'utf8');
+const re = /<link rel="stylesheet" href="[a-z0-9-]+\.css\?v=[^"]*">\n?/g;
+const links = s.match(re) || [];
+if (links.length) {
+  s = s.replace(links[0], `<link rel="stylesheet" href="app.css?v=${v}">\n`);
+  for (const l of links.slice(1)) s = s.replace(l, '');
+}
+fs.writeFileSync(p, s);
+JS
 # ---- 0.35.8: в сайт кладём только то, что реально грузится ----
 ( cd $D && for f in *.js; do case $f in app.js|sw.js|lame.min.js) ;; *) rm -f "$f";; esac; done
   for f in *.css; do [ "$f" = app.css ] || rm -f "$f"; done
