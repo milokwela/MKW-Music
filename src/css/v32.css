@@ -1,0 +1,136 @@
+/* MKW Music 0.33 — новая заставка: стеклянная звезда MKW собирается из света */
+#splash { background: #000 !important; display: block !important; overflow: hidden; }
+#splash > :not([class^="sp6"]) { display: none !important; }
+#splash .sp6-flare, #splash .sp6-halo, #splash .sp6-wave, #splash .sp6-sparks, #splash .sp6-star { position: absolute; left: 50%; top: 42%; }
+
+/* вспышка: тонкая линия света раскрывается по горизонтали */
+.sp6-flare { width: 120vw; height: 2px; margin: -1px 0 0 -60vw; background: linear-gradient(90deg, transparent, rgba(255,255,255,.0) 20%, #fff 50%, rgba(255,255,255,0) 80%, transparent); transform: scaleX(0); opacity: 0; filter: blur(.4px); box-shadow: 0 0 18px 2px rgba(255,255,255,.55); }
+/* мягкое сияние за звездой, медленно вращается */
+.sp6-halo { width: 520px; height: 520px; margin: -260px 0 0 -260px; border-radius: 50%; opacity: 0;
+  background: conic-gradient(from 0deg, rgba(255,255,255,.0), rgba(255,255,255,.16), rgba(255,120,190,.18), rgba(140,120,255,.16), rgba(255,255,255,.0) 70%, rgba(255,255,255,.12), rgba(255,255,255,0));
+  filter: blur(40px); }
+/* ударные волны */
+.sp6-wave { width: 240px; height: 240px; margin: -120px 0 0 -120px; border-radius: 50%; border: 1.5px solid rgba(255,255,255,.7); opacity: 0; transform: scale(.3); }
+/* искры летят к центру */
+.sp6-sparks { width: 0; height: 0; }
+.sp6-sparks i { position: absolute; width: 4px; height: 4px; margin: -2px; border-radius: 50%; background: #fff; box-shadow: 0 0 10px 2px rgba(255,255,255,.8); opacity: 0; }
+.sp6-sparks i:nth-child(1) { --x: -38vw; --y: -30vh; } .sp6-sparks i:nth-child(2) { --x: 40vw; --y: -26vh; }
+.sp6-sparks i:nth-child(3) { --x: -44vw; --y: 18vh; } .sp6-sparks i:nth-child(4) { --x: 42vw; --y: 24vh; }
+.sp6-sparks i:nth-child(5) { --x: -8vw; --y: -40vh; } .sp6-sparks i:nth-child(6) { --x: 10vw; --y: 38vh; }
+.sp6-sparks i:nth-child(7) { --x: -30vw; --y: 40vh; } .sp6-sparks i:nth-child(8) { --x: 28vw; --y: -42vh; }
+/* звезда */
+.sp6-star { width: 230px; margin: -103px 0 0 -115px; opacity: 0; transform: scale(.55) rotate(-28deg); filter: blur(22px) brightness(2.2); }
+.sp6-star img { display: block; width: 100%; height: auto; filter: drop-shadow(0 0 28px rgba(255,255,255,.18)); }
+/* блик по стеклу — только по форме звезды */
+.sp6-shine { position: absolute; inset: 0; -webkit-mask: url(mkw-star6.webp) center / 100% 100% no-repeat; mask: url(mkw-star6.webp) center / 100% 100% no-repeat;
+  background: linear-gradient(105deg, transparent 38%, rgba(255,255,255,.95) 50%, transparent 62%) no-repeat; background-size: 300% 100%; background-position: 140% 0; mix-blend-mode: screen; }
+/* надпись */
+.sp6-title, .sp6-sub, .sp6-by { position: absolute; left: 0; right: 0; text-align: center; color: #fff; font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }
+.sp6-title { top: calc(42% + 118px); font-weight: 800; font-size: 34px; letter-spacing: 14px; text-indent: 14px; }
+.sp6-title span { display: inline-block; opacity: 0; transform: translateY(18px); filter: blur(8px); }
+.sp6-sub { top: calc(42% + 166px); font-weight: 500; font-size: 12px; letter-spacing: 9px; text-indent: 9px; color: rgba(255,255,255,.55); opacity: 0; }
+.sp6-by { bottom: calc(6vh + env(safe-area-inset-bottom)); font-size: 12px; letter-spacing: 2px; color: rgba(255,255,255,.38); opacity: 0; }
+
+#splash.go .sp6-flare { animation: sp6flare 1s .05s cubic-bezier(.2,.8,.2,1) forwards; }
+#splash.go .sp6-sparks i { animation: sp6spark .75s cubic-bezier(.6,0,.9,.5) forwards; }
+#splash.go .sp6-sparks i:nth-child(2n) { animation-delay: .08s; } #splash.go .sp6-sparks i:nth-child(3n) { animation-delay: .16s; }
+#splash.go .sp6-star { animation: sp6star 1.25s .35s cubic-bezier(.16,1,.3,1) forwards, sp6float 3s 1.6s ease-in-out infinite alternate; }
+#splash.go .sp6-halo { animation: sp6halo 1.6s .5s ease forwards, sp6spin 9s .5s linear infinite; }
+#splash.go .sp6-wave { animation: sp6wave 1.3s .72s cubic-bezier(.1,.7,.2,1) forwards; }
+#splash.go .sp6-wave.w2 { animation-delay: .92s; }
+#splash.go .sp6-shine { animation: sp6shine 1.05s 1.35s cubic-bezier(.4,0,.2,1) forwards; }
+#splash.go .sp6-title span { animation: sp6letter .8s cubic-bezier(.16,1,.3,1) forwards; }
+#splash.go .sp6-title span:nth-child(1) { animation-delay: 1.05s; } #splash.go .sp6-title span:nth-child(2) { animation-delay: 1.15s; } #splash.go .sp6-title span:nth-child(3) { animation-delay: 1.25s; }
+#splash.go .sp6-sub { animation: sp6sub 1s 1.5s ease forwards; }
+#splash.go .sp6-by { animation: sp6fade 1s 1.8s ease forwards; }
+#splash.out { opacity: 0 !important; transform: scale(1.06) !important; filter: blur(6px); transition: opacity .6s ease, transform .7s cubic-bezier(.4,0,.2,1), filter .6s !important; }
+
+@keyframes sp6flare { 0% { opacity: 0; transform: scaleX(0); } 30% { opacity: 1; } 70% { opacity: .9; transform: scaleX(1); } 100% { opacity: 0; transform: scaleX(1) scaleY(.2); } }
+@keyframes sp6spark { 0% { opacity: 0; transform: translate(var(--x), var(--y)) scale(.6); } 25% { opacity: 1; } 100% { opacity: 0; transform: translate(0, 0) scale(1.4); } }
+@keyframes sp6star { 0% { opacity: 0; transform: scale(.55) rotate(-28deg); filter: blur(22px) brightness(2.2); } 55% { opacity: 1; filter: blur(0) brightness(1.5); } 100% { opacity: 1; transform: none; filter: none; } }
+@keyframes sp6float { from { transform: translateY(0) rotate(0); } to { transform: translateY(-6px) rotate(1.5deg); } }
+@keyframes sp6halo { to { opacity: 1; } }
+@keyframes sp6spin { to { rotate: 360deg; } }
+@keyframes sp6wave { 0% { opacity: .9; transform: scale(.3); } 100% { opacity: 0; transform: scale(2.6); border-width: .5px; } }
+@keyframes sp6shine { to { background-position: -40% 0; } }
+@keyframes sp6letter { to { opacity: 1; transform: none; filter: none; } }
+@keyframes sp6sub { from { opacity: 0; letter-spacing: 16px; } to { opacity: 1; letter-spacing: 9px; } }
+@keyframes sp6fade { to { opacity: 1; } }
+@media (max-height: 560px) { .sp6-star { width: 150px; margin: -70px 0 0 -75px; } .sp6-title { top: calc(42% + 92px); } .sp6-sub { top: calc(42% + 136px); } }
+@media (prefers-reduced-motion: reduce) { #splash * { animation-duration: .01s !important; animation-delay: 0s !important; } }
+
+/* подсказка для iPhone в чатах */
+.cl-ios { position: relative; display: grid; gap: 8px; padding: 14px 16px; margin: 0 0 10px; border-radius: 22px; background: color-mix(in srgb, var(--primary) 14%, var(--surface, #18151d)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--primary) 30%, transparent); }
+.cl-ios b { display: flex; align-items: center; gap: 8px; font-size: 15px; }
+.cl-ios b .mi { width: 20px; height: 20px; color: var(--primary); }
+.cl-ios ol { margin: 0; padding-left: 20px; display: grid; gap: 4px; font-size: 13.5px; }
+.cl-ios small { color: var(--on-surface-var); font-size: 12.5px; }
+.cl-ios-x { justify-self: start; border: 0; border-radius: 999px; padding: 7px 14px; background: color-mix(in srgb, var(--on-bg) 10%, transparent); color: inherit; font: 600 13px var(--font, inherit); cursor: pointer; }
+.ch-who small.on { color: #3ddc84; }
+
+/* ---------- 0.33.1: чаты на компьютере ---------- */
+.ch-meta { display: none; }
+@media (min-width: 980px) and (pointer: fine) {
+  :root { --cl-w: 340px; --pane-l: max(16px, calc(50vw - 640px)); --pane-b: 112px; }
+  body.on-chats:has(#mini-player:not([hidden])) { --pane-b: 180px; }
+  /* левая панель: личные сообщения */
+  body.on-chats #view-chats:not([hidden]) { position: fixed; left: var(--pane-l); top: 16px; bottom: var(--pane-b); width: var(--cl-w); max-width: none; margin: 0; padding: 16px 10px 12px !important; overflow-y: auto; border-radius: 24px 0 0 24px; background: color-mix(in srgb, var(--surface, #17141b) 92%, #000); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--on-bg) 8%, transparent); scrollbar-width: thin; animation: none !important; }
+  body.on-chats #view-chats .cl-head { padding: 0 8px; margin-bottom: 10px; }
+  body.on-chats #view-chats .view-title { font-size: 20px !important; margin: 0 !important; }
+  body.on-chats #view-chats .cl-search { margin: 0 6px 10px; width: calc(100% - 12px); min-height: 0; padding: 9px 12px; border-radius: 10px; font-size: 14px; }
+  body.on-chats #view-chats .section-title { margin: 14px 8px 6px; font-size: 11.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--on-surface-var); }
+  body.on-chats #view-chats .section-title::before { display: none; }
+  body.on-chats .cl-list { display: grid; gap: 1px; }
+  body.on-chats .cl-row { padding: 7px 10px !important; border-radius: 10px !important; gap: 12px; animation: none !important; transition: background .12s; }
+  body.on-chats .cl-row .cl-av { width: 40px !important; height: 40px !important; }
+  body.on-chats .cl-row:hover:not(.on) { background: color-mix(in srgb, var(--on-bg) 6%, transparent); }
+  body.on-chats .cl-row.on { background: color-mix(in srgb, var(--on-bg) 11%, transparent); }
+  body.on-chats .cl-row .cl-top b { font-size: 14.5px; }
+  body.on-chats .cl-row .cl-prev { font-size: 13px; }
+  body.on-chats .cl-reqbtn { margin: 0 6px 6px; border-radius: 12px; }
+
+  /* правая панель: переписка */
+  body.on-chats #chat-page, body.on-chats::after { left: calc(var(--pane-l) + var(--cl-w)); right: max(16px, calc(50vw - 640px)); top: 16px; bottom: var(--pane-b); border-radius: 0 24px 24px 0; }
+  body.on-chats #chat-page { background: color-mix(in srgb, var(--bg, #0e0c10) 94%, #000); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--on-bg) 8%, transparent), 0 20px 60px rgba(0,0,0,.35); }
+  body.on-chats::after { border: 0; background: color-mix(in srgb, var(--bg, #0e0c10) 94%, #000); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--on-bg) 8%, transparent); content: 'Выберите переписку слева'; }
+  body.on-chats #chat-page .ch-head { padding: 10px 18px; min-height: 56px; box-sizing: border-box; background: transparent; border-bottom: 1px solid color-mix(in srgb, var(--on-bg) 8%, transparent); backdrop-filter: none; }
+  body.on-chats #chat-page .ch-head .ch-av { width: 34px; height: 34px; }
+  body.on-chats #chat-page .ch-who b { font-size: 15.5px; }
+
+  /* сообщения без «пузырей»: фото, ник, время и текст в строку */
+  body.on-chats #chat-page .ch-list { gap: 0; padding: 12px 0 18px; }
+  body.on-chats #chat-page .ch-msg, body.on-chats #chat-page .ch-msg.me { align-self: stretch; max-width: none; width: auto; margin: 0; padding: 3px 24px 3px 76px; border-radius: 0; background: none !important; color: var(--on-bg, #f2eef5) !important; box-shadow: none !important; animation: none; }
+  body.on-chats #chat-page .ch-list > * { flex-shrink: 0; }
+  body.on-chats #chat-page .ch-msg:not(.grp) { margin-top: 14px; padding-top: 4px; min-height: 44px; }
+  body.on-chats #chat-page .ch-msg:hover { background: color-mix(in srgb, var(--on-bg) 4%, transparent) !important; }
+  body.on-chats #chat-page .ch-meta { display: flex; align-items: baseline; gap: 8px; margin-bottom: 2px; }
+  body.on-chats #chat-page .ch-meta img { position: absolute; left: 20px; top: 6px; width: 40px; height: 40px; border-radius: 50%; object-fit: cover; }
+  body.on-chats #chat-page .ch-meta b { font-size: 15px; font-weight: 700; }
+  body.on-chats #chat-page .ch-msg.me .ch-meta b { color: var(--primary); }
+  body.on-chats #chat-page .ch-meta span { font-size: 12px; color: var(--on-surface-var); }
+  body.on-chats #chat-page .ch-msg.grp .ch-meta { display: none; }
+  body.on-chats #chat-page .ch-text { font-size: 15px; line-height: 1.45; }
+  /* время: у первого сообщения — в шапке, у остальных — слева при наведении */
+  body.on-chats #chat-page .ch-msg time { position: absolute; left: 0; top: 6px; width: 70px; margin: 0; padding: 0; text-align: center; font-size: 11px; color: var(--on-surface-var) !important; background: none !important; opacity: 0; backdrop-filter: none; }
+  body.on-chats #chat-page .ch-msg.grp:hover time { opacity: 1; }
+  body.on-chats #chat-page .ch-msg:not(.grp) time { display: none; }
+  body.on-chats #chat-page .ch-msg .ch-tick { display: none; }
+  /* фото, треки и голосовые внутри строки */
+  body.on-chats #chat-page .ch-msg.has-img { width: auto; }
+  body.on-chats #chat-page .ch-msg .ch-img { width: auto !important; max-width: min(420px, 100%); max-height: 320px; min-height: 0; margin: 4px 0; border-radius: 12px !important; box-shadow: none; }
+  body.on-chats #chat-page .ch-track { max-width: 420px; background: color-mix(in srgb, var(--on-bg) 7%, transparent) !important; }
+  body.on-chats #chat-page .ch-msg.voice { min-width: 0; }
+  body.on-chats #chat-page .ch-voice { max-width: 360px; padding: 8px 12px; border-radius: 14px; background: color-mix(in srgb, var(--on-bg) 7%, transparent); }
+  body.on-chats #chat-page .ch-msg.me .ch-vplay { background: var(--primary); color: var(--on-primary); }
+  /* разделитель дня — линия с датой */
+  body.on-chats #chat-page .ch-day { align-self: stretch; display: flex; align-items: center; gap: 10px; margin: 18px 20px 2px; padding: 0; background: none; font-size: 12px; font-weight: 600; color: var(--on-surface-var); }
+  body.on-chats #chat-page .ch-day::before, body.on-chats #chat-page .ch-day::after { content: ''; flex: 1; height: 1px; background: color-mix(in srgb, var(--on-bg) 10%, transparent); }
+  body.on-chats #chat-page .ch-call { margin: 10px auto; }
+  /* поле ввода — широкое */
+  body.on-chats #chat-page .ch-bar { padding: 0 16px 16px; background: transparent; backdrop-filter: none; border: 0; }
+  body.on-chats #chat-page .ch-input { border-radius: 12px; background: color-mix(in srgb, var(--on-bg) 8%, transparent); min-height: 46px; }
+  body.on-chats #chat-page .ch-share, body.on-chats #chat-page .ch-send { width: 46px; height: 46px; border-radius: 12px; }
+  body.on-chats #chat-page .ch-rec { padding: 0 16px 16px; background: color-mix(in srgb, var(--bg, #0e0c10) 94%, #000); }
+  body.on-chats #chat-page .ch-firecta { padding: 4px 0 8px; }
+}
+@media (min-width: 980px) and (pointer: fine) and (max-width: 1240px) { :root { --cl-w: 300px; } }

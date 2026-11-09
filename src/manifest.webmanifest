@@ -1,0 +1,33 @@
+{
+  "name": "MKW Music",
+  "short_name": "MKW",
+  "description": "Музыка для своих",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0d0a0b",
+  "theme_color": "#0d0a0b",
+  "lang": "ru",
+  "icons": [
+    {
+      "src": "assets/ic5-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "assets/ic5-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "assets/ic5-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "id": "./"
+}

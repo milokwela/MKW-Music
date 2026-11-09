@@ -1,0 +1,61 @@
+/* Цвета и размеры. Светлая и тёмная темы, акцент розовый (Material You). */
+
+:root {
+  --primary: #a8326a;
+  --on-primary: #ffffff;
+  --primary-container: #ffd8e7;
+  --on-primary-container: #3d0022;
+  --bg: #fffbff;
+  --on-bg: #201a1c;
+  --surface: #fbeef2;
+  --surface-high: #f4e1e8;
+  --outline: #85737a;
+  --on-surface-var: #524349;
+  --error: #ba1a1a;
+  --scrim: rgba(0, 0, 0, 0.45);
+  --shadow: 0 2px 10px rgba(60, 20, 40, 0.18);
+
+  --radius-s: 12px;
+  --radius-m: 20px;
+  --radius-l: 28px;
+  --nav-h: 68px;
+  --mini-h: 64px;
+  --font: 'Roboto', 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --primary: #ffb0d0;
+    --on-primary: #5e1138;
+    --primary-container: #7b2950;
+    --on-primary-container: #ffd8e7;
+    --bg: #191113;
+    --on-bg: #eddfe2;
+    --surface: #261b1f;
+    --surface-high: #31252a;
+    --outline: #9f8c93;
+    --on-surface-var: #d6c1c8;
+    --error: #ffb4ab;
+    --scrim: rgba(0, 0, 0, 0.6);
+    --shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme='dark'] {
+  --primary: #ffb0d0;
+  --on-primary: #5e1138;
+  --primary-container: #7b2950;
+  --on-primary-container: #ffd8e7;
+  --bg: #191113;
+  --on-bg: #eddfe2;
+  --surface: #261b1f;
+  --surface-high: #31252a;
+  --outline: #9f8c93;
+  --on-surface-var: #d6c1c8;
+  --error: #ffb4ab;
+  --scrim: rgba(0, 0, 0, 0.6);
+  --shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
+  color-scheme: dark;
+}
