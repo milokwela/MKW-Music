@@ -2,6 +2,7 @@
 # Сборка MKW из src/ в dist/. Запуск из корня репозитория: bash scripts/build.sh 0.36.7 1
 # Нужны: bash, node, npx (esbuild ставится сам через npx). Переменная ESBUILD — свой путь к esbuild.
 set -e
+PY=$(command -v python3 || command -v python)
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 V=$1; D="${OUT:-$ROOT/dist}"
 cd "$ROOT/src"
@@ -30,7 +31,7 @@ CSS=$(grep -o 'href="css/[a-z0-9-]*\.css' $ROOT/src/index.html | sed 's#href="cs
 ( for c in $CSS; do cat $ROOT/src/css/$c; echo; done ) > $D/app.src.css
 $EB $D/app.src.css --minify --loader:.css=css --log-level=warning --outfile=$D/app.css
 rm $D/app.src.css
-python3 - "$D/index.html" "$V" <<'PY'
+"$PY" - "$D/index.html" "$V" <<'PY'
 import re,sys
 p,v=sys.argv[1],sys.argv[2]; s=open(p).read()
 links=re.findall(r'<link rel="stylesheet" href="[a-z0-9-]+\.css\?v=[^"]*">\n?', s)
