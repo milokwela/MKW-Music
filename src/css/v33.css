@@ -1136,3 +1136,42 @@ body:has(#artist-page.open) #dock, body:has(#user-page.open) #dock { z-index: 48
 .vote-pop .beta-pop-c{max-height:88vh;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-top:12px}
 .vote-pop .vp-top-btn{display:block;margin:0 0 10px auto;padding:8px 16px;font-size:14px}
 .vote-pop .poll-opt{min-height:52px}
+
+/* ===== 0.37.5: профиль на компьютере — аккуратное меню слева, заголовок раздела, ровные настройки ===== */
+@media (min-width: 1000px) and (pointer: fine) {
+  #view-profile:not([hidden]) { grid-template-columns: 340px minmax(0, 1fr) !important; column-gap: 32px !important; padding-bottom: 130px; }
+  #view-profile .p-side { top: 20px !important; display: grid !important; gap: 14px; }
+  /* меню разделов: спокойные строки, выбранная — мягкая подсветка и полоска слева */
+  #view-profile .ptabs { padding: 8px !important; border-radius: 24px !important; gap: 2px !important;
+    background: color-mix(in srgb, var(--surface, #17141b) 88%, transparent) !important; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--on-bg) 8%, transparent) !important; backdrop-filter: none !important; }
+  #view-profile .ptab-lens { display: none !important; }
+  #view-profile .ptab { display: flex !important; align-items: center; gap: 14px !important; padding: 10px 12px !important; border-radius: 16px !important; font-size: 15px !important; font-weight: 600;
+    color: var(--on-bg) !important; transition: background-color .18s ease, color .18s ease !important; cursor: pointer; }
+  #view-profile .ptab .mi { width: 34px !important; height: 34px !important; padding: 7px; box-sizing: border-box; border-radius: 11px; flex: none;
+    background: color-mix(in srgb, var(--on-bg) 7%, transparent); color: var(--on-surface-var, var(--on-bg)); transition: background-color .18s, color .18s; }
+  #view-profile .ptab:hover { background: color-mix(in srgb, var(--on-bg) 6%, transparent); }
+  #view-profile .ptab.active { background: color-mix(in srgb, var(--primary) 16%, transparent) !important; color: var(--on-bg) !important; box-shadow: inset 3px 0 0 var(--primary); }
+  #view-profile .ptab.active .mi { background: var(--primary); color: var(--on-primary, #fff); }
+  #view-profile .ptab[data-badge]::before { position: static !important; order: 3; margin-left: auto; transform: none !important; }
+  /* заголовок раздела */
+  #view-profile .ppane::before { display: block; margin: 6px 4px 18px; font-size: 30px; font-weight: 800; letter-spacing: -.5px; line-height: 1.1; color: var(--on-bg); grid-column: 1 / -1; column-span: all; }
+  #view-profile .ppane[data-pane="main"]::before { content: 'Обзор'; }
+  #view-profile .ppane[data-pane="friends"]::before { content: 'Друзья'; }
+  #view-profile .ppane[data-pane="board"]::before { content: 'Топ слушателей'; }
+  #view-profile .ppane[data-pane="set"]::before { content: 'Настройки'; }
+  #view-profile .ppane[data-pane="about"]::before { content: 'О MKW'; }
+  /* настройки: ровная колонка, группы — карточки с заголовком */
+  #view-profile .ppane[data-pane="set"] { columns: auto !important; }
+  #view-profile .ppane[data-pane="set"]:not([hidden]) { display: grid !important; grid-template-columns: minmax(0, 1fr); gap: 18px; max-width: 780px; }
+  #view-profile .ppane[data-pane="set"] > * { margin: 0 !important; }
+  #view-profile .set-gt { margin: 0 4px 8px !important; font-size: 13px; letter-spacing: .06em; text-transform: uppercase; opacity: .7; }
+  #view-profile .set-card { border-radius: 20px !important; background: color-mix(in srgb, var(--surface, #17141b) 90%, transparent) !important; backdrop-filter: none !important; }
+  #view-profile .set-row { transition: background-color .15s; }
+  #view-profile .set-row.tap:hover { background: color-mix(in srgb, var(--on-bg) 5%, transparent); }
+}
+@media (min-width: 1360px) and (pointer: fine) {
+  /* на широком экране настройки в две ровные колонки */
+  #view-profile .ppane[data-pane="set"] { max-width: none; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
+}
+/* на компьютере снег идёт позади окон и панелей, не по тексту */
+@media (min-width: 980px) and (pointer: fine) { #winter-snow { z-index: 0 !important; } }
