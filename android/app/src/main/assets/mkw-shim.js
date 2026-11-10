@@ -53,6 +53,9 @@
     }
   } catch (e) { log('sw notif ' + e); }
 
+  /* ---------- в приложении своя заставка: заставку сайта не показываем ---------- */
+  try { var css = document.createElement('style'); css.textContent = '#splash{display:none!important}'; (document.head || document.documentElement).appendChild(css); } catch (e) { /* ignore */ }
+
   /* ---------- музыка в шторке и в фоне (Media Session → приложение) ---------- */
   var handlers = {}, md = null, ps = 'none', timer = 0;
   function art(m) {
