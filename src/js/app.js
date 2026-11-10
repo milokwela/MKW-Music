@@ -31,8 +31,10 @@ import { initBoost, hold } from './boost.js';
 import { initBack } from './back.js';
 import { initClock } from './clock.js';
 import { chatOpen, closeChat } from './chat.js';
-import { initWave } from './wave.js';
+import { initWave, waveDebug } from './wave.js';
 import { initTheme } from './theme.js';
+import { initWinter } from './winter.js';
+import { initPlayer2 } from './player2.js';
 import * as player from './player.js';
 import { $, $$ } from './ui.js';
 
@@ -131,6 +133,7 @@ function initListenFlush() {
 
 // ---------- состояние входа ----------
 function onUser(user) {
+  endSplash();
   if (user) {
     $('#auth-screen').hidden = true;
     $('#app').hidden = false;
@@ -169,13 +172,23 @@ function onUser(user) {
   }
 }
 
+// Заставка уходит, как только приложение готово (но не раньше 1,4 с, чтобы анимация не обрывалась).
+// Раньше она всегда висела почти 3 секунды, даже если всё уже загрузилось.
+const SPLASH_T0 = performance.now();
+let splashOut = false;
+function endSplash() {
+  if (splashOut) return; splashOut = true;
+  const sp = document.getElementById('splash');
+  if (!sp) return;
+  const wait = Math.max(0, 1400 - (performance.now() - SPLASH_T0));
+  setTimeout(() => { sp.classList.add('out'); setTimeout(() => sp.remove(), 650); }, wait);
+}
 function runSplash() {
   const sp = document.getElementById('splash');
   if (!sp) return;
   if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) { sp.remove(); return; }
   sp.classList.add('go');
-  setTimeout(() => sp.classList.add('out'), 2900);
-  setTimeout(() => sp.remove(), 3600);
+  setTimeout(endSplash, 2900);   // страховка: вход так и не ответил
 }
 
 function boot() {
@@ -185,12 +198,15 @@ function boot() {
   initMotion();
   if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
   initTheme();
+  initWinter();
+  try { if (localStorage.getItem('mkw.debug') === '1') window.__mkw = { player, waveDebug }; } catch { /* ignore */ }
   initAuthForm();
   initNav();
   initLiquidNav();
   initSearch();
   initLibrary();
   initPlayerUI();
+  initPlayer2();
   initLyrics();
   initPerf();
   initWave();

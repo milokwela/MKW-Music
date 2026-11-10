@@ -95,6 +95,9 @@ async function artistTracks(name) {
   return { tracks, dz, albums };
 }
 
+import { relatedArtists, artistFresh } from './reco.js';
+import { startWave } from './wave.js';
+import * as store from './store.js';
 export function closeArtist() {
   const p = $('#artist-page');
   p.classList.remove('open');
@@ -150,6 +153,8 @@ export async function openArtist(name) {
   const bar = h('div', { class: 'artist-actions' },
     h('button', { class: 'btn', type: 'button', onclick: () => tracks.length && player.playTracks(tracks, 0) }, icon('play'), ' Слушать'),
     h('button', { class: 'btn tonal', type: 'button', onclick: () => { if (tracks.length) player.playTracks(shuffled(tracks), 0); } }, icon('shuffle'), ' Вперемешку'),
+    // волна от исполнителя: начнётся с его песни и продолжится похожими
+    h('button', { class: 'btn tonal', type: 'button', onclick: () => { if (tracks.length) { closeArtist(); startWave(tracks[0]); } } }, mi('sparkle'), ' Волна'),
     blockBtn);
   const row = (t, i) => trackRow(t, { onPlay: () => player.playTracks(tracks, i), onMore: () => openTrackMenu(t), current: player.queue.current?.id === t.id, allowNoPreview: true });
   const FIRST = 20;
@@ -168,8 +173,11 @@ export async function openArtist(name) {
     } }, h('img', { src: a.cover, alt: '', loading: 'lazy' }), h('b', { text: a.title }), h('small', { text: [a.year, a.type === 'single' ? 'сингл' : a.type === 'ep' ? 'EP' : 'альбом'].filter(Boolean).join(' · ') }))))) : null;
   const genres = [...new Set(tracks.map((t) => t.genre).filter(Boolean))].slice(0, 3);
   const years = tracks.map((t) => Number(String(t.year || t.releaseDate || '').slice(0, 4))).filter((y) => y > 1950);
+  const key = (x) => String(x || '').toLowerCase();
+  const myLikes = store.state.likes.filter((t) => key(t.artist).includes(key(name))).length;
   const meta = h('div', { class: 'artist-meta' },
     h('span', { class: 'chip', text: `${tracks.length} треков в подборке` }),
+    myLikes ? h('span', { class: 'chip chip-like', text: `${myLikes} ${plural(myLikes, 'трек', 'трека', 'треков')} в ваших лайках` }) : null,
     ...genres.map((g) => h('span', { class: 'chip', text: g })),
     years.length ? h('span', { class: 'chip', text: Math.min(...years) === Math.max(...years) ? String(years[0]) : `${Math.min(...years)}–${Math.max(...years)}` }) : null);
   const photo = h('img', { class: 'ah-img', alt: '' });
@@ -216,11 +224,30 @@ export async function openArtist(name) {
     if (info.url) bio.append(h('div', { style: 'margin-top:8px;font-size:12px' }, 'Источник: ', h('a', { href: info.url, target: '_blank', rel: 'noopener', text: 'Википедия' })));
     bio.hidden = false;
   });
+  // новый релиз (не старше 5 месяцев) и похожие исполнители — подгружаются отдельно, страница их не ждёт
+  const freshBox = h('div', { class: 'ar-fresh', hidden: '' });
+  const relBox = h('div', { class: 'ar-rel', hidden: '' });
+  artistFresh(name).then((fr) => {
+    if (mine !== seq || !fr || !fr.length) return;
+    freshBox.replaceChildren(h('button', { type: 'button', class: 'ar-fresh-card', onclick: () => { player.playTracks(fr, 0); toast(`Включаю «${fr[0].album || fr[0].title}»`); } },
+      h('img', { src: fr[0].artwork || 'assets/mkw-logo.png', alt: '', loading: 'lazy' }),
+      h('span', {}, h('small', { text: 'Новый релиз' }), h('b', { text: fr[0].album || fr[0].title }), h('i', { text: `${fr.length} ${plural(fr.length, 'трек', 'трека', 'треков')}` })),
+      icon('play')));
+    freshBox.hidden = false;
+  }).catch(() => {});
+  relatedArtists(name).then((rel) => {
+    if (mine !== seq || !rel || !rel.length) return;
+    relBox.replaceChildren(h('div', { class: 'section-title', text: 'Похожие исполнители' }),
+      h('div', { class: 'al-row ar-rel-row' }, rel.slice(0, 12).map((a) => h('button', { type: 'button', class: 'al-card ar-rel-card', onclick: () => openArtist(a.name) },
+        a.picture && !/\/artist\/\//.test(a.picture) ? h('img', { src: a.picture.replace(/1000x1000/, '250x250'), alt: '', loading: 'lazy' }) : h('span', { class: 'ar-rel-ph' }, mi('person')),
+        h('b', { text: a.name })))));
+    relBox.hidden = false;
+  }).catch(() => {});
   body.replaceChildren(
-    headBox, bar, bio,
+    headBox, bar, bio, freshBox,
     h('div', { class: 'section-title', text: tracks.length ? `Популярное · ${tracks.length}` : '' }),
     tracks.length ? list : h('div', { class: 'empty' }, h('div', { text: 'Треков не нашлось' })),
-    moreBtn, albumsBox);
+    moreBtn, albumsBox, relBox);
   if (tracks.length) { animateIn(list); prefetchYouTubeIds(tracks); }
 }
 

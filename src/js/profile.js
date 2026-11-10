@@ -5,6 +5,8 @@ import { betaCard, pollCard } from './poll.js';
 import { $, $$, h, icon, openSheet, closeSheet, toast, sheetItem, trackRow } from './ui.js';
 import * as store from './store.js';
 import * as player from './player.js';
+import { winterOn, setWinter } from './winter.js';
+import { player2On, setPlayer2 } from './player2.js';
 import { ACCENTS, getTheme, getAccent, getCustomHue, setCustomColor, setTheme, setAccent, hslHex, getNeutral } from './theme.js';
 import { CHANGELOG, VERSION, STAGE, KNOWN_ISSUES } from './changelog.js';
 import { plural, pickTrack, safeUrl } from './utils.js';
@@ -75,6 +77,12 @@ const achDone = (a, s) => (a.ok ? a.ok(s) : a.v(s)[0] >= a.v(s)[1]);
 export const ACH = Object.fromEntries(ACHIEVEMENTS.map((a) => [a.id, a]));
 
 export const BANNERS = [
+  // 0.37: зимние и «парные» баннеры
+  { id: 'wtree', name: 'Наряжаем ёлку', css: 'right 6% bottom 4% / auto 86% no-repeat url(assets/mkw-st49.webp), radial-gradient(circle at 18% 28%, rgba(255,255,255,.9) 0 1.5px, transparent 2.5px), radial-gradient(circle at 38% 66%, rgba(255,255,255,.75) 0 1.5px, transparent 2.5px), radial-gradient(circle at 8% 78%, rgba(255,255,255,.7) 0 1px, transparent 2px), radial-gradient(circle at 52% 22%, rgba(255,255,255,.8) 0 1px, transparent 2px), linear-gradient(160deg, #123a5e, #1b1f4d 55%, #0b0d22)' },
+  { id: 'wpair', name: 'Парочка', css: 'right 7% center / auto 86% no-repeat url(assets/mkw-st37.webp), linear-gradient(135deg, #ff9ecb, #c084ff 55%, #6d7dff)' },
+  { id: 'wduo', name: 'Слушаем вместе', css: 'right 6% center / auto 84% no-repeat url(assets/mkw-st39.webp), radial-gradient(120% 100% at 85% 15%, #3a3350, #12101c 70%)' },
+  { id: 'wbox', name: 'Коробка MKW', css: 'right 6% bottom 2% / auto 88% no-repeat url(assets/mkw-st48.webp), linear-gradient(135deg, #2b2d42, #8d5cf6 60%, #ff7ac0)' },
+  { id: 'wnorth', name: 'Северное сияние', css: 'radial-gradient(90% 120% at 15% 0%, rgba(52,211,255,.85), transparent 60%), radial-gradient(90% 120% at 85% 10%, rgba(160,110,255,.8), transparent 60%), radial-gradient(120% 90% at 50% 110%, rgba(70,227,140,.55), transparent 60%), linear-gradient(180deg, #0a1030, #05060f)' },
   { id: 'catnight', name: 'Котик ночью', css: 'right 8% bottom 6% / auto 78% no-repeat url(assets/mkw-st26.webp), radial-gradient(120% 90% at 80% 20%, #2b2f6b, #0d0b1f 70%)' },
   { id: 'catlove', name: 'Котик с сердцем', css: 'right 8% center / auto 82% no-repeat url(assets/mkw-cat2.webp), linear-gradient(135deg, #ff8fc4, #b06bff)' },
   { id: 'catmusic', name: 'Котик-меломан', css: 'right 6% center / auto 82% no-repeat url(assets/mkw-st31.webp), linear-gradient(135deg, #1a1a1a, #3a3a3a 60%, #111)' },
@@ -97,6 +105,7 @@ export const FRAMES = [
   { id: 'black', name: 'Чёрный глянец' }, { id: 'silver', name: 'Серебро' }, { id: 'fire', name: 'Огонь' },
   { id: 'pink', name: 'Розовый неон' }, { id: 'ice', name: 'Лёд' }, { id: 'toxic', name: 'Кислота' }, { id: 'sunset', name: 'Закат' },
   { id: 'pulse', name: 'Пульс' }, { id: 'dash', name: 'Пунктир' }, { id: 'double', name: 'Двойная' },
+  { id: 'garland', name: 'Гирлянда' }, { id: 'frost', name: 'Иней' },
 ];
 export const bannerCss = (id, img) => (safeUrl(img) ? `center / cover no-repeat url("${safeUrl(img)}")` : (BANNERS.find((b) => b.id === id) || BANNERS[0]).css);
 
@@ -178,7 +187,7 @@ function syncControls() {
   $$('.src-chip').forEach((c) => c.classList.toggle('active', c.dataset.id === getSourceMode()));
   if (refs.srcnote) refs.srcnote.textContent = `iTunes: работает · YouTube: работает без лимита (через сервер MKW${youtubeQuotaOut() ? ', ключ на сегодня исчерпан' : ''}) · Audius: ${audiusEnabled() ? 'работает' : 'нет ключа'}`;
   const tog = (el, v) => { if (el) { el.classList.toggle('active', v); el.setAttribute('aria-checked', String(v)); } };
-  tog(refs.gest, gesturesOn()); tog(refs.voice, voiceOn()); tog(refs.notify, notifyOn()); tog(refs.bgplay, streamsOn()); tog(refs.lowp, lowPower()); tog(refs.livebg, liveBg()); tog(refs.board, !hiddenFromBoard());
+  tog(refs.gest, gesturesOn()); tog(refs.voice, voiceOn()); tog(refs.notify, notifyOn()); tog(refs.bgplay, streamsOn()); tog(refs.lowp, lowPower()); tog(refs.livebg, liveBg()); tog(refs.winter, winterOn()); tog(refs.player2, player2On()); tog(refs.board, !hiddenFromBoard());
   $$('.swatch').forEach((c) => c.classList.toggle('active', c.dataset.id === getAccent()));
   if (refs.customSw) {
     const nt = getNeutral();
@@ -816,7 +825,7 @@ function swipeTabs(area) {
 window.addEventListener('resize', () => placeLens(false));
 
 function setTab(name) {
-  if (name === 'about') { try { localStorage.setItem('mkw.aboutseen', '0.36.7'); } catch { /* ignore */ } document.querySelectorAll('.ptab.has-new').forEach((b) => b.classList.remove('has-new')); }
+  if (name === 'about') { try { localStorage.setItem('mkw.aboutseen', '0.37.0'); } catch { /* ignore */ } document.querySelectorAll('.ptab.has-new').forEach((b) => b.classList.remove('has-new')); }
   const dir = TABS.indexOf(name) - TABS.indexOf(refs.tab || 'main');
   refs.tab = name;
   $$('.ptab').forEach((b) => b.classList.toggle('active', b.dataset.tab === name));
@@ -842,6 +851,8 @@ export function buildProfile(nick) {
   refs.showcase = h('div', { class: 'showcase' }, refs.favA, refs.favT);
   const sw = (on) => h('button', { class: 'switch', type: 'button', role: 'switch', onclick: on }, h('i'));
   refs.livebg = sw(() => { setLiveBg(!liveBg()); syncControls(); });
+  refs.winter = sw(() => { setWinter(!winterOn()); syncControls(); });
+  refs.player2 = sw(() => { setPlayer2(!player2On()); syncControls(); });
   refs.lowp = sw(() => { setLowPower(!lowPower()); syncControls(); });
   refs.gest = sw(async () => { await setGestures(!gesturesOn()); syncControls(); });
   refs.voice = sw(() => { setVoice(!voiceOn()); syncControls(); });
@@ -883,7 +894,7 @@ export function buildProfile(nick) {
   restoreFan(nick).then(() => { paintMarks(getCustom()); });
   const tabBtn = (id, label, ic) => h('button', { class: 'ptab', type: 'button', 'data-tab': id, onclick: () => setTab(id) }, mi(ic), h('span', { text: label }));
   refs.tabs = h('div', { class: 'ptabs' }, h('i', { class: 'ptab-lens' }), tabBtn('main', 'Обзор', 'person'), tabBtn('friends', 'Друзья', 'group'), tabBtn('board', 'Топ', 'trophy'), tabBtn('set', 'Настройки', 'palette'), tabBtn('about', 'О MKW', 'note'));
-  try { if (localStorage.getItem('mkw.aboutseen') !== '0.36.7') refs.tabs.querySelector('[data-tab=about]').classList.add('has-new'); } catch { /* ignore */ }
+  try { if (localStorage.getItem('mkw.aboutseen') !== '0.37.0') refs.tabs.querySelector('[data-tab=about]').classList.add('has-new'); } catch { /* ignore */ }
 
   root.replaceChildren(
     h('div', { class: 'p-side' }, refs.hero, refs.tabs),
@@ -924,6 +935,8 @@ export function buildProfile(nick) {
           h('div', { class: 'swatch-row' }, ACCENTS.map((a) => swatch(a.id, a.name, a.h, () => { setAccent(a.id); syncControls(); })),
             refs.customSw = h('button', { class: 'swatch custom', type: 'button', 'data-id': 'custom', 'aria-label': 'Свой цвет', onclick: openColorPicker },
               h('span', { class: 'sw-prev' }, h('i'), h('i'), h('i'), h('b', {}, mi('palette'))), h('span', { class: 'sw-name', text: 'Свой' })))),
+        row('Зимнее оформление', 'Снег, гирлянда и северное сияние. Можно выключить в любой момент', refs.winter, null, 'sparkle'),
+        row('Новый вид плеера', 'Крупная обложка, волнистая полоса и скорость воспроизведения. Обычный плеер вернётся, если выключить', refs.player2, null, 'play-circle'),
         row('Живой фон плеера', 'Цвета обложки двигаются в такт', refs.livebg, null, 'sparkle')),
       group('Музыка',
         h('div', { class: 'set-block' }, h('b', { text: 'Где искать музыку' }),
@@ -955,7 +968,6 @@ export function buildProfile(nick) {
     h('div', { class: 'ppane', 'data-pane': 'about', hidden: '' },
       h('div', { class: 'about-card' },
         h('div', { class: 'about-top' }, h('img', { src: 'assets/mkw-logo.png', alt: '', class: 'about-logo' }), h('div', {}, h('b', { text: 'MKW Music' }), h('span', { class: 'beta-badge', text: `${STAGE} · v${VERSION}` }))),
-        h('div', { class: 'beta-card' }, h('div', {}, h('b', { text: 'У нас выходной до 9 ноября' }), h('p', { text: 'Извините, до 9 ноября разработчик отдыхает, поэтому баги мы, к сожалению, исправить не сможем. Зато можно проголосовать, каким будет следующее обновление — ниже.' }))),
         betaCard(),
         pollCard(),
         refs.listeners,

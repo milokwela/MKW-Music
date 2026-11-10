@@ -1,6 +1,13 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    // создатель MKW Music (milokwel). Его uid не меняется при смене почты/ника, в отличие от токена с почтой
+    function isOwner() { return request.auth != null && request.auth.uid == 'IqBq9kGF1oZG4Iz0m6LU1nSyx5H2'; }
+    // зарезервированные ники (как RESERVED в auth.js): в публичных карточках их может писать только создатель
+    function nickFree(d) {
+      return !(d.nick.lower() in ['milokq', 'milokwel', 'milokw', 'milokwela', 'milo_kwel', 'admin', 'mkw', 'mkwmusic', 'moderator', 'support', 'razrab'])
+        || isOwner();
+    }
     match /users/{uid} {
       allow read, write: if request.auth != null && request.auth.uid == uid;
     }
@@ -22,6 +29,7 @@ service cloud.firestore {
         && request.resource.data.keys().hasOnly(['nick', 'sec', 'plays', 'likes', 'status', 'banner', 'frame', 'badges', 'avatar', 'shape', 'now', 'seen', 'fan', 'devOff', 'nemo', 'updatedAt'])
         && (!('nemo' in request.resource.data) || (request.resource.data.nemo is string && request.resource.data.nemo.size() <= 4))
         && request.resource.data.nick is string && request.resource.data.nick.size() <= 32
+        && nickFree(request.resource.data)
         && request.resource.data.sec is number && request.resource.data.plays is number && request.resource.data.likes is number
         && request.resource.data.status is string && request.resource.data.status.size() <= 60
         && request.resource.data.banner is string && request.resource.data.banner.size() <= 16
@@ -36,6 +44,7 @@ service cloud.firestore {
         && request.resource.data.keys().hasOnly(['nick', 'status', 'banner', 'bannerImg', 'avatar', 'frame', 'badges', 'bio', 'nickStyle', 'shape', 'effect', 'now', 'seen', 'favArtists', 'favTracks', 'sec', 'plays', 'likes', 'days', 'achCount', 'fan', 'devOff', 'nemo', 'updatedAt'])
         && (!('nemo' in request.resource.data) || (request.resource.data.nemo is string && request.resource.data.nemo.size() <= 4))
         && request.resource.data.nick is string && request.resource.data.nick.size() <= 32
+        && nickFree(request.resource.data)
         && request.resource.data.status is string && request.resource.data.status.size() <= 60
         && request.resource.data.bannerImg is string && request.resource.data.bannerImg.size() <= 300000
         && request.resource.data.avatar is string && request.resource.data.avatar.size() <= 90000
@@ -218,10 +227,10 @@ service cloud.firestore {
         && request.resource.data.o is int && request.resource.data.o >= 0 && request.resource.data.o <= 5;
       allow delete: if request.auth != null && request.auth.uid == uid;
     }
-    // значок Contributor: читают все, выдаёт и забирает только создатель (milokq)
+    // значок Contributor: читают все, выдаёт и забирает только создатель (по uid, а не по почте)
     match /contrib/{uid} {
       allow read: if request.auth != null;
-      allow write: if request.auth != null && request.auth.token.email in ['milokwel@mkw.invalid', 'milokq@mkw.invalid']
+      allow write: if isOwner()
         && request.resource.data.keys().hasOnly(['nick', 'on', 'at']) && request.resource.data.on is bool;
     }
     match /joined/{uid} {

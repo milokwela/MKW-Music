@@ -12,7 +12,15 @@ export const STICKERS = [
   'Музыка в ушах', 'MKW', 'Обнимашки', 'Хм?', 'Бесит', 'Bye…', 'MKW!', 'Крутой', 'Сплю', 'Люблю', 'Кто там?', 'Злюка',
   'Спокойной ночи', 'Сюрприз', 'Люблю музыку', 'Стесняюсь', '…', 'Король', 'Подарок', 'Снеговик', 'Ёлочка', 'Какао', 'Зимний', 'Новогодний сон',
   'Какао со звёздочкой', 'Сладкий сон', 'В костюме снеговика', 'Король', 'Обнимаю пингвина', 'Чего?', 'Слушаю музыку', 'Подарок для тебя', 'Холодно', 'Зимняя ночь', 'Держи звезду', 'Олень',
+  // 0.37: «Парочка» (37–56) и «Чёрный котик» (57–65)
+  'Сердце MKW', 'Обнимашки вдвоём', 'Слушаем вместе', 'Поссорились', 'Что?!', 'Чмок', 'Спим вместе', 'Разбитое сердце', 'Подмигиваю', 'Хвостики сердечком', 'Крутые', 'В коробке MKW', 'Наряжаем ёлку', 'Лапша на двоих', 'Обниму', 'Играем вместе', 'Игра на диване', 'Слушаю голосовое', 'Ну прости', 'Лечу тебя', 'MKW', 'Музыка и сердце', 'Сладко сплю', 'Радуюсь', 'Крутой котик', 'Шок', 'С игрушкой', 'Глазки', 'Король котик',
 ].map((name, i) => ({ n: i + 1, name }));
+// наборы в панели стикеров: новые — сверху
+export const STICKER_SETS = [
+  { name: 'Парочка', from: 37, to: 56 },
+  { name: 'Чёрный котик', from: 57, to: 65 },
+  { name: 'Котики MKW', from: 1, to: 36 },
+];
 export const stSrc = (n) => `assets/mkw-st${n}.webp`;
 export const STICKER_TXT = '🐾 Стикер';
 export const catSrc = (n) => `assets/mkw-cat${n}.webp`;
@@ -62,8 +70,10 @@ export function emojiPicker({ onCat, onEmoji, onSticker, tab = 'cats', compact =
     tab = t;
     [...tabs.children].forEach((b) => b.classList.toggle('on', b.dataset.t === t));
     if (t === 'stickers') {
-      body.replaceChildren(h('div', { class: 'emo-cats emo-st' }, ...STICKERS.map((c) => h('button', { type: 'button', class: 'emo-cat', title: c.name, 'aria-label': c.name, onclick: (e) => { e.stopPropagation(); onSticker(c.n); } },
-        h('img', { src: stSrc(c.n), alt: '', loading: 'lazy', draggable: 'false' })))));
+      const btn = (c) => h('button', { type: 'button', class: 'emo-cat', title: c.name, 'aria-label': c.name, onclick: (e) => { e.stopPropagation(); onSticker(c.n); } },
+        h('img', { src: stSrc(c.n), alt: '', loading: 'lazy', draggable: 'false' }));
+      body.replaceChildren(...STICKER_SETS.map((set) => h('div', { class: 'emo-sec emo-stsec' }, h('small', { text: set.name }),
+        h('div', { class: 'emo-cats emo-st' }, ...STICKERS.slice(set.from - 1, set.to).map(btn)))));
     } else if (t === 'cats') {
       body.replaceChildren(h('div', { class: 'emo-cats' }, ...CATS.map((c) => h('button', { type: 'button', class: 'emo-cat', title: c.name, 'aria-label': c.name, onclick: (e) => { e.stopPropagation(); onCat(c.n); } },
         h('img', { src: catSrc(c.n), alt: '', loading: 'lazy', draggable: 'false' })))));
@@ -83,7 +93,7 @@ export function emojiPicker({ onCat, onEmoji, onSticker, tab = 'cats', compact =
 }
 
 // свои эмодзи в тексте (статус, «о себе»): «:c3:» — котик №3, «:s12:» — стикер №12
-const RICH = /:(c(?:[1-9]|1[0-5])|s(?:[1-9]|[12]\d|3[0-6])):/g;
+const RICH = /:(c(?:[1-9]|1[0-5])|s(?:[1-9]|[1-5]\d|6[0-5])):/g;
 export function richText(el, text) {
   const t = String(text || ''); const out = []; let last = 0;
   t.replace(RICH, (m, id, i) => { if (i > last) out.push(document.createTextNode(t.slice(last, i))); out.push(h('img', { class: 'inl-emo', src: id[0] === 'c' ? catSrc(Number(id.slice(1))) : stSrc(Number(id.slice(1))), alt: '' })); last = i + m.length; return m; });

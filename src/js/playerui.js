@@ -118,6 +118,7 @@ let miniGone = false;
 function placeLyricsBtn(wave) {
   const b = $('#fp-lyrics-btn'), row = $('#full-player .fp-controls'), extra = $('#full-player .fp-extra');
   if (!b || !row || !extra) return;
+  if ($('#full-player').classList.contains('fp2')) { if (b.parentElement !== extra) extra.prepend(b); return; }   // в новом виде плеера кнопка текста всегда внизу
   if (wave && b.parentElement !== row) { const nx = $('#fp-next'); if (nx && nx.parentElement === row) nx.after(b); else row.appendChild(b); }
   else if (!wave && b.parentElement !== extra) extra.prepend(b);
 }
