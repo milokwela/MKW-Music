@@ -1,0 +1,51 @@
+plugins {
+    id 'com.android.application'
+}
+
+// Версию и номер сборки подставляет workflow (.github/workflows/android.yml).
+def vName = System.getenv('MKW_VERSION_NAME') ?: '0.0.0'
+def vCode = (System.getenv('MKW_VERSION_CODE') ?: '1').toInteger()
+
+android {
+    namespace 'ru.mkwmusic.app'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'ru.mkwmusic.app'
+        minSdk 24
+        targetSdk 34
+        versionCode vCode
+        versionName vName
+    }
+
+    signingConfigs {
+        release {
+            // Ключ подписи workflow кладёт в файл и передаёт путь и пароли через переменные окружения.
+            def ks = System.getenv('MKW_KEYSTORE_FILE')
+            if (ks) {
+                storeFile file(ks)
+                storePassword System.getenv('MKW_KEYSTORE_PASSWORD')
+                keyAlias System.getenv('MKW_KEY_ALIAS')
+                keyPassword System.getenv('MKW_KEY_PASSWORD')
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            shrinkResources false
+            signingConfig signingConfigs.release
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    lint {
+        checkReleaseBuilds false
+        abortOnError false
+    }
+}
