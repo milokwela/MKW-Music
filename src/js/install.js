@@ -78,7 +78,7 @@ export function openInstall(first) {
     return;
   }
   const g = guide(b);
-  const apkBtn = b.android ? h('a', { class: 'btn tonal', href: 'https://github.com/milokwela/MKW-Music/releases/latest/download/MKW-Music-beta.apk', target: '_blank', rel: 'noopener noreferrer', style: 'text-decoration:none;text-align:center' }, 'Или скачать Android-приложение (APK, beta)') : null;
+  const apkBtn = b.android ? h('a', { class: 'btn tonal', href: 'https://github.com/milokwela/MKW-Music/releases/latest/download/MKW-Music.apk', download: '', style: 'text-decoration:none;text-align:center' }, 'Или скачать приложение для Android') : null;
   const kids = [
     h('p', { class: 'profile-note', text: first ? 'Мы обновились! Поставьте MKW Music как приложение: своя иконка, отдельное окно, запуск без браузера — и работает быстрее.' : 'Своя иконка, отдельное окно, запуск без браузера — и работает быстрее.' }),
   ];

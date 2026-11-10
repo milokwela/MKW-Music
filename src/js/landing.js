@@ -1,4 +1,6 @@
 // Страница для тех, кто ещё не вошёл: промо MKW Music со стикерами + вход/регистрация.
+import { APK_URL, PRIVACY_URL } from './apk.js';
+import { inApp } from './install.js';
 import { h } from './ui.js';
 import { mi } from './icons2.js';
 import { CATS, STICKERS, stSrc, catSrc } from './stickers.js';
@@ -33,12 +35,23 @@ export function initLanding() {
     h('img', { class: 'lp-cat r', src: catSrc(5), alt: '' }),
     h('img', { class: 'lp-cat c', src: stSrc(2), alt: '' }));
   const hero = h('div', { class: 'lp-hero' }, stage,
-    h('span', { class: 'lp-chip' }, h('i'), 'Бесплатно · без рекламы · бета'),
+    h('span', { class: 'lp-chip' }, h('i'), 'Бесплатно · без рекламы'),
     h('h1', { class: 'lp-title' }, 'Музыка, друзья ', h('br'), 'и ', h('span', { text: 'котики MKW' })),
     h('p', { class: 'lp-sub', text: 'Слушайте любые треки, включайте MKW Волну под свой вкус, пишите друзьям, отправляйте голосовые и стикеры, звоните вместе.' }),
     h('div', { class: 'lp-cta' },
       h('button', { type: 'button', class: 'btn lp-go', onclick: () => toCard('register') }, 'Создать аккаунт'),
-      h('button', { type: 'button', class: 'btn tonal lp-in', onclick: () => toCard('login') }, 'Войти')));
+      h('button', { type: 'button', class: 'btn tonal lp-in', onclick: () => toCard('login') }, 'Войти')),
+    // приложение для Android: на телефоне с Android — кнопка скачивания (файл качается сразу, без переходов)
+    inApp ? null : /android/i.test(navigator.userAgent)
+      ? h('div', { class: 'lp-app' },
+        h('b', { text: 'Хотите приложение на Android?' }),
+        h('small', { text: 'В нём музыка играет в фоне и при выключенном экране, а управлять можно с наушников и экрана блокировки. Бесплатно, Android 7.0 и новее. Скоро в RuStore.' }),
+        h('div', { class: 'lp-app-btns' },
+          h('a', { class: 'btn', href: APK_URL, download: '' }, mi('install'), 'Скачать приложение'),
+          h('button', { type: 'button', class: 'btn tonal', onclick: () => toCard('register') }, 'Продолжить на сайте')))
+      : h('div', { class: 'lp-app' },
+        h('b', { text: 'MKW Music теперь и приложение для Android' }),
+        h('small', { text: 'Музыка в фоне и при выключенном экране. Откройте mkwmusic.ru на телефоне с Android и нажмите «Скачать приложение». Скоро в RuStore.' })));
   const feats = h('div', { class: 'lp-feats' }, ...FEATS.map((f) => h('div', { class: 'lp-feat' }, h('span', { class: 'lp-fi' }, mi(f.i)), h('div', {}, h('b', { text: f.t }), h('small', { text: f.s })))));
   // стена стикеров — грузим, когда до неё доскроллили
   const all = [...STICKERS.map((s) => stSrc(s.n)), ...CATS.map((c) => catSrc(c.n))];
@@ -53,7 +66,7 @@ export function initLanding() {
       h('p', { text: '36 стикеров и 15 котиков бесплатно. Отправляйте большие стикеры, ставьте реакции, а за 3 ежедневных задания выбирайте котика, который встанет рядом с вашим ником.' }),
       h('button', { type: 'button', class: 'btn lp-go', onclick: () => toCard('register') }, mi('sticker'), ' Забрать стикеры')),
     rowA, rowB);
-  const foot = h('footer', { class: 'lp-foot' }, h('span', { text: 'MKW Music · mkwmusic.ru' }), h('span', { text: 'by MiloKwel' }));
+  const foot = h('footer', { class: 'lp-foot' }, h('span', { text: 'MKW Music · mkwmusic.ru' }), h('span', { text: 'by MiloKwel' }), h('a', { href: PRIVACY_URL, target: '_blank', rel: 'noopener', text: 'Политика конфиденциальности', style: 'color:inherit' }));
   const top = h('div', { class: 'lp' }, hero, card, feats);
   scr.append(top, wall, foot);
   scr.classList.add('lp-on');

@@ -112,12 +112,19 @@
   };
 
   /* ---------- громкость телефона и устройство вывода ---------- */
+  window.__mkwBt = function (o) { try { window.dispatchEvent(new CustomEvent('mkw-bt', { detail: o })); } catch (e) { /* ignore */ } };
+  window.__mkwBtFail = function () { try { window.dispatchEvent(new CustomEvent('mkw-bt-fail')); } catch (e) { /* ignore */ } };
   window.__mkwAudio = function (o) { try { window.dispatchEvent(new CustomEvent('mkw-audio', { detail: o })); } catch (e) { /* ignore */ } };
   window.MKWNative = {
     audio: function () { send({ t: 'audio' }); },
     setVolume: function (v, ui) { send({ t: 'vol', v: Math.max(0, Math.min(1, Number(v) || 0)), ui: !!ui }); },
     stepVolume: function (dir) { send({ t: 'vol', step: dir > 0 ? 1 : -1, ui: true }); },
-    bluetooth: function () { send({ t: 'bt' }); }
+    bluetooth: function () { send({ t: 'bt' }); },
+    btScan: function () { send({ t: 'btscan' }); },
+    btStop: function () { send({ t: 'btstop' }); },
+    btState: function () { send({ t: 'btstate' }); },
+    btPair: function (a) { send({ t: 'btpair', a: String(a || '') }); },
+    outputSwitch: function () { send({ t: 'outswitch' }); }
   };
 
   /* ---------- «Продолжить с сайта» на экране входа ---------- */
