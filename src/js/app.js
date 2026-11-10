@@ -20,7 +20,7 @@ import { registerListener } from './stats.js';
 import { offerInstall } from './install.js';
 import { showFounderNote } from './incident.js';
 import { showIconUpdate } from './moved.js';
-import { showNews } from './news.js';
+import { showNews, NEWS_VER } from './news.js';
 import { maybeShowBetaNote } from './poll.js';
 import { initHome } from './home.js';
 import { startNotify, stopNotify } from './notify.js';
@@ -40,7 +40,7 @@ import { $, $$, toast, isSheetOpen } from './ui.js';
 
 // Новый слушатель: после регистрации — только предложение установить (его показывает offerInstall) и подсказка про Волну
 function welcomeNew() {
-  try { if (localStorage.getItem('mkw.newuser') !== '1') return; localStorage.removeItem('mkw.newuser'); } catch { return; }
+  try { if (localStorage.getItem('mkw.newuser') !== '1') return; localStorage.removeItem('mkw.newuser'); localStorage.setItem('mkw.news', NEWS_VER); } catch { return; }
   const tip = () => { if (isSheetOpen() || document.querySelector('.nw:not(.out), .call-in')) { setTimeout(tip, 5000); return; } toast('Чтобы настроить MKW Волну под себя, лайкните пару треков'); };
   setTimeout(tip, 14000);
 }

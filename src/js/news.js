@@ -1,22 +1,27 @@
 // Окно «Вышло крупное обновление»: картинки вместо текста, кнопки «Ого!» и «Пропустить». Показывается один раз.
-import { h } from './ui.js';
+import { h, toast } from './ui.js';
+import { APK_URL } from './apk.js';
+import { inApp } from './install.js';
 import { mi } from './icons2.js';
 import { VERSION } from './changelog.js';
 
 const KEY = 'mkw.news';
 // что нового в последней версии — каждое окно показывается один раз на версию
 const SLIDES = [
-  { tag: 'Итоги голосования', title: 'Победила зима. Но мы сделали всё', text: 'Вы выбрали зимнее оформление. А мы заодно улучшили музыку и ускорили приложение — все три варианта из опроса', img: 'assets/mkw-st49.webp', orbit: ['trophy', 'star', 'heart'], hue: 200 },
-  { tag: 'Зима', title: 'Зимнее оформление', text: 'Снег, гирлянда и северное сияние. Уже включено, а выключить можно в Настройках → Внешний вид', img: 'assets/mkw-st27.webp', orbit: ['sparkle', 'star', 'moon'], hue: 195 },
-  { tag: 'Музыка', title: 'MKW Волна 5', text: 'Вышла из беты. Точнее понимает вкус, реже повторяется и чаще находит новое, но похожее на любимое', icon: 'sparkle', orbit: ['headphones', 'note', 'heart'], hue: 300 },
-  { tag: 'Стикеры', title: '29 новых стикеров', text: 'Наборы «Парочка» и «Чёрный котик» ждут в чатах — и в статусе профиля тоже', img: 'assets/mkw-st37.webp', orbit: ['heart', 'star', 'note'], hue: 330 },
-  { tag: 'Скорость', title: 'Быстрее и плавнее', text: 'Приложение открывается быстрее и меньше нагружает телефон', icon: 'rocket', orbit: ['timer', 'sparkle', 'star'], hue: 150 },
+  { tag: 'Праздник', title: 'MKW Music теперь на Android', text: 'Настоящее приложение. В нём есть то, чего раньше не было — листайте', icon: 'rocket', orbit: ['star', 'heart', 'sparkle'], hue: 330 },
+  { tag: 'Наконец-то', title: 'Музыка в фоне', text: 'Сверните приложение или погасите экран — трек не остановится. Спустя много попыток это работает', icon: 'moon', orbit: ['note', 'star', 'sparkle'], hue: 265 },
+  { tag: 'Управление', title: 'Экран блокировки и наушники', text: 'Пауза, следующий трек и перемотка — с экрана блокировки, из шторки, с Bluetooth-наушников и в машине', icon: 'headphones', orbit: ['play', 'pause', 'note'], hue: 200 },
+  { tag: 'Bluetooth', title: 'Подключить устройство', text: 'Поиск наушников и колонок, заряд, громкость телефона — прямо в плеере. Голос и жесты тоже меняют громкость телефона', icon: 'phone', orbit: ['headphones', 'mic', 'sparkle'], hue: 165 },
+  { tag: 'Бесплатно', title: 'Скачайте приложение', text: 'Android 7.0 и новее. Быстрее сайта и само следит за обновлениями. Скоро мы будем в RuStore', icon: 'install', orbit: ['shield', 'rocket', 'heart'], hue: 335 },
 ];
+export const NEWS_VER = '0.39.0';
+const ANDROID = /android/i.test(navigator.userAgent);
+
 
 export function showNews() {
-  const ver = '0.37.0'; // окно «Что нового» — для версии с новинками, мелкие исправления его не показывают
-  // на новом устройстве (и новым слушателям) окно не показываем — оно для тех, кто обновился
-  try { const cur = localStorage.getItem(KEY); if (cur === ver) return; if (cur === null) { localStorage.setItem(KEY, ver); return; } } catch { return; }
+  const ver = NEWS_VER; // окно — для версии с большой новостью, мелкие исправления его не показывают
+  if (inApp) { try { localStorage.setItem(KEY, ver); } catch { /* ignore */ } return; } // в самом приложении звать в приложение незачем
+  try { if (localStorage.getItem(KEY) === ver) return; } catch { return; }
   if (document.querySelector('.inc')) { setTimeout(showNews, 8000); return; } // сначала сообщение о сбое
   let i = 0;
   const done = () => { try { localStorage.setItem(KEY, ver); } catch { /* ignore */ } box.classList.add('out'); setTimeout(() => box.remove(), 350); };
@@ -31,18 +36,18 @@ export function showNews() {
   const track = h('div', { class: 'nw-track' }, ...slides);
   const dots = h('div', { class: 'nw-dots' }, SLIDES.map(() => h('i')));
   const wow = h('button', { class: 'btn nw-wow', type: 'button' }, 'Ого!');
-  const skip = h('button', { class: 'btn tonal nw-skip', type: 'button', onclick: done }, 'Пропустить');
+  const skip = h('button', { class: 'btn tonal nw-skip', type: 'button', onclick: done }, 'Позже');
   const go = (n) => {
     i = Math.max(0, Math.min(SLIDES.length - 1, n));
     track.style.transform = `translateX(${-i * 100}%)`;
     [...dots.children].forEach((d, k) => d.classList.toggle('on', k === i));
     slides.forEach((s, k) => s.classList.toggle('on', k === i));
-    wow.textContent = i === SLIDES.length - 1 ? 'Круто, поехали!' : 'Ого!';
+    wow.textContent = i === SLIDES.length - 1 ? (ANDROID ? 'Скачать приложение' : 'Круто!') : 'Ого!';
   };
-  wow.addEventListener('click', () => { if (i < SLIDES.length - 1) go(i + 1); else done(); });
+  wow.addEventListener('click', () => { if (i < SLIDES.length - 1) { go(i + 1); return; } done(); if (ANDROID) { toast('Скачиваем приложение — откройте файл, когда загрузится'); location.href = APK_URL; } else toast('Скачать можно с телефона Android: Профиль → О MKW'); });
   const box = h('div', { class: 'nw', role: 'dialog', 'aria-label': 'Что нового' },
     h('div', { class: 'nw-card' },
-      h('div', { class: 'nw-head' }, h('b', { text: 'Что нового' }), h('small', { text: `MKW Music ${VERSION}` })),
+      h('div', { class: 'nw-head' }, h('b', { text: 'Большая новость' }), h('small', { text: `MKW Music ${VERSION}` })),
       h('div', { class: 'nw-view' }, track), dots,
       h('div', { class: 'nw-btns' }, skip, wow)));
   // листание пальцем или мышью
