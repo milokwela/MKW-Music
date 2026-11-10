@@ -31,7 +31,14 @@ self.addEventListener('fetch', (e) => {
       const c = await caches.open(CACHE);
       const hit = await c.match(req);
       if (hit && url.search) return hit;                       // версия в адресе — файл не меняется
-      const net = fetch(req).then((res) => { if (res.ok) c.put(req, res.clone()); return res; }).catch(() => hit);
+      const net = fetch(req).then((res) => {
+        if (res.ok) {
+          c.put(req, res.clone());
+          // новая версия файла легла в кэш — старые версии того же файла больше не нужны
+          if (url.search) c.keys().then((keys) => keys.forEach((k) => { const u = new URL(k.url); if (u.pathname === url.pathname && u.search !== url.search) c.delete(k); })).catch(() => {});
+        }
+        return res;
+      }).catch(() => hit);
       return hit || net;                                       // без версии: отдаём кэш и обновляем в фоне
     })());
   }

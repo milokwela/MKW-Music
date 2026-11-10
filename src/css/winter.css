@@ -1,0 +1,111 @@
+/* ===== Зимнее оформление (0.37). Работает, пока на <html> стоит data-winter="1" ===== */
+
+/* северное сияние за всем приложением */
+#winter-sky { position: fixed; inset: 0; z-index: -1; pointer-events: none; overflow: hidden; }
+#winter-sky i { position: absolute; border-radius: 50%; will-change: transform; }
+#winter-sky i:nth-child(1) { width: 96vmax; height: 62vmax; left: -34vmax; top: -30vmax; background: radial-gradient(closest-side, rgba(52, 211, 255, .30), rgba(52, 211, 255, 0)); animation: wAuroraA 28s ease-in-out infinite alternate; }
+#winter-sky i:nth-child(2) { width: 90vmax; height: 58vmax; right: -36vmax; top: -22vmax; background: radial-gradient(closest-side, rgba(150, 110, 255, .30), rgba(150, 110, 255, 0)); animation: wAuroraB 34s ease-in-out infinite alternate; }
+#winter-sky i:nth-child(3) { width: 110vmax; height: 56vmax; left: -5vmax; bottom: -34vmax; background: radial-gradient(closest-side, rgba(255, 120, 190, .20), rgba(255, 120, 190, 0)); animation: wAuroraA 40s ease-in-out infinite alternate-reverse; }
+:root[data-theme="light"] #winter-sky i, :root:not([data-theme]) #winter-sky i { opacity: .55; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme]) #winter-sky i { opacity: 1; } }
+@keyframes wAuroraA { from { transform: translate3d(0, 0, 0) rotate(0deg); } to { transform: translate3d(9vmax, 5vmax, 0) rotate(14deg); } }
+@keyframes wAuroraB { from { transform: translate3d(0, 0, 0) rotate(0deg); } to { transform: translate3d(-10vmax, 6vmax, 0) rotate(-12deg); } }
+
+/* снег: над лентой и панелью, под плеером и страницами */
+#winter-snow { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 30; pointer-events: none; }
+
+/* гирлянда сверху */
+#winter-garland { position: fixed; top: env(safe-area-inset-top, 0px); left: 0; right: 0; height: 30px; z-index: 19; display: flex; pointer-events: none; }
+#winter-garland i { flex: 1 0 0; position: relative; --c: #ff5b6e;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 20' preserveAspectRatio='none'%3E%3Cpath d='M0 2 Q50 22 100 2' fill='none' stroke='%23566074' stroke-width='1.6' vector-effect='non-scaling-stroke'/%3E%3C/svg%3E") no-repeat 0 0 / 100% 14px; }
+#winter-garland i[data-c="1"] { --c: #ffd04a; } #winter-garland i[data-c="2"] { --c: #46e38c; } #winter-garland i[data-c="3"] { --c: #4cc4ff; } #winter-garland i[data-c="4"] { --c: #cd8cff; }
+#winter-garland i::after { content: ""; position: absolute; left: 50%; top: 9px; width: 6px; height: 5px; margin-left: -3px; border-radius: 1.5px; background: #3a4252; }
+#winter-garland i::before { content: ""; position: absolute; left: 50%; top: 13px; width: 10px; height: 14px; margin-left: -5px; border-radius: 46% 46% 50% 50% / 36% 36% 64% 64%;
+  background: radial-gradient(circle at 35% 30%, #fff, var(--c) 55%); box-shadow: 0 0 10px 2px var(--c), 0 0 26px 7px color-mix(in srgb, var(--c) 42%, transparent);
+  animation: wBulb 2.6s ease-in-out infinite; animation-delay: calc(var(--i) * -0.65s); }
+@keyframes wBulb { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: .42; transform: scale(.92); } }
+:root[data-winter="1"] #app > main > .view { padding-top: max(26px, env(safe-area-inset-top, 0px)); }
+
+/* сугробы */
+.snowcap { position: absolute !important; left: 22px; right: 22px; top: -10px; height: 15px; z-index: 4 !important; pointer-events: none; display: block;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 96 14' preserveAspectRatio='none'%3E%3Cpath d='M0 14 V9 Q8 2 18 7 Q26 1 38 6 Q50 0 60 6 Q70 2 80 7 Q90 3 96 9 V14Z' fill='%23ffffff'/%3E%3C/svg%3E") repeat-x center bottom / 96px 15px;
+  filter: drop-shadow(0 1px 1px rgba(60, 110, 170, .45));
+  -webkit-mask: linear-gradient(90deg, transparent, #000 18px, #000 calc(100% - 18px), transparent); mask: linear-gradient(90deg, transparent, #000 18px, #000 calc(100% - 18px), transparent); }
+.snowcap.sm { left: 16px; right: 16px; top: -8px; height: 12px; background-size: 78px 12px; opacity: .95; }
+:root[data-winter="1"] #search-form { overflow: visible; }
+
+/* шапка главной: котики наряжают ёлку вместо луны */
+:root[data-winter="1"] .hello-sky { display: none; }
+:root[data-winter="1"] .hello { padding-right: 112px; min-height: 96px; }
+.winter-hello { position: absolute; right: -4px; top: -4px; width: 116px; height: 116px; object-fit: contain; pointer-events: none; filter: drop-shadow(0 8px 16px rgba(0, 0, 0, .35)); animation: wBob 5.5s ease-in-out infinite; }
+@keyframes wBob { 0%, 100% { transform: translateY(0) rotate(-1.5deg); } 50% { transform: translateY(-4px) rotate(1.5deg); } }
+:root[data-winter="1"] .hello .view-title { background-image: linear-gradient(90deg, #bfeaff, #ffffff, #ffc4e8, #bfeaff); }
+:root[data-winter="1"][data-theme="light"] .hello .view-title { background-image: linear-gradient(90deg, #1f6fb5, #7a4fd6, #d6408f, #1f6fb5); }
+@media (prefers-color-scheme: light) { :root[data-winter="1"]:not([data-theme]) .hello .view-title { background-image: linear-gradient(90deg, #1f6fb5, #7a4fd6, #d6408f, #1f6fb5); } }
+
+/* ледяной блик на активной кнопке панели и заголовках разделов */
+:root[data-winter="1"] .section-title { text-shadow: 0 0 18px rgba(120, 210, 255, .28); }
+
+/* выключатель зимы в настройках */
+.winter-row .set-ic { color: #7fd4ff; }
+
+@media (prefers-reduced-motion: reduce) { #winter-sky i, #winter-garland i::before, .winter-hello { animation: none; } }
+.weak #winter-sky i { animation: none; }
+
+/* итоги голосования в «О MKW» */
+.poll-done .poll-opt.done { cursor: default; }
+.poll-done .poll-opt.done:active { transform: none; }
+.poll-done .poll-ck.ok { background: color-mix(in srgb, var(--on-bg) 14%, transparent); color: var(--on-bg); }
+.poll-win { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; padding: 12px; border-radius: 18px;
+  background: linear-gradient(120deg, rgba(76, 196, 255, .22), rgba(205, 140, 255, .2), rgba(255, 120, 190, .2)); }
+.poll-win img { width: 96px; height: 96px; flex: none; object-fit: contain; filter: drop-shadow(0 6px 12px rgba(0, 0, 0, .3)); }
+.poll-win b { display: block; font-size: 17px; line-height: 1.25; }
+.poll-win p { margin: 4px 0 0; font-size: 13.5px; line-height: 1.4; opacity: .85; }
+@media (max-width: 520px) { :root[data-winter="1"] .hello .view-title { font-size: 27px; white-space: nowrap; } :root[data-winter="1"] .hello { padding-right: 104px; } .winter-hello { width: 104px; height: 104px; } }
+@media (max-width: 899px) { :root[data-winter="1"] .ptabs { top: 30px; } }
+
+/* MKW Волна 5: номер версии на карточке */
+.wave-v { display: inline-block; margin-left: 4px; padding: 1px 8px; border-radius: 999px; font-style: normal; font-size: .72em; font-weight: 800; line-height: 1.5; vertical-align: 2px;
+  background: rgba(255, 255, 255, .26); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .45); }
+
+/* длинные списки треков: браузер не рисует строки за экраном */
+#view-library .list > .track-row, #search-results .track-row { content-visibility: auto; contain-intrinsic-size: auto 64px; }
+
+/* жесты: что камера узнала и сколько ещё держать */
+.gest-badge .gest-hint { left: 0; right: 0; top: 0; bottom: 0; display: none; align-items: center; justify-content: center; background: rgba(0, 0, 0, .5); color: #fff; font-size: 0; }
+.gest-badge .gest-hint.on { display: flex; }
+.gest-badge .gest-hint svg { width: 24px; height: 24px; }
+.gest-badge .gest-hint::after { content: ""; position: absolute; left: 0; bottom: 0; height: 4px; width: calc(var(--p, 0) * 100%); background: var(--primary); transition: width .12s linear; }
+
+/* новые рамки фото: «Гирлянда» и «Иней» */
+.phero[data-frame="garland"], .pe-sm.fr[data-frame="garland"], .lb-av[data-frame="garland"] { --fc: #ffd04a; --fc2: #ff5b6e; }
+.phero[data-frame="garland"] .hero-avatar, .lb-av[data-frame="garland"] { animation: pfGarland 3s linear infinite; }
+.pe-sm.fr[data-frame="garland"] i { animation: pfGarlandS 3s linear infinite; }
+@keyframes pfGarland {
+  0%, 100% { box-shadow: 0 0 0 3px #ff5b6e, 0 0 18px #ff5b6e; } 20% { box-shadow: 0 0 0 3px #ffd04a, 0 0 18px #ffd04a; }
+  40% { box-shadow: 0 0 0 3px #46e38c, 0 0 18px #46e38c; } 60% { box-shadow: 0 0 0 3px #4cc4ff, 0 0 18px #4cc4ff; } 80% { box-shadow: 0 0 0 3px #cd8cff, 0 0 18px #cd8cff; }
+}
+@keyframes pfGarlandS {
+  0%, 100% { box-shadow: 0 0 0 2px #ff5b6e, 0 0 7px #ff5b6e; } 20% { box-shadow: 0 0 0 2px #ffd04a, 0 0 7px #ffd04a; }
+  40% { box-shadow: 0 0 0 2px #46e38c, 0 0 7px #46e38c; } 60% { box-shadow: 0 0 0 2px #4cc4ff, 0 0 7px #4cc4ff; } 80% { box-shadow: 0 0 0 2px #cd8cff, 0 0 7px #cd8cff; }
+}
+.phero[data-frame="frost"], .pe-sm.fr[data-frame="frost"], .lb-av[data-frame="frost"] { --fc: #ffffff; --fc2: #9fe4ff; }
+.phero[data-frame="frost"] .hero-avatar, .lb-av[data-frame="frost"] { box-shadow: 0 0 0 2px #fff, 0 0 0 5px rgba(159, 228, 255, .55), 0 0 22px rgba(120, 210, 255, .8), 0 0 44px rgba(120, 210, 255, .35) !important; }
+.pe-sm.fr[data-frame="frost"] i { box-shadow: 0 0 0 2px #fff, 0 0 0 4px rgba(159, 228, 255, .55), 0 0 9px rgba(120, 210, 255, .8); }
+
+/* страница исполнителя: новый релиз и похожие исполнители */
+.ar-fresh { margin: 14px 0 4px; }
+.ar-fresh-card { display: flex; align-items: center; gap: 14px; width: 100%; padding: 12px; border: 0; border-radius: 22px; cursor: pointer; text-align: left; color: inherit; font: inherit;
+  background: linear-gradient(120deg, color-mix(in srgb, var(--primary) 30%, transparent), color-mix(in srgb, var(--mix2, #8f6bff) 26%, transparent)); transition: transform .2s; }
+.ar-fresh-card:active { transform: scale(.98); }
+.ar-fresh-card img { width: 64px; height: 64px; border-radius: 14px; object-fit: cover; flex: none; }
+.ar-fresh-card > span { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.ar-fresh-card small { font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--primary); }
+.ar-fresh-card b { font-size: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ar-fresh-card i { font-style: normal; font-size: 13px; opacity: .7; }
+.ar-fresh-card > .icon { width: 44px; height: 44px; padding: 11px; border-radius: 50%; background: var(--primary); color: var(--on-primary); flex: none; box-sizing: border-box; }
+.ar-rel-card img, .ar-rel-card .ar-rel-ph { border-radius: 50% !important; aspect-ratio: 1; object-fit: cover; }
+.ar-rel-card .ar-rel-ph { display: grid; place-items: center; width: 100%; background: color-mix(in srgb, var(--on-bg) 10%, transparent); }
+.ar-rel-card .ar-rel-ph svg { width: 40%; height: 40%; opacity: .6; }
+.ar-rel-card b { text-align: center; }
+.chip-like { background: color-mix(in srgb, var(--primary) 22%, transparent) !important; }

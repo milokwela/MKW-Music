@@ -1,0 +1,64 @@
+/* ===== Новый вид плеера (0.37). Включается классом .fp2 на #full-player ===== */
+#fp-wave, #fp-speed, #fp-mini-art { display: none; }
+
+#full-player.fp2 { --p2-btn: rgba(255, 255, 255, .1); --p2-hi: #cfd8ea; --p2-ink: #141820; color: #fff;
+  background: linear-gradient(180deg, #2c323d 0%, #1a1e26 46%, #101318 100%) !important; }
+#full-player.fp2 #fp-bg { opacity: .2 !important; }
+#full-player.fp2 #fp-glow { display: none !important; }
+#full-player.fp2 .fp-top .icon-btn, #full-player.fp2 .fp-meta .icon-btn, #full-player.fp2 .fp-controls .icon-btn { color: #fff; }
+#full-player.fp2 .fp-brand { display: none !important; }
+#full-player.fp2 #fp-badge { background: rgba(255, 255, 255, .1); color: rgba(255, 255, 255, .8); }
+
+/* обложка */
+#full-player.fp2 #fp-art { border-radius: 28px !important; overflow: hidden; box-shadow: 0 22px 46px rgba(0, 0, 0, .5) !important; }
+#full-player.fp2 #fp-art img, #full-player.fp2 #fp-art .art { border-radius: 28px !important; }
+
+/* название слева, сердце справа */
+#full-player.fp2 .fp-meta { display: flex !important; align-items: center; gap: 4px; margin-top: 22px !important; text-align: left !important; }
+#full-player.fp2 .fp-meta .txt { flex: 1; min-width: 0; text-align: left !important; }
+#full-player.fp2 #fp-title { font-size: 22px !important; font-weight: 700; line-height: 1.2; color: #fff; text-align: left !important; }
+#full-player.fp2 #fp-artist { font-size: 15px !important; color: rgba(255, 255, 255, .58) !important; text-align: left !important; justify-content: flex-start !important; }
+
+/* волнистая полоса: рисует canvas, а родной ползунок остаётся невидимым поверх — он ловит нажатия */
+#full-player.fp2 .fp-seek { position: relative; display: block !important; width: 100%; margin-top: 16px !important; }
+#full-player.fp2 #fp-wave { display: block; position: absolute; left: 0; top: 6px; width: 100%; height: 28px; pointer-events: none; }
+#full-player.fp2 #fp-seek { opacity: 0 !important; height: 40px !important; margin: 0 !important; }
+#full-player.fp2 .fp-times { margin-top: -2px; font-size: 12px; color: rgba(255, 255, 255, .55) !important; }
+
+/* управление: круглые «назад/вперёд» и большая кнопка-пилюля */
+#full-player.fp2 .fp-controls { display: grid !important; grid-template-columns: 1fr auto auto auto 1fr; align-items: center; justify-items: center; gap: clamp(6px, 2.4vw, 14px); width: 100%; margin-top: 20px !important; padding: 0 !important; }
+#full-player.fp2 #fp-shuffle { justify-self: start; }
+#full-player.fp2 #fp-repeat { justify-self: end; }
+#full-player.fp2 #fp-shuffle, #full-player.fp2 #fp-repeat { width: 44px !important; height: 44px !important; min-width: 0 !important; background: transparent !important; box-shadow: none !important; opacity: .9; }
+#full-player.fp2 #fp-shuffle.on, #full-player.fp2 #fp-repeat.on { color: var(--p2-hi) !important; opacity: 1; }
+#full-player.fp2 #fp-prev, #full-player.fp2 #fp-next { width: clamp(52px, 15.5vw, 64px) !important; height: clamp(52px, 15.5vw, 64px) !important; border-radius: 50% !important; background: var(--p2-btn) !important; box-shadow: none !important; }
+#full-player.fp2 #fp-toggle { width: clamp(86px, 26vw, 108px) !important; height: clamp(68px, 20vw, 82px) !important; border-radius: 30px !important; background: var(--p2-hi) !important; color: var(--p2-ink) !important; box-shadow: none !important; transition: transform .15s, border-radius .25s; }
+#full-player.fp2 #fp-toggle::before, #full-player.fp2 #fp-toggle::after { display: none !important; }
+#full-player.fp2 #fp-toggle .icon { width: 34px; height: 34px; }
+#full-player.fp2 #fp-toggle:active { transform: scale(.94); }
+#full-player.fp2.playing #fp-toggle { border-radius: 26px !important; }
+#full-player.fp2.wave-mode #fp-shuffle, #full-player.fp2.wave-mode #fp-repeat { display: inline-flex !important; visibility: hidden; }
+
+/* нижний ряд: скорость слева, справа — сцепленные кнопки «текст / очередь / таймер» */
+#full-player.fp2 .fp-extra, #full-player.fp2.wave-mode .fp-extra { display: flex !important; align-items: center; justify-content: flex-end !important; gap: 2px; width: 100%; margin-top: 24px !important; }
+#full-player.fp2 .fp-extra > .icon-btn, #full-player.fp2.wave-mode .fp-extra > .icon-btn { display: inline-flex !important; order: 2; width: 58px !important; height: 50px !important; margin: 0 !important; border-radius: 6px !important; background: var(--p2-btn) !important; color: #fff !important; box-shadow: none !important; }
+#full-player.fp2 .fp-extra > #fp-lyrics-btn { order: 1; border-radius: 26px 6px 6px 26px !important; }
+#full-player.fp2 .fp-extra > #fp-sleep { order: 3; border-radius: 6px 26px 26px 6px !important; }
+#full-player.fp2.lyrics-on .fp-extra > #fp-lyrics-btn, #full-player.fp2 .fp-extra > #fp-sleep.on { background: var(--p2-hi) !important; color: var(--p2-ink) !important; }
+#full-player.fp2 #fp-speed { display: inline-flex; align-items: center; justify-content: center; order: 0; margin-right: auto; min-width: 76px; height: 40px; padding: 0 18px; border-radius: 999px;
+  border: 1.5px solid rgba(255, 255, 255, .42); background: transparent; color: #fff; font: inherit; font-size: 15px; font-weight: 700; cursor: pointer; transition: background .2s, color .2s, transform .15s; }
+#full-player.fp2 #fp-speed:active { transform: scale(.94); }
+#full-player.fp2 #fp-speed.on { background: var(--p2-hi); color: var(--p2-ink); border-color: transparent; }
+
+/* текст песни вместо обложки: рядом с названием появляется маленькая обложка */
+#full-player.fp2 #fp-lyrics { color: #fff; }
+@media (max-width: 899px) {
+  #full-player.fp2.lyrics-on #fp-mini-art { display: block; flex: none; width: 46px; height: 46px; margin-right: 10px; border-radius: 10px; background: rgba(255, 255, 255, .1) center / cover no-repeat; }
+  #full-player.fp2.lyrics-on #fp-title { font-size: 18px !important; }
+  #full-player.fp2.lyrics-on #fp-artist { font-size: 13.5px !important; }
+  #full-player.fp2.lyrics-on .fp-meta { margin-top: 12px !important; }
+}
+#full-player.fp2 .fp-note, #full-player.fp2 .fp-src { color: rgba(255, 255, 255, .6); }
+#full-player.fp2.wave-mode #fp-speed { display: inline-flex !important; }
+/* режим «слабое устройство» прячет все canvas — полоса перемотки нового плеера должна остаться */
+.lowpower #full-player.fp2 #fp-wave { display: block !important; }

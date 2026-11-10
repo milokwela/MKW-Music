@@ -76,6 +76,24 @@ export async function relatedArtists(name) {
   if (!a) return [];
   return (await cached(`l:${a.id}`, 7 * DAY, async () => ((await dz(`/artist/${a.id}/related?limit=25`)) || { data: [] }).data.map((x) => ({ name: x.name, fans: x.nb_fan || 0, picture: x.picture_xl || '' })))) || [];
 }
+// свежий релиз исполнителя (не старше 5 месяцев) — для «Новинка любимого исполнителя» в Волне
+export async function artistFresh(name) {
+  const a = await dzArtist(name);
+  if (!a) return [];
+  const res = await cached(`n:${a.id}`, 2 * DAY, async () => {
+    const d = await dz(`/artist/${a.id}/albums?limit=15`);
+    if (!d) return null;
+    const now = Date.now();
+    const al = (d.data || []).filter((x) => x && x.id && x.release_date && now >= Date.parse(x.release_date) && now - Date.parse(x.release_date) < 150 * DAY)
+      .sort((x, y) => Date.parse(y.release_date) - Date.parse(x.release_date))[0];
+    if (!al) return { list: [] };                 // новинок нет — тоже запоминаем, чтобы не спрашивать снова
+    const t = await dz(`/album/${al.id}/tracks?limit=12`);
+    const list = ((t && t.data) || []).filter((r) => r && r.id && r.title)
+      .map((r) => mapDeezer({ ...r, artist: r.artist || { name: a.name }, album: { title: al.title, cover_big: al.cover_big, cover_medium: al.cover_medium, cover: al.cover } }));
+    return { list, date: al.release_date };
+  });
+  return (res && res.list) || [];
+}
 // чарт
 export async function chartTracks() {
   return (await cached('chart', 1 * DAY, async () => tracksOf(await dz('/chart/0/tracks?limit=60')))) || [];

@@ -37,9 +37,13 @@ export async function signIn(nickRaw, pass) {
 
 // ники разработчика заняты навсегда — никто другой их взять не может
 const RESERVED = /^(milokq|milokwel|milokw|milokwela|milo_kwel|admin|mkw|mkwmusic|moderator|support|razrab)$/i;
+// ники создателя («milok…») новые люди не занимают: ни при регистрации, ни сменой ника
+const NO_NEW = /^milok/i;
+const OWNER_UID = 'IqBq9kGF1oZG4Iz0m6LU1nSyx5H2';
+const taken = (nick) => RESERVED.test(nick) || NO_NEW.test(nick);
 export async function signUp(nickRaw, pass) {
   const nick = checkInput(nickRaw, pass);
-  if (RESERVED.test(nick)) throw Object.assign(new Error('reserved'), { userText: 'Этот ник занят' });
+  if (taken(nick)) throw Object.assign(new Error('reserved'), { userText: 'Этот ник занят' });
   const cred = await createUserWithEmailAndPassword(auth, nickToEmail(nick), pass);
   try {
     await setDoc(doc(db, 'users', cred.user.uid), { nick, createdAt: Date.now() });
@@ -73,7 +77,7 @@ export async function changeNick(nickRaw, pass) {
   if (!user) throw Object.assign(new Error('nouser'), { userText: 'Сначала войдите' });
   const nick = normalizeNick(nickRaw);
   if (!isValidNick(nick)) throw Object.assign(new Error('nick'), { userText: 'Ник: только латиница и цифры, 3–20 символов' });
-  if (RESERVED.test(nick) && !/^milok/i.test(emailToNick(user.email))) throw Object.assign(new Error('reserved'), { userText: 'Этот ник занят' });
+  if (taken(nick) && user.uid !== OWNER_UID) throw Object.assign(new Error('reserved'), { userText: 'Этот ник занят' });
   if (!pass) throw Object.assign(new Error('pass'), { userText: 'Введите текущий пароль' });
   await reauthenticateWithCredential(user, EmailAuthProvider.credential(user.email, pass));
   let loginChanged = false;

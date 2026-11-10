@@ -6,13 +6,15 @@ import { VERSION } from './changelog.js';
 const KEY = 'mkw.news';
 // что нового в последней версии — каждое окно показывается один раз на версию
 const SLIDES = [
-  { tag: 'Музыка', title: 'MKW Волна умнее', text: 'Держит настроение того, что вы дослушали, не ставит короткие интро, ночью спокойнее, утром бодрее', icon: 'sparkle', orbit: ['headphones', 'note', 'heart'], hue: 300 },
-  { tag: 'Профиль', title: 'Баннеры с котиками', text: 'Четыре новых баннера с котиками MKW. А рамка фото теперь работает на всех формах', img: 'assets/mkw-cat2.webp', orbit: ['image', 'star', 'heart'], hue: 330 },
-  { tag: 'Важно', title: 'Перерыв до 9 ноября', text: 'Это последнее обновление до 9 ноября — дальше будет перерыв, возможно только мелкие исправления. Спасибо, что вы с нами!', img: 'assets/mkw-fixcat.webp', orbit: ['heart', 'star', 'note'], hue: 40 },
+  { tag: 'Итоги голосования', title: 'Победила зима. Но мы сделали всё', text: 'Вы выбрали зимнее оформление. А мы заодно улучшили музыку и ускорили приложение — все три варианта из опроса', img: 'assets/mkw-st49.webp', orbit: ['trophy', 'star', 'heart'], hue: 200 },
+  { tag: 'Зима', title: 'Зимнее оформление', text: 'Снег, гирлянда и северное сияние. Уже включено, а выключить можно в Настройках → Внешний вид', img: 'assets/mkw-st27.webp', orbit: ['sparkle', 'star', 'moon'], hue: 195 },
+  { tag: 'Музыка', title: 'MKW Волна 5', text: 'Вышла из беты. Точнее понимает вкус, реже повторяется и чаще находит новое, но похожее на любимое', icon: 'sparkle', orbit: ['headphones', 'note', 'heart'], hue: 300 },
+  { tag: 'Стикеры', title: '29 новых стикеров', text: 'Наборы «Парочка» и «Чёрный котик» ждут в чатах — и в статусе профиля тоже', img: 'assets/mkw-st37.webp', orbit: ['heart', 'star', 'note'], hue: 330 },
+  { tag: 'Скорость', title: 'Быстрее и плавнее', text: 'Приложение открывается быстрее и меньше нагружает телефон', icon: 'rocket', orbit: ['timer', 'sparkle', 'star'], hue: 150 },
 ];
 
 export function showNews() {
-  const ver = '0.36.4'; // окно «Что нового» — для версии с новинками, мелкие исправления его не показывают
+  const ver = '0.37.0'; // окно «Что нового» — для версии с новинками, мелкие исправления его не показывают
   try { if (localStorage.getItem(KEY) === ver) return; } catch { return; }
   if (document.querySelector('.inc')) { setTimeout(showNews, 8000); return; } // сначала сообщение о сбое
   let i = 0;

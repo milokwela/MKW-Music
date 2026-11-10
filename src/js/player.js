@@ -85,7 +85,7 @@ async function ensureYT() {
 function onYtState(e) {
   if (st.mode !== 'yt') return;
   const s = e.data;
-  if (s === 1) { st.playing = true; st.loading = false; st.message = ''; clearTimeout(watchdog); failChain = 0; }
+  if (s === 1) { st.playing = true; st.loading = false; st.message = ''; clearTimeout(watchdog); failChain = 0; if (rate !== 1) applyRate(); }
   else if (s === 2) {
     st.playing = false;
     // Телефон/YouTube поставили на паузу в фоне, а пользователь паузу не нажимал: пробуем продолжить.
@@ -439,6 +439,16 @@ function applyVolume() {
   try { audio.volume = vol; } catch { /* ignore */ }
   try { if (yt && yt.setVolume) yt.setVolume(Math.round(vol * 100)); } catch { /* ignore */ }
 }
+// скорость воспроизведения (0.5–2): действует и на YouTube, и на обычный звук, держится до перезагрузки
+let rate = 1;
+export const getRate = () => rate;
+function applyRate() {
+  try { audio.defaultPlaybackRate = rate; if (audio.playbackRate !== rate) audio.playbackRate = rate; } catch { /* ignore */ }
+  try { if (yt && yt.setPlaybackRate && st.mode === 'yt') yt.setPlaybackRate(rate); } catch { /* ignore */ }
+}
+export function setRate(r) { rate = Math.max(0.5, Math.min(2, Number(r) || 1)); applyRate(); emit('rate'); syncSession(); }
+audio.addEventListener('loadedmetadata', applyRate);
+audio.addEventListener('play', applyRate);
 export const getVolume = () => vol;
 export function setVolume(v) {
   vol = Math.min(1, Math.max(0, v));
@@ -575,7 +585,7 @@ function syncSession() {
   try {
     navigator.mediaSession.playbackState = st.playing ? 'playing' : 'paused';
     if (st.duration > 0 && Number.isFinite(st.duration)) {
-      navigator.mediaSession.setPositionState({ duration: st.duration, position: Math.min(st.time, st.duration), playbackRate: 1 });
+      navigator.mediaSession.setPositionState({ duration: st.duration, position: Math.min(st.time, st.duration), playbackRate: rate });
     }
   } catch { /* ignore */ }
 }

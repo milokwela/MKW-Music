@@ -64,6 +64,7 @@ export function mapDeezer(r) {
     duration: Number(r.duration) || 0,
     genre: '',
     year: '',
+    ...(r.rank ? { pop: Math.round(Number(r.rank) / 1000) } : {}),   // популярность Deezer (0–1000), нужна Волне
   };
 }
 

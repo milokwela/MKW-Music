@@ -22,6 +22,7 @@ export const GESTURES = [
   ['hand-point', 'Указательный вверх', 'Продолжить'],
   ['hand-fist', 'Кулак', 'Тише'],
   ['hand-three', 'Три пальца: указательный, средний, безымянный', 'Громче'],
+  ['note', 'Один мизинец', 'Показать или скрыть текст песни'],
 ];
 export function gestureList() {
   return h('div', { class: 'gest-list' }, GESTURES.map(([e, how, what]) => h('div', { class: 'gest-item' },
@@ -54,6 +55,7 @@ function act(name) {
   else if (name === 'Thumb_Down') { toast('Дизлайк, пропускаю'); dislike(); }
   else if (name === 'Open_Palm') { player.pause(); toast('Пауза'); }
   else if (name === 'Pointing_Up') { if (!player.st.playing) { player.toggle(); toast('Продолжаем'); } }
+  else if (name === 'pinky') { const b = document.getElementById('fp-lyrics-btn'); if (t && b) { if (!document.getElementById('full-player').classList.contains('open')) { const m = document.getElementById('mini-open'); if (m) m.click(); } setTimeout(() => b.click(), 300); toast('Текст песни'); } }
   else if (name === 'vol-down') { const v = player.setVolume(player.getVolume() - 0.15); toast(`Громкость ${Math.round(v * 100)}%`); }
   else if (name === 'vol-up') { const v = player.setVolume(player.getVolume() + 0.15); toast(`Громкость ${Math.round(v * 100)}%`); }
 }
@@ -73,6 +75,7 @@ export function customGesture(lm) {
   const { r, up, down } = fingerState(lm);
   if (up(r.middle) && down(r.index) && down(r.ring) && down(r.pinky)) return 'middle';
   if (up(r.index) && up(r.middle) && up(r.ring) && down(r.pinky)) return 'vol-up';
+  if (up(r.pinky) && down(r.index) && down(r.middle) && down(r.ring)) return 'pinky';
   return '';
 }
 
@@ -110,6 +113,14 @@ function palmStill(now) {
   return Math.max(...xs) - Math.min(...xs) < 0.06;
 }
 
+const HINT = { Victory: 'hand-peace', ILoveYou: 'hand-rock', Thumb_Up: 'thumb-up', Thumb_Down: 'thumb-down', Open_Palm: 'hand-open', Pointing_Up: 'hand-point', 'vol-down': 'hand-fist', 'vol-up': 'hand-three', middle: 'hand-middle', pinky: 'note' };
+let hintEl = null, hintName = '';
+function showHint(name, part) {
+  if (!badge) return;
+  if (!hintEl) { hintEl = h('span', { class: 'gest-hint' }); badge.appendChild(hintEl); }
+  if (name !== hintName) { hintName = name; hintEl.replaceChildren(...(name && HINT[name] ? [mi(HINT[name])] : [])); hintEl.classList.toggle('on', Boolean(name && HINT[name])); }
+  hintEl.style.setProperty('--p', String(Math.max(0, Math.min(1, part))));
+}
 const USEFUL = ['Victory', 'Thumb_Up', 'Thumb_Down', 'Open_Palm', 'Pointing_Up', 'ILoveYou', 'Closed_Fist'];
 const win = [];   // последние кадры: голосуем, чтобы редкие пропуски распознавания не мешали
 
@@ -169,7 +180,9 @@ function loop() {
       win.forEach((n) => { if (n) counts[n] = (counts[n] || 0) + 1; });
       const best = Object.entries(counts).sort((x, y) => y[1] - x[1])[0];
       // ладони хватает 4 кадров из 8, остальным нужно 5
-      if (best && best[1] >= (best[0] === 'Open_Palm' ? 4 : 5)) { act(best[0]); win.length = 0; }
+      const need = best && best[0] === 'Open_Palm' ? 4 : 5;
+      showHint(best && best[1] >= 2 ? best[0] : '', best ? best[1] / need : 0);   // видно, какой жест камера узнала и сколько ещё держать
+      if (best && best[1] >= need) { act(best[0]); win.length = 0; }
     }
   } catch (e) { console.error(e); }
   timer = setTimeout(loop, track.length && performance.now() - track[track.length - 1].t < 600 ? 45 : STEP_MS);
@@ -201,7 +214,7 @@ function stop() {
   if (stream) stream.getTracks().forEach((t) => t.stop());
   stream = null;
   if (badge) badge.remove();
-  badge = null;
+  badge = null; hintEl = null; hintName = '';
   if (light) { light.remove(); light = null; }
   dark = 0;
   try { rec && rec.close(); } catch { /* ignore */ }

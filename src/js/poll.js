@@ -1,12 +1,11 @@
 // «О MKW»: обращение к слушателям (бета) и опрос «какое обновление следующее».
 // Голос хранится в polls/{id}/votes/{uid} — один голос на человека, можно передумать.
 import { db } from './firebase.js';
-import { doc, setDoc, getDocs, collection } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
-import { h, toast } from './ui.js';
+import { getDocs, collection } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+import { h } from './ui.js';
 import { mi } from './icons2.js';
 import * as store from './store.js';
 import { stSrc } from './stickers.js';
-import { srvNow } from './clock.js';
 import { plural } from './utils.js';
 
 export const POLL_ID = 'next-2026-11';
@@ -15,7 +14,6 @@ const OPTIONS = [
   { t: 'Улучшения музыки', s: 'Поиск, рекомендации, MKW Волна, тексты песен', i: 'headphones' },
   { t: 'Оптимизация', s: 'Быстрее, плавнее, меньше батареи и интернета', i: 'rocket' },
 ];
-const RESULTS_AT = 'во вторник, 10 ноября';
 const BETA_TEXT = 'Дорогие пользователи MKW! Приложение сейчас в бета-версии — это этап разработки, поэтому в нём ещё есть баги и недочёты. Мы каждый день стараемся всё исправлять и улучшать. Спасибо, что вы с нами!';
 
 export function betaCard() {
@@ -25,37 +23,8 @@ export function betaCard() {
 }
 
 // один раз после обновления — обращение со стикером
-// напоминание о голосовании: пока не проголосовал — до 6 показов, не чаще раза в 3 часа; со второго раза картинка «Напоминаю!»
-// напоминание о голосовании: до 6 показов, не чаще раза в 3 часа. Тем, кто уже голосовал, — вопрос «поменять голос?»
-export function maybeShowBetaNote() {
-  let n = 0, t = 0, voted = false;
-  try {
-    voted = localStorage.getItem('mkw.pollvote') != null;
-    const r = JSON.parse(localStorage.getItem('mkw.votenag') || '{}'); n = Number(r.n) || 0; t = Number(r.t) || 0;
-    if (n >= 6 || Date.now() - t < 3 * 3600 * 1000) return;
-    localStorage.setItem('mkw.votenag', JSON.stringify({ n: n + 1, t: Date.now() }));
-  } catch { return; }
-  const again = n >= 1;
-  const close = () => { box.classList.remove('show'); setTimeout(() => box.remove(), 300); };
-  const title = voted ? 'Спасибо, ваш голос учтён!' : (again ? 'Напоминаю! Какое обновление будет следующим?' : 'Какое обновление будет следующим?');
-  const text = voted
-    ? 'Хотите поменять голос? Просто нажмите другой вариант ниже. Если всё устраивает, оставьте как есть.'
-    : 'Проголосуйте прямо здесь. Голосование продлили до вторника 10 ноября.';
-  const top = voted
-    ? h('button', { type: 'button', class: 'btn tonal vp-top-btn', onclick: close }, 'Оставить как есть')
-    : h('button', { type: 'button', class: 'btn tonal vp-top-btn', onclick: close }, 'Проголосую позже');
-  const box = h('div', { class: 'beta-pop vote-pop', role: 'dialog' },
-    h('div', { class: 'beta-pop-c' },
-      top,
-      h('img', { class: 'beta-pop-st', src: again ? 'assets/mkw-remind.webp' : 'assets/mkw-vote.webp', alt: '', style: 'width:100%;height:auto;border-radius:16px' }),
-      h('b', { text: title }),
-      h('p', { text }),
-      pollCard(),
-      h('p', { class: 'beta-pop-s', text: 'Голосовать можно и позже: Профиль → О MKW. У нас выходной до 9 ноября, поэтому баги пока не исправим, извините.' }),
-      h('button', { type: 'button', class: 'btn', onclick: close }, 'Хорошо ❤')));
-  document.body.appendChild(box);
-  requestAnimationFrame(() => box.classList.add('show'));
-}
+// голосование завершено (10 ноября 2026): напоминаний больше нет, в «О MKW» остаются итоги
+export function maybeShowBetaNote() {}
 
 let cache = null, localVote = -1;
 async function loadVotes() {
@@ -75,34 +44,24 @@ export function pollCard() {
   const foot = h('small', { class: 'poll-foot' });
   const paint = (d) => {
     const total = d.counts.reduce((a, b) => a + b, 0);
-    const voted = d.mine >= 0;
+    const top = Math.max(...d.counts);
     body.replaceChildren(...OPTIONS.map((o, i) => {
       const pct = total ? Math.round((d.counts[i] / total) * 100) : 0;
-      return h('button', { type: 'button', class: `poll-opt${d.mine === i ? ' mine' : ''}${voted ? ' voted' : ''}`, style: `--w:${voted ? pct : 0}%`, onclick: () => vote(i) },
+      const win = total > 0 && d.counts[i] === top;
+      return h('div', { class: `poll-opt voted done${win ? ' mine win' : ''}`, style: `--w:${pct}%` },
         h('span', { class: 'poll-ic' }, mi(o.i)),
-        h('span', { class: 'poll-t' }, h('b', { text: o.t }), h('small', { text: o.s })),
-        voted ? h('span', { class: 'poll-pct', text: `${pct}%` }) : null,
-        d.mine === i ? h('i', { class: 'poll-ck' }, mi('check')) : null);
+        h('span', { class: 'poll-t' }, h('b', { text: o.t }), h('small', { text: win ? 'Победитель голосования — уже в приложении' : 'Тоже сделали в этом обновлении' })),
+        h('span', { class: 'poll-pct', text: `${pct}%` }),
+        win ? h('i', { class: 'poll-ck' }, mi('trophy')) : h('i', { class: 'poll-ck ok' }, mi('check')));
     }));
-    foot.textContent = d.err ? 'Опрос заработает, когда админ обновит правила базы.'
-      : `${total} ${plural(total, 'голос', 'голоса', 'голосов')} · результаты ${RESULTS_AT}. Голосовать необязательно${voted ? ', можно передумать' : ''}`;
-  };
-  const vote = async (i) => {
-    if (!store.state.uid) { toast('Войдите, чтобы проголосовать'); return; }
-    const prev = cache ? cache.mine : -1;
-    if (prev === i) return;
-    try {
-      await setDoc(doc(db, 'polls', POLL_ID, 'votes', store.state.uid), { o: i, at: srvNow() });
-      localVote = i; try { localStorage.setItem('mkw.pollvote', String(i)); } catch { /* ignore */ }
-      if (cache) { if (prev >= 0) cache.counts[prev] -= 1; cache.counts[i] += 1; cache.mine = i; }
-      paint(cache || { counts: OPTIONS.map((_, k) => (k === i ? 1 : 0)), mine: i });
-      toast('Голос учтён — спасибо!');
-      loadVotes().then(paint);
-    } catch { toast('Не получилось. Админу нужно обновить правила базы'); }
+    foot.textContent = d.err ? 'Итоги появятся, когда будет связь с сервером.'
+      : `Голосование завершено · ${total} ${plural(total, 'голос', 'голоса', 'голосов')}. Спасибо всем, кто выбирал!`;
   };
   paint(cache || { counts: OPTIONS.map(() => 0), mine: -1 });
   loadVotes().then(paint);
-  return h('div', { class: 'poll-card' },
-    h('div', { class: 'poll-head' }, h('b', { text: 'Какое обновление хотите следующим?' }), h('span', { class: 'poll-tag', text: 'Опрос' })),
+  return h('div', { class: 'poll-card poll-done' },
+    h('div', { class: 'poll-win' }, h('img', { src: stSrc(49), alt: '', loading: 'lazy' }),
+      h('div', {}, h('b', { text: 'Итоги голосования: сделали всё' }), h('p', { text: 'Победило зимнее оформление. Но мы решили не выбирать и выпустили сразу всё: зиму, улучшения музыки и оптимизацию.' }))),
+    h('div', { class: 'poll-head' }, h('b', { text: 'Какое обновление хотели следующим' }), h('span', { class: 'poll-tag', text: 'Итоги' })),
     body, foot);
 }

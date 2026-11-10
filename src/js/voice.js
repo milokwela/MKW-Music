@@ -13,6 +13,8 @@ import { friendIds, friendCards, loadFriends, friendsLoaded } from './friends.js
 import { startCall } from './call.js';
 import { avSrc } from './avatar.js';
 import { closeSheet } from './ui.js';
+import { setWinter } from './winter.js';
+import { setTheme } from './theme.js';
 
 const KEY = 'mkw.voice';
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -46,6 +48,12 @@ export const VOICE_COMMANDS = [
   ['Что играет', 'назовёт трек'],
   ['Таймер на 20 минут', 'таймер сна'],
   ['Волна · выключи волну', 'MKW Волна'],
+  ['Что-нибудь новое · поспокойнее · пободрее', 'настроение MKW Волны'],
+  ['Быстрее · медленнее · скорость полтора · обычная скорость', 'скорость воспроизведения'],
+  ['Включи плейлист Ночной драйв', 'ваш плейлист по названию'],
+  ['Найди Земфира', 'открыть поиск с запросом'],
+  ['Покажи очередь', 'что играет дальше'],
+  ['Тёмная тема · светлая тема · выключи снег', 'оформление'],
   ['Мои лайки', 'включить лайки'],
   ['Включи Баста · поставь Луна', 'найти и включить'],
   ['Включить Баста · включить Луна Знаешь', 'найти и сразу включить песню или исполнителя'],
@@ -107,6 +115,26 @@ function parse0(text) {
   if (call) return { cmd: 'call', q: (call[1] || '').replace(/^(?:другу|подруге|мне|пожалуйста)\s*/g, '').trim() };
   if (/(убер|убра|сним|снят|удали|отмен)[а-яa-z]*\s+(мой\s+|этот\s+)?лайк/.test(t)) return { cmd: 'unlike' };
   if (/дизлайк|не нрав|не то|фу\b/.test(t)) return { cmd: 'dislike' };
+  // --- 0.37: оформление, скорость, настроение волны, плейлисты, поиск, очередь ---
+  if (/(выключи|убери|отключи|спрячь)\s+(снег|зим|гирлянд|новогод)/.test(t)) return { cmd: 'winter', v: false };
+  if (/(включи|верни|покажи)\s+(снег|зим|гирлянд|новогод)/.test(t)) return { cmd: 'winter', v: true };
+  if (/(темн|тёмн|ночн)[а-я]*\s+тем/.test(t)) return { cmd: 'theme', v: 'dark' };
+  if (/(светл|дневн)[а-я]*\s+тем/.test(t)) return { cmd: 'theme', v: 'light' };
+  if (/скорост|быстрее|побыстрее|ускор|медленнее|помедленнее|замедл/.test(t)) {
+    if (/обычн|нормальн|стандартн|верни|сброс|один(?!\s+и)|\b1\b(?![.,])/.test(t) && !/полтор|1[.,]5|два|\b2\b/.test(t)) return { cmd: 'rate', n: 1 };
+    if (/полтор|1[.,]5|один и пять/.test(t)) return { cmd: 'rate', n: 1.5 };
+    if (/в два|два раза|двойн|\b2\b|двух/.test(t)) return { cmd: 'rate', n: 2 };
+    if (/1[.,]25/.test(t)) return { cmd: 'rate', n: 1.25 };
+    if (/0[.,]75|три четверт/.test(t)) return { cmd: 'rate', n: 0.75 };
+    if (/медленнее|помедленнее|замедл/.test(t)) return { cmd: 'rate', d: -0.25 };
+    return { cmd: 'rate', d: 0.25 };
+  }
+  if (/(что\s*-?\s*нибудь|что\s*-?\s*то|хочу)\s+(нов|незнаком)|^открытия$|волн[а-я]*\s+открыт/.test(t)) return { cmd: 'mood', v: 'discover' };
+  if (/поспокойнее|спокойнее|что\s*-?\s*нибудь\s+спокойн|расслаб/.test(t)) return { cmd: 'mood', v: 'calm' };
+  if (/пободрее|бодрее|повеселее|энергичн|что\s*-?\s*нибудь\s+(бодр|весел)/.test(t)) return { cmd: 'mood', v: 'energy' };
+  { const pl = t.match(/(?:включи|поставь|играй|открой)\s+(?:мой\s+)?плейлист\s+(.+)$/); if (pl) return { cmd: 'playlist', q: pl[1].trim() }; }
+  { const f = t.match(/^(?:найди|поищи|ищи|найти)\s+(.+)$/); if (f) return { cmd: 'find', q: f[1].trim() }; }
+  if (/очеред|что\s+(будет\s+)?дальше|что\s+следующ/.test(t)) return { cmd: 'queue' };
   if (/(выключи|останови|стоп)\s+волн/.test(t)) return { cmd: 'wave-off' };
   if (/волн/.test(t)) return { cmd: 'wave' };
   if (/что\s+(сейчас\s+)?(игра|звуч)|как(ая|ой)\s+(это\s+)?(песн|трек)|что\s+за\s+(песн|трек)/.test(t)) return { cmd: 'what' };
@@ -151,7 +179,7 @@ function say(text) {
   } catch { /* ignore */ }
 }
 
-async function run({ cmd, q, n, v }) {
+async function run({ cmd, q, n, v, d }) {
   const t = player.queue.current;
   if (cmd === 'next') { player.next(); toast('Следующий трек'); }
   else if (cmd === 'prev') { player.previousTrack(); toast('Предыдущий трек'); }
@@ -174,6 +202,30 @@ async function run({ cmd, q, n, v }) {
   else if (cmd === 'close') closeFull();
   else if (cmd === 'what') { const s = t ? `${t.artist} — ${t.title}` : 'Сейчас ничего не играет'; toast(s); say(t ? `Сейчас играет ${t.artist}, ${t.title}` : s); }
   else if (cmd === 'sleep') { player.setSleep(n); toast(`Выключу через ${n} мин`); }
+  else if (cmd === 'winter') { setWinter(v); toast(v ? 'Зимнее оформление включено' : 'Зимнее оформление выключено'); }
+  else if (cmd === 'theme') { setTheme(v); toast(v === 'dark' ? 'Тёмная тема' : 'Светлая тема'); }
+  else if (cmd === 'rate') {
+    const r = Math.max(0.5, Math.min(2, n || Math.round((player.getRate() + d) * 4) / 4)); player.setRate(r);
+    toast(r === 1 ? 'Обычная скорость' : `Скорость ${String(r).replace('.', ',')}x`);
+  }
+  else if (cmd === 'mood') {
+    const name = { discover: 'Открытия', calm: 'Спокойнее', energy: 'Бодрее' }[v];
+    const chip = [...document.querySelectorAll('#wave-moods .wm-chip')].find((c) => c.textContent === name);
+    if (chip) { if (!chip.classList.contains('on') || !waveActive()) chip.click(); toast(`Волна: ${name}`); } else if (!waveActive()) startWave();
+  }
+  else if (cmd === 'playlist') {
+    const key = (x) => norm(x).replace(/\s+/g, '');
+    const want = key(q), pls = store.state.playlists || [];
+    const p = pls.find((x) => key(x.name) === want) || pls.find((x) => key(x.name).includes(want) || want.includes(key(x.name))) || pls.find((x) => near(key(x.name), want));
+    if (p && (p.tracks || []).length) { player.playTracks(p.tracks, 0); toast(`Включаю плейлист «${p.name}»`); }
+    else { toast(p ? 'В этом плейлисте пока пусто' : `Не нашла плейлист «${q}»`); say(p ? 'В этом плейлисте пока пусто' : 'Не нашла такой плейлист'); }
+  }
+  else if (cmd === 'find') {
+    closeFull(); const b = document.querySelector('#bottom-nav .nav-btn[data-view="search"]'); if (b) b.click();
+    const inp = document.getElementById('search-input'), form = document.getElementById('search-form');
+    if (inp && form) { inp.value = q; inp.dispatchEvent(new Event('input', { bubbles: true })); form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })); toast(`Ищу «${q}»`); }
+  }
+  else if (cmd === 'queue') { if (t) { if (!isFullOpen()) openFull(); setTimeout(() => { const b = document.getElementById('fp-queue'); if (b) b.click(); }, 350); } else toast('Очередь пуста'); }
   else if (cmd === 'wave') { if (!waveActive()) startWave(); toast('Включаю MKW Волну'); }
   else if (cmd === 'wave-off') { if (waveActive()) startWave(); }
   else if (cmd === 'likes') { const l = store.state.likes; if (l.length) { player.playTracks(l, 0); toast('Включаю ваши лайки'); } else toast('Лайков пока нет'); }

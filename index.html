@@ -54,7 +54,7 @@ if(mem<=2||cpu<=4&&/Android/.test(u)){c.push('weak');try{if(localStorage.getItem
 if(!CSS.supports('backdrop-filter','blur(1px)')&&!CSS.supports('-webkit-backdrop-filter','blur(1px)'))c.push('no-blur');
 d.className+=' '+c.join(' ');})();
 </script>
-<link rel="stylesheet" href="app.css?v=0.36.7">
+<link rel="stylesheet" href="app.css?v=0.37.0">
 </head>
 <body>
 <script>
@@ -179,7 +179,7 @@ document.addEventListener('click',function(){var e=s();if(e&&e.parentNode)e.pare
       <button class="wave-btn" id="wave-btn" type="button">
         <span class="wave-bg" aria-hidden="true"><i></i><i></i><i></i><s style="left:8%;top:22%"></s><s style="left:20%;top:70%"></s><s style="left:33%;top:30%"></s><s style="left:46%;top:76%"></s><s style="left:58%;top:18%"></s><s style="left:68%;top:62%"></s><s style="left:79%;top:28%"></s><s style="left:90%;top:70%"></s><s style="left:14%;top:46%"></s><s style="left:52%;top:46%"></s><s style="left:84%;top:48%"></s></span>
         <span class="wave-ico"><svg class="icon"><use href="#i-play"/></svg></span>
-        <span class="wave-txt"><b>MKW Волна</b><small id="wave-sub">Музыка под ваш вкус, подстраивается на лету</small></span>
+        <span class="wave-txt"><b>MKW Волна <i class="wave-v">5</i></b><small id="wave-sub">Музыка под ваш вкус, подстраивается на лету</small></span>
         <span class="wave-eq" aria-hidden="true"><u></u><u></u><u></u><u></u><u></u></span>
       </button>
       <div id="friends-strip" hidden></div>
@@ -286,6 +286,6 @@ document.addEventListener('click',function(){var e=s();if(e&&e.parentNode)e.pare
 <audio id="preview-player" preload="none"></audio>
 <div id="yt-holder" style="position:fixed;width:1px;height:1px;left:-10px;top:-10px;overflow:hidden;opacity:0;pointer-events:none"><div id="yt-target"></div></div>
 
-<script type="module" src="app.js?v=0.36.7"></script>
+<script type="module" src="app.js?v=0.37.0"></script>
 </body>
 </html>
