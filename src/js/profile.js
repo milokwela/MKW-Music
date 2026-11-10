@@ -1,7 +1,7 @@
 // Экран «Профиль»: карточка с баннером, витрина (любимые исполнители и треки), вкладки Обзор / Слушатели / Настройки / О MKW.
 import { seenOnline, realSeen } from './clock.js';
 import { nickEmo, richText, plainRich, emojiPicker, catSrc } from './stickers.js';
-import { betaCard, pollCard } from './poll.js';
+import { betaCard } from './poll.js';
 import { $, $$, h, icon, openSheet, closeSheet, toast, sheetItem, trackRow } from './ui.js';
 import * as store from './store.js';
 import * as player from './player.js';
@@ -66,6 +66,18 @@ export const ACHIEVEMENTS = [
   { id: 'a40', i: 'globe', title: 'Путешественник', hint: '40 разных исполнителей', v: (s) => [s.artists, 40] },
   { id: 'night', i: 'moon', title: 'Полуночник', hint: 'Музыка между 0:00 и 5:00', ok: (s) => s.night },
   { id: 'style', i: 'sparkle', title: 'Стиляга', hint: 'Настройте свой профиль', ok: (s) => s.styled },
+  // 0.37.1: новые достижения
+  { id: 'winter26', i: 'sparkle', title: 'Зима 2026', hint: 'Слушали музыку в MKW зимой 2026–2027. Сезонный значок', ok: (s) => s.winter },
+  { id: 'like250', i: 'heart-star', title: 'Сердце MKW', hint: '250 лайков', v: (s) => [s.likes, 250] },
+  { id: 'h50', i: 'headphones', title: 'Полсотни часов', hint: '50 часов музыки', v: (s) => [Math.floor(s.sec / 3600), 50] },
+  { id: 'h250', i: 'crown', title: 'Живу музыкой', hint: '250 часов музыки', v: (s) => [Math.floor(s.sec / 3600), 250] },
+  { id: 'p500', i: 'play-circle', title: 'Плейлист бесконечности', hint: '500 треков', v: (s) => [s.plays, 500] },
+  { id: 'p5000', i: 'rocket', title: 'Космос', hint: '5000 треков', v: (s) => [s.plays, 5000] },
+  { id: 'd60', i: 'calendar-month', title: 'Два месяца с MKW', hint: '60 дней с нами', v: (s) => [s.days, 60] },
+  { id: 'd365', i: 'trophy', title: 'Год с MKW', hint: '365 дней с нами', v: (s) => [s.days, 365] },
+  { id: 'a100', i: 'globe', title: 'Музыкальный турист', hint: '100 разных исполнителей', v: (s) => [s.artists, 100] },
+  { id: 'pl10', i: 'folders', title: 'Библиотекарь', hint: '10 плейлистов', v: (s) => [s.playlists, 10] },
+  { id: 'fr10', i: 'group', title: 'Своя тусовка', hint: 'Добавьте 10 друзей', v: (s) => [s.friends, 10] },
   { id: 'show', i: 'star', title: 'Витрина', hint: 'Добавьте любимые треки или исполнителей', ok: (s) => s.showcase },
   { id: 'top3', i: 'medal', title: 'Топ-3', hint: 'Войдите в тройку слушателей', ok: (s) => s.rank > 0 && s.rank <= 3 },
   { id: 'top1', i: 'crown', title: 'Король эфира', hint: 'Станьте первым в рейтинге', ok: (s) => s.rank === 1 },
@@ -73,7 +85,7 @@ export const ACHIEVEMENTS = [
 ];
 export const DARK_UNTIL = Date.UTC(2026, 10, 10);
 export const FOUNDER = 'motrahka'; // «Основатель сбоя» — лимитированный значок только у него
-const achDone = (a, s) => (a.ok ? a.ok(s) : a.v(s)[0] >= a.v(s)[1]);
+export const achDone = (a, s) => (a.ok ? a.ok(s) : a.v(s)[0] >= a.v(s)[1]);
 export const ACH = Object.fromEntries(ACHIEVEMENTS.map((a) => [a.id, a]));
 
 export const BANNERS = [
@@ -106,6 +118,7 @@ export const FRAMES = [
   { id: 'pink', name: 'Розовый неон' }, { id: 'ice', name: 'Лёд' }, { id: 'toxic', name: 'Кислота' }, { id: 'sunset', name: 'Закат' },
   { id: 'pulse', name: 'Пульс' }, { id: 'dash', name: 'Пунктир' }, { id: 'double', name: 'Двойная' },
   { id: 'garland', name: 'Гирлянда' }, { id: 'frost', name: 'Иней' },
+  { id: 'candy', name: 'Леденец' }, { id: 'aurora', name: 'Сияние' }, { id: 'gift', name: 'Подарок' }, { id: 'night', name: 'Ночь' },
 ];
 export const bannerCss = (id, img) => (safeUrl(img) ? `center / cover no-repeat url("${safeUrl(img)}")` : (BANNERS.find((b) => b.id === id) || BANNERS[0]).css);
 
@@ -115,7 +128,7 @@ const refs = {};
 const CKEY = (n) => `mkw.pcustom.${n}`;
 const DEF = { status: '', banner: 'accent', bannerImg: '', frame: 'glow', badges: [], favArtists: [], favTracks: [], bio: '', nickStyle: 'plain', shape: 'circle', effect: 'none', showNow: true, devBadge: true, fanBadge: true };
 export const NICK_STYLES = [{ id: 'plain', name: 'Обычный' }, { id: 'accent', name: 'Цвет акцента' }, { id: 'gradient', name: 'Градиент' }, { id: 'rainbow', name: 'Радуга' }, { id: 'glow', name: 'Неон' }, { id: 'gold', name: 'Золото' }, { id: 'silver', name: 'Серебро' }, { id: 'fire', name: 'Огонь' }, { id: 'outline', name: 'Контур' }];
-export const SHAPES = [{ id: 'circle', name: 'Круг' }, { id: 'squircle', name: 'Скруглённый' }, { id: 'flower', name: 'Цветок' }, { id: 'hex', name: 'Соты' }, { id: 'heart', name: 'Сердце' }, { id: 'star', name: 'Звезда' }, { id: 'diamond', name: 'Ромб' }, { id: 'blob', name: 'Капля' }];
+export const SHAPES = [{ id: 'circle', name: 'Круг' }, { id: 'squircle', name: 'Скруглённый' }, { id: 'flower', name: 'Цветок' }, { id: 'hex', name: 'Соты' }, { id: 'heart', name: 'Сердце' }, { id: 'star', name: 'Звезда' }, { id: 'diamond', name: 'Ромб' }, { id: 'blob', name: 'Капля' }, { id: 'snowflake', name: 'Снежинка' }, { id: 'tree', name: 'Ёлка' }, { id: 'cloud', name: 'Облако' }, { id: 'octagon', name: 'Восьмиугольник' }];
 // шрифт ника хранится вместе со стилем: «gold~mo» — стиль «Золото», шрифт «Моно»
 export const FONTS = [{ id: '', name: 'Обычный' }, { id: 'pf', name: 'Pacifico' }, { id: 'lb', name: 'Lobster' }, { id: 'cv', name: 'Caveat' }, { id: 'ms', name: 'Marck Script' },
   { id: 'ps', name: 'Пиксель' }, { id: 'ru', name: 'Russo One' }, { id: 'rm', name: 'Rubik Mono' }, { id: 'cm', name: 'Comfortaa' }, { id: 'ub', name: 'Unbounded' },
@@ -131,7 +144,8 @@ export function linkFonts() {
 }
 export const splitStyle = (v) => { const [st, f] = String(v || 'plain').split('~'); return [st || 'plain', f || '']; };
 export const EFFECTS = [{ id: 'none', name: 'Без эффекта' }, { id: 'crosses', name: 'Кресты' }, { id: 'stars', name: 'Звёзды' }, { id: 'aurora', name: 'Сияние' }, { id: 'snow', name: 'Снег' }, { id: 'waves', name: 'Волны' }, { id: 'hearts', name: 'Сердечки' }, { id: 'fireflies', name: 'Светлячки' },
-  { id: 'sakura', name: 'Сакура' }, { id: 'notes', name: 'Ноты' }, { id: 'rain', name: 'Дождь' }, { id: 'bubbles', name: 'Пузыри' }, { id: 'confetti', name: 'Конфетти' }, { id: 'matrix', name: 'Матрица' }, { id: 'meteor', name: 'Метеоры' }, { id: 'cats', name: 'Котики MKW' }];
+  { id: 'sakura', name: 'Сакура' }, { id: 'notes', name: 'Ноты' }, { id: 'rain', name: 'Дождь' }, { id: 'bubbles', name: 'Пузыри' }, { id: 'confetti', name: 'Конфетти' }, { id: 'matrix', name: 'Матрица' }, { id: 'meteor', name: 'Метеоры' }, { id: 'cats', name: 'Котики MKW' },
+  { id: 'flakes', name: 'Снежинки' }, { id: 'gifts', name: 'Подарки' }, { id: 'sparks', name: 'Искры' }, { id: 'aurorafx', name: 'Северное сияние' }];
 const nowPlaying = () => { const c = getCustom(), t = player.queue.current; return c.showNow !== false && t && player.st.playing ? `${t.artist} — ${t.title}` : ''; };
 function getCustom() {
   try { return { ...DEF, ...JSON.parse(localStorage.getItem(CKEY(curNick)) || '{}') }; } catch { return { ...DEF }; }
@@ -294,7 +308,7 @@ function statsNow() {
     sec: store.listenedTotal(), likes: store.state.likes.length, playlists: store.state.playlists.length,
     plays: Number(p.plays) || store.state.history.length,
     days: created ? Math.max(1, Math.ceil((Date.now() - created) / 86400000)) : 1,
-    artists: seen.size, night, styled: Boolean(c.styled), showcase: Boolean(c.favArtists.length || c.favTracks.length), rank: myRank, friends: friendIds().length, dev: isDev(curNick),
+    artists: seen.size, night, winter: (() => { try { if (Date.now() < Date.UTC(2027, 2, 1) && (player.st.playing || store.state.history.length)) localStorage.setItem('mkw.ach.winter', '1'); return localStorage.getItem('mkw.ach.winter') === '1'; } catch { return false; } })(), styled: Boolean(c.styled), showcase: Boolean(c.favArtists.length || c.favTracks.length), rank: myRank, friends: friendIds().length, dev: isDev(curNick),
     // значок «Пережил тёмное время бана»: у всех, кто был с MKW до 10 ноября 2026
     founder: String(curNick).toLowerCase() === FOUNDER,
     waited: (() => { try { return localStorage.getItem('mkw.wait.badge') === '1'; } catch { return false; } })() || c.badges.includes('wait1'),
@@ -969,7 +983,6 @@ export function buildProfile(nick) {
       h('div', { class: 'about-card' },
         h('div', { class: 'about-top' }, h('img', { src: 'assets/mkw-logo.png', alt: '', class: 'about-logo' }), h('div', {}, h('b', { text: 'MKW Music' }), h('span', { class: 'beta-badge', text: `${STAGE} · v${VERSION}` }))),
         betaCard(),
-        pollCard(),
         refs.listeners,
         h('p', { class: 'profile-note', text: 'MKW Music — название сервиса. MiloKwel — его создатель: он делает все обновления и разработку. Бета-версия: что-то может ломаться, всё чиним.' }),
         CHANGELOG.map((e, i) => changelogEntry(e, i === 0)),
@@ -1042,7 +1055,7 @@ function emoField(inp) {
   return h('div', { class: 'emo-field' }, h('div', { class: 'emo-row' }, inp, btn), pane);
 }
 window.addEventListener('mkw-contrib', () => { try { if (built) paintMarks(getCustom()); } catch { /* ignore */ } boardLoaded = 0; });
-function viewAch(a, ok, v, pr) {
+export function viewAch(a, ok, v, pr) {
   openSheet('', h('div', { class: `ach-view${ok ? ' on' : ''}${a.cls ? ` ${a.cls}` : ''}` },
     h('div', { class: 'achv-ico' }, h('i', { class: 'achv-glow' }), mi(a.i)),
     h('b', { class: 'achv-t', text: a.title }),

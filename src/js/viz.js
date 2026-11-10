@@ -88,6 +88,7 @@ async function syncTrack() {
     el.style.setProperty('--glow', rgbs(pal.colors[0]));
     full.style.setProperty('--pal-bg', rgbs(pal.base, 0.22));
     full.style.setProperty('--pal-bg2', rgbs(pal.colors[0], 0.38));
+    full.style.setProperty('--p2-acc', rgbs(pal.colors[0]));
     full.classList.add('pal');
   } else {
     el.style.removeProperty('--glow');

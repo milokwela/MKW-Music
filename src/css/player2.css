@@ -62,3 +62,15 @@
 #full-player.fp2.wave-mode #fp-speed { display: inline-flex !important; }
 /* режим «слабое устройство» прячет все canvas — полоса перемотки нового плеера должна остаться */
 .lowpower #full-player.fp2 #fp-wave { display: block !important; }
+
+/* 0.37.1: цвета берутся из обложки, плавный переход обложка ⇄ текст */
+#full-player.fp2 { --p2-hi: color-mix(in srgb, var(--p2-acc, #cfd8ea) 45%, #fff); --p2-btn: color-mix(in srgb, var(--p2-acc, #fff) 16%, rgba(255,255,255,.06));
+  background: linear-gradient(180deg, color-mix(in srgb, var(--p2-acc, #3a3f4a) 42%, #1a1416) 0%, color-mix(in srgb, var(--p2-acc, #2a2e36) 22%, #120e10) 52%, #0c0a0b 100%) !important; }
+#full-player.fp2 #fp-prev, #full-player.fp2 #fp-next { border-radius: 22px !important; }
+#full-player.fp2 #fp-title { text-transform: uppercase; letter-spacing: .02em; font-size: 19px !important; }
+.p2-ghost { position: fixed !important; z-index: 5; margin: 0 !important; transform-origin: 0 0; overflow: hidden; border-radius: 28px; pointer-events: none; display: block !important; }
+.p2-ghost img, .p2-ghost .art { width: 100% !important; height: 100% !important; object-fit: cover; border-radius: inherit !important; }
+#full-player.fp2.lyrics-on #fp-lyrics { animation: p2LyrIn .5s ease both; }
+#full-player.fp2:not(.lyrics-on) #fp-art { animation: none; }
+@keyframes p2LyrIn { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+#full-player.fp2 .fp-meta .txt, #full-player.fp2 #fp-mini-art { transition: margin .45s cubic-bezier(.2,.8,.2,1); }

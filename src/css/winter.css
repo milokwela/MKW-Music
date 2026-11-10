@@ -109,3 +109,100 @@
 .ar-rel-card .ar-rel-ph svg { width: 40%; height: 40%; opacity: .6; }
 .ar-rel-card b { text-align: center; }
 .chip-like { background: color-mix(in srgb, var(--primary) 22%, transparent) !important; }
+
+/* ===== 0.37.1: без гирлянды и сугробов; новогодняя панель; на телефоне темнее и легче ===== */
+#winter-garland, .snowcap { display: none !important; }
+:root[data-winter="1"] #app > main > .view { padding-top: max(8px, env(safe-area-inset-top, 0px)); }
+@media (max-width: 899px) { :root[data-winter="1"] .ptabs { top: 0; } }
+.winter-nav { position: absolute; left: 0; right: 0; bottom: 0; height: 100%; border-radius: inherit; overflow: hidden; pointer-events: none; z-index: 0; }
+.winter-nav svg { position: absolute; left: 0; right: 0; bottom: 0; width: 100%; height: 62%; }
+.winter-nav .wn-h { fill: rgba(150, 175, 220, .16); }
+.winter-nav .wn-s { fill: rgba(255, 255, 255, .55); }
+.winter-nav .wn-w { fill: #ffcf6b; filter: drop-shadow(0 0 3px rgba(255, 190, 80, .9)); animation: wnWin 4s ease-in-out infinite; }
+.winter-nav .wn-t { fill: rgba(120, 190, 150, .35); }
+@keyframes wnWin { 0%, 100% { opacity: .95; } 50% { opacity: .6; } }
+:root[data-winter="1"] #bottom-nav .nav-btn { position: relative; z-index: 1; }
+:root[data-winter="1"] #bottom-nav { box-shadow: inset 0 3px 0 rgba(255, 255, 255, .5), 0 -1px 10px rgba(160, 210, 255, .12), var(--nav-shadow, 0 10px 30px rgba(0,0,0,.35)); }
+:root[data-theme="light"] .winter-nav .wn-h { fill: rgba(60, 90, 140, .14); }
+:root[data-theme="light"] .winter-nav .wn-s { fill: #fff; }
+/* телефон: сияние тусклее и неподвижно — глаза не режет и не грузит видеокарту */
+@media (max-width: 899px) {
+  #winter-sky i { animation: none !important; }
+  #winter-sky i:nth-child(1) { opacity: .45; } #winter-sky i:nth-child(2) { opacity: .4; } #winter-sky i:nth-child(3) { display: none; }
+  :root[data-winter="1"] .hello .view-title { background-image: none !important; -webkit-text-fill-color: currentColor; color: var(--primary); }
+  #winter-snow { opacity: .75; }
+}
+
+/* ===== 0.37.1: новые формы фото ===== */
+.phero[data-shape="snowflake"] .hero-avatar img, .lb-av[data-shape="snowflake"] img, .pe-sm.sh[data-shape="snowflake"] i { -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27%3E%3Cpolygon points=%2750.0,1.0 65.0,24.0 92.4,25.5 80.0,50.0 92.4,74.5 65.0,76.0 50.0,99.0 35.0,76.0 7.6,74.5 20.0,50.0 7.6,25.5 35.0,24.0%27/%3E%3C/svg%3E") center / 100% 100% no-repeat; mask: url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27%3E%3Cpolygon points=%2750.0,1.0 65.0,24.0 92.4,25.5 80.0,50.0 92.4,74.5 65.0,76.0 50.0,99.0 35.0,76.0 7.6,74.5 20.0,50.0 7.6,25.5 35.0,24.0%27/%3E%3C/svg%3E") center / 100% 100% no-repeat; border-radius: 0 !important; clip-path: none !important; }
+.phero[data-shape="snowflake"] .hero-avatar, .lb-av[data-shape="snowflake"] { border-radius: 0 !important; background: transparent !important; box-shadow: none !important; border: 0 !important; outline: 0 !important; animation: none !important; }
+.phero[data-shape="snowflake"] .hero-avatar img { filter: drop-shadow(0 0 2px var(--fc, transparent)) drop-shadow(0 0 10px var(--fc2, transparent)); }
+.phero[data-shape="tree"] .hero-avatar img, .lb-av[data-shape="tree"] img, .pe-sm.sh[data-shape="tree"] i { -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27%3E%3Cpolygon points=%2750,2 72,30 62,30 84,58 70,58 96,90 4,90 30,58 16,58 38,30 28,30%27/%3E%3C/svg%3E") center / 100% 100% no-repeat; mask: url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27%3E%3Cpolygon points=%2750,2 72,30 62,30 84,58 70,58 96,90 4,90 30,58 16,58 38,30 28,30%27/%3E%3C/svg%3E") center / 100% 100% no-repeat; border-radius: 0 !important; clip-path: none !important; }
+.phero[data-shape="tree"] .hero-avatar, .lb-av[data-shape="tree"] { border-radius: 0 !important; background: transparent !important; box-shadow: none !important; border: 0 !important; outline: 0 !important; animation: none !important; }
+.phero[data-shape="tree"] .hero-avatar img { filter: drop-shadow(0 0 2px var(--fc, transparent)) drop-shadow(0 0 10px var(--fc2, transparent)); }
+.phero[data-shape="cloud"] .hero-avatar img, .lb-av[data-shape="cloud"] img, .pe-sm.sh[data-shape="cloud"] i { -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27%3E%3Cpath d=%27M26 86C12 86 2 76 2 63c0-12 9-21 20-22 2-15 15-27 31-27 13 0 24 8 29 19 10 1 16 10 16 20 0 18-12 33-30 33z%27/%3E%3C/svg%3E") center / 100% 100% no-repeat; mask: url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27%3E%3Cpath d=%27M26 86C12 86 2 76 2 63c0-12 9-21 20-22 2-15 15-27 31-27 13 0 24 8 29 19 10 1 16 10 16 20 0 18-12 33-30 33z%27/%3E%3C/svg%3E") center / 100% 100% no-repeat; border-radius: 0 !important; clip-path: none !important; }
+.phero[data-shape="cloud"] .hero-avatar, .lb-av[data-shape="cloud"] { border-radius: 0 !important; background: transparent !important; box-shadow: none !important; border: 0 !important; outline: 0 !important; animation: none !important; }
+.phero[data-shape="cloud"] .hero-avatar img { filter: drop-shadow(0 0 2px var(--fc, transparent)) drop-shadow(0 0 10px var(--fc2, transparent)); }
+.phero[data-shape="octagon"] .hero-avatar img, .lb-av[data-shape="octagon"] img, .pe-sm.sh[data-shape="octagon"] i { -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27%3E%3Cpolygon points=%2730,2 70,2 98,30 98,70 70,98 30,98 2,70 2,30%27/%3E%3C/svg%3E") center / 100% 100% no-repeat; mask: url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27%3E%3Cpolygon points=%2730,2 70,2 98,30 98,70 70,98 30,98 2,70 2,30%27/%3E%3C/svg%3E") center / 100% 100% no-repeat; border-radius: 0 !important; clip-path: none !important; }
+.phero[data-shape="octagon"] .hero-avatar, .lb-av[data-shape="octagon"] { border-radius: 0 !important; background: transparent !important; box-shadow: none !important; border: 0 !important; outline: 0 !important; animation: none !important; }
+.phero[data-shape="octagon"] .hero-avatar img { filter: drop-shadow(0 0 2px var(--fc, transparent)) drop-shadow(0 0 10px var(--fc2, transparent)); }
+
+/* ===== 0.37.1: новые рамки ===== */
+.phero[data-frame="candy"], .pe-sm.fr[data-frame="candy"], .lb-av[data-frame="candy"] { --fc: #ff3b5c; --fc2: #ffffff; }
+.phero[data-frame="candy"] .hero-avatar, .lb-av[data-frame="candy"] { box-shadow: 0 0 0 3px #fff, 0 0 0 6px #ff3b5c, 0 0 0 9px #fff, 0 0 18px rgba(255,59,92,.6) !important; }
+.pe-sm.fr[data-frame="candy"] i { box-shadow: 0 0 0 2px #fff, 0 0 0 4px #ff3b5c, 0 0 0 6px #fff; }
+.phero[data-frame="aurora"], .pe-sm.fr[data-frame="aurora"], .lb-av[data-frame="aurora"] { --fc: #43e97b; --fc2: #7a5cff; }
+.phero[data-frame="aurora"] .hero-avatar, .lb-av[data-frame="aurora"] { animation: pfAurora 5s linear infinite; } .pe-sm.fr[data-frame="aurora"] i { animation: pfAuroraS 5s linear infinite; }
+@keyframes pfAurora { 0%,100% { box-shadow: 0 0 0 3px #43e97b, 0 0 22px #38f9d7; } 33% { box-shadow: 0 0 0 3px #38c8ff, 0 0 22px #3a7bff; } 66% { box-shadow: 0 0 0 3px #a06bff, 0 0 22px #ff6bd6; } }
+@keyframes pfAuroraS { 0%,100% { box-shadow: 0 0 0 2px #43e97b, 0 0 8px #38f9d7; } 33% { box-shadow: 0 0 0 2px #38c8ff, 0 0 8px #3a7bff; } 66% { box-shadow: 0 0 0 2px #a06bff, 0 0 8px #ff6bd6; } }
+.phero[data-frame="gift"], .pe-sm.fr[data-frame="gift"], .lb-av[data-frame="gift"] { --fc: #e5323e; --fc2: #f5c542; }
+.phero[data-frame="gift"] .hero-avatar, .lb-av[data-frame="gift"] { box-shadow: 0 0 0 4px #e5323e, 0 0 0 7px #f5c542, 0 0 22px rgba(245,197,66,.55) !important; }
+.pe-sm.fr[data-frame="gift"] i { box-shadow: 0 0 0 2px #e5323e, 0 0 0 4px #f5c542; }
+.phero[data-frame="night"], .pe-sm.fr[data-frame="night"], .lb-av[data-frame="night"] { --fc: #2b3aa8; --fc2: #9fb4ff; }
+.phero[data-frame="night"] .hero-avatar, .lb-av[data-frame="night"] { box-shadow: 0 0 0 3px #1c2577, 0 0 0 5px #9fb4ff, 0 0 26px rgba(120,140,255,.6), 0 0 50px rgba(40,50,160,.5) !important; }
+.pe-sm.fr[data-frame="night"] i { box-shadow: 0 0 0 2px #1c2577, 0 0 0 3px #9fb4ff, 0 0 8px rgba(120,140,255,.6); }
+
+/* ===== 0.37.1: новые эффекты ===== */
+.phero[data-effect="flakes"] .phero-fx i, .phero[data-effect="gifts"] .phero-fx i, .phero[data-effect="sparks"] .phero-fx i { display: block; left: var(--x); animation-delay: var(--d) !important; }
+.phero[data-effect="flakes"] .phero-fx i { top: -24px; width: 18px; height: 18px; color: #fff; animation: fxFlake 7s linear infinite;
+  background: center / contain no-repeat url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='1.6' stroke-linecap='round'%3E%3Cpath d='M12 2v20M3.3 7l17.4 10M3.3 17L20.7 7M9 4l3 2 3-2M9 20l3-2 3 2'/%3E%3C/svg%3E"); filter: drop-shadow(0 0 4px rgba(170,220,255,.9)); }
+@keyframes fxFlake { 0% { transform: translateY(0) rotate(0); opacity: 0; } 10% { opacity: .95; } 100% { transform: translateY(230px) rotate(240deg); opacity: .3; } }
+.phero[data-effect="gifts"] .phero-fx i { top: -30px; width: 22px; height: 22px; border-radius: 4px; animation: fxCat 7s linear infinite;
+  background: linear-gradient(90deg, transparent 42%, #f5c542 42% 58%, transparent 58%), linear-gradient(transparent 42%, #f5c542 42% 58%, transparent 58%), #e5323e; box-shadow: 0 4px 10px rgba(0,0,0,.4); }
+.phero[data-effect="gifts"] .phero-fx i:nth-child(3n) { background: linear-gradient(90deg, transparent 42%, #fff 42% 58%, transparent 58%), linear-gradient(transparent 42%, #fff 42% 58%, transparent 58%), #2e9d5b; }
+.phero[data-effect="gifts"] .phero-fx i:nth-child(3n+1) { background: linear-gradient(90deg, transparent 42%, #fff 42% 58%, transparent 58%), linear-gradient(transparent 42%, #fff 42% 58%, transparent 58%), #4a6cff; }
+.phero[data-effect="sparks"] .phero-fx i { bottom: -6px; top: auto; width: 4px; height: 4px; border-radius: 50%; background: #ffd75e; box-shadow: 0 0 8px 2px #ffb03a; animation: fxSpark 3.2s ease-out infinite; }
+@keyframes fxSpark { 0% { transform: translate(0, 0) scale(1); opacity: 1; } 100% { transform: translate(var(--y, 12px), -170px) scale(.3); opacity: 0; } }
+.phero[data-effect="aurorafx"] .phero-fx { background: radial-gradient(70% 90% at 20% 0%, rgba(67,233,123,.5), transparent 60%), radial-gradient(70% 90% at 80% 10%, rgba(122,92,255,.5), transparent 60%), radial-gradient(80% 60% at 50% 0%, rgba(56,200,255,.4), transparent 70%); animation: fxAur 9s ease-in-out infinite alternate; mix-blend-mode: screen; }
+@keyframes fxAur { from { opacity: .55; filter: hue-rotate(0deg); } to { opacity: 1; filter: hue-rotate(40deg); } }
+.pe-sm.fx[data-effect="flakes"] i { width: 4px; height: 4px; background: #fff; border-radius: 50%; animation: smFall 2.4s linear infinite; }
+.pe-sm.fx[data-effect="gifts"] i { width: 6px; height: 6px; border-radius: 1px; background: #e5323e; animation: smFall 2.6s linear infinite; }
+.pe-sm.fx[data-effect="sparks"] i { width: 3px; height: 3px; border-radius: 50%; background: #ffd75e; box-shadow: 0 0 4px #ffb03a; animation: smRise 1.8s ease-out infinite; }
+.pe-sm.fx[data-effect="aurorafx"] { background: linear-gradient(135deg, rgba(67,233,123,.5), rgba(122,92,255,.5)); }
+
+/* ===== 0.37.1: витрина и достижения в чужом профиле ===== */
+.fav-top { position: relative; display: flex; align-items: center; gap: 14px; width: 100%; margin: 4px 0 10px; padding: 12px; border: 0; border-radius: 24px; cursor: pointer; text-align: left; color: #fff; font: inherit; overflow: hidden;
+  background: linear-gradient(120deg, color-mix(in srgb, var(--primary) 55%, #1a1020), color-mix(in srgb, var(--primary) 18%, #0d0a12)); box-shadow: 0 10px 26px rgba(0,0,0,.3); transition: transform .2s; }
+.fav-top:active { transform: scale(.98); }
+.fav-top img { width: 84px; height: 84px; flex: none; border-radius: 16px; object-fit: cover; box-shadow: 0 8px 18px rgba(0,0,0,.4); }
+.fav-top-txt { flex: 1; min-width: 0; display: grid; gap: 3px; }
+.fav-top-txt small { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; opacity: .85; }
+.fav-top-txt small svg { width: 14px; height: 14px; }
+.fav-top-txt b { font-size: 18px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fav-top-txt i { font-style: normal; opacity: .75; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fav-top-play { display: grid; place-items: center; width: 46px; height: 46px; flex: none; border-radius: 50%; background: #fff; color: #111; }
+.fav-top-play svg { width: 22px; height: 22px; }
+.fav-tracks .fav-n { flex: none; width: 22px; text-align: center; font-weight: 800; font-size: 15px; opacity: .55; }
+.fav-tracks .track-row:nth-of-type(2) .fav-n, .fav-tracks .track-row:nth-of-type(3) .fav-n { color: var(--primary); opacity: 1; }
+.fav-all { display: inline-flex; align-items: center; gap: 6px; margin: 10px auto 0; }
+.fav-tracks { display: flex; flex-direction: column; }
+.up-ach .ach { cursor: pointer; }
+
+:root[data-winter="1"] #bottom-nav .nav-inner { position: relative; overflow: hidden; }
+:root[data-winter="1"] #bottom-nav { box-shadow: none; }
+:root[data-winter="1"] #bottom-nav .nav-inner { box-shadow: inset 0 2px 0 rgba(255, 255, 255, .55); }
+/* новый плеер: текст песни прямо на фоне, как в видео */
+#full-player.fp2 #fp-lyrics { background: transparent !important; box-shadow: none !important; border: 0 !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
+.winter-nav svg { height: 44%; opacity: .8; }
+.winter-nav .wn-w { opacity: .75; }
+:root[data-winter="1"] #bottom-nav .nav-inner { box-shadow: inset 0 1px 0 rgba(255, 255, 255, .22); }
