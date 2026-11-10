@@ -36,7 +36,7 @@ import { DEF_AV, avSrc, isDefAv } from './avatar.js';
 import { ONLINE_MS, loadFriends, friendIds, addFriend, removeFriend, findByNick, friendCards, onFriends, declineRequest, acceptRequest, requestIds, sentIds, friendState, friendsLoaded } from './friends.js';
 import { openChat, chatWith, isUnread, onChats } from './chat.js';
 import { notifyOn, setNotify } from './notify.js';
-import { openInstall, standalone } from './install.js';
+import { openInstall, standalone, inApp } from './install.js';
 import { getRingtone, clearRingtone } from './ringtone.js';
 import { searchTracks } from './catalog.js';
 import { seenText } from './userpage.js';
@@ -84,7 +84,7 @@ export const ACHIEVEMENTS = [
   { id: 'top1', i: 'crown', title: 'Король эфира', hint: 'Станьте первым в рейтинге', ok: (s) => s.rank === 1 },
   { id: 'fr3', i: 'group', title: 'Душа компании', hint: 'Добавьте 3 друзей', v: (s) => [s.friends, 3] },
 ];
-export const DARK_UNTIL = Date.UTC(2026, 10, 10);
+export const DARK_UNTIL = Date.UTC(2026, 10, 3, 21); // значок — только тем, кто зарегистрировался до конца 3 ноября 2026 (по Москве)
 export const FOUNDER = 'motrahka'; // «Основатель сбоя» — лимитированный значок только у него
 export const achDone = (a, s) => (a.ok ? a.ok(s) : a.v(s)[0] >= a.v(s)[1]);
 export const ACH = Object.fromEntries(ACHIEVEMENTS.map((a) => [a.id, a]));
@@ -305,6 +305,8 @@ function statsNow() {
   if (!night && (store.state.history.some((t) => t.playedAt && new Date(Number(t.playedAt)).getHours() < 5) || (player.st.playing && new Date().getHours() < 5))) { night = true; try { localStorage.setItem('mkw.ach.night', '1'); } catch { /* ignore */ } }
   const created = Number(p.createdAt) || 0;
   const c = getCustom();
+  // значок сбоя — не для тех, кто пришёл после него: снимаем, если он закреплён в профиле
+  if (created >= DARK_UNTIL && c.badges.includes('dark1')) setTimeout(() => { const cc = getCustom(); if (cc.badges.includes('dark1')) setCustom({ badges: cc.badges.filter((x) => x !== 'dark1') }); }, 0);
   return {
     sec: store.listenedTotal(), likes: store.state.likes.length, playlists: store.state.playlists.length,
     plays: Number(p.plays) || store.state.history.length,
@@ -313,7 +315,7 @@ function statsNow() {
     // значок «Пережил тёмное время бана»: у всех, кто был с MKW до 10 ноября 2026
     founder: String(curNick).toLowerCase() === FOUNDER,
     waited: (() => { try { return localStorage.getItem('mkw.wait.badge') === '1'; } catch { return false; } })() || c.badges.includes('wait1'),
-    darkBan: Date.now() < DARK_UNTIL || (created > 0 && created < DARK_UNTIL) || c.badges.includes('dark1'),
+    darkBan: created > 0 && created < DARK_UNTIL,
   };
 }
 
@@ -847,7 +849,7 @@ function swipeTabs(area) {
 window.addEventListener('resize', () => placeLens(false));
 
 function setTab(name) {
-  if (name === 'about') { try { localStorage.setItem('mkw.aboutseen', '0.37.7'); } catch { /* ignore */ } document.querySelectorAll('.ptab.has-new').forEach((b) => b.classList.remove('has-new')); }
+  if (name === 'about') { try { localStorage.setItem('mkw.aboutseen', '0.37.8'); } catch { /* ignore */ } document.querySelectorAll('.ptab.has-new').forEach((b) => b.classList.remove('has-new')); }
   const dir = TABS.indexOf(name) - TABS.indexOf(refs.tab || 'main');
   refs.tab = name;
   $$('.ptab').forEach((b) => b.classList.toggle('active', b.dataset.tab === name));
@@ -916,7 +918,7 @@ export function buildProfile(nick) {
   restoreFan(nick).then(() => { paintMarks(getCustom()); });
   const tabBtn = (id, label, ic) => h('button', { class: 'ptab', type: 'button', 'data-tab': id, onclick: () => setTab(id) }, mi(ic), h('span', { text: label }));
   refs.tabs = h('div', { class: 'ptabs' }, h('i', { class: 'ptab-lens' }), tabBtn('main', 'Обзор', 'person'), tabBtn('friends', 'Друзья', 'group'), tabBtn('board', 'Топ', 'trophy'), tabBtn('set', 'Настройки', 'palette'), tabBtn('about', 'О MKW', 'note'));
-  try { if (localStorage.getItem('mkw.aboutseen') !== '0.37.7') refs.tabs.querySelector('[data-tab=about]').classList.add('has-new'); } catch { /* ignore */ }
+  try { if (localStorage.getItem('mkw.aboutseen') !== '0.37.8') refs.tabs.querySelector('[data-tab=about]').classList.add('has-new'); } catch { /* ignore */ }
 
   root.replaceChildren(
     h('div', { class: 'p-side' }, refs.hero, refs.tabs),
@@ -945,10 +947,10 @@ export function buildProfile(nick) {
       refs.myRank, refs.boardList,
       h('div', { class: 'set-card', style: 'margin-top:14px' }, row('Показывать меня в рейтинге', 'Ник, фото, баннер, статус, значки, витрина и часы видят другие слушатели', refs.board, null, 'group'))),
     h('div', { class: 'ppane', 'data-pane': 'set', hidden: '' },
-      h('div', { class: 'set-group bg-beta' }, h('div', { class: 'set-card' },
+      inApp ? null : h('div', { class: 'set-group bg-beta' }, h('div', { class: 'set-card' },
         row('Слушать в фоне с выключенным экраном', 'Бета: работает не у всех и не со всеми треками. Полный трек переключается на звук, когда вы гасите экран. Из России — с VPN', refs.bgplay, null, 'moon'),
         row('Проверить фон', 'Покажет, что работает на вашем телефоне и в вашей сети', h('span', { class: 'chev', text: '›' }), runBgCheck, 'shield'))),
-      group('Приложение',
+      inApp ? null : group('Приложение',
         row('Установить как приложение', standalone() ? 'Уже установлено — вы в приложении' : 'Своя иконка и отдельное окно. Покажу, куда нажать — в Яндекс Браузере, Chrome, Edge и на телефоне', chev(), () => openInstall(false), 'install')),
       group('Внешний вид',
         h('div', { class: 'set-block' }, h('b', { text: 'Тема' }),

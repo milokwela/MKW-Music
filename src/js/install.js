@@ -5,7 +5,8 @@ import { h, openSheet, closeSheet, isSheetOpen, toast } from './ui.js';
 import { mi } from './icons2.js';
 
 let deferred = null;
-export const standalone = () => window.matchMedia('(display-mode: standalone)').matches || window.matchMedia('(display-mode: window-controls-overlay)').matches || navigator.standalone === true;
+export const inApp = /MKWApp\//.test(navigator.userAgent); // внутри Android-приложения (APK)
+export const standalone = () => inApp || window.matchMedia('(display-mode: standalone)').matches || window.matchMedia('(display-mode: window-controls-overlay)').matches || navigator.standalone === true;
 const SKEY = 'mkw.install.later';
 const ASK = 'mkw.install.ask';
 const ASK_V = '0.27'; // после этого обновления предлагаем установить всем ещё раз
@@ -77,6 +78,7 @@ export function openInstall(first) {
     return;
   }
   const g = guide(b);
+  const apkBtn = b.android ? h('a', { class: 'btn tonal', href: 'https://github.com/milokwela/MKW-Music/releases/latest/download/MKW-Music-beta.apk', target: '_blank', rel: 'noopener noreferrer', style: 'text-decoration:none;text-align:center' }, 'Или скачать Android-приложение (APK, beta)') : null;
   const kids = [
     h('p', { class: 'profile-note', text: first ? 'Мы обновились! Поставьте MKW Music как приложение: своя иконка, отдельное окно, запуск без браузера — и работает быстрее.' : 'Своя иконка, отдельное окно, запуск без браузера — и работает быстрее.' }),
   ];
@@ -100,6 +102,7 @@ export function openInstall(first) {
           ['Chrome · Android', 'Меню ⋮ → «Установить приложение» / «Добавить на гл. экран»'],
           ['Edge', 'Значок установки в адресной строке или … → «Приложения» → «Установить MKW Music»'],
           ['iPhone · Safari', '«Поделиться» → «На экран «Домой»» → «Добавить»']].map(([a, t]) => h('div', {}, h('b', { text: a }), h('small', { text: t }))))));
+  if (apkBtn) kids.push(apkBtn);
   if (first) {
     const later = h('button', { class: 'btn tonal', type: 'button', text: 'Позже' });
     later.addEventListener('click', () => { try { localStorage.setItem(SKEY, String(Date.now())); } catch { /* ignore */ } closeSheet(); });
