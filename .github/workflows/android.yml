@@ -237,7 +237,7 @@ jobs:
           arch: x86_64
           target: google_apis
           disable-animations: true
-          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -dns-server 8.8.8.8,1.1.1.1
           script: bash android/ci/smoke.sh dl/app-debug.apk smoke-out
 
       - name: Выложить результаты проверки

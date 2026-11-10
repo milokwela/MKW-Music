@@ -49,6 +49,12 @@ def log(*a):
     print(*a, flush=True)
 
 
+# ---------- 0. есть ли у эмулятора интернет ----------
+REPORT['net_ping_ip'] = sh('shell', 'ping', '-c', '2', '-W', '3', '8.8.8.8', timeout=30)[-300:]
+REPORT['net_ping_host'] = sh('shell', 'ping', '-c', '2', '-W', '3', 'mkwmusic.ru', timeout=30)[-300:]
+REPORT['net_dns'] = sh('shell', 'getprop', 'net.dns1').strip() + ' ' + sh('shell', 'getprop', 'net.dns2').strip()
+log('net:', REPORT['net_ping_ip'][-120:], '|', REPORT['net_ping_host'][-160:], '|', REPORT['net_dns'])
+
 # ---------- 1. первый запуск: диалог настройки, разрешения ----------
 sh('shell', 'am', 'force-stop', PKG)
 sh('shell', 'pm', 'revoke', PKG, 'android.permission.POST_NOTIFICATIONS')
@@ -66,6 +72,10 @@ shot('03_battery_dialog')
 log('tap allow 2:', tap_text('Allow', 'ALLOW', 'Разрешить'))
 time.sleep(3)
 shot('04_after_dialogs')
+if 'Нет соединения' in ui():
+    log('offline page, retry:', tap_text('Повторить'))
+    time.sleep(10)
+    shot('04b_after_retry')
 
 # ---------- 2. страница загрузилась? ждём экран входа ----------
 pid = ''
@@ -88,6 +98,8 @@ try:
                 break
         except Exception as e:  # noqa: BLE001
             log('devtools wait', e)
+        if _ % 5 == 4 and 'Нет соединения' in ui():
+            log('retry:', tap_text('Повторить'))
         time.sleep(2)
     REPORT['page_url'] = page.get('url') if page else None
     ws = websocket.create_connection(page['webSocketDebuggerUrl'], timeout=40, suppress_origin=True)
