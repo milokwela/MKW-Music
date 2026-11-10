@@ -25,6 +25,8 @@ function initDrag() {
     if (m === 'close' && e.target.closest('button, input, .fp-seek') && !e.target.closest('.fp-top')) return;
     if (m === 'close' && e.target.closest('#fp-art') && !e.target.closest('.fp-top')) { /* вертикаль разрешена, горизонталь отменит move */ }
     if (m === 'close' && full.querySelector('.fp-inner').scrollTop > 0) return;
+    // очередь и текст листаются сами — шторку плеера они не сворачивают
+    if (m === 'close' && e.target.closest('#fp-q2, #fp-lyrics, .p2q-list')) return;
     const pt = e.touches[0]; sy = pt.clientY; sx0 = pt.clientX; dy = 0; dx = 0; hs = false; t0 = Date.now(); mode = m; on = true;
   };
   const move = (e) => {
@@ -270,12 +272,10 @@ export function initPlayerUI() {
   $('#fp-more').addEventListener('click', () => { if (queue.current) openTrackMenu(queue.current); });
 
   const seek = $('#fp-seek');
-  let lastSeek = 0;
   seek.addEventListener('input', () => {
     seeking = true;
     $('#fp-cur').textContent = formatTime((seek.value / 1000) * st.duration);
     seek.style.setProperty('--val', `${seek.value / 10}%`);
-    if (st.duration && Date.now() - lastSeek > 250) { lastSeek = Date.now(); player.seek((seek.value / 1000) * st.duration); }
   });
   seek.addEventListener('change', () => {
     player.seek((seek.value / 1000) * st.duration);

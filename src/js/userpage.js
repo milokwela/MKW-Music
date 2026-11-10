@@ -3,7 +3,7 @@ import { $, h, trackRow, animateIn } from './ui.js';
 import * as player from './player.js';
 import { openTrackMenu } from './menu.js';
 import { getProfile } from './leaders.js';
-import { topListeners } from './leaders.js';
+import { topListeners, countProfiles } from './leaders.js';
 import { ACH, ACHIEVEMENTS, achDone, viewAch, bannerCss, formatListened } from './profile.js';
 import { artistPic } from './artistpic.js';
 import { openArtist } from './artist.js';
@@ -79,10 +79,25 @@ function achOf(u) {
   const s = statsOf(u);
   return [...new Map([...(u.badges || []).filter((id) => ACH[id]).map((id) => [id, ACH[id]]), ...ACHIEVEMENTS.filter((a) => statAch(a) && achDone(a, s)).map((a) => [a.id, a])]).values()];
 }
-function rarity(a, list) {
+// награды за статистику считаем по всем профилям MKW (там есть и дни), значки — по рейтингу.
+// Человек, чей профиль открыт, награду точно имеет — поэтому меньше «у одного» не бывает, никаких 0%
+const pct = (n, all) => Math.max(0.1, Math.round((n / Math.max(1, all)) * 1000) / 10);
+const statField = (a) => { const z = { sec: 0, plays: 0, likes: 0, days: 0 }; const tgt = a.v(z)[1];
+  return a.id.startsWith('like') ? ['likes', tgt] : a.id.startsWith('h') ? ['sec', tgt * 3600] : a.id.startsWith('p') ? ['plays', tgt] : ['days', tgt]; };
+const rareCache = new Map();
+async function rarity(a, list, u) {
+  if (statAch(a)) {
+    const [f, min] = statField(a), k = `${f}:${min}`;
+    if (!rareCache.has(k)) rareCache.set(k, countProfiles(f, min));
+    const c = await rareCache.get(k);
+    if (c && c.all) return pct(Math.max(1, c.got), c.all);
+    if (f === 'days') return null; // в рейтинге дней нет — лучше промолчать, чем показать неправду
+  }
   if (!list.length) return null;
-  const n = list.filter((x) => (statAch(a) ? achDone(a, statsOf(x)) : (x.badges || []).includes(a.id))).length;
-  return Math.max(n ? 0.5 : 0, Math.round((n / list.length) * 1000) / 10);
+  let n = list.filter((x) => (statAch(a) ? achDone(a, statsOf(x)) : (x.badges || []).includes(a.id))).length;
+  const inList = u && list.some((x) => x.uid === u.uid);
+  if (!inList) n += 1;
+  return pct(Math.max(1, n), list.length + (inList ? 0 : 1));
 }
 function openAchViewer(u) {
   const got = achOf(u);
@@ -99,10 +114,13 @@ function openAchViewer(u) {
   openSheet(`Награды ${u.nick || ''}`, h('div', { class: 'achs' }, track, count, h('p', { class: 'achs-tip', text: 'Листайте влево и вправо. Смахните вниз, чтобы вернуться в профиль' })));
   board().then((list) => {
     track.querySelectorAll('.achs-card').forEach((c) => {
-      const a = ACH[c.dataset.id], r = a && rarity(a, list), el = c.querySelector('.achs-rare');
-      if (r == null) { el.textContent = ''; return; }
-      el.textContent = `Есть у ${String(r).replace('.', ',')}% слушателей MKW`;
-      el.classList.toggle('rare', r < 10); el.classList.toggle('epic', r < 2);
+      const a = ACH[c.dataset.id], el = c.querySelector('.achs-rare');
+      if (!a) { el.textContent = ''; return; }
+      rarity(a, list, u).then((r) => {
+        if (r == null) { el.textContent = ''; return; }
+        el.textContent = `Есть у ${String(r).replace('.', ',')}% слушателей MKW`;
+        el.classList.toggle('rare', r < 10); el.classList.toggle('epic', r < 2);
+      }).catch(() => { el.textContent = ''; });
     });
   });
 }

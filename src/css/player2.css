@@ -115,13 +115,49 @@
   background: linear-gradient(90deg, #fff, var(--p2-hi), #fff); -webkit-background-clip: text; background-clip: text; color: transparent; }
 #full-player.fp2 #fp2-head small { font-size: 12px; opacity: .6; }
 #full-player.fp2 #fp-badge { display: none !important; }
-/* таймер рядом с лайком; дизлайк в новом виде остаётся только в MKW Волне */
-#full-player.fp2 .fp-meta #fp-dislike { display: none !important; }
+/* таймер рядом с лайком и дизлайком */
+#full-player.fp2 .fp-meta #fp-dislike { display: inline-flex !important; width: 44px !important; height: 44px !important; background: none !important; color: #fff !important; box-shadow: none !important; }
 #full-player.fp2 .fp-meta #fp-sleep { display: inline-flex !important; width: 44px !important; height: 44px !important; background: none !important; color: #fff !important; box-shadow: none !important; }
 #full-player.fp2 .fp-meta #fp-sleep.on { color: var(--p2-hi) !important; }
 #full-player.fp2 .fp-extra > #fp-queue { border-radius: 6px 26px 26px 6px !important; }
 /* скорость есть и в классическом плеере */
 #full-player:not(.fp2) #fp-speed { display: inline-flex; align-items: center; justify-content: center; min-width: 52px; height: 36px; padding: 0 12px; border-radius: 999px; border: 1.5px solid color-mix(in srgb, var(--on-bg) 30%, transparent); background: transparent; color: var(--on-bg); font: inherit; font-weight: 700; font-size: 14px; cursor: pointer; }
 #full-player:not(.fp2) #fp-speed.on { background: var(--primary); color: var(--on-primary); border-color: transparent; }
-#full-player.fp2.wave-mode .fp-meta #fp-dislike { display: inline-flex !important; }
 @media (max-width: 899px) { #full-player.fp2.lyrics-on .fp-meta, #full-player.fp2.queue-on .fp-meta { margin-top: 18px !important; } }
+
+/* ===== 0.37.3: на телефоне сцена занимает всё свободное место — текст и очередь длиннее, кнопки ниже ===== */
+@media (max-width: 899px) {
+  #full-player.fp2:not(.wave-mode) .fp-inner { padding-bottom: calc(10px + env(safe-area-inset-bottom)) !important; }
+  #full-player.fp2 #fp-stage { flex: 1 1 auto; aspect-ratio: auto; max-height: none; min-height: 240px; margin: 6px auto 0; container-type: size; }
+  /* обложка — квадрат по центру сцены, сколько влезает */
+  #full-player.fp2 #fp-stage > #fp-art { width: min(100cqw, 100cqh) !important; height: min(100cqw, 100cqh) !important;
+    left: calc((100cqw - min(100cqw, 100cqh)) / 2); top: calc((100cqh - min(100cqw, 100cqh)) / 2); }
+  #full-player.fp2 .fp-meta, #full-player.fp2.lyrics-on .fp-meta, #full-player.fp2.queue-on .fp-meta { margin-top: 14px !important; }
+  #full-player.fp2 .fp-meta #fp-dislike, #full-player.fp2 .fp-meta #fp-sleep, #full-player.fp2 .fp-meta #fp-like { width: 40px !important; height: 40px !important; }
+}
+/* очередь подписана: «MKW · Очередь» */
+#fp2-head .p2-q { display: none; }
+#full-player.fp2.queue-on #fp2-head .p2-q { display: inline; }
+#full-player.fp2.queue-on #fp2-head .p2-n { display: none; }
+
+/* ===== 0.37.3: очередь в плеере на компьютере — справа, как текст ===== */
+@media (min-width: 900px) {
+  #full-player.fp2.queue-on .fp-inner { max-width: 1040px; display: grid; grid-template-columns: minmax(300px, 420px) 1fr; column-gap: 48px; align-content: center; }
+  #full-player.fp2.queue-on .fp-top { grid-column: 1 / -1; }
+  #full-player.fp2.queue-on #fp-art { display: block; grid-column: 1; grid-row: 2; width: min(100%, 380px); max-width: 380px; justify-self: center; }
+  #full-player.fp2.queue-on #fp-q2 { display: block; position: relative; grid-column: 2; grid-row: 2 / span 4; height: 74vh; min-width: 0; }
+  #full-player.fp2.queue-on .fp-meta, #full-player.fp2.queue-on .fp-seek, #full-player.fp2.queue-on .fp-controls, #full-player.fp2.queue-on .fp-extra, #full-player.fp2.queue-on .fp-times { grid-column: 1; }
+  #full-player.fp2 #fp-q2 .p2q-row { padding: 8px 10px; }
+  #full-player.fp2 #fp-q2 .p2q-row:hover { background: rgba(255,255,255,.06); }
+  #full-player.fp2 #fp-art, #full-player.fp2 .fp-meta, #full-player.fp2 .fp-controls, #full-player.fp2 .fp-extra { will-change: transform; }
+}
+@media (min-width: 1000px) and (min-aspect-ratio: 5/4) {
+  #full-player.fp2.queue-on .fp-inner { grid-template-columns: minmax(320px, 400px) minmax(0, 1fr) !important; grid-template-rows: auto 1fr auto auto auto auto auto 1fr; }
+  #full-player.fp2.queue-on #fp-art { display: block !important; grid-column: 1; grid-row: 2; justify-self: center; align-self: end; width: min(38vh, 360px) !important; margin: 0 0 18px !important; }
+  #full-player.fp2.queue-on .fp-meta { grid-column: 1; grid-row: 3; }
+  #full-player.fp2.queue-on .fp-seek { grid-column: 1; grid-row: 4; }
+  #full-player.fp2.queue-on .fp-controls { grid-column: 1; grid-row: 5; }
+  #full-player.fp2.queue-on .fp-extra { grid-column: 1; grid-row: 6; }
+  #full-player.fp2.queue-on .fp-note, #full-player.fp2.queue-on .fp-src { grid-column: 1; grid-row: 7; }
+  #full-player.fp2.queue-on #fp-q2 { grid-column: 2; grid-row: 2 / span 7; align-self: stretch; height: calc(100vh - 110px) !important; }
+}
