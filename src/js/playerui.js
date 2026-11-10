@@ -1,4 +1,6 @@
 // Интерфейс плеера: мини-плеер, большой плеер, очередь, таймер сна.
+import { openOutput, hasOutput } from './output.js';
+import { mi } from './icons2.js';
 import { $, h, icon, setIcon, artEl, trackRow, openSheet, closeSheet, sheetItem, highlightCurrent, toast, emptyState } from './ui.js';
 import { openArtistFor, openArtist, artistLinks } from './artist.js';
 import { renderCarousel, initCarousel } from './carousel.js';
@@ -270,6 +272,11 @@ export function initPlayerUI() {
   $('#fp-artist').addEventListener('click', (e) => { const one = e.target.closest('.ar-link'); if (one) { openArtist(one.dataset.artist); return; } if (queue.current && e.currentTarget.querySelectorAll('.ar-link').length <= 1) openArtistFor(queue.current.artist); });
   $('#fp-artist').addEventListener('keydown', (e) => { const one = e.target.closest('.ar-link'); if (one && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); e.stopPropagation(); openArtist(one.dataset.artist); } });
   $('#fp-more').addEventListener('click', () => { if (queue.current) openTrackMenu(queue.current); });
+  if (hasOutput()) { // только в Android-приложении: куда идёт звук и громкость телефона
+    const out = h('button', { class: 'icon-btn', id: 'fp-out', type: 'button', 'aria-label': 'Подключить устройство' }, mi('headphones'));
+    out.addEventListener('click', openOutput);
+    $('#fp-more').before(out);
+  }
 
   const seek = $('#fp-seek');
   seek.addEventListener('input', () => {

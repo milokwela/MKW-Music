@@ -185,11 +185,11 @@ async function run({ cmd, q, n, v, d }) {
   else if (cmd === 'prev') { player.previousTrack(); toast('Предыдущий трек'); }
   else if (cmd === 'pause') { player.pause(); toast('Пауза'); }
   else if (cmd === 'play') { if (!player.st.playing) player.toggle(); toast('Играю'); }
-  else if (cmd === 'louder') { const x = player.setVolume(player.getVolume() + 0.15); toast(`Громкость ${Math.round(x * 100)}%`); }
-  else if (cmd === 'quieter') { const x = player.setVolume(player.getVolume() - 0.15); toast(`Громкость ${Math.round(x * 100)}%`); }
-  else if (cmd === 'vol') { const x = player.setVolume(n / 100); toast(`Громкость ${Math.round(x * 100)}%`); }
-  else if (cmd === 'mute') { muteVol = player.getVolume() || 0.7; player.setVolume(0); toast('Без звука'); }
-  else if (cmd === 'unmute') { player.setVolume(muteVol || 0.8); toast('Звук включён'); }
+  else if (cmd === 'louder') { const x = player.setUserVolume(player.getUserVolume() + 0.15); toast(`Громкость ${Math.round(x * 100)}%`); }
+  else if (cmd === 'quieter') { const x = player.setUserVolume(player.getUserVolume() - 0.15); toast(`Громкость ${Math.round(x * 100)}%`); }
+  else if (cmd === 'vol') { const x = player.setUserVolume(n / 100); toast(`Громкость ${Math.round(x * 100)}%`); }
+  else if (cmd === 'mute') { muteVol = player.getUserVolume() || 0.7; player.setUserVolume(0); toast('Без звука'); }
+  else if (cmd === 'unmute') { player.setUserVolume(muteVol || 0.8); toast('Звук включён'); }
   else if (cmd === 'seek') { player.seek(Math.max(0, player.st.time + n)); toast(n > 0 ? `Вперёд на ${n} с` : `Назад на ${-n} с`); }
   else if (cmd === 'restart') { player.seek(0); toast('С начала'); }
   else if (cmd === 'like') { if (t && !store.isLiked(t.id)) { store.toggleLike(t).catch(() => {}); toast('Добавлено в лайки'); } else toast('Уже в лайках'); }

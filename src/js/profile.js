@@ -849,7 +849,7 @@ function swipeTabs(area) {
 window.addEventListener('resize', () => placeLens(false));
 
 function setTab(name) {
-  if (name === 'about') { try { localStorage.setItem('mkw.aboutseen', '0.37.8'); } catch { /* ignore */ } document.querySelectorAll('.ptab.has-new').forEach((b) => b.classList.remove('has-new')); }
+  if (name === 'about') { try { localStorage.setItem('mkw.aboutseen', '0.38.0'); } catch { /* ignore */ } document.querySelectorAll('.ptab.has-new').forEach((b) => b.classList.remove('has-new')); }
   const dir = TABS.indexOf(name) - TABS.indexOf(refs.tab || 'main');
   refs.tab = name;
   $$('.ptab').forEach((b) => b.classList.toggle('active', b.dataset.tab === name));
@@ -918,7 +918,7 @@ export function buildProfile(nick) {
   restoreFan(nick).then(() => { paintMarks(getCustom()); });
   const tabBtn = (id, label, ic) => h('button', { class: 'ptab', type: 'button', 'data-tab': id, onclick: () => setTab(id) }, mi(ic), h('span', { text: label }));
   refs.tabs = h('div', { class: 'ptabs' }, h('i', { class: 'ptab-lens' }), tabBtn('main', 'Обзор', 'person'), tabBtn('friends', 'Друзья', 'group'), tabBtn('board', 'Топ', 'trophy'), tabBtn('set', 'Настройки', 'palette'), tabBtn('about', 'О MKW', 'note'));
-  try { if (localStorage.getItem('mkw.aboutseen') !== '0.37.8') refs.tabs.querySelector('[data-tab=about]').classList.add('has-new'); } catch { /* ignore */ }
+  try { if (localStorage.getItem('mkw.aboutseen') !== '0.38.0') refs.tabs.querySelector('[data-tab=about]').classList.add('has-new'); } catch { /* ignore */ }
 
   root.replaceChildren(
     h('div', { class: 'p-side' }, refs.hero, refs.tabs),

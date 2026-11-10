@@ -56,8 +56,8 @@ function act(name) {
   else if (name === 'Open_Palm') { player.pause(); toast('Пауза'); }
   else if (name === 'Pointing_Up') { if (!player.st.playing) { player.toggle(); toast('Продолжаем'); } }
   else if (name === 'pinky') { const b = document.getElementById('fp-lyrics-btn'); if (t && b) { if (!document.getElementById('full-player').classList.contains('open')) { const m = document.getElementById('mini-open'); if (m) m.click(); } setTimeout(() => b.click(), 300); toast('Текст песни'); } }
-  else if (name === 'vol-down') { const v = player.setVolume(player.getVolume() - 0.15); toast(`Громкость ${Math.round(v * 100)}%`); }
-  else if (name === 'vol-up') { const v = player.setVolume(player.getVolume() + 0.15); toast(`Громкость ${Math.round(v * 100)}%`); }
+  else if (name === 'vol-down') { const v = player.setUserVolume(player.getUserVolume() - 0.15); toast(`Громкость ${Math.round(v * 100)}%`); }
+  else if (name === 'vol-up') { const v = player.setUserVolume(player.getUserVolume() + 0.15); toast(`Громкость ${Math.round(v * 100)}%`); }
 }
 
 // Свои жесты по 21 точке руки (в MediaPipe их нет): считаем, какие пальцы вытянуты.

@@ -457,6 +457,39 @@ export function setVolume(v) {
   return vol;
 }
 
+// В Android-приложении голос и жесты меняют громкость самого телефона, а не только плеера
+const nativeAudio = () => (typeof window !== 'undefined' && window.MKWNative) || null;
+let sysVol = 0.5;
+if (typeof window !== 'undefined') {
+  window.addEventListener('mkw-audio', (e) => { if (e.detail && typeof e.detail.vol === 'number') sysVol = e.detail.vol; });
+  setTimeout(() => { const n = nativeAudio(); if (n) n.audio(); }, 1500);
+}
+export const getUserVolume = () => (nativeAudio() ? sysVol : vol);
+export function setUserVolume(v) {
+  const n = nativeAudio();
+  if (!n) return setVolume(v);
+  sysVol = Math.min(1, Math.max(0, v));
+  n.setVolume(sysVol, true);
+  return sysVol;
+}
+
+// Сеть пропала и вернулась: если трек должен играть, но встал, — продолжаем с того же места
+if (typeof window !== 'undefined') {
+  window.addEventListener('online', () => setTimeout(() => {
+    if (!queue.current || userPaused) return;
+    try {
+      if (st.mode === 'yt' && yt && yt.getPlayerState) {
+        if (yt.getPlayerState() !== 1) { if (st.time > 0) yt.seekTo(st.time, true); yt.playVideo(); }
+      } else if (audio.src && !audio.src.startsWith('blob:') && (audio.paused || audio.readyState < 3)) {
+        const at = st.time;
+        audio.addEventListener('loadedmetadata', () => { try { if (at > 0) audio.currentTime = at; } catch { /* ignore */ } }, { once: true });
+        audio.load();
+        audio.play().catch(() => {});
+      }
+    } catch { /* ignore */ }
+  }, 1500));
+}
+
 export function previousTrack() {
   if (queue.index > 0 && queue.prev()) startCurrent();
   else seek(0);
