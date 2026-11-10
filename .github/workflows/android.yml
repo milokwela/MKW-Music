@@ -1,17 +1,15 @@
 # Автоматическая сборка Android-приложения MKW Music (beta) — APK кладётся в релиз «android-beta».
 # Запускается сама, когда меняется папка android/ (или этот файл) в main, и вручную:
 #   Actions → Android APK → Run workflow.
-# Приложение — оболочка вокруг https://mkwmusic.ru, поэтому обновления сайта пересобирать APK не требуют.
-# Версия приложения — в файле android/version.txt (поднимайте её, когда меняете оболочку).
+# Приложение — оболочка вокруг https://mkwmusic.ru: интерфейс обновляется вместе с сайтом, а APK
+# пересобирается только при изменениях самой оболочки. Версия приложения — в android/version.txt.
 #
-# Подпись (необязательно, но тогда новые версии ставятся поверх старой без удаления).
-# Секреты репозитория (Settings → Secrets and variables → Actions):
-#   MKW_KEYSTORE_BASE64   — файл ключа .jks, закодированный в base64
-#   MKW_KEYSTORE_PASSWORD — пароль от файла ключа
-#   MKW_KEY_ALIAS         — имя ключа внутри файла
-#   MKW_KEY_PASSWORD      — пароль ключа (если пустой, берётся пароль файла)
-# Если секретов нет, сборка подписывается одноразовым ключом: APK работает, но обновить поверх
-# уже установленной версии не получится — её придётся удалить.
+# Подпись. Чтобы новая версия ставилась поверх старой, ключ должен быть всегда один и тот же:
+#   1) если заданы секреты репозитория (Settings → Secrets and variables → Actions), берётся ключ из них:
+#        MKW_KEYSTORE_BASE64 (файл .jks в base64), MKW_KEYSTORE_PASSWORD, MKW_KEY_ALIAS, MKW_KEY_PASSWORD (по желанию);
+#   2) иначе ключ создаётся при первой сборке в main и хранится в кэше Actions (его «будит» android-keepalive.yml,
+#      иначе GitHub удалит кэш через 7 дней без обращений). Секреты надёжнее — при желании переложите ключ туда.
+# Сборки из веток apk/** подписываются одноразовым ключом и в релиз не попадают — только проверяются в эмуляторе.
 name: Android APK
 
 on:
@@ -28,7 +26,7 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  apk:
+  build:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     env:
@@ -57,6 +55,19 @@ jobs:
           echo "name=$V" >> "$GITHUB_OUTPUT"
           echo "Версия приложения: $V, сборка #${{ github.run_number }}"
 
+      - name: Картинки MKW внутрь приложения
+        run: |
+          mkdir -p android/app/src/main/assets/site
+          cp mkw-*.webp android/app/src/main/assets/site/
+          du -sh android/app/src/main/assets/site
+
+      - name: Ключ подписи из кэша
+        id: keycache
+        uses: actions/cache/restore@v4
+        with:
+          path: ~/.mkw-signing
+          key: mkw-android-signing-v1
+
       - name: Ключ подписи
         id: key
         env:
@@ -65,23 +76,35 @@ jobs:
           KEY_ALIAS: ${{ secrets.MKW_KEY_ALIAS }}
           KEY_PASS: ${{ secrets.MKW_KEY_PASSWORD }}
         run: |
+          set -e
+          DIR="$HOME/.mkw-signing"
+          mkdir -p "$DIR"
           KS="$RUNNER_TEMP/mkw.jks"
           if [ -n "$KS_B64" ] && [ -n "$KS_PASS" ] && [ -n "$KEY_ALIAS" ]; then
             echo "$KS_B64" | base64 -d > "$KS"
             KP="${KEY_PASS:-$KS_PASS}"
-            echo "stable=true" >> "$GITHUB_OUTPUT"
-            echo "Подпись: постоянный ключ из секретов"
+            SRC=secrets
+          elif [ -s "$DIR/mkw.jks" ] && [ -s "$DIR/signing.env" ]; then
+            . "$DIR/signing.env"
+            cp "$DIR/mkw.jks" "$KS"
+            KP="$KS_PASS"
+            SRC=cache
           else
-            KS_PASS=$(openssl rand -hex 16)
-            echo "::add-mask::$KS_PASS"
+            KS_PASS=$(openssl rand -hex 24)
             KEY_ALIAS=mkw
             KP="$KS_PASS"
-            keytool -genkeypair -keystore "$KS" -alias "$KEY_ALIAS" -keyalg RSA -keysize 2048 \
-              -validity 10000 -storepass "$KS_PASS" -keypass "$KP" \
-              -dname "CN=MKW Music beta, O=MKW Music" >/dev/null
-            echo "stable=false" >> "$GITHUB_OUTPUT"
-            echo "Подпись: одноразовый ключ этой сборки (секретов нет)"
+            keytool -genkeypair -keystore "$DIR/mkw.jks" -alias "$KEY_ALIAS" -keyalg RSA -keysize 2048 \
+              -validity 36500 -storepass "$KS_PASS" -keypass "$KP" \
+              -dname "CN=MKW Music, O=MKW Music" >/dev/null
+            printf 'KS_PASS=%s\nKEY_ALIAS=%s\n' "$KS_PASS" "$KEY_ALIAS" > "$DIR/signing.env"
+            chmod 600 "$DIR/signing.env" "$DIR/mkw.jks"
+            cp "$DIR/mkw.jks" "$KS"
+            SRC=fresh
           fi
+          echo "::add-mask::$KS_PASS"
+          echo "::add-mask::$KP"
+          echo "source=$SRC" >> "$GITHUB_OUTPUT"
+          echo "Подпись: $SRC"
           {
             echo "MKW_KEYSTORE_FILE=$KS"
             echo "MKW_KEYSTORE_PASSWORD=$KS_PASS"
@@ -89,13 +112,20 @@ jobs:
             echo "MKW_KEY_PASSWORD=$KP"
           } >> "$GITHUB_ENV"
 
+      - name: Сохранить новый ключ подписи в кэш
+        if: steps.key.outputs.source == 'fresh' && github.ref == 'refs/heads/main'
+        uses: actions/cache/save@v4
+        with:
+          path: ~/.mkw-signing
+          key: mkw-android-signing-v1
+
       - name: Собрать APK
         shell: bash
         working-directory: android
         env:
           MKW_VERSION_NAME: ${{ steps.ver.outputs.name }}
           MKW_VERSION_CODE: ${{ github.run_number }}
-        run: gradle --no-daemon --console=plain assembleRelease 2>&1 | tee "$RUNNER_TEMP/build.log"
+        run: gradle --no-daemon --console=plain assembleRelease assembleDebug 2>&1 | tee "$RUNNER_TEMP/build.log"
 
       - name: Проверить APK
         run: |
@@ -104,6 +134,7 @@ jobs:
           BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
           "$BT/apksigner" verify --print-certs "$APK" | head -5
           "$BT/aapt2" dump badging "$APK" | grep -E "^(package|uses-permission|sdkVersion|targetSdkVersion|application-label:)" || true
+          ls -la "$APK" android/app/build/outputs/apk/debug/app-debug.apk
 
       - name: Подготовить файлы
         id: pack
@@ -113,10 +144,11 @@ jobs:
           (cd dist && sha256sum MKW-Music-beta.apk > MKW-Music-beta.apk.sha256)
           SHA=$(cut -d' ' -f1 dist/MKW-Music-beta.apk.sha256)
           echo "sha=$SHA" >> "$GITHUB_OUTPUT"
-          if [ "${{ steps.key.outputs.stable }}" = "true" ]; then
-            SIGN="постоянный ключ: новые версии ставятся поверх старой"
+          SRC="${{ steps.key.outputs.source }}"
+          if [ "$SRC" = "secrets" ] || [ "$SRC" = "cache" ] || { [ "$SRC" = "fresh" ] && [ "${{ github.ref }}" = "refs/heads/main" ]; }; then
+            SIGN="постоянный ключ: новые версии ставятся поверх старой, вход и данные сохраняются"
           else
-            SIGN="одноразовый ключ этой сборки: если Android не ставит поверх старой версии, удалите её и установите заново"
+            SIGN="одноразовый ключ тестовой сборки"
           fi
           cat > dist/notes.md <<EOF
           **MKW Music для Android — beta (сырая версия).** Сайт mkwmusic.ru по-прежнему удобнее; приложение мы ещё развиваем.
@@ -125,7 +157,8 @@ jobs:
           - SHA-256: \`$SHA\`
           - Подпись: $SIGN
 
-          **Как скачать безопасно:** берите файл только отсюда или с mkwmusic.ru (Профиль → О MKW), там же подробная инструкция. Приложению нужен только интернет; камера и микрофон спросят разрешение в момент использования.
+          **Как скачать безопасно:** берите файл только отсюда или с mkwmusic.ru (Профиль → О MKW), там же подробная инструкция.
+          Приложению нужны: интернет, уведомления и работа в фоне (для музыки), камера и микрофон — только когда вы сами включаете жесты, голос или звонок.
           EOF
           {
             echo "### MKW Music для Android"
@@ -138,6 +171,12 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
+          name: debug-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 3
+
+      - uses: actions/upload-artifact@v4
+        with:
           name: MKW-Music-beta-apk
           path: |
             dist/MKW-Music-beta.apk
@@ -145,6 +184,7 @@ jobs:
           retention-days: 30
 
       - name: Выложить в релиз android-beta
+        if: github.ref == 'refs/heads/main'
         run: |
           gh release delete android-beta --cleanup-tag --yes || true
           gh release create android-beta \
@@ -162,3 +202,50 @@ jobs:
           M=$( { grep -E -B1 -A8 "What went wrong|error:|Execution failed|FAILED" "$LOG" | head -n 60; echo '-----'; tail -n 25 "$LOG"; } \
             | python3 -c "import sys;t=sys.stdin.read();print(t.replace('%','%25').replace('\r','%0D').replace('\n','%0A'))")
           echo "::error title=Gradle::$M"
+
+  # Запуск приложения в настоящем эмуляторе Android 14: скриншоты, проверка моста уведомлений/музыки/входа,
+  # попытка входа с несуществующим ником (должна вернуть «Неверный ник или пароль», а не сетевую ошибку).
+  # Результаты кладутся в служебный релиз android-smoke. Сбой проверки сборку не блокирует.
+  smoke:
+    needs: build
+    runs-on: ubuntu-24.04
+    continue-on-error: true
+    timeout-minutes: 35
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: debug-apk
+          path: dl
+
+      - name: KVM для эмулятора
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Библиотека для DevTools
+        run: pip install websocket-client
+
+      - name: Эмулятор и проверка
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          arch: x86_64
+          target: google_apis
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -dns-server 8.8.8.8,1.1.1.1
+          script: bash android/ci/smoke.sh dl/app-debug.apk smoke-out
+
+      - name: Выложить результаты проверки
+        if: always()
+        run: |
+          [ -d smoke-out ] || exit 0
+          gh release delete android-smoke --cleanup-tag --yes || true
+          gh release create android-smoke smoke-out/* \
+            --target "$GITHUB_SHA" --prerelease --latest=false \
+            --title "Проверка в эмуляторе (служебный релиз)" \
+            --notes "Скриншоты и логи автоматической проверки приложения. Не для установки."
