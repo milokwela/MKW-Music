@@ -49,3 +49,8 @@ android {
         abortOnError false
     }
 }
+
+dependencies {
+    // мост «страница ↔ приложение» (уведомления, фон, вход через сайт) с проверкой источника
+    implementation 'androidx.webkit:webkit:1.11.0'
+}
