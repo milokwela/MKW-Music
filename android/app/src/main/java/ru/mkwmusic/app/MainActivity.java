@@ -95,6 +95,7 @@ public class MainActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         current = this;
+        setVolumeControlStream(android.media.AudioManager.STREAM_MUSIC); // кнопки громкости всегда меняют громкость музыки
         debuggable = (getApplicationInfo().flags & ApplicationInfo.FLAG_DEBUGGABLE) != 0;
         if (debuggable) WebView.setWebContentsDebuggingEnabled(true);
         Notifier.ensureChannels(this);
@@ -259,7 +260,17 @@ public class MainActivity extends Activity {
             Uri u = request.getUrl();
             if (!"GET".equals(request.getMethod()) || !isOurs(u)) return null;
             String path = u.getPath();
-            if (path == null || !LOCAL_IMG.matcher(path).matches()) return null;
+            if (path == null) return null;
+            // код сайта той же версии, что вшита в приложение, берём из приложения — запуск без ожидания сети
+            if ("/app.js".equals(path) || "/app.css".equals(path)) {
+                String v = u.getQueryParameter("v");
+                if (v == null || !v.equals(bundledVersion())) return null;
+                Map<String, String> h = new HashMap<>();
+                h.put("Cache-Control", "public, max-age=31536000, immutable");
+                return new WebResourceResponse(path.endsWith(".js") ? "text/javascript" : "text/css", "utf-8", 200, "OK", h,
+                        getAssets().open("site" + path));
+            }
+            if (!LOCAL_IMG.matcher(path).matches()) return null;
             InputStream in = getAssets().open("site" + path);
             Map<String, String> headers = new HashMap<>();
             headers.put("Cache-Control", "public, max-age=86400");
@@ -267,6 +278,71 @@ public class MainActivity extends Activity {
         } catch (IOException e) {
             return null; // такого файла в приложении нет — берём с сайта
         }
+    }
+
+    private String bundledVer;
+
+    /** Версия сайта, код которой лежит внутри приложения (assets/site/version.json). */
+    private synchronized String bundledVersion() {
+        if (bundledVer == null) {
+            bundledVer = "";
+            try (InputStream in = getAssets().open("site/version.json")) {
+                java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
+                byte[] buf = new byte[256];
+                int n;
+                while ((n = in.read(buf)) > 0) out.write(buf, 0, n);
+                bundledVer = new JSONObject(out.toString("UTF-8")).optString("v", "");
+            } catch (Exception ignored) {
+                // кода сайта в приложении нет — всё грузится из сети
+            }
+        }
+        return bundledVer;
+    }
+
+    // ---------- громкость телефона и устройство вывода ----------
+
+    private void replyAudio() {
+        try {
+            android.media.AudioManager am = (android.media.AudioManager) getSystemService(AUDIO_SERVICE);
+            JSONObject o = new JSONObject();
+            int max = am.getStreamMaxVolume(android.media.AudioManager.STREAM_MUSIC);
+            o.put("vol", max > 0 ? am.getStreamVolume(android.media.AudioManager.STREAM_MUSIC) / (double) max : 0);
+            String kind = "phone", name = "";
+            int best = 0;
+            for (android.media.AudioDeviceInfo d : am.getDevices(android.media.AudioManager.GET_DEVICES_OUTPUTS)) {
+                int t = d.getType();
+                int rank; String k;
+                if (t == 8 || t == 26 || t == 27 || t == 23 || t == 30) { rank = 3; k = "bt"; }       // Bluetooth A2DP / LE / слуховой аппарат
+                else if (t == 3 || t == 4 || t == 22) { rank = 2; k = "wired"; }                     // проводные и USB-наушники
+                else continue;
+                if (rank > best) {
+                    best = rank; kind = k;
+                    CharSequence pn = d.getProductName();
+                    name = pn == null ? "" : pn.toString();
+                }
+            }
+            o.put("kind", kind);
+            o.put("name", clip(name, 80));
+            runJs("window.__mkwAudio&&window.__mkwAudio(" + o + ")");
+        } catch (Exception e) {
+            Log.w(TAG, "audio state", e);
+        }
+    }
+
+    private void setVolume(JSONObject o) {
+        try {
+            android.media.AudioManager am = (android.media.AudioManager) getSystemService(AUDIO_SERVICE);
+            int max = am.getStreamMaxVolume(android.media.AudioManager.STREAM_MUSIC);
+            int cur = am.getStreamVolume(android.media.AudioManager.STREAM_MUSIC);
+            int next;
+            if (o.has("v")) next = (int) Math.round(Math.max(0, Math.min(1, o.optDouble("v", 0))) * max);
+            else next = cur + (o.optInt("step", 0) > 0 ? 1 : -1) * Math.max(1, Math.round(max * 0.15f));
+            next = Math.max(0, Math.min(max, next));
+            am.setStreamVolume(android.media.AudioManager.STREAM_MUSIC, next, o.optBoolean("ui", false) ? android.media.AudioManager.FLAG_SHOW_UI : 0);
+        } catch (Exception e) {
+            Log.w(TAG, "set volume", e); // например, режим «Не беспокоить» запретил менять громкость
+        }
+        replyAudio();
     }
 
     private void interceptLocalImages() {
@@ -356,6 +432,22 @@ public class MainActivity extends Activity {
                 String art = o.optString("art", "");
                 PlaybackService.push(this, o.optString("title", ""), o.optString("artist", ""),
                         art.startsWith("https://") ? art : "", o.optBoolean("playing", false));
+                break;
+            case "pos":
+                PlaybackService.position(o.optDouble("d", 0), o.optDouble("p", 0), o.optDouble("r", 1));
+                break;
+            case "audio":
+                replyAudio();
+                break;
+            case "vol":
+                setVolume(o);
+                break;
+            case "bt":
+                try {
+                    startActivity(new Intent(android.provider.Settings.ACTION_BLUETOOTH_SETTINGS));
+                } catch (Exception e) {
+                    Log.w(TAG, "bluetooth settings", e);
+                }
                 break;
             case "notify":
                 Notifier.message(this, clip(o.optString("title", ""), 120), clip(o.optString("body", ""), 400),
