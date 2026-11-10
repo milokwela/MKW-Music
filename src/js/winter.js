@@ -24,7 +24,8 @@ function size() {
   if (!cvs) return;
   dpr = Math.min(2, window.devicePixelRatio || 1); W = window.innerWidth; H = window.innerHeight;
   cvs.width = Math.round(W * dpr); cvs.height = Math.round(H * dpr);
-  const want = calm() ? 26 : lowPower() ? 16 : Math.min(90, Math.round((W * H) / 16000) + 18);
+  const phone = W < 700;
+  const want = calm() ? 20 : lowPower() ? 14 : phone ? 34 : Math.min(80, Math.round((W * H) / 18000) + 18);
   while (flakes.length < want) flakes.push(seed({}, false));
   flakes.length = want;
   if (calm()) draw(0);
@@ -46,35 +47,41 @@ function draw(dt) {
 }
 function tick(t) {
   raf = requestAnimationFrame(tick);
-  if (lowPower()) { skip = !skip; if (skip) return; }           // слабым устройствам — вдвое реже
-  const dt = Math.min(0.05, (t - last) / 1000 || 0.016); last = t;
+  // телефон и слабые устройства: 30 кадров в секунду вместо 60 — снег так же плавный, а батарея и скорость целее
+  if (lowPower() || W < 700) { skip = !skip; if (skip) return; }
+  const dt = Math.min(0.07, (t - last) / 1000 || 0.016); last = t;
   draw(dt);
 }
 function run() { cancelAnimationFrame(raf); raf = 0; if (cvs && !document.hidden && !calm()) { last = performance.now(); raf = requestAnimationFrame(tick); } }
 
-function garland() {
-  const g = document.getElementById('winter-garland'); if (!g) return;
-  const n = Math.max(5, Math.ceil(window.innerWidth / 58));
-  if (g.childElementCount === n) return;
-  g.replaceChildren(...Array.from({ length: n }, (_, i) => { const b = el('i'); b.style.setProperty('--i', i); b.dataset.c = String(i % 5); return b; }));
+// новогодняя нижняя панель: заснеженные домики с окошками
+function navScene() {
+  const nav = document.querySelector('#bottom-nav .nav-inner') || document.querySelector('#bottom-nav');
+  if (!nav || nav.querySelector(':scope > .winter-nav')) return;
+  const sc = el('div', 'winter-nav'); sc.setAttribute('aria-hidden', 'true');
+  sc.innerHTML = `<svg viewBox="0 0 400 64" preserveAspectRatio="xMidYMax slice"><g class="wn-h">
+<path d="M18 64V40l18-14 18 14v24z"/><path d="M70 64V34l24-18 24 18v30z"/><path d="M132 64V44l14-11 14 11v20z"/><path d="M236 64V38l20-15 20 15v26z"/><path d="M292 64V46l13-10 13 10v18z"/><path d="M330 64V32l26-19 26 19v32z"/></g>
+<g class="wn-s"><path d="M14 41l22-17 22 17-4 2-18-13-18 13z"/><path d="M66 35l28-21 28 21-4 3-24-17-24 17z"/><path d="M128 45l18-14 18 14-4 2-14-10-14 10z"/><path d="M232 39l24-18 24 18-4 3-20-15-20 15z"/><path d="M288 47l17-13 17 13-4 2-13-9-13 9z"/><path d="M326 33l30-22 30 22-4 3-26-19-26 19z"/>
+<path d="M0 64c40-8 80-6 120-2s90 5 140 0 100-6 140 2z"/></g>
+<g class="wn-w"><rect x="30" y="46" width="7" height="7" rx="1"/><rect x="86" y="40" width="8" height="8" rx="1"/><rect x="100" y="40" width="8" height="8" rx="1"/><rect x="142" y="50" width="6" height="6" rx="1"/><rect x="250" y="44" width="7" height="7" rx="1"/><rect x="262" y="44" width="7" height="7" rx="1"/><rect x="300" y="52" width="6" height="6" rx="1"/><rect x="350" y="38" width="8" height="8" rx="1"/><rect x="350" y="50" width="8" height="8" rx="1"/></g>
+<g class="wn-t"><path d="M190 64l-14-2 10-8h-6l9-9h-5l8-10 8 10h-5l9 9h-6l10 8-14 2z"/></g></svg>`;
+  nav.prepend(sc);
 }
 
 function mount() {
   if (document.getElementById('winter-sky')) return;
   const sky = el('div', '', 'winter-sky'); sky.append(el('i'), el('i'), el('i')); sky.setAttribute('aria-hidden', 'true');
-  const gar = el('div', '', 'winter-garland'); gar.setAttribute('aria-hidden', 'true');
   cvs = el('canvas', '', 'winter-snow'); cvs.setAttribute('aria-hidden', 'true'); ctx = cvs.getContext('2d');
-  document.body.prepend(sky); document.body.append(gar, cvs);
-  // сугробы на панели внизу, мини-плеере и поиске; котики у ёлки — в шапке главной
-  [['#bottom-nav', ''], ['#mini-player', ' sm'], ['#search-form', ' sm']].forEach(([sel, cls]) => { const host = document.querySelector(sel); if (host && !host.querySelector(':scope > .snowcap')) host.append(el('i', `snowcap${cls}`)); });
+  document.body.prepend(sky); document.body.append(cvs);
+  navScene();
   const hello = document.querySelector('.hello');
   if (hello && !hello.querySelector('.winter-hello')) { const im = el('img', 'winter-hello'); im.src = stSrc(49); im.alt = ''; im.draggable = false; hello.append(im); }
-  dark = isDark(); flakes = []; size(); garland(); run();
+  dark = isDark(); flakes = []; size(); run();
 }
 function unmount() {
   cancelAnimationFrame(raf); raf = 0;
-  ['winter-sky', 'winter-garland', 'winter-snow'].forEach((id) => { const e = document.getElementById(id); if (e) e.remove(); });
-  document.querySelectorAll('.snowcap, .winter-hello').forEach((e) => e.remove());
+  ['winter-sky', 'winter-snow'].forEach((id) => { const e = document.getElementById(id); if (e) e.remove(); });
+  document.querySelectorAll('.winter-nav, .winter-hello').forEach((e) => e.remove());
   cvs = null; ctx = null; flakes = [];
 }
 
@@ -86,7 +93,7 @@ export function setWinter(on) { try { localStorage.setItem(KEY, on ? '1' : '0');
 
 export function initWinter() {
   applyWinter();
-  window.addEventListener('resize', () => { if (cvs) { size(); garland(); } });
+  window.addEventListener('resize', () => { if (cvs) size(); });
   document.addEventListener('visibilitychange', run);
   window.addEventListener('mkw-theme', () => { dark = isDark(); if (cvs && calm()) draw(0); });
 }

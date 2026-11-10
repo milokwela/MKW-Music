@@ -74,6 +74,34 @@ export function applyPlayer2() {
 }
 export function setPlayer2(on) { try { localStorage.setItem(KEY, on ? '2' : '1'); } catch { /* ignore */ } applyPlayer2(); }
 
+// Плавный переход «обложка ⇄ текст песни» (как в видео): большая обложка улетает в маленькую рядом с названием и обратно
+let fromRect = null, wasLyr = false;
+const mobile = () => !matchMedia('(min-width: 900px)').matches;
+const calmUI = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+function morph() {
+  const fp = $('#full-player'), on = fp.classList.contains('lyrics-on');
+  if (on === wasLyr) return; wasLyr = on;
+  if (!player2On() || !mobile() || calmUI() || !fromRect) { fromRect = null; return; }
+  const art = $('#fp-art'), mini = $('#fp-mini-art');
+  const r0 = fromRect; fromRect = null;
+  const E = 'cubic-bezier(.2,.8,.2,1)', T = 520;
+  if (on) {
+    const r1 = mini.getBoundingClientRect();
+    if (!r1.width || !r0.width) return;
+    const g = art.cloneNode(true); g.removeAttribute('id'); g.className = 'p2-ghost';
+    Object.assign(g.style, { left: `${r0.left}px`, top: `${r0.top}px`, width: `${r0.width}px`, height: `${r0.height}px` });
+    fp.appendChild(g); mini.style.opacity = '0';
+    const sx = r1.width / r0.width, dx = r1.left - r0.left, dy = r1.top - r0.top;
+    g.animate([{ transform: 'none', borderRadius: '28px' }, { transform: `translate(${dx}px, ${dy}px) scale(${sx})`, borderRadius: `${10 / sx}px` }], { duration: T, easing: E, fill: 'forwards' })
+      .finished.then(() => { mini.style.opacity = ''; g.remove(); }).catch(() => { mini.style.opacity = ''; g.remove(); });
+  } else {
+    const r1 = art.getBoundingClientRect();
+    if (!r1.width || !r0.width) return;
+    const sx = r0.width / r1.width, dx = r0.left - r1.left, dy = r0.top - r1.top;
+    art.animate([{ transform: `translate(${dx}px, ${dy}px) scale(${sx})`, transformOrigin: '0 0', opacity: 0.9 }, { transform: 'none', transformOrigin: '0 0', opacity: 1 }], { duration: T, easing: E });
+  }
+}
+
 export function initPlayer2() {
   const seekBox = $('#full-player .fp-seek'), seek = $('#fp-seek'), meta = $('#full-player .fp-meta'), extra = $('#full-player .fp-extra');
   if (!seekBox || !seek || !meta || !extra) return;
@@ -83,6 +111,13 @@ export function initPlayer2() {
   extra.prepend(h('button', { id: 'fp-speed', type: 'button', 'aria-label': 'Скорость воспроизведения', title: 'Скорость воспроизведения', onclick: () => {
     const i = RATES.indexOf(player.getRate()); player.setRate(RATES[(i + 1) % RATES.length]);
   } }, '1x'));
+  // перед переключением текста запоминаем, где была обложка (или маленькая обложка)
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest || !e.target.closest('#fp-lyrics-btn')) return;
+    const fp = $('#full-player'); const el = fp.classList.contains('lyrics-on') ? $('#fp-mini-art') : $('#fp-art');
+    fromRect = el ? el.getBoundingClientRect() : null;
+  }, true);
+  new MutationObserver(morph).observe($('#full-player'), { attributes: true, attributeFilter: ['class'] });
   seek.addEventListener('input', () => { dragging = true; draw(); });
   seek.addEventListener('change', () => { dragging = false; draw(); });
   player.onPlayer((ev) => {
