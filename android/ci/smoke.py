@@ -182,12 +182,35 @@ if ws:
     shot('07_media_notification')
     sh('shell', 'cmd', 'statusbar', 'collapse')
 
-    # кнопка «пауза» в шторке → обработчик страницы
+    # кнопка «пауза» → обработчик страницы. Два пути: медиаклавиша (гарнитура) и кнопка в шторке.
     ev("""(()=>{ window.__pausedFromNotif=false; navigator.mediaSession.setActionHandler('pause', ()=>{window.__pausedFromNotif=true}); return true; })()""")
-    sh('shell', 'media', 'dispatch', 'pause')
+    REPORT['media_dispatch_out'] = sh('shell', 'media', 'dispatch', 'pause').strip()[:300]
     time.sleep(3)
     REPORT['media_key_pause_reaches_page'] = ev('window.__pausedFromNotif')
-    log('media key pause ->', REPORT['media_key_pause_reaches_page'])
+    log('media key pause ->', REPORT['media_key_pause_reaches_page'], REPORT['media_dispatch_out'])
+    ms = sh('shell', 'dumpsys', 'media_session')
+    i = ms.find('MKW Music')
+    REPORT['media_session_dump'] = ms[max(0, i - 200): i + 900] if i >= 0 else 'нет сессии MKW Music в dumpsys'
+
+    # то же самое нажатием на кнопку «Pause» в шторке (плеер быстрых настроек работает через MediaSession)
+    ev("""(()=>{ window.__pausedFromNotif=false; return true; })()""")
+    sh('shell', 'cmd', 'statusbar', 'expand-notifications')
+    time.sleep(2)
+    xml = ui()
+    tapped = None
+    for m in re.finditer(r'<node[^>]*?content-desc="([^"]*)"[^>]*?bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"', xml):
+        if m.group(1).strip().lower() in ('pause', 'пауза'):
+            x = (int(m.group(2)) + int(m.group(4))) // 2
+            y = (int(m.group(3)) + int(m.group(5))) // 2
+            sh('shell', 'input', 'tap', str(x), str(y))
+            tapped = m.group(1)
+            break
+    REPORT['shade_pause_tapped'] = tapped
+    time.sleep(3)
+    REPORT['shade_pause_reaches_page'] = ev('window.__pausedFromNotif')
+    log('shade pause tapped:', tapped, '->', REPORT['shade_pause_reaches_page'])
+    shot('07b_after_shade_pause')
+    sh('shell', 'cmd', 'statusbar', 'collapse')
 
     # ---------- 5. обычное уведомление от сайта ----------
     ev("""(()=>{ new Notification('Привет из смоука', {body:'Тест уведомления', tag:'smoke'}); return true; })()""")
