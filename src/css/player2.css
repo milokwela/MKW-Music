@@ -74,3 +74,54 @@
 #full-player.fp2:not(.lyrics-on) #fp-art { animation: none; }
 @keyframes p2LyrIn { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
 #full-player.fp2 .fp-meta .txt, #full-player.fp2 #fp-mini-art { transition: margin .45s cubic-bezier(.2,.8,.2,1); }
+
+/* ===== 0.37.2: «сцена» на телефоне — обложка, текст и очередь в одном месте; название и кнопки стоят на месте ===== */
+#fp-q2 { display: none; }
+@media (max-width: 899px) {
+  #full-player.fp2 #fp-stage { position: relative; width: 100%; aspect-ratio: 1 / 1; max-height: 46vh; margin: 8px auto 0; }
+  #full-player.fp2 #fp-stage > #fp-art { display: block !important; position: absolute !important; left: 0; top: 0; width: 100% !important; height: 100% !important; max-width: none !important; margin: 0 !important;
+    transform-origin: 0 0; z-index: 3; will-change: transform; border-radius: 28px; }
+  #full-player.fp2 #fp-stage > #fp-lyrics, #full-player.fp2 #fp-stage > #fp-q2 { display: block !important; position: absolute !important; inset: 0; height: auto !important; max-height: none !important; margin: 0 !important;
+    opacity: 0; transform: translateY(12px); pointer-events: none; transition: opacity .42s ease, transform .5s cubic-bezier(.22,.8,.18,1); z-index: 1; animation: none !important; }
+  #full-player.fp2.lyrics-on #fp-stage > #fp-lyrics, #full-player.fp2.queue-on #fp-stage > #fp-q2 { opacity: 1; transform: none; pointer-events: auto; transition-delay: .08s; }
+  #full-player.fp2 .fp-meta { margin-top: 18px !important; min-height: 52px; }
+  /* место под маленькую обложку: название плавно сдвигается вправо, саму обложку рисует улетевшая большая */
+  #full-player.fp2 #fp-mini-art { display: block !important; flex: none; width: 0; height: 48px; margin-right: 0; background: none !important; transition: width .5s cubic-bezier(.22,.8,.18,1), margin .5s cubic-bezier(.22,.8,.18,1); }
+  #full-player.fp2.art-mini #fp-mini-art { width: 48px; margin-right: 12px; }
+  #full-player.fp2.lyrics-on #fp-title, #full-player.fp2.lyrics-on #fp-artist { font-size: inherit; }
+  #full-player.fp2 #fp-title { font-size: 19px !important; } #full-player.fp2 #fp-artist { font-size: 14px !important; }
+}
+/* очередь в плеере */
+#fp-q2 .p2q-search { display: flex; align-items: center; gap: 8px; height: 42px; padding: 0 14px; border-radius: 14px; background: rgba(255,255,255,.08); color: rgba(255,255,255,.7); }
+#fp-q2 .p2q-search .icon { width: 18px; height: 18px; }
+#fp-q2 .p2q-find { flex: 1; min-width: 0; border: 0; outline: 0; background: none; color: #fff; font: inherit; font-size: 15px; }
+#fp-q2 .p2q-list { position: absolute; left: 0; right: 0; top: 50px; bottom: 0; overflow-y: auto; overscroll-behavior: contain; -webkit-mask: linear-gradient(transparent, #000 10px, #000 calc(100% - 18px), transparent); mask: linear-gradient(transparent, #000 10px, #000 calc(100% - 18px), transparent); }
+#fp-q2 .p2q-row { display: flex; align-items: center; gap: 12px; padding: 7px 2px; border-radius: 12px; cursor: pointer; color: #fff; }
+#fp-q2 .p2q-row:active { background: rgba(255,255,255,.06); }
+#fp-q2 .p2q-art { position: relative; flex: none; width: 42px; height: 42px; border-radius: 10px; background: rgba(255,255,255,.1) center / cover no-repeat; display: grid; place-items: center; }
+#fp-q2 .p2q-row.cur .p2q-art::after { content: ""; position: absolute; inset: 0; border-radius: inherit; background: rgba(0,0,0,.45); }
+#fp-q2 .p2q-art svg { position: relative; z-index: 1; width: 20px; height: 20px; color: #fff; }
+#fp-q2 .p2q-txt { flex: 1; min-width: 0; display: grid; }
+#fp-q2 .p2q-txt b { font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#fp-q2 .p2q-row.cur .p2q-txt b { color: var(--p2-hi); }
+#fp-q2 .p2q-txt small { font-size: 13px; opacity: .6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#fp-q2 .p2q-x { width: 36px; height: 36px; opacity: .55; color: #fff; }
+#fp-q2 .p2q-empty { text-align: center; opacity: .6; margin-top: 30px; }
+#full-player.fp2 #fp-queue.on { background: var(--p2-hi) !important; color: var(--p2-ink) !important; }
+/* шапка «MKW» */
+#fp2-head { display: none; }
+#full-player.fp2 #fp2-head { display: grid; justify-items: center; line-height: 1.15; flex: 1; min-width: 0; text-align: center; }
+#full-player.fp2 #fp2-head b { font-size: 17px; font-weight: 900; letter-spacing: .32em; padding-left: .32em;
+  background: linear-gradient(90deg, #fff, var(--p2-hi), #fff); -webkit-background-clip: text; background-clip: text; color: transparent; }
+#full-player.fp2 #fp2-head small { font-size: 12px; opacity: .6; }
+#full-player.fp2 #fp-badge { display: none !important; }
+/* таймер рядом с лайком; дизлайк в новом виде остаётся только в MKW Волне */
+#full-player.fp2 .fp-meta #fp-dislike { display: none !important; }
+#full-player.fp2 .fp-meta #fp-sleep { display: inline-flex !important; width: 44px !important; height: 44px !important; background: none !important; color: #fff !important; box-shadow: none !important; }
+#full-player.fp2 .fp-meta #fp-sleep.on { color: var(--p2-hi) !important; }
+#full-player.fp2 .fp-extra > #fp-queue { border-radius: 6px 26px 26px 6px !important; }
+/* скорость есть и в классическом плеере */
+#full-player:not(.fp2) #fp-speed { display: inline-flex; align-items: center; justify-content: center; min-width: 52px; height: 36px; padding: 0 12px; border-radius: 999px; border: 1.5px solid color-mix(in srgb, var(--on-bg) 30%, transparent); background: transparent; color: var(--on-bg); font: inherit; font-weight: 700; font-size: 14px; cursor: pointer; }
+#full-player:not(.fp2) #fp-speed.on { background: var(--primary); color: var(--on-primary); border-color: transparent; }
+#full-player.fp2.wave-mode .fp-meta #fp-dislike { display: inline-flex !important; }
+@media (max-width: 899px) { #full-player.fp2.lyrics-on .fp-meta, #full-player.fp2.queue-on .fp-meta { margin-top: 18px !important; } }

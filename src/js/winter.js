@@ -59,7 +59,7 @@ function navScene() {
   const nav = document.querySelector('#bottom-nav .nav-inner') || document.querySelector('#bottom-nav');
   if (!nav || nav.querySelector(':scope > .winter-nav')) return;
   const sc = el('div', 'winter-nav'); sc.setAttribute('aria-hidden', 'true');
-  sc.innerHTML = `<svg viewBox="0 0 400 64" preserveAspectRatio="xMidYMax slice"><g class="wn-h">
+  sc.innerHTML = `<svg viewBox="0 0 400 64" preserveAspectRatio="xMidYMax meet"><g class="wn-h">
 <path d="M18 64V40l18-14 18 14v24z"/><path d="M70 64V34l24-18 24 18v30z"/><path d="M132 64V44l14-11 14 11v20z"/><path d="M236 64V38l20-15 20 15v26z"/><path d="M292 64V46l13-10 13 10v18z"/><path d="M330 64V32l26-19 26 19v32z"/></g>
 <g class="wn-s"><path d="M14 41l22-17 22 17-4 2-18-13-18 13z"/><path d="M66 35l28-21 28 21-4 3-24-17-24 17z"/><path d="M128 45l18-14 18 14-4 2-14-10-14 10z"/><path d="M232 39l24-18 24 18-4 3-20-15-20 15z"/><path d="M288 47l17-13 17 13-4 2-13-9-13 9z"/><path d="M326 33l30-22 30 22-4 3-26-19-26 19z"/>
 <path d="M0 64c40-8 80-6 120-2s90 5 140 0 100-6 140 2z"/></g>

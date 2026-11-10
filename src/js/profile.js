@@ -614,6 +614,13 @@ function editProfile() {
         else if (favT.length >= 10) { toast('Можно выбрать до 10 треков'); return; } else favT.push(pickTrack(t));
         paintTr();
       } }, h('img', { src: t.artwork || 'assets/mkw-logo.png', alt: '', loading: 'lazy' }), h('span', {}, h('b', { text: t.title }), h('small', { text: t.artist })), h('i', {}, mi(on ? 'check' : 'add')));
+      // звезда: сделать трек «самым любимым» — он встанет первым и будет большой карточкой на витрине
+      if (on) {
+        const top = favT[0] && favT[0].id === t.id;
+        rowEl.insertBefore(h('span', { class: `pe-star${top ? ' on' : ''}`, role: 'button', tabindex: '0', title: top ? 'Самый любимый' : 'Сделать самым любимым', onclick: (e) => {
+          e.stopPropagation(); const k = favT.findIndex((x) => x.id === t.id); if (k > 0) { const [it] = favT.splice(k, 1); favT.unshift(it); paintTr(); }
+        } }, mi('star')), rowEl.lastChild);
+      }
       if (on) lpDrag(rowEl);
       return rowEl;
     }) : [h('p', { class: 'profile-note', text: 'Лайкните треки, и их можно будет добавить сюда.' })]));

@@ -1,12 +1,13 @@
 // Второй вид плеера (0.37): крупная обложка, волнистая полоса перемотки, кнопки-пилюли, скорость воспроизведения.
-// По умолчанию выключен, включается в Настройках → Внешний вид → «Новый вид плеера».
+// С 0.37.2 включён по умолчанию; классический вид возвращается в Настройках → Внешний вид → «Новый вид плеера».
 import * as player from './player.js';
-import { $, h } from './ui.js';
+import { $, h, icon } from './ui.js';
+import { mi } from './icons2.js';
 import { safeUrl } from './utils.js';
 
 const KEY = 'mkw.player.skin';
 const { st, queue } = player;
-export const player2On = () => { try { return localStorage.getItem(KEY) === '2'; } catch { return false; } };
+export const player2On = () => { try { return localStorage.getItem(KEY) !== '1'; } catch { return true; } };
 
 const RATES = [1, 1.25, 1.5, 2, 0.75];
 const rateText = (r) => `${String(r).replace('.', ',')}x`;
@@ -64,43 +65,96 @@ function paintTrack() {
 }
 function paintRate() { const b = $('#fp-speed'); if (b) { b.textContent = rateText(player.getRate()); b.classList.toggle('on', player.getRate() !== 1); } }
 
-export function applyPlayer2() {
-  const on = player2On();
-  $('#full-player').classList.toggle('fp2', on);
-  if (!on && player.getRate() !== 1) player.setRate(1);   // в классическом плеере кнопки скорости нет — возвращаем обычную
-  // в новом виде кнопка текста всегда живёт в нижнем ряду
-  if (on) { const b = $('#fp-lyrics-btn'), extra = $('#full-player .fp-extra'); if (b && extra && b.parentElement !== extra) extra.prepend(b); }
-  paintRate(); draw(); kick();
-}
-export function setPlayer2(on) { try { localStorage.setItem(KEY, on ? '2' : '1'); } catch { /* ignore */ } applyPlayer2(); }
-
-// Плавный переход «обложка ⇄ текст песни» (как в видео): большая обложка улетает в маленькую рядом с названием и обратно
-let fromRect = null, wasLyr = false;
+// ---------- «сцена» (телефон): обложка, текст и очередь живут в одном месте, название и кнопки не двигаются ----------
+let stage = null, qBox = null, qFind = null, anim = null, collapsed = false;
 const mobile = () => !matchMedia('(min-width: 900px)').matches;
 const calmUI = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
-function morph() {
-  const fp = $('#full-player'), on = fp.classList.contains('lyrics-on');
-  if (on === wasLyr) return; wasLyr = on;
-  if (!player2On() || !mobile() || calmUI() || !fromRect) { fromRect = null; return; }
-  const art = $('#fp-art'), mini = $('#fp-mini-art');
-  const r0 = fromRect; fromRect = null;
-  const E = 'cubic-bezier(.2,.8,.2,1)', T = 520;
-  if (on) {
-    const r1 = mini.getBoundingClientRect();
-    if (!r1.width || !r0.width) return;
-    const g = art.cloneNode(true); g.removeAttribute('id'); g.className = 'p2-ghost';
-    Object.assign(g.style, { left: `${r0.left}px`, top: `${r0.top}px`, width: `${r0.width}px`, height: `${r0.height}px` });
-    fp.appendChild(g); mini.style.opacity = '0';
-    const sx = r1.width / r0.width, dx = r1.left - r0.left, dy = r1.top - r0.top;
-    g.animate([{ transform: 'none', borderRadius: '28px' }, { transform: `translate(${dx}px, ${dy}px) scale(${sx})`, borderRadius: `${10 / sx}px` }], { duration: T, easing: E, fill: 'forwards' })
-      .finished.then(() => { mini.style.opacity = ''; g.remove(); }).catch(() => { mini.style.opacity = ''; g.remove(); });
-  } else {
-    const r1 = art.getBoundingClientRect();
-    if (!r1.width || !r0.width) return;
-    const sx = r0.width / r1.width, dx = r0.left - r1.left, dy = r0.top - r1.top;
-    art.animate([{ transform: `translate(${dx}px, ${dy}px) scale(${sx})`, transformOrigin: '0 0', opacity: 0.9 }, { transform: 'none', transformOrigin: '0 0', opacity: 1 }], { duration: T, easing: E });
+const fpEl = () => $('#full-player');
+const panelOpen = () => { const fp = fpEl(); return fp.classList.contains('lyrics-on') || fp.classList.contains('queue-on'); };
+const useStage = () => player2On() && mobile();
+
+function mountStage(on) {
+  const art = $('#fp-art'), lyr = $('#fp-lyrics');
+  if (!art || !lyr) return;
+  if (on && !stage) {
+    stage = h('div', { id: 'fp-stage' });
+    art.parentNode.insertBefore(stage, art);
+    stage.append(art, lyr, qBox);
+  } else if (!on && stage) {
+    stage.parentNode.insertBefore(art, stage); stage.parentNode.insertBefore(lyr, stage); stage.remove(); stage = null;
+    if (anim) { anim.cancel(); anim = null; } art.style.transform = ''; collapsed = false;
+    fpEl().classList.remove('queue-on');
   }
 }
+// куда «улетает» обложка: маленький квадрат слева от названия
+function miniTarget() {
+  const meta = $('#full-player .fp-meta'), sr = stage.getBoundingClientRect(), mr = meta.getBoundingClientRect();
+  const sz = 48, x = mr.left - sr.left, y = mr.top - sr.top + (mr.height - sz) / 2;
+  return { s: sz / sr.width, x, y };
+}
+// обложка двигается сама (без копий): от текущего положения к цели. Можно нажимать сколько угодно — каждый раз продолжает с того места, где была
+function moveArt(toMini, instant) {
+  const art = $('#fp-art'); if (!art || !stage) return;
+  const cur = getComputedStyle(art).transform, rad = getComputedStyle(art).borderRadius;
+  const t = miniTarget();
+  const end = toMini ? `translate(${t.x}px, ${t.y}px) scale(${t.s})` : 'translate(0px, 0px) scale(1)';
+  const endRad = toMini ? `${12 / t.s}px` : '28px';
+  if (anim) anim.cancel();
+  anim = art.animate([{ transform: cur === 'none' ? 'translate(0px, 0px) scale(1)' : cur, borderRadius: rad }, { transform: end, borderRadius: endRad }],
+    { duration: instant || calmUI() ? 0 : 560, easing: 'cubic-bezier(.22,.8,.18,1)', fill: 'forwards' });
+  fpEl().classList.toggle('art-mini', toMini);
+}
+function syncStage(instant) {
+  if (!stage) return;
+  const want = panelOpen();
+  if (want !== collapsed || instant) { collapsed = want; moveArt(want, instant); }
+}
+
+// ---------- очередь прямо в плеере (как в видео) ----------
+function drawQueue() {
+  if (!qBox) return;
+  const q = (qFind && qFind.value || '').trim().toLowerCase();
+  const list = qBox.querySelector('.p2q-list');
+  const rows = [];
+  queue.items.forEach((t, i) => {
+    if (q && !`${t.title} ${t.artist}`.toLowerCase().includes(q)) return;
+    rows.push(h('div', { class: `p2q-row${i === queue.index ? ' cur' : ''}`, role: 'button', tabindex: '0', onclick: () => player.jumpTo(i) },
+      h('span', { class: 'p2q-art', style: safeUrl(t.artwork) ? `background-image:url("${safeUrl(t.artwork)}")` : '' }, i === queue.index ? mi('note') : null),
+      h('span', { class: 'p2q-txt' }, h('b', { text: t.title }), h('small', { text: t.artist })),
+      h('button', { type: 'button', class: 'icon-btn p2q-x', 'aria-label': 'Убрать из очереди', onclick: (e) => { e.stopPropagation(); player.removeFromQueue(i); } }, icon('close'))));
+  });
+  list.replaceChildren(...(rows.length ? rows : [h('p', { class: 'p2q-empty', text: q ? 'Ничего не нашлось' : 'Очередь пуста' })]));
+  if (!q) { const c = list.querySelector('.cur'); if (c) requestAnimationFrame(() => { list.scrollTop = Math.max(0, c.offsetTop - list.clientHeight / 2 + c.offsetHeight / 2); }); }
+}
+function toggleQueue() {
+  const fp = fpEl();
+  const on = !fp.classList.contains('queue-on');
+  if (on && fp.classList.contains('lyrics-on')) $('#fp-lyrics-btn').click();
+  fp.classList.toggle('queue-on', on);
+  $('#fp-queue').classList.toggle('on', on);
+  if (on) { if (qFind) qFind.value = ''; drawQueue(); }
+}
+
+// шапка: «MKW» и номер трека в очереди
+function paintHead() {
+  const n = $('#fp2-head small'); if (!n) return;
+  n.textContent = queue.length ? `Трек ${queue.index + 1} из ${queue.length}` : '';
+}
+
+export function applyPlayer2() {
+  const on = player2On();
+  fpEl().classList.toggle('fp2', on);
+  // в новом виде кнопка текста всегда в нижнем ряду, а таймер — рядом с лайком (вместо дизлайка)
+  const b = $('#fp-lyrics-btn'), extra = $('#full-player .fp-extra'), sleep = $('#fp-sleep'), like = $('#fp-like');
+  if (on) {
+    if (b && extra && b.parentElement !== extra) extra.prepend(b);
+    if (sleep && like && sleep.parentElement !== like.parentElement) like.parentElement.insertBefore(sleep, like);
+  } else if (sleep && extra && sleep.parentElement !== extra) extra.append(sleep);
+  mountStage(useStage());
+  syncStage(true);
+  paintRate(); paintHead(); draw(); kick();
+}
+export function setPlayer2(on) { try { localStorage.setItem(KEY, on ? '2' : '1'); } catch { /* ignore */ } applyPlayer2(); }
 
 export function initPlayer2() {
   const seekBox = $('#full-player .fp-seek'), seek = $('#fp-seek'), meta = $('#full-player .fp-meta'), extra = $('#full-player .fp-extra');
@@ -111,18 +165,31 @@ export function initPlayer2() {
   extra.prepend(h('button', { id: 'fp-speed', type: 'button', 'aria-label': 'Скорость воспроизведения', title: 'Скорость воспроизведения', onclick: () => {
     const i = RATES.indexOf(player.getRate()); player.setRate(RATES[(i + 1) % RATES.length]);
   } }, '1x'));
-  // перед переключением текста запоминаем, где была обложка (или маленькая обложка)
+  // очередь внутри плеера
+  qFind = h('input', { type: 'search', class: 'p2q-find', placeholder: 'Поиск по очереди', 'aria-label': 'Поиск по очереди' });
+  qFind.addEventListener('input', drawQueue);
+  qBox = h('div', { id: 'fp-q2' }, h('label', { class: 'p2q-search' }, icon('search'), qFind), h('div', { class: 'p2q-list' }));
+  const top = $('#full-player .fp-top');
+  if (top) top.insertBefore(h('div', { id: 'fp2-head' }, h('b', { text: 'MKW' }), h('small')), $('#fp-more'));
+  // в новом виде на телефоне кнопка очереди открывает очередь прямо в плеере, а не отдельным окном
   document.addEventListener('click', (e) => {
-    if (!e.target.closest || !e.target.closest('#fp-lyrics-btn')) return;
-    const fp = $('#full-player'); const el = fp.classList.contains('lyrics-on') ? $('#fp-mini-art') : $('#fp-art');
-    fromRect = el ? el.getBoundingClientRect() : null;
+    if (!e.target.closest || !e.target.closest('#fp-queue') || !useStage()) return;
+    e.preventDefault(); e.stopImmediatePropagation(); toggleQueue();
   }, true);
-  new MutationObserver(morph).observe($('#full-player'), { attributes: true, attributeFilter: ['class'] });
+  // текст включили — очередь закрываем; любое переключение — обложка плавно едет
+  new MutationObserver(() => {
+    const fp = fpEl();
+    if (fp.classList.contains('lyrics-on') && fp.classList.contains('queue-on')) { fp.classList.remove('queue-on'); $('#fp-queue').classList.remove('on'); }
+    if (useStage()) syncStage(false);
+  }).observe(fpEl(), { attributes: true, attributeFilter: ['class'] });
+  let rz = 0;
+  window.addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(() => { mountStage(useStage()); syncStage(true); }, 120); });
   seek.addEventListener('input', () => { dragging = true; draw(); });
   seek.addEventListener('change', () => { dragging = false; draw(); });
   player.onPlayer((ev) => {
     if (ev === 'rate') paintRate();
     if (ev === 'track') paintTrack();
+    if (ev === 'track' || ev === 'queue') { paintHead(); if (fpEl().classList.contains('queue-on')) drawQueue(); }
     if (!player2On()) return;
     if (ev === 'time') { if (!raf) draw(); } else if (ev === 'state' || ev === 'track') kick();
   });

@@ -206,3 +206,42 @@
 .winter-nav svg { height: 44%; opacity: .8; }
 .winter-nav .wn-w { opacity: .75; }
 :root[data-winter="1"] #bottom-nav .nav-inner { box-shadow: inset 0 1px 0 rgba(255, 255, 255, .22); }
+
+/* 0.37.2: новые формы фото — никакой квадратной подложки и рамки-квадрата, свечение рамки идёт по контуру формы */
+.phero[data-shape="snowflake"][data-frame] .hero-avatar, .phero[data-shape="snowflake"] .hero-avatar, .lb-av[data-shape="snowflake"][data-frame] { box-shadow: none !important; background: transparent !important; border: 0 !important; outline: 0 !important; animation: none !important; border-radius: 0 !important; }
+.phero[data-shape="snowflake"] .hero-avatar::before, .phero[data-shape="snowflake"] .hero-avatar::after { display: none !important; }
+.phero[data-shape="snowflake"] .hero-avatar img { filter: none !important; border-radius: 0 !important; background: transparent !important; }
+.phero[data-shape="snowflake"]:not([data-frame="none"]) .hero-avatar { filter: drop-shadow(0 0 1.2px var(--fc, #fff)) drop-shadow(0 0 1.2px var(--fc, #fff)) drop-shadow(0 0 1.2px var(--fc, #fff)) drop-shadow(0 0 10px var(--fc2, transparent)) !important; }
+.phero[data-shape="tree"][data-frame] .hero-avatar, .phero[data-shape="tree"] .hero-avatar, .lb-av[data-shape="tree"][data-frame] { box-shadow: none !important; background: transparent !important; border: 0 !important; outline: 0 !important; animation: none !important; border-radius: 0 !important; }
+.phero[data-shape="tree"] .hero-avatar::before, .phero[data-shape="tree"] .hero-avatar::after { display: none !important; }
+.phero[data-shape="tree"] .hero-avatar img { filter: none !important; border-radius: 0 !important; background: transparent !important; }
+.phero[data-shape="tree"]:not([data-frame="none"]) .hero-avatar { filter: drop-shadow(0 0 1.2px var(--fc, #fff)) drop-shadow(0 0 1.2px var(--fc, #fff)) drop-shadow(0 0 1.2px var(--fc, #fff)) drop-shadow(0 0 10px var(--fc2, transparent)) !important; }
+.phero[data-shape="cloud"][data-frame] .hero-avatar, .phero[data-shape="cloud"] .hero-avatar, .lb-av[data-shape="cloud"][data-frame] { box-shadow: none !important; background: transparent !important; border: 0 !important; outline: 0 !important; animation: none !important; border-radius: 0 !important; }
+.phero[data-shape="cloud"] .hero-avatar::before, .phero[data-shape="cloud"] .hero-avatar::after { display: none !important; }
+.phero[data-shape="cloud"] .hero-avatar img { filter: none !important; border-radius: 0 !important; background: transparent !important; }
+.phero[data-shape="cloud"]:not([data-frame="none"]) .hero-avatar { filter: drop-shadow(0 0 1.2px var(--fc, #fff)) drop-shadow(0 0 1.2px var(--fc, #fff)) drop-shadow(0 0 1.2px var(--fc, #fff)) drop-shadow(0 0 10px var(--fc2, transparent)) !important; }
+.phero[data-shape="octagon"][data-frame] .hero-avatar, .phero[data-shape="octagon"] .hero-avatar, .lb-av[data-shape="octagon"][data-frame] { box-shadow: none !important; background: transparent !important; border: 0 !important; outline: 0 !important; animation: none !important; border-radius: 0 !important; }
+.phero[data-shape="octagon"] .hero-avatar::before, .phero[data-shape="octagon"] .hero-avatar::after { display: none !important; }
+.phero[data-shape="octagon"] .hero-avatar img { filter: none !important; border-radius: 0 !important; background: transparent !important; }
+.phero[data-shape="octagon"]:not([data-frame="none"]) .hero-avatar { filter: drop-shadow(0 0 1.2px var(--fc, #fff)) drop-shadow(0 0 1.2px var(--fc, #fff)) drop-shadow(0 0 1.2px var(--fc, #fff)) drop-shadow(0 0 10px var(--fc2, transparent)) !important; }
+.winter-nav svg { height: 100% !important; opacity: .55 !important; }
+.winter-nav .wn-w { opacity: .6 !important; }
+
+/* 0.37.2: награды листаются карточками */
+.up-stat-btn { cursor: pointer; transition: transform .15s; } .up-stat-btn:active { transform: scale(.96); }
+.up-stat-btn::after { content: "›"; position: absolute; right: 12px; top: 10px; opacity: .45; font-size: 18px; }
+.up-stat { position: relative; }
+.achs { display: grid; gap: 10px; }
+.achs-track { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; overscroll-behavior-x: contain; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+.achs-track::-webkit-scrollbar { display: none; }
+.achs-card { flex: 0 0 100%; scroll-snap-align: center; display: grid; justify-items: center; gap: 8px; padding: 18px 16px 8px; text-align: center; box-sizing: border-box; }
+.achs-card .achv-ico { margin-bottom: 4px; }
+.achs-rare { display: inline-block; margin-top: 6px; padding: 6px 14px; border-radius: 999px; font-size: 13.5px; font-weight: 700; background: color-mix(in srgb, var(--on-bg) 10%, transparent); }
+.achs-rare.rare { background: color-mix(in srgb, #7a5cff 30%, transparent); color: #d6cbff; }
+.achs-rare.epic { background: linear-gradient(90deg, #f5c542, #ff7a59); color: #1a1208; }
+.achs-n { text-align: center; opacity: .6; }
+.achs-tip { text-align: center; font-size: 12.5px; opacity: .5; margin: 0; }
+/* звезда «самый любимый» в редакторе витрины */
+.pe-star { display: grid; place-items: center; width: 36px; height: 36px; flex: none; border-radius: 50%; opacity: .45; cursor: pointer; transition: opacity .2s, transform .2s, color .2s; }
+.pe-star svg { width: 20px; height: 20px; }
+.pe-star.on { opacity: 1; color: #f5c542; transform: scale(1.1); }

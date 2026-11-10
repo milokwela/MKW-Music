@@ -3,6 +3,7 @@ import { $, h, trackRow, animateIn } from './ui.js';
 import * as player from './player.js';
 import { openTrackMenu } from './menu.js';
 import { getProfile } from './leaders.js';
+import { topListeners } from './leaders.js';
 import { ACH, ACHIEVEMENTS, achDone, viewAch, bannerCss, formatListened } from './profile.js';
 import { artistPic } from './artistpic.js';
 import { openArtist } from './artist.js';
@@ -16,7 +17,7 @@ import { openChat, chatActions } from './chat.js';
 let rmAsk = '';
 function confirmRemove(u) { if (rmAsk === u.uid) { rmAsk = ''; return true; } rmAsk = u.uid; setTimeout(() => { if (rmAsk === u.uid) rmAsk = ''; }, 3000); toast('Нажмите ещё раз, чтобы убрать из друзей'); return false; }
 import { avSrc } from './avatar.js';
-import { toast } from './ui.js';
+import { toast, openSheet } from './ui.js';
 import { searchTracks } from './catalog.js';
 import { srvNow, realSeen, seenOnline } from './clock.js';
 import { nickEmo, richText } from './stickers.js';
@@ -64,6 +65,48 @@ export function favTracksList(tracks) {
     list.length > 1 ? h('button', { type: 'button', class: 'chip fav-all', onclick: () => player.playTracks(list, 0) }, mi('play'), ' Слушать всю витрину') : null);
 }
 
+// ---------- награды человека: листаются свайпом, у каждой — редкость (у скольких слушателей MKW она есть) ----------
+let boardCache = null, boardAt = 0;
+async function board() {
+  if (boardCache && Date.now() - boardAt < 10 * 60 * 1000) return boardCache;
+  const l = await topListeners(400).catch(() => null);
+  if (l) { boardCache = l; boardAt = Date.now(); }
+  return boardCache || [];
+}
+const statsOf = (u) => ({ sec: Number(u.sec) || 0, plays: Number(u.plays) || 0, likes: Number(u.likes) || 0, days: Number(u.days) || 0, playlists: 0, artists: 0, friends: 0 });
+const statAch = (a) => a.v && /^(like|h|p|d)\d/.test(a.id);
+function achOf(u) {
+  const s = statsOf(u);
+  return [...new Map([...(u.badges || []).filter((id) => ACH[id]).map((id) => [id, ACH[id]]), ...ACHIEVEMENTS.filter((a) => statAch(a) && achDone(a, s)).map((a) => [a.id, a])]).values()];
+}
+function rarity(a, list) {
+  if (!list.length) return null;
+  const n = list.filter((x) => (statAch(a) ? achDone(a, statsOf(x)) : (x.badges || []).includes(a.id))).length;
+  return Math.max(n ? 0.5 : 0, Math.round((n / list.length) * 1000) / 10);
+}
+function openAchViewer(u) {
+  const got = achOf(u);
+  if (!got.length) { toast('Наград пока нет'); return; }
+  const count = h('small', { class: 'achs-n', text: `1 из ${got.length}` });
+  const track = h('div', { class: 'achs-track' }, got.map((a) => {
+    const rare = h('span', { class: 'achs-rare', text: 'Считаю редкость…' });
+    const card = h('div', { class: `achs-card${a.cls ? ` ${a.cls}` : ''}`, 'data-id': a.id },
+      h('div', { class: 'achv-ico' }, h('i', { class: 'achv-glow' }), mi(a.i)),
+      h('b', { class: 'achv-t', text: a.title }), h('p', { class: 'achv-h', text: a.hint }), rare);
+    return card;
+  }));
+  track.addEventListener('scroll', () => { const i = Math.round(track.scrollLeft / Math.max(1, track.clientWidth)); count.textContent = `${Math.min(got.length, i + 1)} из ${got.length}`; }, { passive: true });
+  openSheet(`Награды ${u.nick || ''}`, h('div', { class: 'achs' }, track, count, h('p', { class: 'achs-tip', text: 'Листайте влево и вправо. Смахните вниз, чтобы вернуться в профиль' })));
+  board().then((list) => {
+    track.querySelectorAll('.achs-card').forEach((c) => {
+      const a = ACH[c.dataset.id], r = a && rarity(a, list), el = c.querySelector('.achs-rare');
+      if (r == null) { el.textContent = ''; return; }
+      el.textContent = `Есть у ${String(r).replace('.', ',')}% слушателей MKW`;
+      el.classList.toggle('rare', r < 10); el.classList.toggle('epic', r < 2);
+    });
+  });
+}
+
 function render(u, isMe) {
   const t = formatListened(Number(u.sec) || 0);
   const stat = (ic, val, label) => h('div', { class: 'up-stat' }, mi(ic), h('b', { text: String(val) }), h('small', { text: label }));
@@ -107,17 +150,8 @@ function render(u, isMe) {
     !isMe && u.uid && friendState(u.uid) === 'friend' ? chatActions(u.uid, u) : null,
     h('div', { class: 'up-stats' },
       stat('timer', t.value, t.unit), stat('play-circle', u.plays || 0, 'треков'), stat('heart', u.likes || 0, 'лайков'),
-      u.achCount != null ? stat('medal', u.achCount, 'наград') : null),
+      u.achCount != null ? (() => { const b = stat('medal', u.achCount, 'наград'); b.classList.add('up-stat-btn'); b.setAttribute('role', 'button'); b.tabIndex = 0; b.addEventListener('click', () => openAchViewer(u)); return b; })() : null),
   ];
-  // достижения человека: то, что видно по его статистике, плюс выбранные им значки. Нажмите — откроется описание
-  {
-    const s = { sec: Number(u.sec) || 0, plays: Number(u.plays) || 0, likes: Number(u.likes) || 0, days: Number(u.days) || 0 };
-    const byStats = ACHIEVEMENTS.filter((a) => a.v && /^(like|h|p|d)\d/.test(a.id) && achDone(a, { ...s, playlists: 0, artists: 0, friends: 0 }));
-    const got = [...new Map([...(u.badges || []).filter((id) => ACH[id]).map((id) => [id, ACH[id]]), ...byStats.map((a) => [a.id, a])]).values()];
-    if (got.length) kids.push(h('div', { class: 'section-title', text: `Достижения · ${got.length}` }),
-      h('div', { class: 'ach-grid up-ach' }, got.map((a) => h('div', { class: `ach on${a.cls ? ` ${a.cls}` : ''}`, role: 'button', tabindex: '0', title: a.hint, onclick: () => viewAch(a, true, null, 1) },
-        h('div', { class: 'ach-ico m' }, mi(a.i)), h('div', { class: 'ach-t', text: a.title }), h('div', { class: 'ach-h', text: a.hint })))));
-  }
   if ((u.favArtists || []).length) kids.push(h('div', { class: 'section-title', text: 'Любимые исполнители' }), favArtistsRow(u.favArtists));
   if ((u.favTracks || []).length) {
     const list = favTracksList(u.favTracks);
