@@ -1,6 +1,6 @@
 // Рейтинг слушателей: у каждого публичная карточка leaders/{uid} (ник, часы, статус, значки, маленькое фото).
 import { db, auth } from './firebase.js';
-import { doc, getDoc, setDoc, deleteDoc, collection, query, orderBy, limit, getDocs, where } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+import { doc, getDoc, setDoc, deleteDoc, collection, query, orderBy, limit, getDocs, where, getCountFromServer } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 import { srvNow, offlineStamp, onlineStamp } from './clock.js';
 
 const KEY = 'mkw.leaders.hide';
@@ -77,6 +77,14 @@ export async function topListeners(n = 50) {
     const s = await getDocs(query(collection(db, 'leaders'), orderBy('sec', 'desc'), limit(n)));
     return s.docs.map((d) => ({ uid: d.id, ...d.data() }));
   } catch (e) { console.warn('leaders', e); return null; }
+}
+// сколько всего профилей и у скольких поле ≥ min (для редкости наград). Дёшево: счётчик на сервере, без скачивания документов
+export async function countProfiles(field, min) {
+  try {
+    const col = collection(db, 'profiles');
+    const [all, got] = await Promise.all([getCountFromServer(col), field ? getCountFromServer(query(col, where(field, '>=', min))) : null]);
+    return { all: all.data().count, got: got ? got.data().count : 0 };
+  } catch (e) { console.warn('count', e); return null; }
 }
 export const myUid = () => (auth.currentUser && auth.currentUser.uid) || '';
 

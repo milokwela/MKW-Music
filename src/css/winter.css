@@ -245,3 +245,13 @@
 .pe-star { display: grid; place-items: center; width: 36px; height: 36px; flex: none; border-radius: 50%; opacity: .45; cursor: pointer; transition: opacity .2s, transform .2s, color .2s; }
 .pe-star svg { width: 20px; height: 20px; }
 .pe-star.on { opacity: 1; color: #f5c542; transform: scale(1.1); }
+
+/* 0.37.3: мини-плеер виден сразу, даже если профиль открыт поверх переписки */
+body:has(#user-page.over-chat.open) #dock { z-index: 67; }
+/* 0.37.3: чаты на компьютере — снег идёт позади панелей, панели плотные и ровные */
+@media (min-width: 980px) and (pointer: fine) {
+  body.on-chats #winter-snow { z-index: 0; }
+  body.on-chats #view-chats:not([hidden]) { z-index: 2; background: color-mix(in srgb, var(--surface, #17141b) 94%, var(--bg, #0e0c10)) !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
+  body.on-chats::after { z-index: 2; background: var(--bg, #0e0c10) !important; }
+  body.on-chats #chat-page { background: var(--bg, #0e0c10) !important; backdrop-filter: none !important; }
+}
