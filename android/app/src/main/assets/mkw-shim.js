@@ -81,7 +81,17 @@
     if (f) handlers[n] = f; else delete handlers[n];
     if (origSet) { try { origSet(n, f); } catch (e) { /* ignore */ } }
   };
-  if (typeof ms.setPositionState !== 'function') ms.setPositionState = function () { };
+  var origPos = typeof ms.setPositionState === 'function' ? ms.setPositionState.bind(ms) : null, posAt = 0, posKey = '';
+  ms.setPositionState = function (s) {
+    if (origPos) { try { origPos(s); } catch (e) { /* ignore */ } }
+    if (!s) return;
+    // место в треке — для полосы перемотки на экране блокировки; не чаще раза в секунду, если ничего не поменялось
+    var now = Date.now(), key = Math.round(s.duration || 0) + '|' + (s.playbackRate || 1);
+    var jump = Math.abs((s.position || 0) - (ms.__p || 0) - (now - posAt) / 1000 * (ps === 'playing' ? 1 : 0)) > 1.5;
+    if (key === posKey && !jump && now - posAt < 5000) return;
+    posKey = key; posAt = now; ms.__p = s.position || 0;
+    send({ t: 'pos', d: s.duration || 0, p: s.position || 0, r: s.playbackRate || 1 });
+  };
   try {
     Object.defineProperty(ms, 'metadata', {
       configurable: true,
@@ -95,7 +105,20 @@
     });
   } catch (e) { log('ms define ' + e); }
   // кнопки в шторке и на гарнитуре вызывают те же обработчики, что и системные кнопки в браузере
-  window.__mkwAct = function (a) { var f = handlers[a]; if (f) { try { f({ action: a }); } catch (e) { /* ignore */ } } };
+  window.__mkwAct = function (a, x) {
+    var f = handlers[a]; if (!f) return;
+    var d = { action: a }; if (x) { for (var k in x) d[k] = x[k]; }
+    try { f(d); } catch (e) { /* ignore */ }
+  };
+
+  /* ---------- громкость телефона и устройство вывода ---------- */
+  window.__mkwAudio = function (o) { try { window.dispatchEvent(new CustomEvent('mkw-audio', { detail: o })); } catch (e) { /* ignore */ } };
+  window.MKWNative = {
+    audio: function () { send({ t: 'audio' }); },
+    setVolume: function (v, ui) { send({ t: 'vol', v: Math.max(0, Math.min(1, Number(v) || 0)), ui: !!ui }); },
+    stepVolume: function (dir) { send({ t: 'vol', step: dir > 0 ? 1 : -1, ui: true }); },
+    bluetooth: function () { send({ t: 'bt' }); }
+  };
 
   /* ---------- «Продолжить с сайта» на экране входа ---------- */
   function injectHandoff() {

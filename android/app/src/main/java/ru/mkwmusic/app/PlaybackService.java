@@ -47,6 +47,26 @@ public class PlaybackService extends Service {
     private String artist = "";
     private String coverUrl = "";
     private Bitmap cover;
+    private long durationMs, positionMs, positionAt;
+    private float rate = 1f;
+    private boolean noisyOn;
+    /** Наушники выдернули или отключился Bluetooth — ставим на паузу, чтобы музыка не заиграла из динамика. */
+    private final android.content.BroadcastReceiver noisy = new android.content.BroadcastReceiver() {
+        @Override public void onReceive(Context c, Intent i) { dispatch("pause"); }
+    };
+
+    /** Сайт сообщил длину трека и текущее место — для полосы перемотки на экране блокировки и в шторке. */
+    static void position(double d, double p, double r) {
+        PlaybackService s = instance;
+        if (s == null || s.session == null) return;
+        long dur = d > 0 && d < 360000 ? Math.round(d * 1000) : 0;
+        boolean metaChanged = dur != s.durationMs;
+        s.durationMs = dur;
+        s.positionMs = Math.max(0, Math.round(p * 1000));
+        s.positionAt = android.os.SystemClock.elapsedRealtime();
+        s.rate = r > 0 && r < 8 ? (float) r : 1f;
+        if (metaChanged) s.updateSession(); else s.updateState();
+    }
 
     /** Вызывается из приложения, когда сайт сообщил о смене трека или паузе. */
     static void push(Context c, String title, String artist, String art, boolean playing) {
@@ -83,6 +103,13 @@ public class PlaybackService extends Service {
             @Override public void onStop() { dispatch("pause"); }
             @Override public void onSkipToNext() { dispatch("nexttrack"); }
             @Override public void onSkipToPrevious() { dispatch("previoustrack"); }
+            @Override public void onSeekTo(long pos) {
+                positionMs = Math.max(0, pos);
+                positionAt = android.os.SystemClock.elapsedRealtime();
+                updateState();
+                MainActivity m = MainActivity.current;
+                if (m != null) m.runJs("window.__mkwAct&&window.__mkwAct('seekto',{seekTime:" + (pos / 1000.0) + "})");
+            }
         });
     }
 
@@ -105,7 +132,15 @@ public class PlaybackService extends Service {
     }
 
     private void apply(String t, String a, String artUrl, boolean p) {
-        title = t == null ? "" : t;
+        String nt = t == null ? "" : t;
+        if (!nt.equals(title)) { durationMs = 0; positionMs = 0; positionAt = 0; }
+        if (p != playing) {
+            long now = android.os.SystemClock.elapsedRealtime();
+            // встали на паузу — запоминаем, где остановились
+            if (playing && durationMs > 0 && positionAt > 0) positionMs += (long) ((now - positionAt) * rate);
+            positionAt = now;
+        }
+        title = nt;
         artist = a == null ? "" : a;
         playing = p;
         String art = artUrl == null ? "" : artUrl;
@@ -171,15 +206,35 @@ public class PlaybackService extends Service {
                 .putString(MediaMetadata.METADATA_KEY_TITLE, title)
                 .putString(MediaMetadata.METADATA_KEY_ARTIST, artist);
         if (cover != null) md.putBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART, cover);
+        if (durationMs > 0) md.putLong(MediaMetadata.METADATA_KEY_DURATION, durationMs);
         session.setMetadata(md.build());
+        updateState();
+        session.setActive(true);
+    }
+
+    private void updateState() {
+        if (session == null) return;
         long actions = PlaybackState.ACTION_PLAY | PlaybackState.ACTION_PAUSE | PlaybackState.ACTION_PLAY_PAUSE
-                | PlaybackState.ACTION_SKIP_TO_NEXT | PlaybackState.ACTION_SKIP_TO_PREVIOUS;
+                | PlaybackState.ACTION_SKIP_TO_NEXT | PlaybackState.ACTION_SKIP_TO_PREVIOUS | PlaybackState.ACTION_STOP;
+        if (durationMs > 0) actions |= PlaybackState.ACTION_SEEK_TO;
+        long pos = durationMs > 0 ? Math.min(positionMs, durationMs) : PlaybackState.PLAYBACK_POSITION_UNKNOWN;
         session.setPlaybackState(new PlaybackState.Builder()
                 .setActions(actions)
-                .setState(playing ? PlaybackState.STATE_PLAYING : PlaybackState.STATE_PAUSED,
-                        PlaybackState.PLAYBACK_POSITION_UNKNOWN, 1f)
+                .setState(playing ? PlaybackState.STATE_PLAYING : PlaybackState.STATE_PAUSED, pos,
+                        playing ? rate : 0f, positionAt > 0 ? positionAt : android.os.SystemClock.elapsedRealtime())
                 .build());
-        session.setActive(true);
+        // «наушники отключились» слушаем только пока играет
+        try {
+            if (playing && !noisyOn) {
+                registerReceiver(noisy, new android.content.IntentFilter(android.media.AudioManager.ACTION_AUDIO_BECOMING_NOISY));
+                noisyOn = true;
+            } else if (!playing && noisyOn) {
+                unregisterReceiver(noisy);
+                noisyOn = false;
+            }
+        } catch (Exception ignored) {
+            // приёмник — только помощь
+        }
     }
 
     /** Кнопки шторки и гарнитуры → сайт (те же обработчики, что у системных кнопок браузера). */
@@ -255,6 +310,8 @@ public class PlaybackService extends Service {
 
     @Override
     public void onDestroy() {
+        try { if (noisyOn) unregisterReceiver(noisy); } catch (Exception ignored) { /* уже снят */ }
+        noisyOn = false;
         handler.removeCallbacks(idleStop);
         lock(false);
         if (session != null) {

@@ -55,10 +55,12 @@ jobs:
           echo "name=$V" >> "$GITHUB_OUTPUT"
           echo "Версия приложения: $V, сборка #${{ github.run_number }}"
 
-      - name: Картинки MKW внутрь приложения
+      - name: Картинки и код MKW внутрь приложения
         run: |
           mkdir -p android/app/src/main/assets/site
           cp mkw-*.webp android/app/src/main/assets/site/
+          # код сайта текущей версии — приложение открывается, не дожидаясь сети (новые версии сайта подтянутся сами)
+          cp app.js app.css version.json android/app/src/main/assets/site/
           du -sh android/app/src/main/assets/site
 
       - name: Ключ подписи из кэша
@@ -151,7 +153,7 @@ jobs:
             SIGN="одноразовый ключ тестовой сборки"
           fi
           cat > dist/notes.md <<EOF
-          **MKW Music для Android — beta (сырая версия).** Сайт mkwmusic.ru по-прежнему удобнее; приложение мы ещё развиваем.
+          **MKW Music для Android.** Музыка играет в фоне и при выключенном экране. Android 7.0 и новее.
 
           - Версия приложения: ${{ steps.ver.outputs.name }} · сборка #${{ github.run_number }} · коммит ${GITHUB_SHA::7}
           - SHA-256: \`$SHA\`
@@ -190,7 +192,7 @@ jobs:
           gh release create android-beta \
             dist/MKW-Music-beta.apk dist/MKW-Music-beta.apk.sha256 \
             --target "$GITHUB_SHA" \
-            --title "MKW Music для Android — beta" \
+            --title "MKW Music для Android" \
             --notes-file dist/notes.md \
             --latest
 

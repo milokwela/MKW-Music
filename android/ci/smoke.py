@@ -225,6 +225,15 @@ if ws:
     sh('shell', 'am', 'start', '-n', f'{PKG}/.MainActivity')
     time.sleep(3)
 
+    # ---------- 4в. громкость телефона и устройство вывода, полоса перемотки ----------
+    REPORT['audio_state'] = ev("""new Promise(res=>{ window.addEventListener('mkw-audio', e=>res(JSON.stringify(e.detail)), {once:true}); MKWNative.setVolume(0.4); setTimeout(()=>res('timeout'),5000); })""")
+    REPORT['system_volume'] = sh('shell', 'cmd', 'media_session', 'volume', '--stream', '3', '--get')[-80:].strip()
+    ev("""navigator.mediaSession.setPositionState({duration:200, position:30, playbackRate:1})""")
+    time.sleep(2)
+    ms2 = sh('shell', 'dumpsys', 'media_session'); j = ms2.find('MKW Music')
+    REPORT['session_state_line'] = next((l.strip()[:200] for l in ms2[j:j + 1500].splitlines() if 'state=PlaybackState' in l), None)
+    log('audio:', REPORT['audio_state'], '|', REPORT['system_volume'], '|', REPORT['session_state_line'])
+
     # ---------- 5. обычное уведомление от сайта ----------
     ev("""(()=>{ new Notification('Привет из смоука', {body:'Тест уведомления', tag:'smoke'}); return true; })()""")
     time.sleep(3)
