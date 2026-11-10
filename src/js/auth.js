@@ -62,12 +62,16 @@ export function watchAuth(cb) {
   return onAuthStateChanged(auth, async (u) => {
     if (!u) { cb(null); return; }
     let nick = emailToNick(u.email);
+    // последний известный ник этого аккаунта — если профиль не успел загрузиться, не откатываемся к нику из входа
+    try { const c = localStorage.getItem(`mkw.nick.${u.uid}`); if (c && isValidNick(c)) nick = c; } catch { /* ignore */ }
     try {
       // имя из профиля (если ник менялся только в приложении), с ограничением по времени
       const snap = await Promise.race([getDoc(doc(db, 'users', u.uid)), new Promise((_, rej) => setTimeout(rej, 2500))]);
       const n = snap && snap.exists() ? snap.data().nick : '';
       if (n && isValidNick(normalizeNick(n))) nick = normalizeNick(n);
-    } catch { /* остаётся ник из входа */ }
+    } catch { /* остаётся последний известный ник */ }
+    if (u.uid === OWNER_UID) nick = 'milokwel'; // создатель MKW — всегда milokwel
+    try { localStorage.setItem(`mkw.nick.${u.uid}`, nick); } catch { /* ignore */ }
     cb({ uid: u.uid, nick });
   });
 }
