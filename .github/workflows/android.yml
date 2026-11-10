@@ -2,6 +2,7 @@
 # Запускается сама, когда меняется папка android/ (или этот файл) в main, и вручную:
 #   Actions → Android APK → Run workflow.
 # Приложение — оболочка вокруг https://mkwmusic.ru, поэтому обновления сайта пересобирать APK не требуют.
+# Версия приложения — в файле android/version.txt (поднимайте её, когда меняете оболочку).
 #
 # Подпись (необязательно, но тогда новые версии ставятся поверх старой без удаления).
 # Секреты репозитория (Settings → Secrets and variables → Actions):
@@ -52,9 +53,9 @@ jobs:
       - name: Версия
         id: ver
         run: |
-          V=$(python3 -c "import json;print(json.load(open('version.json'))['v'])")
+          V=$(tr -d '[:space:]' < android/version.txt)
           echo "name=$V" >> "$GITHUB_OUTPUT"
-          echo "Версия сайта: $V, сборка #${{ github.run_number }}"
+          echo "Версия приложения: $V, сборка #${{ github.run_number }}"
 
       - name: Ключ подписи
         id: key
@@ -120,7 +121,7 @@ jobs:
           cat > dist/notes.md <<EOF
           **MKW Music для Android — beta (сырая версия).** Сайт mkwmusic.ru по-прежнему удобнее; приложение мы ещё развиваем.
 
-          - Версия: ${{ steps.ver.outputs.name }} · сборка #${{ github.run_number }} · коммит ${GITHUB_SHA::7}
+          - Версия приложения: ${{ steps.ver.outputs.name }} · сборка #${{ github.run_number }} · коммит ${GITHUB_SHA::7}
           - SHA-256: \`$SHA\`
           - Подпись: $SIGN
 
@@ -128,7 +129,7 @@ jobs:
           EOF
           {
             echo "### MKW Music для Android"
-            echo "Версия ${{ steps.ver.outputs.name }}, сборка #${{ github.run_number }}"
+            echo "Версия приложения ${{ steps.ver.outputs.name }}, сборка #${{ github.run_number }}"
             echo ""
             echo "SHA-256: \`$SHA\`"
             echo ""
