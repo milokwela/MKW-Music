@@ -3,7 +3,7 @@
 import { h } from './ui.js';
 import { nickEmo } from './stickers.js';
 
-const DEV_NICKS = new Set(['milokwel', 'milokq']); // разработчик — MiloKwel; оба ника зарезервированы (auth.js и правила Firestore), занять их никто другой не может
+const DEV_NICKS = new Set(['milokwel']); // разработчик один — milokwel (аккаунт создателя всегда получает этот ник, см. auth.js)
 export const isDev = (nick) => DEV_NICKS.has(String(nick || '').trim().toLowerCase());
 // показывать ли значок разработчика у человека из рейтинга/друзей (u — карточка из Firestore)
 export const showDev = (u) => Boolean(u && isDev(u.nick) && !u.devOff);
