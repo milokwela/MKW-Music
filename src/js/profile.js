@@ -2,6 +2,7 @@
 import { seenOnline, realSeen } from './clock.js';
 import { nickEmo, richText, plainRich, emojiPicker, catSrc } from './stickers.js';
 import { betaCard } from './poll.js';
+import { apkCard } from './apk.js';
 import { $, $$, h, icon, openSheet, closeSheet, toast, sheetItem, trackRow } from './ui.js';
 import * as store from './store.js';
 import * as player from './player.js';
@@ -846,7 +847,7 @@ function swipeTabs(area) {
 window.addEventListener('resize', () => placeLens(false));
 
 function setTab(name) {
-  if (name === 'about') { try { localStorage.setItem('mkw.aboutseen', '0.37.0'); } catch { /* ignore */ } document.querySelectorAll('.ptab.has-new').forEach((b) => b.classList.remove('has-new')); }
+  if (name === 'about') { try { localStorage.setItem('mkw.aboutseen', '0.37.6'); } catch { /* ignore */ } document.querySelectorAll('.ptab.has-new').forEach((b) => b.classList.remove('has-new')); }
   const dir = TABS.indexOf(name) - TABS.indexOf(refs.tab || 'main');
   refs.tab = name;
   $$('.ptab').forEach((b) => b.classList.toggle('active', b.dataset.tab === name));
@@ -915,7 +916,7 @@ export function buildProfile(nick) {
   restoreFan(nick).then(() => { paintMarks(getCustom()); });
   const tabBtn = (id, label, ic) => h('button', { class: 'ptab', type: 'button', 'data-tab': id, onclick: () => setTab(id) }, mi(ic), h('span', { text: label }));
   refs.tabs = h('div', { class: 'ptabs' }, h('i', { class: 'ptab-lens' }), tabBtn('main', 'Обзор', 'person'), tabBtn('friends', 'Друзья', 'group'), tabBtn('board', 'Топ', 'trophy'), tabBtn('set', 'Настройки', 'palette'), tabBtn('about', 'О MKW', 'note'));
-  try { if (localStorage.getItem('mkw.aboutseen') !== '0.37.0') refs.tabs.querySelector('[data-tab=about]').classList.add('has-new'); } catch { /* ignore */ }
+  try { if (localStorage.getItem('mkw.aboutseen') !== '0.37.6') refs.tabs.querySelector('[data-tab=about]').classList.add('has-new'); } catch { /* ignore */ }
 
   root.replaceChildren(
     h('div', { class: 'p-side' }, refs.hero, refs.tabs),
@@ -990,6 +991,7 @@ export function buildProfile(nick) {
       h('div', { class: 'about-card' },
         h('div', { class: 'about-top' }, h('img', { src: 'assets/mkw-logo.png', alt: '', class: 'about-logo' }), h('div', {}, h('b', { text: 'MKW Music' }), h('span', { class: 'beta-badge', text: `${STAGE} · v${VERSION}` }))),
         betaCard(),
+        apkCard(),
         refs.listeners,
         h('p', { class: 'profile-note', text: 'MKW Music — название сервиса. MiloKwel — его создатель: он делает все обновления и разработку. Бета-версия: что-то может ломаться, всё чиним.' }),
         CHANGELOG.map((e, i) => changelogEntry(e, i === 0)),
