@@ -45,6 +45,7 @@ export async function signUp(nickRaw, pass) {
   const nick = checkInput(nickRaw, pass);
   if (taken(nick)) throw Object.assign(new Error('reserved'), { userText: 'Этот ник занят' });
   const cred = await createUserWithEmailAndPassword(auth, nickToEmail(nick), pass);
+  try { localStorage.setItem('mkw.newuser', '1'); } catch { /* ignore */ }
   try {
     await setDoc(doc(db, 'users', cred.user.uid), { nick, createdAt: Date.now() });
   } catch (e) {

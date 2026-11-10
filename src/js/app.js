@@ -18,8 +18,8 @@ import { initRowLens } from './rowlens.js';
 import { readIncoming, showIncoming } from './share.js';
 import { registerListener } from './stats.js';
 import { offerInstall } from './install.js';
-import { showIncident, showFounderNote } from './incident.js';
-import { showMoved, showIconUpdate } from './moved.js';
+import { showFounderNote } from './incident.js';
+import { showIconUpdate } from './moved.js';
 import { showNews } from './news.js';
 import { maybeShowBetaNote } from './poll.js';
 import { initHome } from './home.js';
@@ -36,7 +36,14 @@ import { initTheme } from './theme.js';
 import { initWinter } from './winter.js';
 import { initPlayer2 } from './player2.js';
 import * as player from './player.js';
-import { $, $$ } from './ui.js';
+import { $, $$, toast, isSheetOpen } from './ui.js';
+
+// Новый слушатель: после регистрации — только предложение установить (его показывает offerInstall) и подсказка про Волну
+function welcomeNew() {
+  try { if (localStorage.getItem('mkw.newuser') !== '1') return; localStorage.removeItem('mkw.newuser'); } catch { return; }
+  const tip = () => { if (isSheetOpen() || document.querySelector('.nw:not(.out), .call-in')) { setTimeout(tip, 5000); return; } toast('Чтобы настроить MKW Волну под себя, лайкните пару треков'); };
+  setTimeout(tip, 14000);
+}
 import { initApkHandoff } from './apkhandoff.js';
 
 // ---------- вход ----------
@@ -150,14 +157,13 @@ function onUser(user) {
     setTimeout(initHome, 1500);
     setTimeout(startNotify, 2500);
     setTimeout(showIncoming, 600);
-    setTimeout(showMoved, 1200);
     setTimeout(showIconUpdate, 2600);
     setTimeout(showNews, 3700);
     // обращение «MKW в бете» — один раз, когда не открыто другое окно
     const beta = () => { if (document.querySelector('.nw, .inc, .rc, .beta-pop')) { setTimeout(beta, 6000); return; } maybeShowBetaNote(); };
     setTimeout(beta, 12000);
     setTimeout(offerInstall, 9000);
-    setTimeout(showIncident, 2200);
+    welcomeNew();
     setTimeout(() => showFounderNote(user.nick), 3200);
   } else {
     flushListened();

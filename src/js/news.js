@@ -15,7 +15,8 @@ const SLIDES = [
 
 export function showNews() {
   const ver = '0.37.0'; // окно «Что нового» — для версии с новинками, мелкие исправления его не показывают
-  try { if (localStorage.getItem(KEY) === ver) return; } catch { return; }
+  // на новом устройстве (и новым слушателям) окно не показываем — оно для тех, кто обновился
+  try { const cur = localStorage.getItem(KEY); if (cur === ver) return; if (cur === null) { localStorage.setItem(KEY, ver); return; } } catch { return; }
   if (document.querySelector('.inc')) { setTimeout(showNews, 8000); return; } // сначала сообщение о сбое
   let i = 0;
   const done = () => { try { localStorage.setItem(KEY, ver); } catch { /* ignore */ } box.classList.add('out'); setTimeout(() => box.remove(), 350); };
