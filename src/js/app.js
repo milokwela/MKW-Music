@@ -37,6 +37,7 @@ import { initWinter } from './winter.js';
 import { initPlayer2 } from './player2.js';
 import * as player from './player.js';
 import { $, $$ } from './ui.js';
+import { initApkHandoff } from './apkhandoff.js';
 
 // ---------- вход ----------
 let authMode = 'login';
@@ -201,6 +202,7 @@ function boot() {
   initWinter();
   try { if (localStorage.getItem('mkw.debug') === '1') window.__mkw = { player, waveDebug }; } catch { /* ignore */ }
   initAuthForm();
+  initApkHandoff();
   initNav();
   initLiquidNav();
   initSearch();
