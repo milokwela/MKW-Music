@@ -104,7 +104,7 @@ public class MainActivity extends Activity {
         root.setFitsSystemWindows(true);
         setContentView(root);
 
-        web = new WebView(this);
+        web = new BgWebView(this);
         web.setBackgroundColor(BG);
         root.addView(web, new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
@@ -118,6 +118,15 @@ public class MainActivity extends Activity {
 
         root.post(this::firstRunSetup);
         root.postDelayed(this::checkUpdate, 5000);
+    }
+
+    /** Пока работает служба музыки, страница не узнаёт, что приложение свёрнуто (см. BgWebView). */
+    static void holdVisible(final boolean on) {
+        final MainActivity m = current;
+        if (m == null) return;
+        m.runOnUiThread(() -> {
+            if (m.web instanceof BgWebView) ((BgWebView) m.web).setHold(on);
+        });
     }
 
     // ---------- WebView ----------

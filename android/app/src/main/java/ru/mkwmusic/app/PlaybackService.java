@@ -74,6 +74,7 @@ public class PlaybackService extends Service {
     public void onCreate() {
         super.onCreate();
         instance = this;
+        MainActivity.holdVisible(true);
         Notifier.ensureChannels(this);
         session = new MediaSession(this, "MKW Music");
         session.setCallback(new MediaSession.Callback() {
@@ -262,6 +263,7 @@ public class PlaybackService extends Service {
             session = null;
         }
         if (instance == this) instance = null;
+        MainActivity.holdVisible(false);
         super.onDestroy();
     }
 
