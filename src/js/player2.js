@@ -65,13 +65,12 @@ function paintTrack() {
 }
 function paintRate() { const b = $('#fp-speed'); if (b) { b.textContent = rateText(player.getRate()); b.classList.toggle('on', player.getRate() !== 1); } }
 
-// ---------- «сцена» (телефон): обложка, текст и очередь живут в одном месте, название и кнопки не двигаются ----------
+// ---------- «сцена» (телефон и компьютер): обложка, текст и очередь живут в одном месте, название и кнопки не двигаются ----------
 let stage = null, qBox = null, qFind = null, anim = null, collapsed = false;
-const mobile = () => !matchMedia('(min-width: 900px)').matches;
 const calmUI = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 const fpEl = () => $('#full-player');
 const panelOpen = () => { const fp = fpEl(); return fp.classList.contains('lyrics-on') || fp.classList.contains('queue-on'); };
-const useStage = () => player2On() && mobile();
+const useStage = () => player2On();
 
 function mountStage(on) {
   const art = $('#fp-art'), lyr = $('#fp-lyrics');
@@ -89,35 +88,6 @@ function mountStage(on) {
   if (!on && qBox && lyr.parentNode && qBox.parentNode !== lyr.parentNode) lyr.after(qBox);
 }
 
-// ---------- компьютер: плавная перестройка (FLIP) при открытии текста и очереди — всё через transform, ровно и на 144 Гц ----------
-const FLIP_SEL = ['.fp-top', '#fp-art', '.fp-meta', '.fp-seek', '.fp-times', '.fp-controls', '.fp-extra', '.fp-note', '#fp-lyrics', '#fp-q2'];
-let flipFirst = null, flipT = 0, flipAnims = [];
-const flipEls = () => FLIP_SEL.map((q) => fpEl().querySelector(q)).filter(Boolean);
-function flipSnap() {
-  const m = new Map();
-  flipEls().forEach((e) => { const r = e.getBoundingClientRect(); m.set(e, r.width || r.height ? r : null); });
-  return m;
-}
-function flipPrepare() {
-  if (mobile() || !player2On() || calmUI() || !fpEl().classList.contains('open')) return;
-  flipFirst = flipSnap(); clearTimeout(flipT); flipT = setTimeout(() => { flipFirst = null; }, 2500);
-}
-function flipPlay() {
-  const first = flipFirst; flipFirst = null; if (!first) return;
-  flipAnims.forEach((a) => a.cancel()); flipAnims = [];
-  const ease = 'cubic-bezier(.22,.8,.18,1)';
-  flipEls().forEach((e) => {
-    const a = first.get(e), b = e.getBoundingClientRect();
-    if (!b.width && !b.height) return;
-    if (!a) { // панель появилась — выезжает и проявляется
-      flipAnims.push(e.animate([{ opacity: 0, transform: 'translateX(28px) scale(.98)' }, { opacity: 1, transform: 'none' }], { duration: 520, easing: ease, delay: 60, fill: 'backwards' }));
-      return;
-    }
-    const dx = a.left - b.left, dy = a.top - b.top, sc = e.id === 'fp-art' && b.width ? a.width / b.width : 1;
-    if (Math.abs(dx) < 1 && Math.abs(dy) < 1 && Math.abs(sc - 1) < 0.01) return;
-    flipAnims.push(e.animate([{ transformOrigin: '0 0', transform: `translate(${dx}px, ${dy}px) scale(${sc})` }, { transformOrigin: '0 0', transform: 'none' }], { duration: 560, easing: ease }));
-  });
-}
 // куда «улетает» обложка: маленький квадрат слева от названия
 function miniTarget() {
   // считаем от самой обложки (без анимации): она квадратом по центру сцены
@@ -206,18 +176,17 @@ export function initPlayer2() {
   qBox = h('div', { id: 'fp-q2' }, h('label', { class: 'p2q-search' }, icon('search'), qFind), h('div', { class: 'p2q-list' }));
   const top = $('#full-player .fp-top');
   if (top) top.insertBefore(h('div', { id: 'fp2-head' }, h('b', { text: 'MKW' }), h('small', {}, h('span', { class: 'p2-n' }), h('span', { class: 'p2-q' }))), $('#fp-more'));
-  // в новом виде кнопка очереди открывает очередь прямо в плеере (на телефоне — на месте обложки, на компьютере — справа)
+  // в новом виде кнопка очереди открывает очередь прямо в плеере на месте обложки
   document.addEventListener('click', (e) => {
     if (!e.target.closest || !player2On()) return;
-    if (e.target.closest('#fp-lyrics-btn')) { flipPrepare(); return; }
     if (!e.target.closest('#fp-queue')) return;
-    e.preventDefault(); e.stopImmediatePropagation(); flipPrepare(); toggleQueue();
+    e.preventDefault(); e.stopImmediatePropagation(); toggleQueue();
   }, true);
   // текст включили — очередь закрываем; любое переключение — обложка плавно едет
   new MutationObserver(() => {
     const fp = fpEl();
     if (fp.classList.contains('lyrics-on') && fp.classList.contains('queue-on')) { fp.classList.remove('queue-on'); $('#fp-queue').classList.remove('on'); }
-    if (useStage()) syncStage(false); else flipPlay();
+    if (useStage()) syncStage(false);
   }).observe(fpEl(), { attributes: true, attributeFilter: ['class'] });
   let rz = 0;
   window.addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(() => { mountStage(useStage()); syncStage(true); }, 120); });

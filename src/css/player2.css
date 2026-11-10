@@ -140,24 +140,32 @@
 #full-player.fp2.queue-on #fp2-head .p2-q { display: inline; }
 #full-player.fp2.queue-on #fp2-head .p2-n { display: none; }
 
-/* ===== 0.37.3: очередь в плеере на компьютере — справа, как текст ===== */
+/* ===== 0.37.4: на компьютере — как на телефоне. Текст и очередь открываются на месте обложки,
+   обложка улетает к названию, а кнопки справа стоят на месте — можно жать в одну точку ===== */
 @media (min-width: 900px) {
-  #full-player.fp2.queue-on .fp-inner { max-width: 1040px; display: grid; grid-template-columns: minmax(300px, 420px) 1fr; column-gap: 48px; align-content: center; }
-  #full-player.fp2.queue-on .fp-top { grid-column: 1 / -1; }
-  #full-player.fp2.queue-on #fp-art { display: block; grid-column: 1; grid-row: 2; width: min(100%, 380px); max-width: 380px; justify-self: center; }
-  #full-player.fp2.queue-on #fp-q2 { display: block; position: relative; grid-column: 2; grid-row: 2 / span 4; height: 74vh; min-width: 0; }
-  #full-player.fp2.queue-on .fp-meta, #full-player.fp2.queue-on .fp-seek, #full-player.fp2.queue-on .fp-controls, #full-player.fp2.queue-on .fp-extra, #full-player.fp2.queue-on .fp-times { grid-column: 1; }
-  #full-player.fp2 #fp-q2 .p2q-row { padding: 8px 10px; }
-  #full-player.fp2 #fp-q2 .p2q-row:hover { background: rgba(255,255,255,.06); }
-  #full-player.fp2 #fp-art, #full-player.fp2 .fp-meta, #full-player.fp2 .fp-controls, #full-player.fp2 .fp-extra { will-change: transform; }
+  #full-player.fp2 #fp-stage { position: relative; width: 100%; aspect-ratio: 1 / 1; max-height: 52vh; margin: 8px auto 0; container-type: size; }
+  #full-player.fp2 #fp-stage > #fp-art { display: block !important; position: absolute !important; margin: 0 !important; max-width: none !important;
+    width: min(100cqw, 100cqh) !important; height: min(100cqw, 100cqh) !important;
+    left: calc((100cqw - min(100cqw, 100cqh)) / 2); top: calc((100cqh - min(100cqw, 100cqh)) / 2);
+    transform-origin: 0 0; z-index: 3; will-change: transform; border-radius: 28px; }
+  #full-player.fp2 #fp-stage > #fp-lyrics, #full-player.fp2 #fp-stage > #fp-q2 { display: block !important; position: absolute !important; inset: 0; width: auto !important; height: auto !important; max-height: none !important; max-width: none !important; margin: 0 !important;
+    opacity: 0; transform: translateY(12px); pointer-events: none; transition: opacity .42s ease, transform .5s cubic-bezier(.22,.8,.18,1); z-index: 1; animation: none !important; }
+  #full-player.fp2.lyrics-on #fp-stage > #fp-lyrics, #full-player.fp2.queue-on #fp-stage > #fp-q2 { opacity: 1; transform: none; pointer-events: auto; transition-delay: .08s; }
+  #full-player.fp2 #fp-stage #fp-lyrics .ly-line { font-size: clamp(20px, 1.8vw, 30px) !important; }
+  /* раскладка не меняется, когда открыт текст */
+  #full-player.fp2.lyrics-on .fp-inner { display: flex; max-width: 480px; }
+  #full-player.fp2 #fp-mini-art { display: block !important; flex: none; width: 0; height: 48px; margin-right: 0; background: none !important; transition: width .5s cubic-bezier(.22,.8,.18,1), margin .5s cubic-bezier(.22,.8,.18,1); }
+  #full-player.fp2.art-mini #fp-mini-art { width: 48px; margin-right: 14px; }
+  #fp-q2 .p2q-row { padding: 8px 10px; }
+  #fp-q2 .p2q-row:hover { background: rgba(255,255,255,.06); }
 }
 @media (min-width: 1000px) and (min-aspect-ratio: 5/4) {
-  #full-player.fp2.queue-on .fp-inner { grid-template-columns: minmax(320px, 400px) minmax(0, 1fr) !important; grid-template-rows: auto 1fr auto auto auto auto auto 1fr; }
-  #full-player.fp2.queue-on #fp-art { display: block !important; grid-column: 1; grid-row: 2; justify-self: center; align-self: end; width: min(38vh, 360px) !important; margin: 0 0 18px !important; }
-  #full-player.fp2.queue-on .fp-meta { grid-column: 1; grid-row: 3; }
-  #full-player.fp2.queue-on .fp-seek { grid-column: 1; grid-row: 4; }
-  #full-player.fp2.queue-on .fp-controls { grid-column: 1; grid-row: 5; }
-  #full-player.fp2.queue-on .fp-extra { grid-column: 1; grid-row: 6; }
-  #full-player.fp2.queue-on .fp-note, #full-player.fp2.queue-on .fp-src { grid-column: 1; grid-row: 7; }
-  #full-player.fp2.queue-on #fp-q2 { grid-column: 2; grid-row: 2 / span 7; align-self: stretch; height: calc(100vh - 110px) !important; }
+  #full-player.fp2 #fp-stage, #full-player.fp2.lyrics-on #fp-stage, #full-player.fp2.queue-on #fp-stage { grid-column: 1; grid-row: 2 / span 7; justify-self: end; align-self: center;
+    width: min(66vh, 560px); height: min(calc(100vh - 150px), 860px); aspect-ratio: auto; max-height: none; margin: 0; }
+  #full-player.fp2.lyrics-on .fp-inner { display: grid !important; max-width: 1180px !important; grid-template-columns: minmax(320px, 1fr) minmax(380px, 460px) !important; }
+  #full-player.fp2.lyrics-on .fp-meta { grid-column: 2; grid-row: 3; }
+  #full-player.fp2.lyrics-on .fp-seek { grid-column: 2; grid-row: 4; }
+  #full-player.fp2.lyrics-on .fp-controls { grid-column: 2; grid-row: 5; }
+  #full-player.fp2.lyrics-on .fp-extra { grid-column: 2; grid-row: 6; }
+  #full-player.fp2.lyrics-on .fp-note, #full-player.fp2.lyrics-on .fp-src { grid-column: 2; grid-row: 7; }
 }
