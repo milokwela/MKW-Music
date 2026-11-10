@@ -212,6 +212,19 @@ if ws:
     shot('07b_after_shade_pause')
     sh('shell', 'cmd', 'statusbar', 'collapse')
 
+    # ---------- 4б. приложение свёрнуто, музыка «играет»: страница не должна узнать, что её не видно ----------
+    ev("""(()=>{ navigator.mediaSession.playbackState='playing'; window.__ticks=0; setInterval(()=>{window.__ticks++},250); return true; })()""")
+    time.sleep(2)
+    sh('shell', 'input', 'keyevent', 'KEYCODE_HOME')
+    time.sleep(6)
+    REPORT['bg_visibility_while_playing'] = ev('document.visibilityState')
+    t1 = ev('window.__ticks'); time.sleep(4); t2 = ev('window.__ticks')
+    REPORT['bg_timer_ticks_4s'] = (t2 - t1) if isinstance(t1, int) and isinstance(t2, int) else None
+    log('background: visibility', REPORT['bg_visibility_while_playing'], 'ticks/4s', REPORT['bg_timer_ticks_4s'])
+    shot('07c_home_while_playing')
+    sh('shell', 'am', 'start', '-n', f'{PKG}/.MainActivity')
+    time.sleep(3)
+
     # ---------- 5. обычное уведомление от сайта ----------
     ev("""(()=>{ new Notification('Привет из смоука', {body:'Тест уведомления', tag:'smoke'}); return true; })()""")
     time.sleep(3)
