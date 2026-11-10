@@ -52,7 +52,8 @@ function tick(t) {
   const dt = Math.min(0.07, (t - last) / 1000 || 0.016); last = t;
   draw(dt);
 }
-function run() { cancelAnimationFrame(raf); raf = 0; if (cvs && !document.hidden && !calm()) { last = performance.now(); raf = requestAnimationFrame(tick); } }
+const covered = () => root.classList.contains('fp-cover');
+function run() { cancelAnimationFrame(raf); raf = 0; if (cvs && !document.hidden && !calm() && !covered()) { last = performance.now(); raf = requestAnimationFrame(tick); } }
 
 // новогодняя нижняя панель: заснеженные домики с окошками
 function navScene() {
@@ -95,5 +96,6 @@ export function initWinter() {
   applyWinter();
   window.addEventListener('resize', () => { if (cvs) size(); });
   document.addEventListener('visibilitychange', run);
+  new MutationObserver(run).observe(root, { attributes: true, attributeFilter: ['class'] });
   window.addEventListener('mkw-theme', () => { dark = isDark(); if (cvs && calm()) draw(0); });
 }

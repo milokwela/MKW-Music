@@ -199,6 +199,14 @@ export function initPlayer2() {
     if (!player2On()) return;
     if (ev === 'time') { if (!raf) draw(); } else if (ev === 'state' || ev === 'track') kick();
   });
+  // плеер открыт целиком — всё, что под ним, не рисуется (приложение, снег, сияние). Нажатия в плеере становятся мгновенными
+  let coverT = 0;
+  new MutationObserver(() => {
+    const fp = fpEl(), on = fp.classList.contains('open') && !fp.classList.contains('dragging');
+    clearTimeout(coverT);
+    if (on) coverT = setTimeout(() => document.documentElement.classList.add('fp-cover'), 380);
+    else document.documentElement.classList.remove('fp-cover');
+  }).observe(fpEl(), { attributes: true, attributeFilter: ['class'] });
   // открытие плеера и возвращение на вкладку — перерисовать и запустить волну
   new MutationObserver(() => { if (player2On()) { draw(); kick(); } }).observe($('#full-player'), { attributes: true, attributeFilter: ['class'] });
   document.addEventListener('visibilitychange', kick);

@@ -99,7 +99,8 @@ async function syncTrack() {
 function frame(now) {
   const full = $('#full-player');
   // большой плеер закрыт — цикл не крутим вовсе (экономим батарею и плавность)
-  if (!liveBg() || !full || (!full.classList.contains('open') && !full.classList.contains('dragging'))) { raf = 0; return; }
+  if (!liveBg() || !full || full.classList.contains('fp2') || (!full.classList.contains('open') && !full.classList.contains('dragging'))) { raf = 0; return; }
+  // в новом плеере пульсирующего фона нет — цикл каждый кадр пересчитывал стили всего плеера и мешал плавности
   raf = requestAnimationFrame(frame);
   const el = $('#fp-glow');
   const t = (now - t0) / 1000;
