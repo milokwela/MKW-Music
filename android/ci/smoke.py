@@ -234,6 +234,10 @@ if ws:
     REPORT['session_state_line'] = next((l.strip()[:200] for l in ms2[j:j + 1500].splitlines() if 'state=PlaybackState' in l), None)
     log('audio:', REPORT['audio_state'], '|', REPORT['system_volume'], '|', REPORT['session_state_line'])
 
+    # ---------- 4г. Bluetooth-меню: состояние без запроса разрешений (в эмуляторе Bluetooth может не быть) ----------
+    REPORT['bt_state'] = ev("""new Promise(res=>{ window.addEventListener('mkw-bt', e=>res(JSON.stringify(e.detail)), {once:true}); MKWNative.btState(); setTimeout(()=>res('timeout'),5000); })""")
+    log('bt:', REPORT['bt_state'])
+
     # ---------- 5. обычное уведомление от сайта ----------
     ev("""(()=>{ new Notification('Привет из смоука', {body:'Тест уведомления', tag:'smoke'}); return true; })()""")
     time.sleep(3)

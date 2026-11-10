@@ -142,9 +142,12 @@ jobs:
         id: pack
         run: |
           mkdir -p dist
-          cp android/app/build/outputs/apk/release/app-release.apk dist/MKW-Music-beta.apk
-          (cd dist && sha256sum MKW-Music-beta.apk > MKW-Music-beta.apk.sha256)
-          SHA=$(cut -d' ' -f1 dist/MKW-Music-beta.apk.sha256)
+          cp android/app/build/outputs/apk/release/app-release.apk dist/MKW-Music.apk
+          # старое имя файла оставляем: по нему скачивают обновление прежние версии приложения
+          cp dist/MKW-Music.apk dist/MKW-Music-beta.apk
+          (cd dist && sha256sum MKW-Music.apk > MKW-Music.apk.sha256 && sha256sum MKW-Music-beta.apk > MKW-Music-beta.apk.sha256)
+          SHA=$(cut -d' ' -f1 dist/MKW-Music.apk.sha256)
+          FORCE=$(tr -d '[:space:]' < android/force-update.txt 2>/dev/null || echo нет)
           echo "sha=$SHA" >> "$GITHUB_OUTPUT"
           SRC="${{ steps.key.outputs.source }}"
           if [ "$SRC" = "secrets" ] || [ "$SRC" = "cache" ] || { [ "$SRC" = "fresh" ] && [ "${{ github.ref }}" = "refs/heads/main" ]; }; then
@@ -158,6 +161,7 @@ jobs:
           - Версия приложения: ${{ steps.ver.outputs.name }} · сборка #${{ github.run_number }} · коммит ${GITHUB_SHA::7}
           - SHA-256: \`$SHA\`
           - Подпись: $SIGN
+          - Обязательное обновление: $FORCE
 
           **Как скачать безопасно:** берите файл только отсюда или с mkwmusic.ru (Профиль → О MKW), там же подробная инструкция.
           Приложению нужны: интернет, уведомления и работа в фоне (для музыки), камера и микрофон — только когда вы сами включаете жесты, голос или звонок.
@@ -181,8 +185,8 @@ jobs:
         with:
           name: MKW-Music-beta-apk
           path: |
-            dist/MKW-Music-beta.apk
-            dist/MKW-Music-beta.apk.sha256
+            dist/MKW-Music.apk
+            dist/MKW-Music.apk.sha256
           retention-days: 30
 
       - name: Выложить в релиз android-beta
@@ -190,7 +194,7 @@ jobs:
         run: |
           gh release delete android-beta --cleanup-tag --yes || true
           gh release create android-beta \
-            dist/MKW-Music-beta.apk dist/MKW-Music-beta.apk.sha256 \
+            dist/MKW-Music.apk dist/MKW-Music.apk.sha256 dist/MKW-Music-beta.apk dist/MKW-Music-beta.apk.sha256 \
             --target "$GITHUB_SHA" \
             --title "MKW Music для Android" \
             --notes-file dist/notes.md \

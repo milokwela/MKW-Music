@@ -301,6 +301,36 @@ public class MainActivity extends Activity {
 
     // ---------- громкость телефона и устройство вывода ----------
 
+    private BtHelper btHelper;
+
+    private BtHelper bt() {
+        if (btHelper == null) btHelper = new BtHelper(this, s -> runJs("window.__mkwBt&&window.__mkwBt(" + s + ")"));
+        return btHelper;
+    }
+
+    /** Системное окно выбора, куда играть звук: там же можно отключить колонку и вернуться на динамик телефона. */
+    private void openOutputSwitcher() {
+        try {
+            if (Build.VERSION.SDK_INT >= 34 && android.media.MediaRouter2.getInstance(this).showSystemOutputSwitcher()) return;
+        } catch (Exception e) {
+            Log.w(TAG, "output switcher", e);
+        }
+        try {
+            if (Build.VERSION.SDK_INT >= 30) {
+                startActivity(new Intent("com.android.settings.panel.action.MEDIA_OUTPUT")
+                        .putExtra("com.android.settings.panel.extra.PACKAGE_NAME", getPackageName()));
+                return;
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "output panel", e);
+        }
+        try {
+            startActivity(new Intent(android.provider.Settings.ACTION_BLUETOOTH_SETTINGS));
+        } catch (Exception e) {
+            Log.w(TAG, "bluetooth settings", e);
+        }
+    }
+
     private void replyAudio() {
         try {
             android.media.AudioManager am = (android.media.AudioManager) getSystemService(AUDIO_SERVICE);
@@ -322,6 +352,7 @@ public class MainActivity extends Activity {
                 }
             }
             o.put("kind", kind);
+            if ("bt".equals(kind)) o.put("bat", bt().connectedBattery());
             o.put("name", clip(name, 80));
             runJs("window.__mkwAudio&&window.__mkwAudio(" + o + ")");
         } catch (Exception e) {
@@ -441,6 +472,22 @@ public class MainActivity extends Activity {
                 break;
             case "vol":
                 setVolume(o);
+                break;
+            case "btscan":
+                bt().scan();
+                break;
+            case "btstop":
+                bt().stop();
+                break;
+            case "btstate":
+                bt().push();
+                break;
+            case "btpair":
+                if (!bt().pair(o.optString("a", ""))) runJs("window.__mkwBtFail&&window.__mkwBtFail()");
+                bt().push();
+                break;
+            case "outswitch":
+                openOutputSwitcher();
                 break;
             case "bt":
                 try {
@@ -627,6 +674,10 @@ public class MainActivity extends Activity {
     @Override
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == BtHelper.REQ) {
+            if (bt().hasPerm()) bt().scan(); else bt().push();
+            return;
+        }
         if (requestCode == REQ_NOTIF) {
             reportNotif();
             Runnable next = afterNotif;
@@ -649,6 +700,37 @@ public class MainActivity extends Activity {
 
     // ---------- обновления ----------
 
+    private int versionCode() {
+        try {
+            return getPackageManager().getPackageInfo(getPackageName(), 0).versionCode;
+        } catch (PackageManager.NameNotFoundException e) {
+            return 0;
+        }
+    }
+
+    private AlertDialog forcedDialog;
+
+    /** Обязательное обновление: окно нельзя закрыть, приложение ждёт установки новой версии. */
+    private void showForced() {
+        if (isFinishing() || (forcedDialog != null && forcedDialog.isShowing())) return;
+        SharedPreferences p = prefs();
+        if (p.getInt("upd_need_build", 0) <= versionCode()) return;
+        forcedDialog = new AlertDialog.Builder(this)
+                .setTitle("Нужно обновить MKW Music")
+                .setMessage("Вышла версия " + p.getString("upd_need_ver", "") + ". Старая больше не поддерживается: скачайте новую и "
+                        + "откройте файл — она встанет поверх, вход и данные сохранятся.")
+                .setCancelable(false)
+                .setPositiveButton("Скачать обновление", (d, w) -> openExternal(Uri.parse(UpdateChecker.APK_URL)))
+                .show();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        showForced();
+        if (root != null) root.postDelayed(this::checkUpdate, 3000);
+    }
+
     private void checkUpdate() {
         if (isFinishing() || setupShowing) return;
         SharedPreferences p = prefs();
@@ -656,15 +738,20 @@ public class MainActivity extends Activity {
         if (now - p.getLong("upd_last", 0) < UPDATE_EVERY_MS) return;
         p.edit().putLong("upd_last", now).apply();
         final String current = versionName();
-        UpdateChecker.check(current, version -> runOnUiThread(() -> {
+        UpdateChecker.check(current, versionCode(), (version, build, forced) -> runOnUiThread(() -> {
             if (isFinishing()) return;
-            if (version.equals(p.getString("upd_skip", ""))) return;
+            if (forced) {
+                p.edit().putInt("upd_need_build", build > 0 ? build : versionCode() + 1).putString("upd_need_ver", version).apply();
+                showForced();
+                return;
+            }
+            String key = version + "#" + build;
+            if (key.equals(p.getString("upd_skip", ""))) return;
             new AlertDialog.Builder(this)
                     .setTitle("Вышла новая версия " + version)
-                    .setMessage("У вас установлена " + current + ". Скачайте новую и откройте файл — она встанет поверх, "
-                            + "вход и данные сохранятся.\n\nФайл берётся с официальной страницы проекта на GitHub.")
+                    .setMessage("Скачайте её и откройте файл — она встанет поверх, вход и данные сохранятся.")
                     .setPositiveButton("Скачать", (d, w) -> openExternal(Uri.parse(UpdateChecker.APK_URL)))
-                    .setNegativeButton("Позже", (d, w) -> p.edit().putString("upd_skip", version).apply())
+                    .setNegativeButton("Позже", (d, w) -> p.edit().putString("upd_skip", key).apply())
                     .show();
         }));
     }
@@ -721,6 +808,7 @@ public class MainActivity extends Activity {
     protected void onDestroy() {
         if (current == this) current = null;
         if (isFinishing()) PlaybackService.stop();
+        if (btHelper != null) { btHelper.release(); btHelper = null; }
         if (fileCallback != null) {
             fileCallback.onReceiveValue(null);
             fileCallback = null;
