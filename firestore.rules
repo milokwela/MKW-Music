@@ -8,6 +8,16 @@ service cloud.firestore {
       return !(d.nick.lower() in ['milokq', 'milokwel', 'milokw', 'milokwela', 'milo_kwel', 'admin', 'mkw', 'mkwmusic', 'moderator', 'support', 'razrab'])
         || isOwner();
     }
+    // необязательное текстовое поле не длиннее n символов
+    function optStr(d, k, n) { return !(k in d) || !(d[k] is string) || d[k].size() <= n; }
+    // необязательное число от 0 до max — нельзя записать себе отрицательные или «бесконечные» часы и лайки
+    function nonNeg(d, k, max) { return !(k in d) || (d[k] is number && d[k] >= 0 && d[k] <= max); }
+    // номер фаната в карточке — только свой настоящий (из fans/{uid}); чужой или выдуманный номер записать нельзя
+    function fanOk(d, uid) {
+      return !('fan' in d) || d.fan == 0 || isOwner()
+        || (exists(/databases/$(database)/documents/fans/$(uid))
+            && get(/databases/$(database)/documents/fans/$(uid)).data.n == d.fan);
+    }
     match /users/{uid} {
       allow read, write: if request.auth != null && request.auth.uid == uid;
     }
@@ -19,7 +29,10 @@ service cloud.firestore {
       allow create: if request.auth != null
         && request.resource.data.keys().hasOnly(['youtubeId', 'cachedAt'])
         && request.resource.data.youtubeId is string
-        && request.resource.data.youtubeId.size() == 11;
+        && request.resource.data.youtubeId.size() == 11
+        && request.resource.data.youtubeId.matches('[A-Za-z0-9_-]{11}')
+        && request.resource.data.cachedAt is number
+        && trackId.size() <= 200;
       allow update, delete: if false;
     }
     match /leaders/{uid} {
@@ -35,7 +48,12 @@ service cloud.firestore {
         && request.resource.data.banner is string && request.resource.data.banner.size() <= 16
         && request.resource.data.frame is string && request.resource.data.frame.size() <= 16
         && request.resource.data.badges is list && request.resource.data.badges.size() <= 3
-        && request.resource.data.avatar is string && request.resource.data.avatar.size() <= 20000;
+        && request.resource.data.avatar is string && request.resource.data.avatar.size() <= 20000
+        && request.resource.data.sec >= 0 && request.resource.data.sec <= 400000000
+        && request.resource.data.plays >= 0 && request.resource.data.plays <= 100000000
+        && request.resource.data.likes >= 0 && request.resource.data.likes <= 10000000
+        && optStr(request.resource.data, 'now', 300) && optStr(request.resource.data, 'shape', 24)
+        && fanOk(request.resource.data, uid);
     }
     match /profiles/{uid} {
       allow read: if request.auth != null;
@@ -50,7 +68,15 @@ service cloud.firestore {
         && request.resource.data.avatar is string && request.resource.data.avatar.size() <= 90000
         && request.resource.data.badges is list && request.resource.data.badges.size() <= 3
         && request.resource.data.favArtists is list && request.resource.data.favArtists.size() <= 4
-        && request.resource.data.favTracks is list && request.resource.data.favTracks.size() <= 10;
+        && request.resource.data.favTracks is list && request.resource.data.favTracks.size() <= 10
+        && nonNeg(request.resource.data, 'sec', 400000000) && nonNeg(request.resource.data, 'plays', 100000000)
+        && nonNeg(request.resource.data, 'likes', 10000000) && nonNeg(request.resource.data, 'days', 100000)
+        && nonNeg(request.resource.data, 'achCount', 10000)
+        && optStr(request.resource.data, 'bio', 400) && optStr(request.resource.data, 'now', 300)
+        && optStr(request.resource.data, 'banner', 24) && optStr(request.resource.data, 'frame', 24)
+        && optStr(request.resource.data, 'nickStyle', 32) && optStr(request.resource.data, 'shape', 24)
+        && optStr(request.resource.data, 'effect', 32)
+        && fanOk(request.resource.data, uid);
     }
     match /friends/{uid} {
       allow read: if request.auth != null;
@@ -111,6 +137,8 @@ service cloud.firestore {
       allow update: if request.auth != null && isGroupId(cid) && request.auth.uid in resource.data.members
         && request.resource.data.keys().hasOnly(['members', 'last', 'at', 'read', 'group', 'name', 'owner'])
         && request.resource.data.owner == resource.data.owner
+        && request.resource.data.group == true
+        && optStr(request.resource.data, 'name', 80)
         && request.resource.data.members is list && request.resource.data.members.size() <= 10
         && (request.resource.data.members == resource.data.members
           || (resource.data.owner == request.auth.uid && request.resource.data.members.hasAll(resource.data.members)
@@ -142,7 +170,13 @@ service cloud.firestore {
     // «Слушать вместе»: состояние плеера переписки (что играет, с какой секунды)
     match /together/{cid} {
       allow read: if request.auth != null && (resource == null || request.auth.uid in resource.data.members);
-      allow update, delete: if request.auth != null && request.auth.uid in resource.data.members;
+      allow delete: if request.auth != null && request.auth.uid in resource.data.members;
+      // участник не может подменить состав: он либо прежний, либо настоящий состав переписки
+      allow update: if request.auth != null && request.auth.uid in resource.data.members
+        && request.resource.data.members is list && request.auth.uid in request.resource.data.members
+        && (request.resource.data.members == resource.data.members
+          || request.resource.data.members == cid.split('_')
+          || (isGroupId(cid) && request.resource.data.members == chatMembers(cid)));
       allow create: if request.auth != null && request.auth.uid in request.resource.data.members
         && request.resource.data.members is list && request.resource.data.members.size() <= 10
         && (request.resource.data.members == cid.split('_') || (isGroupId(cid) && request.resource.data.members == chatMembers(cid)));
@@ -237,7 +271,8 @@ service cloud.firestore {
       allow read: if request.auth != null;
       allow create: if request.auth != null && request.auth.uid == uid
         && request.resource.data.keys().hasOnly(['month'])
-        && request.resource.data.month is string;
+        && request.resource.data.month is string
+        && request.resource.data.month.matches('[0-9]{4}-[0-9]{2}');
       allow update, delete: if false;
     }
   }
