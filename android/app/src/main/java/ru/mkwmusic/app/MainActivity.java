@@ -1,5 +1,8 @@
 package ru.mkwmusic.app;
 
+import android.os.Handler;
+import android.graphics.Color;
+import android.annotation.SuppressLint;
 import android.Manifest;
 import android.app.Activity;
 import android.app.AlertDialog;
@@ -117,8 +120,60 @@ public class MainActivity extends Activity {
         if (!restored) web.loadUrl(startUrl(getIntent()));
         if (savedInstanceState == null) handleIntent(getIntent());
 
+        if (savedInstanceState == null) showSplash();
         root.post(this::firstRunSetup);
         root.postDelayed(this::checkUpdate, 5000);
+    }
+
+    // ---------- заставка (только в приложении) ----------
+
+    private WebView splash;
+    private final Handler splashHandler = new Handler(android.os.Looper.getMainLooper());
+
+    /** Заставка MKW: лого, «MKW Music», «created by MiloKwel». 3 секунды, нажатие пропускает. Пока она идёт, сайт уже грузится под ней. */
+    @SuppressLint({"SetJavaScriptEnabled", "AddJavascriptInterface"})
+    private void showSplash() {
+        String html;
+        try (InputStream in = getAssets().open("splash.html")) {
+            java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
+            byte[] buf = new byte[16384];
+            int n;
+            while ((n = in.read(buf)) > 0) out.write(buf, 0, n);
+            html = out.toString("UTF-8");
+        } catch (Exception e) {
+            return; // нет файла — без заставки
+        }
+        splash = new WebView(this);
+        splash.setBackgroundColor(Color.BLACK);
+        WebSettings s = splash.getSettings();
+        s.setJavaScriptEnabled(true);
+        s.setAllowFileAccess(false);
+        s.setAllowContentAccess(false);
+        splash.setVerticalScrollBarEnabled(false);
+        splash.setHorizontalScrollBarEnabled(false);
+        splash.addJavascriptInterface(new Object() {
+            @android.webkit.JavascriptInterface
+            public void skip() { splashHandler.post(MainActivity.this::hideSplash); }
+        }, "MKWSplash");
+        splash.setWebViewClient(new WebViewClient() {
+            @Override
+            public boolean shouldOverrideUrlLoading(WebView v, WebResourceRequest r) { return true; } // никуда не переходит
+        });
+        root.addView(splash, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        splash.loadDataWithBaseURL("about:blank", html, "text/html", "utf-8", null);
+        splashHandler.postDelayed(this::hideSplash, 3200);
+    }
+
+    private void hideSplash() {
+        final WebView v = splash;
+        if (v == null) return;
+        splash = null;
+        splashHandler.removeCallbacksAndMessages(null);
+        v.animate().alpha(0f).setDuration(380).withEndAction(() -> {
+            root.removeView(v);
+            v.destroy();
+        }).start();
     }
 
     /** Пока работает служба музыки, страница не узнаёт, что приложение свёрнуто (см. BgWebView). */
