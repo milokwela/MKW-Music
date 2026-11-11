@@ -196,24 +196,26 @@ final class OfflineStore {
         return c;
     }
 
-    /** Скачать файл. Сначала просим кусок (как делает плеер) — YouTube так отдаёт быстрее и не обрывает; потом докачиваем кусками. */
+    /** Скачать файл одним потоком «bytes=0-», как это делает плеер; если связь оборвалась — докачиваем с того же места. */
     private boolean fetch(String u, File to, long max, boolean needAudio) throws Exception {
         File tmp = new File(to.getPath() + ".part");
-        final long CH = 1024L * 1024;
         long n = 0, total = -1;
+        int tries = 0;
         try (FileOutputStream out = new FileOutputStream(tmp)) {
             while (true) {
-                HttpURLConnection c = open(u, needAudio ? "bytes=" + n + "-" + (n + CH - 1) : null);
+                HttpURLConnection c = open(u, needAudio ? "bytes=" + n + "-" : null);
+                long got = 0;
                 try {
                     int code = c.getResponseCode();
-                    if (code != 200 && code != 206) { lastWhy = "сервер ответил " + code; return false; }
+                    if (code == 416 && n > 0) break;                       // всё уже скачано
+                    if (code != 200 && code != 206) { lastWhy = "сервер ответил " + code; if (n > 0) break; return false; }
+                    if (code == 200 && n > 0) { out.getChannel().truncate(0); n = 0; } // сервер не умеет докачку — начинаем заново
                     String type = String.valueOf(c.getContentType());
                     if (needAudio && n == 0 && (type.startsWith("text/") || type.contains("html") || type.contains("json"))) { lastWhy = "вместо звука пришло " + type; return false; }
                     if (code == 206) {
                         String cr = c.getHeaderField("Content-Range");
                         if (cr != null && cr.contains("/")) { try { total = Long.parseLong(cr.substring(cr.lastIndexOf('/') + 1).trim()); } catch (Exception ignored) { /* неизвестно */ } }
-                    }
-                    long got = 0;
+                    } else if (c.getContentLength() > 0) total = c.getContentLength();
                     try (InputStream in = c.getInputStream()) {
                         byte[] buf = new byte[64 * 1024];
                         int r;
@@ -222,19 +224,23 @@ final class OfflineStore {
                             n += r; got += r;
                             if (n > max) { lastWhy = "слишком большой файл"; return false; }
                         }
+                    } catch (java.io.IOException e) {
+                        Log.w(TAG, "оборвалось на " + n + ": " + e);   // докачаем ниже
                     }
-                    if (code == 200 || got == 0) break;          // отдали целиком
-                    if (total > 0 && n >= total) break;           // докачали
-                    if (total <= 0 && got < CH) break;            // размер не сказали, а кусок неполный — это конец
                 } finally {
                     c.disconnect();
                 }
+                if (total <= 0 || n >= total) break;   // размер неизвестен или всё скачано
+                if (got == 0 && ++tries > 3) break;    // сервер больше ничего не отдаёт
+                if (++tries > 12) break;
             }
         } finally {
             if (n < (needAudio ? MIN_BYTES : 1)) { //noinspection ResultOfMethodCallIgnored
                 tmp.delete(); }
         }
-        if (needAudio && n < MIN_BYTES) { lastWhy = "файл слишком маленький"; return false; }
+        if (needAudio && n < MIN_BYTES) { if (lastWhy.isEmpty()) lastWhy = "файл слишком маленький"; return false; }
+        if (needAudio && total > 0 && n < total * 0.97) { lastWhy = "скачалось не до конца"; //noinspection ResultOfMethodCallIgnored
+            tmp.delete(); return false; }
         boolean ok = tmp.renameTo(to);
         if (tmp.exists()) { //noinspection ResultOfMethodCallIgnored
             tmp.delete(); }

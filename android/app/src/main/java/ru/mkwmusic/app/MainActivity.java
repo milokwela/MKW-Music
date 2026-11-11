@@ -512,7 +512,7 @@ public class MainActivity extends Activity {
                                           boolean isMainFrame, JavaScriptReplyProxy reply) {
                     if (!isMainFrame || !isOurs(sourceOrigin)) return;
                     String data = message.getData();
-                    if (data == null || data.length() > 65536) return;
+                    if (data == null || data.length() > 262144) return;
                     try {
                         handleMessage(new JSONObject(data));
                     } catch (Exception e) {
@@ -1031,7 +1031,18 @@ public class MainActivity extends Activity {
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode != REQ_FILE || fileCallback == null) return;
-        fileCallback.onReceiveValue(WebChromeClient.FileChooserParams.parseResult(resultCode, data));
+        // выбор нескольких фото (Google Фото, «Готово») приходит списком ClipData — стандартный разбор его не видит
+        Uri[] res = null;
+        if (resultCode == RESULT_OK && data != null) {
+            android.content.ClipData cd = data.getClipData();
+            if (cd != null && cd.getItemCount() > 0) {
+                java.util.ArrayList<Uri> l = new java.util.ArrayList<>();
+                for (int i = 0; i < cd.getItemCount(); i++) { Uri u = cd.getItemAt(i).getUri(); if (u != null) l.add(u); }
+                if (!l.isEmpty()) res = l.toArray(new Uri[0]);
+            }
+            if (res == null && data.getData() != null) res = new Uri[] { data.getData() };
+        }
+        fileCallback.onReceiveValue(res);
         fileCallback = null;
     }
 

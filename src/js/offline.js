@@ -89,7 +89,7 @@ function askNative(t, urls, wifiOnly) {
 
 export function stopSync() { stopFlag = true; }
 
-// Запасной путь: страница скачивает звук сама (как плеер) и кусками по ~48 КБ передаёт приложению.
+// Запасной путь: страница скачивает звук сама (как плеер) и кусками по ~24 КБ (больше мост приложения не пропускает) передаёт приложению.
 const b64 = (u8) => { let s = ''; for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000)); return btoa(s); };
 async function viaPage(t, urls) {
   const n = N();
@@ -110,7 +110,7 @@ async function viaPage(t, urls) {
       const rd = res.body.getReader();
       let seq = 0, buf = new Uint8Array(0);
       const flush = (last) => {
-        const part = last ? buf : buf.subarray(0, 48 * 1024);
+        const part = last ? buf : buf.subarray(0, 24 * 1024);
         const msg = { id: String(t.id), seq: seq++, b64: b64(part), last };
         if (last) Object.assign(msg, { title: t.title || '', artist: t.artist || '', album: t.album || '', dur: Number(t.duration) || 0, art: t.artwork ? artUrl(t.artwork, 600) : '', track: pickTrack(t) });
         n.offPut(msg);
@@ -119,7 +119,7 @@ async function viaPage(t, urls) {
       for (;;) {
         const { value, done: end } = await rd.read();
         if (value && value.length) { const nb = new Uint8Array(buf.length + value.length); nb.set(buf); nb.set(value, buf.length); buf = nb; }
-        while (buf.length >= 48 * 1024) flush(false);
+        while (buf.length >= 24 * 1024) flush(false);
         if (end) break;
       }
       clearTimeout(tm);
