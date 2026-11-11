@@ -1561,3 +1561,26 @@ html.gated body > *:not(.app-gate) { visibility: hidden; }
 .ag-card p { opacity: .7; font-size: 15px; line-height: 1.45; margin: 0 0 26px; text-wrap: balance; }
 .ag-go { min-height: 56px; border-radius: 28px; font-size: 16px; }
 .ag-alt { display: inline-block; margin-top: 16px; font-size: 13px; color: inherit; opacity: .5; }
+
+/* ===== 0.43.0: просмотр фото на весь экран ===== */
+.iv2 { position: fixed; inset: 0; z-index: 420; touch-action: none; user-select: none; -webkit-user-select: none; animation: ivIn .25s ease both; }
+.iv2.out { animation: ivOut .24s ease both; }
+.iv2-bg { position: absolute; inset: 0; background: #000; opacity: var(--fade, 1); }
+.iv2-stage { position: absolute; inset: 0; display: grid; place-items: center; overflow: hidden; }
+.iv2-stage img { max-width: 100vw; max-height: 100dvh; width: auto; height: auto; object-fit: contain; will-change: transform; transform-origin: center; -webkit-user-drag: none; }
+.iv2-bar { position: absolute; left: 0; right: 0; top: 0; display: flex; align-items: center; gap: 10px; padding: calc(env(safe-area-inset-top, 0px) + 10px) 12px 24px; background: linear-gradient(rgba(0,0,0,.6), transparent); transition: opacity .2s, transform .2s; }
+.iv2.bare .iv2-bar { opacity: 0; transform: translateY(-12px); pointer-events: none; }
+.iv2-btn { width: 44px; height: 44px; border-radius: 50%; border: 0; display: grid; place-items: center; color: #fff; background: rgba(255,255,255,.12); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+.iv2-btn .mi { width: 22px; height: 22px; }
+.iv2-cap { flex: 1; color: #fff; font-weight: 700; font-size: 16px; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* приложение: никаких полос прокрутки — как в обычных приложениях */
+html.in-app *::-webkit-scrollbar { width: 0 !important; height: 0 !important; display: none !important; }
+html.in-app, html.in-app * { scrollbar-width: none !important; }
+.av-card { display: grid; gap: 8px; padding: 16px 18px; border-radius: 24px; background: color-mix(in srgb, var(--on-bg, #fff) 6%, transparent); margin: 14px 0; }
+.av-row { display: flex; justify-content: space-between; align-items: center; font-size: 15px; }
+.av-row span { opacity: .7; }
+.av-val { font-variant-numeric: tabular-nums; }
+.av-state { opacity: .6; font-size: 13px; }
+.av-card.ok .av-state { color: #4ade80; opacity: 1; }
+.av-card.old .av-state { color: var(--primary); opacity: 1; }
+.av-btn { margin-top: 4px; }

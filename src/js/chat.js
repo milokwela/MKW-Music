@@ -685,6 +685,11 @@ async function openConv(cv) {
     catch { toast('Не отправилось. Проверьте интернет и попробуйте ещё раз'); if (!input.value) { input.value = text; paintBar(); } }
   };
   sendBtn.addEventListener('click', () => doSend());
+  // телефон: касание кнопки «Отправить» не забирает фокус у поля — клавиатура остаётся открытой, лента не прыгает
+  sendBtn.addEventListener('touchend', (e) => {
+    if (document.activeElement !== input) return;
+    e.preventDefault(); keepFocus = true; doSend();
+  }, { passive: false });
   shareBtn.addEventListener('click', () => { const t = player.queue.current; if (!t) { toast('Сейчас ничего не играет'); return; } doSend(t); });
   input.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && !e.shiftKey && !matchMedia('(pointer: coarse)').matches) { e.preventDefault(); doSend(); }
@@ -1096,7 +1101,11 @@ async function openConv(cv) {
   // чат «прилипает» к низу: пока вы внизу (или печатаете), новые сообщения и рост поля ввода не уводят ленту вверх
   let stick = true;
   list.addEventListener('scroll', () => { stick = list.scrollHeight - list.scrollTop - list.clientHeight < 120; }, { passive: true });
-  try { new ResizeObserver(() => { if (stick) list.scrollTop = list.scrollHeight; }).observe(list); } catch { /* старый браузер */ }
+  // следим и за окном ленты, и за каждым сообщением: картинка/стикер догрузился или поле ввода выросло — лента остаётся внизу
+  let ro = null;
+  const seen = new WeakSet();
+  try { ro = new ResizeObserver(() => { if (stick) list.scrollTop = list.scrollHeight; }); ro.observe(list); } catch { /* старый браузер */ }
+  const watchSize = (n) => { if (ro && !seen.has(n)) { seen.add(n); ro.observe(n); } };
   const render = () => {
     if (!lastDocs) return;
     viewKey = keyOf();
@@ -1120,7 +1129,7 @@ async function openConv(cv) {
     });
     first = false;
     // переставляем только то, что изменилось: без этого каждое новое сообщение заново раскладывало весь чат
-    nodes.forEach((n, k) => { if (list.children[k] !== n) list.insertBefore(n, list.children[k] || null); });
+    nodes.forEach((n, k) => { if (list.children[k] !== n) list.insertBefore(n, list.children[k] || null); watchSize(n); });
     while (list.children.length > nodes.length) list.lastElementChild.remove();
     paintTicks();
     if (atBottom || list.dataset.first !== '1') { list.scrollTop = list.scrollHeight; list.dataset.first = '1'; stick = true; requestAnimationFrame(() => { if (stick) list.scrollTop = list.scrollHeight; }); }

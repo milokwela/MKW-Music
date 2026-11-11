@@ -2,14 +2,14 @@
 import { seenOnline, realSeen } from './clock.js';
 import { nickEmo, richText, plainRich, emojiPicker, catSrc } from './stickers.js';
 import { betaCard } from './poll.js';
-import { apkCard, checkAppUpdate, appVersion } from './apk.js';
+import { apkCard, checkAppUpdate, appVersion, appVersionCard } from './apk.js';
 import { $, $$, h, icon, openSheet, closeSheet, toast, sheetItem, trackRow } from './ui.js';
 import * as store from './store.js';
 import * as player from './player.js';
 import { winterOn, setWinter } from './winter.js';
 import { player2On, setPlayer2 } from './player2.js';
 import { ACCENTS, getTheme, getAccent, getCustomHue, setCustomColor, setTheme, setAccent, hslHex, getNeutral } from './theme.js';
-import { CHANGELOG, VERSION, STAGE, KNOWN_ISSUES } from './changelog.js';
+import { CHANGELOG, VERSION, STAGE, KNOWN_ISSUES, APP_CHANGELOG } from './changelog.js';
 import { plural, pickTrack, safeUrl, artUrl } from './utils.js';
 import { youtubeEnabled, youtubeQuotaOut } from './youtube.js';
 import { audiusEnabled } from './audius.js';
@@ -1104,6 +1104,13 @@ export function buildProfile(nick) {
         row('Сменить пароль', '', chev(), openPasswordSheet, 'shield'),
         row('Выйти', '', h('span', { class: 'chev' }, icon('logout')), () => logOut()))),
     h('div', { class: 'ppane', 'data-pane': 'about', hidden: '' },
+      // приложение: только версии приложения; список версий сайта — на сайте
+      /MKWApp\//.test(navigator.userAgent) ? h('div', { class: 'about-card' },
+        h('div', { class: 'about-top' }, h('img', { src: 'assets/mkw-logo.png', alt: '', class: 'about-logo' }), h('div', {}, h('b', { text: 'MKW Music' }), h('span', { class: 'beta-badge', text: `приложение · v${appVersion() || '—'}` }))),
+        appVersionCard(),
+        refs.listeners,
+        h('p', { class: 'profile-note', text: 'MKW Music — название сервиса. MiloKwel — его создатель: он делает все обновления и разработку.' }),
+        APP_CHANGELOG.map((e, i) => changelogEntry({ ...e, version: `${e.version}${e.stage ? ` ${e.stage}` : ''}` }, i === 0))) :
       h('div', { class: 'about-card' },
         h('div', { class: 'about-top' }, h('img', { src: 'assets/mkw-logo.png', alt: '', class: 'about-logo' }), h('div', {}, h('b', { text: 'MKW Music' }), h('span', { class: 'beta-badge', text: `${STAGE} · v${VERSION}` }))),
         betaCard(),

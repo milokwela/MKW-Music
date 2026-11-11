@@ -112,3 +112,24 @@ export function apkCard() {
       h('summary', {}, mi('shield'), 'Как скачать и установить безопасно'),
       h('ol', {}, STEPS().map((parts) => h('li', {}, ...parts)))));
 }
+
+// «О MKW» в приложении: какая версия стоит у вас и какая последняя
+export function appVersionCard() {
+  const cur = appVersion();
+  const latest = h('b', { class: 'av-val', text: '…' });
+  const state = h('small', { class: 'av-state', text: 'Проверяем…' });
+  const btn = h('button', { type: 'button', class: 'btn tonal av-btn', hidden: '', onclick: () => checkAppUpdate() }, mi('install'), ' Обновить');
+  const card = h('div', { class: 'av-card' },
+    h('div', { class: 'av-row' }, h('span', { text: 'Ваша версия' }), h('b', { class: 'av-val', text: cur || '—' })),
+    h('div', { class: 'av-row' }, h('span', { text: 'Последняя версия' }), latest),
+    state, btn);
+  relP = null;
+  loadRelease().then((rel) => {
+    const ver = rel && ((rel.body || '').match(/Версия приложения: ([\w.]+)/) || [])[1];
+    if (!ver) { latest.textContent = '—'; state.textContent = 'Не получилось проверить. Нет интернета?'; return; }
+    latest.textContent = ver;
+    if (cur && !newer(ver, cur)) { state.textContent = 'У вас последняя версия'; card.classList.add('ok'); }
+    else { state.textContent = 'Вышла новая версия — обновитесь'; card.classList.add('old'); btn.hidden = false; }
+  });
+  return card;
+}

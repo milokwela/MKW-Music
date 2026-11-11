@@ -181,7 +181,7 @@ public class MainActivity extends Activity {
         splash.loadDataWithBaseURL("about:blank", html, "text/html", "utf-8", null);
         splashStart = android.os.SystemClock.uptimeMillis();
         splashHandler.postDelayed(this::maybeHideSplash, 1600);
-        splashHandler.postDelayed(this::hideSplash, 6000); // страховка, если сайт долго грузится
+        splashHandler.postDelayed(this::hideSplash, 12000); // страховка, если сайт долго грузится
     }
 
     private long splashStart;
@@ -192,6 +192,92 @@ public class MainActivity extends Activity {
         if (splash == null) return;
         if (splashPageDone && android.os.SystemClock.uptimeMillis() - splashStart >= 1600) hideSplash();
     }
+
+    /** Заставка уходит, когда на странице уже есть что показать (главная, вход или окно обновления), а не пустой фон. */
+    private void pollReady(int n) {
+        if (splash == null || web == null) return;
+        web.evaluateJavascript("(function(){var a=document.getElementById('app'),b=document.getElementById('auth-screen');"
+                + "return !!((a&&!a.hidden)||(b&&!b.hidden)||document.querySelector('.app-gate'));})()", (r) -> {
+            if ("true".equals(r) || n > 40) { splashPageDone = true; maybeHideSplash(); }
+            else splashHandler.postDelayed(() -> pollReady(n + 1), 250);
+        });
+    }
+
+    /** Новая версия сайта скачивается заранее (пока приложение открыто или свёрнуто) — следующий запуск без ожидания. */
+    private long prefetchAt;
+    private void prefetchSite() {
+        long now = System.currentTimeMillis();
+        if (now - prefetchAt < 10 * 60 * 1000) return;
+        prefetchAt = now;
+        new Thread(() -> {
+            try {
+                java.net.HttpURLConnection c = (java.net.HttpURLConnection) new java.net.URL(SITE_ROOT + "version.json?t=" + now).openConnection();
+                c.setConnectTimeout(8000); c.setReadTimeout(8000); c.setUseCaches(false);
+                String v;
+                try (InputStream in = c.getInputStream()) {
+                    java.io.ByteArrayOutputStream b = new java.io.ByteArrayOutputStream();
+                    byte[] buf = new byte[4096]; int r;
+                    while ((r = in.read(buf)) > 0 && b.size() < 4096) b.write(buf, 0, r);
+                    v = new JSONObject(b.toString("UTF-8")).optString("v", "");
+                } finally { c.disconnect(); }
+                if (v.isEmpty() || v.equals(bundledVersion())) return;
+                for (String f : new String[] { "app.js", "app.css" }) {
+                    WebResourceResponse res = shell().immutable(SITE_ROOT + f + "?v=" + v, f.endsWith(".js") ? "text/javascript" : "text/css");
+                    if (res != null && res.getData() != null) try { res.getData().close(); } catch (Exception ignored) { /* ignore */ }
+                }
+                shell().saveIndex(SITE_ROOT);
+            } catch (Exception e) {
+                Log.w(TAG, "prefetch: " + e);
+            }
+        }).start();
+    }
+
+    /** Сохранить фото из чата в галерею (Pictures/MKW Music). */
+    private void saveImage(String dataUrl, String name) {
+        int comma = dataUrl.indexOf(',');
+        if (!dataUrl.startsWith("data:image/") || comma < 0) { toastShort("Это фото нельзя сохранить"); return; }
+        final String mime = dataUrl.substring(5, dataUrl.indexOf(';') > 0 ? dataUrl.indexOf(';') : comma);
+        final String ext = mime.contains("png") ? "png" : mime.contains("webp") ? "webp" : "jpg";
+        if (android.os.Build.VERSION.SDK_INT < 29 && checkSelfPermission(android.Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(new String[] { android.Manifest.permission.WRITE_EXTERNAL_STORAGE }, 77);
+            toastShort("Разрешите доступ к фото и нажмите «Сохранить» ещё раз");
+            return;
+        }
+        new Thread(() -> {
+            boolean ok = false;
+            try {
+                byte[] bytes = android.util.Base64.decode(dataUrl.substring(comma + 1), android.util.Base64.DEFAULT);
+                String file = name.replaceAll("[^A-Za-z0-9_-]", "_") + "." + ext;
+                if (android.os.Build.VERSION.SDK_INT >= 29) {
+                    android.content.ContentValues cv = new android.content.ContentValues();
+                    cv.put(android.provider.MediaStore.Images.Media.DISPLAY_NAME, file);
+                    cv.put(android.provider.MediaStore.Images.Media.MIME_TYPE, mime);
+                    cv.put(android.provider.MediaStore.Images.Media.RELATIVE_PATH, android.os.Environment.DIRECTORY_PICTURES + "/MKW Music");
+                    cv.put(android.provider.MediaStore.Images.Media.IS_PENDING, 1);
+                    android.content.ContentResolver cr = getContentResolver();
+                    Uri u = cr.insert(android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI, cv);
+                    if (u != null) {
+                        try (java.io.OutputStream out = cr.openOutputStream(u)) { if (out != null) { out.write(bytes); ok = true; } }
+                        cv.clear(); cv.put(android.provider.MediaStore.Images.Media.IS_PENDING, 0);
+                        cr.update(u, cv, null, null);
+                    }
+                } else {
+                    java.io.File dir = new java.io.File(android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_PICTURES), "MKW Music");
+                    //noinspection ResultOfMethodCallIgnored
+                    dir.mkdirs();
+                    java.io.File f = new java.io.File(dir, file);
+                    try (java.io.FileOutputStream out = new java.io.FileOutputStream(f)) { out.write(bytes); ok = true; }
+                    android.media.MediaScannerConnection.scanFile(this, new String[] { f.getPath() }, new String[] { mime }, null);
+                }
+            } catch (Exception e) {
+                Log.w(TAG, "saveimg: " + e);
+            }
+            final boolean done = ok;
+            runOnUiThread(() -> toastShort(done ? "Фото сохранено в галерею" : "Не получилось сохранить фото"));
+        }).start();
+    }
+
+    private void toastShort(String t) { android.widget.Toast.makeText(this, t, android.widget.Toast.LENGTH_SHORT).show(); }
 
     private void hideSplash() {
         final WebView v = splash;
@@ -230,6 +316,9 @@ public class MainActivity extends Activity {
         s.setBuiltInZoomControls(false);
         s.setTextZoom(100);
         s.setUserAgentString(s.getUserAgentString() + " MKWApp/" + versionName());
+        // как в обычном приложении: без полос прокрутки сбоку
+        view.setVerticalScrollBarEnabled(false);
+        view.setHorizontalScrollBarEnabled(false);
         // Рендерер страницы остаётся «важным» и в фоне — иначе Android усыпляет музыку при выключенном экране
         if (Build.VERSION.SDK_INT >= 26) view.setRendererPriorityPolicy(WebView.RENDERER_PRIORITY_IMPORTANT, false);
 
@@ -255,9 +344,10 @@ public class MainActivity extends Activity {
             public void onPageFinished(WebView v, String url) {
                 pageReady = isOurs(url == null ? null : Uri.parse(url));
                 if (pageReady && !offlineShown && offline().online()) shell().saveIndex(SITE_ROOT);
+                if (pageReady) v.postDelayed(MainActivity.this::prefetchSite, 20000);
                 if (pageReady && splash != null) {
                     v.evaluateJavascript("(function(){var e=document.getElementById('splash');if(e)e.remove();})()", null);
-                    splashHandler.postDelayed(() -> { splashPageDone = true; maybeHideSplash(); }, 600);
+                    pollReady(0);
                 }
                 if (pageReady && pendingWave) { pendingWave = false; v.postDelayed(() -> runJs(WAVE_JS), 1500); }
                 if (pageReady && pendingAdopt != null) {
@@ -512,7 +602,7 @@ public class MainActivity extends Activity {
                                           boolean isMainFrame, JavaScriptReplyProxy reply) {
                     if (!isMainFrame || !isOurs(sourceOrigin)) return;
                     String data = message.getData();
-                    if (data == null || data.length() > 262144) return;
+                    if (data == null || data.length() > 16 * 1024 * 1024) return;
                     try {
                         handleMessage(new JSONObject(data));
                     } catch (Exception e) {
@@ -645,6 +735,13 @@ public class MainActivity extends Activity {
                 break;
             case "checkupdate":
                 checkUpdateNow();
+                break;
+            case "saveimg":
+                saveImage(o.optString("d", ""), clip(o.optString("n", "MKW"), 60));
+                break;
+            case "ready":
+                splashPageDone = true;
+                maybeHideSplash();
                 break;
             case "fsi":
                 if (o.optBoolean("open", false)) {
@@ -894,6 +991,7 @@ public class MainActivity extends Activity {
     @Override
     protected void onStop() {
         super.onStop();
+        prefetchSite();
         runJs("window.__mkwFg=false;window.dispatchEvent(new Event('mkw-fg'))");
         // после звонка приложение не должно оставаться поверх экрана блокировки
         try { if (android.os.Build.VERSION.SDK_INT >= 27) setShowWhenLocked(false); } catch (Exception ignored) { /* не критично */ }
