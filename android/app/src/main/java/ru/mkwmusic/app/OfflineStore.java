@@ -1,0 +1,298 @@
+package ru.mkwmusic.app;
+
+import android.content.Context;
+import android.net.ConnectivityManager;
+import android.net.NetworkCapabilities;
+import android.os.StatFs;
+import android.util.Log;
+import android.webkit.WebResourceResponse;
+
+import org.json.JSONArray;
+import org.json.JSONObject;
+
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.InputStream;
+import java.io.RandomAccessFile;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
+/**
+ * Офлайн-музыка: звук скачанных треков лежит во внутренней памяти приложения (другие приложения его не видят).
+ * Плеер на странице просит адрес https://mkwmusic.ru/__offline/<id> — его отдаём отсюда, с поддержкой перемотки (Range).
+ */
+final class OfflineStore {
+    private static final String TAG = "MKWOffline";
+    private static final long MIN_BYTES = 120 * 1024;       // меньше — это не песня, а ошибка или заглушка
+    private static final long MAX_BYTES = 60L * 1024 * 1024; // больше — что-то не то (видео, часовой микс)
+
+    private final Context app;
+    private final File dir;
+    private final ExecutorService pool = Executors.newSingleThreadExecutor();
+    private JSONObject meta;
+    private volatile String busy = "";
+
+    interface Report { void send(String js); }
+    private final Report report;
+
+    OfflineStore(Context c, Report r) {
+        app = c.getApplicationContext();
+        dir = new File(app.getFilesDir(), "offline");
+        //noinspection ResultOfMethodCallIgnored
+        dir.mkdirs();
+        report = r;
+        meta = load();
+    }
+
+    private JSONObject load() {
+        try (FileInputStream in = new FileInputStream(new File(dir, "meta.json"))) {
+            byte[] b = new byte[(int) Math.min(4 * 1024 * 1024, new File(dir, "meta.json").length())];
+            int n = in.read(b);
+            return new JSONObject(new String(b, 0, Math.max(0, n), "UTF-8"));
+        } catch (Exception e) {
+            return new JSONObject();
+        }
+    }
+
+    private synchronized void save() {
+        try {
+            File tmp = new File(dir, "meta.json.tmp");
+            try (FileOutputStream out = new FileOutputStream(tmp)) { out.write(meta.toString().getBytes("UTF-8")); }
+            //noinspection ResultOfMethodCallIgnored
+            tmp.renameTo(new File(dir, "meta.json"));
+        } catch (Exception e) {
+            Log.w(TAG, "save", e);
+        }
+    }
+
+    static String safe(String id) {
+        String s = id == null ? "" : id.replaceAll("[^A-Za-z0-9_.-]", "_");
+        return s.length() > 120 ? s.substring(0, 120) : s;
+    }
+
+    private File audio(String id) { return new File(dir, safe(id) + ".a"); }
+    private File cover(String id) { return new File(dir, safe(id) + ".jpg"); }
+
+    /** Wi-Fi (или любая безлимитная сеть) — да; мобильный интернет — нет. */
+    boolean unmetered() {
+        try {
+            ConnectivityManager cm = app.getSystemService(ConnectivityManager.class);
+            if (cm == null) return false;
+            NetworkCapabilities nc = cm.getNetworkCapabilities(cm.getActiveNetwork());
+            return nc != null && nc.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED);
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    boolean online() {
+        try {
+            ConnectivityManager cm = app.getSystemService(ConnectivityManager.class);
+            NetworkCapabilities nc = cm == null ? null : cm.getNetworkCapabilities(cm.getActiveNetwork());
+            return nc != null && nc.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET);
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    /** Сводка для страницы: что скачано, сколько места занято и свободно, какая сеть сейчас. */
+    synchronized String state() {
+        try {
+            JSONArray items = new JSONArray();
+            long total = 0;
+            java.util.Iterator<String> it = meta.keys();
+            while (it.hasNext()) {
+                String id = it.next();
+                JSONObject m = meta.optJSONObject(id);
+                if (m == null || !audio(id).exists()) continue;
+                JSONObject o = new JSONObject(m.toString());
+                o.put("id", id);
+                o.put("size", audio(id).length());
+                if (cover(id).exists()) o.put("cover", "/__offline/" + safe(id) + ".jpg");
+                total += audio(id).length();
+                items.put(o);
+            }
+            JSONObject r = new JSONObject();
+            r.put("items", items);
+            r.put("total", total);
+            StatFs fs = new StatFs(app.getFilesDir().getPath());
+            r.put("free", fs.getAvailableBytes());
+            r.put("wifi", unmetered());
+            r.put("online", online());
+            r.put("busy", busy);
+            return r.toString();
+        } catch (Exception e) {
+            return "{\"items\":[],\"total\":0}";
+        }
+    }
+
+    void push() { report.send("window.__mkwOff&&window.__mkwOff(" + state() + ")"); }
+
+    /** Скачать трек: пробуем ссылки по очереди, первая, что отдаёт звук, — сохраняется. */
+    void download(final JSONObject o, final boolean wifiOnly) {
+        pool.execute(() -> {
+            String id = o.optString("id", "");
+            if (id.isEmpty()) return;
+            if (audio(id).exists() && audio(id).length() >= MIN_BYTES) { done(id, true, "уже скачано"); return; }
+            if (!online()) { done(id, false, "нет интернета"); return; }
+            if (wifiOnly && !unmetered()) { done(id, false, "ждём Wi-Fi"); return; }
+            busy = id;
+            JSONArray urls = o.optJSONArray("urls");
+            boolean ok = false;
+            String why = "звук не нашёлся";
+            for (int i = 0; urls != null && i < urls.length() && !ok; i++) {
+                String u = urls.optString(i, "");
+                if (!u.startsWith("https://")) continue;
+                try {
+                    ok = fetch(u, audio(id), MAX_BYTES, true);
+                } catch (Exception e) {
+                    why = "ссылка не открылась";
+                    Log.w(TAG, "dl " + id + ": " + e);
+                }
+            }
+            if (ok) {
+                String art = o.optString("art", "");
+                if (art.startsWith("https://")) {
+                    try { fetch(art, cover(id), 2 * 1024 * 1024, false); } catch (Exception ignored) { /* без обложки */ }
+                }
+                synchronized (this) {
+                    try {
+                        JSONObject m = new JSONObject();
+                        m.put("title", o.optString("title", "")); m.put("artist", o.optString("artist", ""));
+                        m.put("album", o.optString("album", "")); m.put("dur", o.optDouble("dur", 0));
+                        m.put("art", art); m.put("at", System.currentTimeMillis());
+                        m.put("t", o.optJSONObject("track") != null ? o.optJSONObject("track") : new JSONObject());
+                        meta.put(id, m);
+                    } catch (Exception ignored) { /* ignore */ }
+                }
+                save();
+            }
+            busy = "";
+            done(id, ok, ok ? "" : why);
+        });
+    }
+
+    private void done(String id, boolean ok, String why) {
+        report.send("window.__mkwOffDone&&window.__mkwOffDone(" + JSONObject.quote(id) + "," + ok + "," + JSONObject.quote(why) + ")");
+        push();
+    }
+
+    private boolean fetch(String u, File to, long max, boolean needAudio) throws Exception {
+        File tmp = new File(to.getPath() + ".part");
+        HttpURLConnection c = (HttpURLConnection) new URL(u).openConnection();
+        c.setConnectTimeout(15000);
+        c.setReadTimeout(30000);
+        c.setInstanceFollowRedirects(true);
+        c.setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Mobile Safari/537.36");
+        try {
+            int code = c.getResponseCode();
+            if (code != 200 && code != 206) return false;
+            String type = String.valueOf(c.getContentType());
+            if (needAudio && (type.startsWith("text/") || type.contains("html") || type.contains("json"))) return false;
+            long n = 0;
+            try (InputStream in = c.getInputStream(); FileOutputStream out = new FileOutputStream(tmp)) {
+                byte[] buf = new byte[64 * 1024];
+                int r;
+                while ((r = in.read(buf)) > 0) {
+                    out.write(buf, 0, r);
+                    n += r;
+                    if (n > max) throw new Exception("слишком большой файл");
+                }
+            }
+            if (needAudio && n < MIN_BYTES) { //noinspection ResultOfMethodCallIgnored
+                tmp.delete(); return false; }
+            return tmp.renameTo(to);
+        } finally {
+            c.disconnect();
+            if (tmp.exists()) { //noinspection ResultOfMethodCallIgnored
+                tmp.delete(); }
+        }
+    }
+
+    void remove(final String id) {
+        pool.execute(() -> {
+            //noinspection ResultOfMethodCallIgnored
+            audio(id).delete();
+            //noinspection ResultOfMethodCallIgnored
+            cover(id).delete();
+            synchronized (this) { meta.remove(id); }
+            save();
+            push();
+        });
+    }
+
+    void clear() {
+        pool.execute(() -> {
+            File[] fs = dir.listFiles();
+            if (fs != null) for (File f : fs) { //noinspection ResultOfMethodCallIgnored
+                f.delete(); }
+            synchronized (this) { meta = new JSONObject(); }
+            save();
+            push();
+        });
+    }
+
+    /** /__offline/<id> — звук (с перемоткой), /__offline/<id>.jpg — обложка. */
+    WebResourceResponse serve(String path, Map<String, String> reqHeaders) {
+        try {
+            String name = path.substring("/__offline/".length());
+            boolean img = name.endsWith(".jpg");
+            String id = img ? name.substring(0, name.length() - 4) : name;
+            File f = img ? cover(id) : audio(id);
+            if (!f.exists()) return new WebResourceResponse("text/plain", "utf-8", 404, "Not Found", new HashMap<>(), null);
+            long len = f.length();
+            Map<String, String> h = new HashMap<>();
+            h.put("Accept-Ranges", "bytes");
+            h.put("Cache-Control", "no-store");
+            String type = img ? "image/jpeg" : sniff(f);
+            String range = reqHeaders == null ? null : (reqHeaders.containsKey("Range") ? reqHeaders.get("Range") : reqHeaders.get("range"));
+            if (!img && range != null && range.startsWith("bytes=")) {
+                String[] p = range.substring(6).split("-", 2);
+                long start = p[0].isEmpty() ? 0 : Long.parseLong(p[0].trim());
+                long end = p.length > 1 && !p[1].trim().isEmpty() ? Long.parseLong(p[1].trim()) : len - 1;
+                end = Math.min(end, len - 1);
+                if (start > end) start = 0;
+                RandomAccessFile raf = new RandomAccessFile(f, "r");
+                raf.seek(start);
+                final long count = end - start + 1;
+                InputStream in = new InputStream() {
+                    long left = count;
+                    @Override public int read() throws java.io.IOException { if (left <= 0) return -1; left--; return raf.read(); }
+                    @Override public int read(byte[] b, int off, int l) throws java.io.IOException {
+                        if (left <= 0) return -1;
+                        int r = raf.read(b, off, (int) Math.min(l, left));
+                        if (r > 0) left -= r;
+                        return r;
+                    }
+                    @Override public void close() throws java.io.IOException { raf.close(); }
+                };
+                h.put("Content-Range", "bytes " + start + "-" + end + "/" + len);
+                h.put("Content-Length", String.valueOf(count));
+                return new WebResourceResponse(type, null, 206, "Partial Content", h, in);
+            }
+            h.put("Content-Length", String.valueOf(len));
+            return new WebResourceResponse(type, null, 200, "OK", h, new FileInputStream(f));
+        } catch (Exception e) {
+            return new WebResourceResponse("text/plain", "utf-8", 500, "Error", new HashMap<>(), null);
+        }
+    }
+
+    /** Тип звука по первым байтам: m4a (ftyp), webm/opus (EBML), mp3. */
+    private static String sniff(File f) {
+        try (FileInputStream in = new FileInputStream(f)) {
+            byte[] b = new byte[12];
+            int n = in.read(b);
+            if (n >= 8 && b[4] == 'f' && b[5] == 't' && b[6] == 'y' && b[7] == 'p') return "audio/mp4";
+            if (n >= 4 && (b[0] & 0xff) == 0x1A && (b[1] & 0xff) == 0x45 && (b[2] & 0xff) == 0xDF && (b[3] & 0xff) == 0xA3) return "audio/webm";
+            if (n >= 4 && b[0] == 'O' && b[1] == 'g' && b[2] == 'g' && b[3] == 'S') return "audio/ogg";
+            return "audio/mpeg";
+        } catch (Exception e) {
+            return "audio/mpeg";
+        }
+    }
+}

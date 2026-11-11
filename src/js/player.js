@@ -1,6 +1,7 @@
 // Движок плеера: очередь, YouTube (полные треки) и превью iTunes (30 сек) как запасной вариант.
 import { audiusStreamUrl } from './audius.js';
 import { Queue } from './queue.js';
+import { offlineSrc } from './offline.js';
 import { findYouTubeId, peekYouTubeId, loadYouTubeApi, youtubeEnabled } from './youtube.js';
 import { logPlay, addListened } from './store.js';
 import { artUrl } from './utils.js';
@@ -170,6 +171,10 @@ async function startCurrent() {
   setSession(track);
 
   if (track.auId) { startPreview(track, id); return; }
+
+  // скачанный трек (офлайн-музыка в приложении) играет из памяти телефона — сразу и без интернета
+  const off = offlineSrc(track);
+  if (off) { startStream(track, `off:${track.id}`, [off], id, 0); return; }
 
   // Если id видео уже известен, запускаем без единого ожидания: iPhone пускает звук только сразу после нажатия.
   let vid = track.ytId || peekYouTubeId(track);

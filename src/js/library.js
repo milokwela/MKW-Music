@@ -6,6 +6,8 @@ import { openTrackMenu } from './menu.js';
 import { plural, tracksWord, timeAgo, artUrl } from './utils.js';
 import { sharedList, onShared, watchShared } from './shared.js';
 import { openSharedSheet } from './sharedui.js';
+import { offlineCard } from './offui.js';
+import { offlineSupported, downloadedTracks } from './offline.js';
 
 let tab = 'likes';
 let openPid = null;
@@ -31,8 +33,13 @@ function rows(tracks, ctx = {}, subFn) {
 
 function renderLikes(box) {
   const list = store.state.likes;
-  if (!list.length) { box.replaceChildren(emptyState('heart', 'Пока нет лайков. Нажмите ⋮ у трека → «В лайки»')); return; }
-  box.replaceChildren(h('div', { class: 'section-title', text: tracksWord(list.length) }), playButtons(list), rows(list));
+  if (!list.length) {
+    // без интернета лайки могут не загрузиться — тогда показываем скачанное
+    const dl = offlineSupported() ? downloadedTracks() : [];
+    if (dl.length) { box.replaceChildren(...[offlineCard(), h('div', { class: 'section-title', text: `Скачано · ${tracksWord(dl.length)}` }), playButtons(dl), rows(dl)].filter(Boolean)); return; }
+    box.replaceChildren(...[offlineCard(), emptyState('heart', 'Пока нет лайков. Нажмите ⋮ у трека → «В лайки»')].filter(Boolean)); return;
+  }
+  box.replaceChildren(...[offlineCard(), h('div', { class: 'section-title', text: tracksWord(list.length) }), playButtons(list), rows(list)].filter(Boolean));
 }
 
 function renderHistory(box) {
