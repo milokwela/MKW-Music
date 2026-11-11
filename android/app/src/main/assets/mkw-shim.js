@@ -129,7 +129,8 @@
     btEnable: function () { send({ t: 'bton' }); },
     btPair: function (a) { send({ t: 'btpair', a: String(a || '') }); },
     outputSwitch: function () { send({ t: 'outswitch' }); },
-    checkUpdate: function () { send({ t: 'checkupdate' }); }
+    checkUpdate: function () { send({ t: 'checkupdate' }); },
+    fullScreenCalls: function (open) { send({ t: 'fsi', open: !!open }); }
   };
 
   /* ---------- «Продолжить с сайта» на экране входа ---------- */

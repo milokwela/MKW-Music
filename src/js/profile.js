@@ -989,6 +989,12 @@ export function buildProfile(nick) {
         row('Слушать в фоне с выключенным экраном', 'Бета: работает не у всех и не со всеми треками. Полный трек переключается на звук, когда вы гасите экран. Из России — с VPN', refs.bgplay, null, 'moon'),
         row('Проверить фон', 'Покажет, что работает на вашем телефоне и в вашей сети', h('span', { class: 'chev', text: '›' }), runBgCheck, 'shield'))),
       inApp ? group('Приложение',
+        window.MKWNative && window.MKWNative.fullScreenCalls ? (() => {
+          const r = row('Звонки на весь экран', window.__mkwFsi === false ? 'Выключено: звонок придёт простым уведомлением. Нажмите, чтобы включить' : 'Входящий звонок открывается на весь экран, даже на заблокированном телефоне', chev(), () => window.MKWNative.fullScreenCalls(true), 'bell');
+          window.addEventListener('mkw-fsi', () => { const sm = r.querySelector('small, .set-sub, .sub'); if (sm) sm.textContent = window.__mkwFsi === false ? 'Выключено: звонок придёт простым уведомлением. Нажмите, чтобы включить' : 'Входящий звонок открывается на весь экран, даже на заблокированном телефоне'; });
+          window.MKWNative.fullScreenCalls(false);
+          return r;
+        })() : null,
         row('Проверить обновление', `У вас версия ${appVersion() || '—'}. Проверим, не вышла ли новая, и предложим скачать`, chev(), () => checkAppUpdate(), 'install')) : null,
       inApp ? null : group('Приложение',
         row('Установить как приложение', standalone() ? 'Уже установлено — вы в приложении' : 'Своя иконка и отдельное окно. Покажу, куда нажать — в Яндекс Браузере, Chrome, Edge и на телефоне', chev(), () => openInstall(false), 'install')),

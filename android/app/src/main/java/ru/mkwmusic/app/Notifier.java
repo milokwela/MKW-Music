@@ -104,4 +104,26 @@ final class Notifier {
             }
         } catch (Exception ignored) { /* не получилось — уведомление само исчезнет через 45 секунд */ }
     }
+
+    /** Android 14+: разрешены ли звонки на весь экран (иначе звонок придёт обычным уведомлением). */
+    static boolean fullScreenOk(Context c) {
+        if (Build.VERSION.SDK_INT < 34) return true;
+        NotificationManager nm = c.getSystemService(NotificationManager.class);
+        try { return nm != null && nm.canUseFullScreenIntent(); } catch (Exception e) { return true; }
+    }
+
+    /** Открыть системный экран «Полноэкранные уведомления» для MKW. */
+    static void openFullScreenSettings(android.app.Activity a) {
+        try {
+            if (Build.VERSION.SDK_INT >= 34) {
+                a.startActivity(new Intent(android.provider.Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT,
+                        android.net.Uri.parse("package:" + a.getPackageName())));
+                return;
+            }
+        } catch (Exception ignored) { /* ниже — общий экран уведомлений */ }
+        try {
+            a.startActivity(new Intent(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                    .putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, a.getPackageName()));
+        } catch (Exception ignored) { /* нет такого экрана */ }
+    }
 }

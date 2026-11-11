@@ -457,9 +457,16 @@ audio.addEventListener('loadedmetadata', () => {
 });
 
 // Обновление времени.
+// Время прослушивания считаем по настоящим часам, а не по числу тиков: в фоне браузер редко будит таймеры
+// (раз в секунду, а то и раз в минуту), и раньше в фоне часы набегали в разы медленнее, чем играла музыка.
+let lastTick = 0;
 setInterval(() => {
+  const now = Date.now();
+  const gap = lastTick ? (now - lastTick) / 1000 : 0.5;
+  lastTick = now;
   if (!st.mode || !st.playing) return;
-  addListened(0.5);
+  addListened(Math.min(gap, 90)); // больше 90 с между тиками — телефон спал, такой разрыв не засчитываем целиком
+
   if (st.mode === 'yt' && yt && yt.getCurrentTime) {
     try {
       st.time = yt.getCurrentTime() || 0;
