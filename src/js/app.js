@@ -122,6 +122,7 @@ function showView(name) {
   $$('#bottom-nav .nav-btn').forEach((b) => b.classList.toggle('active', b.dataset.view === name));
   if (name === 'library') renderLibrary();
   // профиль пересчитывает статистику и достижения — делаем это после анимации перехода, чтобы вкладка открывалась без рывка
+  if (name === 'profile') buildPending();
   if (name === 'profile') { clearTimeout(profT); profT = setTimeout(() => { if (!$('#view-profile').hidden) updateProfile(); }, 380); }
   if (name === 'chats') renderChats();
   window.scrollTo(0, 0);
@@ -142,6 +143,8 @@ function initListenFlush() {
 }
 
 // ---------- состояние входа ----------
+let pendingNick = null;
+function buildPending() { if (!pendingNick) return; const n = pendingNick; pendingNick = null; buildProfile(n); }
 function onUser(user) {
   endSplash();
   if (user) {
@@ -151,7 +154,10 @@ function onUser(user) {
     watchContrib(user.uid);
     setTimeout(linkFonts, 2500);
     registerListener(user.uid);
-    buildProfile(user.nick);
+    // профиль большой (статистика, задания, настройки) — собираем его, когда телефон освободится после запуска,
+    // а если человек открыл «Профиль» раньше — сразу
+    pendingNick = user.nick;
+    if (window.requestIdleCallback) requestIdleCallback(buildPending, { timeout: 2500 }); else setTimeout(buildPending, 1200);
     setSearchUser(user.nick);
     resetLibrary();
     showView('search');
@@ -168,6 +174,7 @@ function onUser(user) {
     welcomeNew();
     setTimeout(() => showFounderNote(user.nick), 3200);
   } else {
+    pendingNick = null;
     flushListened();
     stopNotify();
     player.stop();
