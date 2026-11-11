@@ -162,7 +162,18 @@ public class MainActivity extends Activity {
         root.addView(splash, new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         splash.loadDataWithBaseURL("about:blank", html, "text/html", "utf-8", null);
-        splashHandler.postDelayed(this::hideSplash, 3200);
+        splashStart = android.os.SystemClock.uptimeMillis();
+        splashHandler.postDelayed(this::maybeHideSplash, 3200);
+        splashHandler.postDelayed(this::hideSplash, 9000); // страховка, если сайт долго грузится
+    }
+
+    private long splashStart;
+    private boolean splashPageDone;
+
+    /** Убираем заставку не раньше 3,2 с и только когда сайт уже готов — чтобы под ней не мелькало ничего старого. */
+    private void maybeHideSplash() {
+        if (splash == null) return;
+        if (splashPageDone && android.os.SystemClock.uptimeMillis() - splashStart >= 3200) hideSplash();
     }
 
     private void hideSplash() {
@@ -170,6 +181,7 @@ public class MainActivity extends Activity {
         if (v == null) return;
         splash = null;
         splashHandler.removeCallbacksAndMessages(null);
+        if (web != null) web.evaluateJavascript("(function(){var e=document.getElementById('splash');if(e)e.remove();})()", null);
         v.animate().alpha(0f).setDuration(380).withEndAction(() -> {
             root.removeView(v);
             v.destroy();
@@ -225,6 +237,10 @@ public class MainActivity extends Activity {
             @Override
             public void onPageFinished(WebView v, String url) {
                 pageReady = isOurs(url == null ? null : Uri.parse(url));
+                if (pageReady && splash != null) {
+                    v.evaluateJavascript("(function(){var e=document.getElementById('splash');if(e)e.remove();})()", null);
+                    splashHandler.postDelayed(() -> { splashPageDone = true; maybeHideSplash(); }, 600);
+                }
                 if (pageReady && pendingAdopt != null) {
                     String json = pendingAdopt;
                     pendingAdopt = null;
