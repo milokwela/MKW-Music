@@ -65,7 +65,7 @@
   function pushMedia() {
     clearTimeout(timer);
     timer = setTimeout(function () {
-      send({ t: 'media', playing: ps === 'playing', title: clip(md && md.title, 160), artist: clip(md && md.artist, 160), art: clip(art(md), 600) });
+      send({ t: 'media', playing: ps === 'playing', title: clip(md && md.title, 160), artist: clip(md && md.artist, 160), art: clip(art(md), 600), wave: !!(md && md.album === 'MKW Волна') });
     }, 150);
   }
   var ms = navigator.mediaSession;
@@ -109,6 +109,7 @@
   } catch (e) { log('ms define ' + e); }
   // кнопки в шторке и на гарнитуре вызывают те же обработчики, что и системные кнопки в браузере
   window.__mkwAct = function (a, x) {
+    if (a === 'wave') { try { window.dispatchEvent(new Event('mkw-widget-wave')); } catch (e) { /* ignore */ } return; }
     var f = handlers[a]; if (!f) return;
     var d = { action: a }; if (x) { for (var k in x) d[k] = x[k]; }
     try { f(d); } catch (e) { /* ignore */ }
@@ -130,7 +131,8 @@
     btPair: function (a) { send({ t: 'btpair', a: String(a || '') }); },
     outputSwitch: function () { send({ t: 'outswitch' }); },
     checkUpdate: function () { send({ t: 'checkupdate' }); },
-    fullScreenCalls: function (open) { send({ t: 'fsi', open: !!open }); }
+    fullScreenCalls: function (open) { send({ t: 'fsi', open: !!open }); },
+    pinWidget: function (kind) { send({ t: 'pinwidget', kind: Number(kind) || 0 }); }
   };
 
   /* ---------- «Продолжить с сайта» на экране входа ---------- */

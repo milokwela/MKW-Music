@@ -216,7 +216,7 @@ jobs:
     needs: build
     runs-on: ubuntu-24.04
     continue-on-error: true
-    timeout-minutes: 35
+    timeout-minutes: 15
     env:
       GH_TOKEN: ${{ github.token }}
     steps:

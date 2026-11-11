@@ -58,17 +58,22 @@
             android:exported="false"
             android:foregroundServiceType="mediaPlayback" />
 
-        <!-- Виджет плеера на рабочий стол -->
-        <receiver
-            android:name=".PlayerWidget"
-            android:exported="true"
-            android:label="@string/widget_name">
-            <intent-filter>
-                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
-            </intent-filter>
-            <meta-data
-                android:name="android.appwidget.provider"
-                android:resource="@xml/widget_player_info" />
+        <!-- Виджеты на рабочий стол: мини-плеер, плеер с перемоткой, MKW Волна, обложка -->
+        <receiver android:name=".PlayerWidget" android:exported="true" android:label="@string/wn_mini">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_player_info" />
+        </receiver>
+        <receiver android:name=".SeekWidget" android:exported="true" android:label="@string/wn_seek">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_seek_info" />
+        </receiver>
+        <receiver android:name=".WaveWidget" android:exported="true" android:label="@string/wn_wave">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_wave_info" />
+        </receiver>
+        <receiver android:name=".CoverWidget" android:exported="true" android:label="@string/wn_cover">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_cover_info" />
         </receiver>
     </application>
 </manifest>

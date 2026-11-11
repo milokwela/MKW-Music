@@ -1,6 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">MKW Music</string>
-    <string name="widget_desc">Плеер MKW Music: что играет и кнопки управления</string>
-    <string name="widget_name">Плеер MKW</string>
+    <string name="wn_mini">MKW · мини-плеер</string>
+    <string name="wd_mini">Что играет и кнопки — в одну строку</string>
+    <string name="wn_seek">MKW · плеер с перемоткой</string>
+    <string name="wd_seek">Полоса перемотки: нажмите на нужное место. ±15 секунд</string>
+    <string name="wn_wave">MKW Волна</string>
+    <string name="wd_wave">Большой виджет волны: запуск в одно касание, перемотка и кнопки</string>
+    <string name="wn_cover">MKW · обложка</string>
+    <string name="wd_cover">Квадрат с обложкой трека и кнопкой «играть»</string>
 </resources>

@@ -1425,3 +1425,41 @@ html.fp-cover #fp-scrim { display: none; }
 .tm-list { display: grid; padding: 4px; border-radius: 22px; background: color-mix(in srgb, currentColor 5%, transparent); }
 .tm-list .sheet-item { min-height: 50px; padding: 0 12px; border-radius: 16px; }
 .tm-list .sheet-item:active { background: color-mix(in srgb, currentColor 8%, transparent); }
+
+/* ===== 0.41: Настройки → виджеты на рабочий стол (превью как на телефоне) ===== */
+.wp-list { display: grid; gap: 12px; padding-bottom: 6px; }
+.wp-card { display: grid; gap: 10px; padding: 12px; border-radius: 24px; background: color-mix(in srgb, currentColor 6%, transparent); }
+.wp-card .btn { justify-self: start; }
+.wp-info { display: grid; gap: 2px; }
+.wp-info b { font-size: 16px; }
+.wp-info small { font-size: 13px; opacity: .65; }
+.wp-prev { position: relative; overflow: hidden; border-radius: 22px; color: #fff; background: linear-gradient(300deg, #241c2c, #0e0c12); padding: 12px; }
+.wp-prev::before { content: ""; position: absolute; inset: -20%; background: var(--wp-art, none) center / cover; filter: blur(22px) saturate(1.3); opacity: .75; }
+.wp-prev::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,.35), rgba(0,0,0,.55) 50%, rgba(0,0,0,.85)); border-radius: inherit; box-shadow: inset 0 0 0 1px rgba(255,255,255,.16); }
+.wp-in { position: relative; z-index: 1; display: flex; align-items: center; gap: 10px; }
+.wp-in.col { flex-direction: column; align-items: stretch; gap: 8px; }
+.wp-row { display: flex; align-items: center; gap: 12px; }
+.wp-head { display: flex; align-items: center; gap: 8px; }
+.wp-head img { width: 20px; height: 20px; object-fit: contain; }
+.wp-head b { flex: 1; font-size: 15px; }
+.wp-head em { font-style: normal; font-size: 11px; font-weight: 700; color: #121016; padding: 5px 11px; border-radius: 999px; background: linear-gradient(90deg, #ff8fc0, #b79bff); }
+.wp-cov { flex: none; border-radius: 12px; background: rgba(255,255,255,.15) center / cover; box-shadow: 0 4px 12px rgba(0,0,0,.35); }
+.wp-txt { flex: 1; min-width: 0; display: grid; line-height: 1.2; }
+.wp-txt small { font-size: 9px; letter-spacing: .14em; font-weight: 700; opacity: .85; }
+.wp-txt b { font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wp-txt em { font-style: normal; font-size: 12px; opacity: .7; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wp-bar { display: block; height: 4px; border-radius: 2px; background: rgba(255,255,255,.2); }
+.wp-bar i { display: block; width: 38%; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #ffc2dc, #fff); }
+.wp-btns { display: flex; align-items: center; justify-content: center; gap: 10px; flex: none; }
+.wp-btns i { width: 26px; height: 26px; border-radius: 50%; background: rgba(255,255,255,.16); }
+.wp-btns i.r { width: 22px; height: 22px; opacity: .7; }
+.wp-btns b { width: 34px; height: 34px; border-radius: 50%; background: #fff; }
+.wp-prev.k3 { width: 150px; height: 150px; padding: 0; background: var(--wp-art, linear-gradient(300deg, #3a2a44, #0e0c12)) center / cover; }
+.wp-prev.k3::before { display: none; }
+.wp-prev.k3::after { background: linear-gradient(180deg, rgba(0,0,0,.2), transparent 40%, rgba(0,0,0,.85)); }
+.wp-in.sq { position: absolute; inset: 0; z-index: 1; display: block; padding: 10px; }
+.wp-in.sq > small { font-size: 10px; font-weight: 800; letter-spacing: .14em; }
+.wp-sqt { position: absolute; left: 10px; bottom: 10px; right: 50px; display: grid; line-height: 1.15; }
+.wp-sqt b { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wp-sqt em { font-style: normal; font-size: 10px; opacity: .75; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wp-play { position: absolute; right: 10px; bottom: 10px; width: 32px; height: 32px; border-radius: 50%; background: #fff; }

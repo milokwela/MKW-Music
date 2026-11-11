@@ -81,6 +81,8 @@ public class MainActivity extends Activity {
     private WebView web;
     private boolean debuggable;
     private boolean pageReady;
+    private boolean pendingWave;
+    private static final String WAVE_JS = "window.dispatchEvent(new Event('mkw-widget-wave'))";
     private String pendingAdopt;
     private boolean setupShowing;
 
@@ -242,6 +244,7 @@ public class MainActivity extends Activity {
                     v.evaluateJavascript("(function(){var e=document.getElementById('splash');if(e)e.remove();})()", null);
                     splashHandler.postDelayed(() -> { splashPageDone = true; maybeHideSplash(); }, 600);
                 }
+                if (pageReady && pendingWave) { pendingWave = false; v.postDelayed(() -> runJs(WAVE_JS), 1500); }
                 if (pageReady && pendingAdopt != null) {
                     String json = pendingAdopt;
                     pendingAdopt = null;
@@ -534,7 +537,7 @@ public class MainActivity extends Activity {
             case "media":
                 String art = o.optString("art", "");
                 PlaybackService.push(this, o.optString("title", ""), o.optString("artist", ""),
-                        art.startsWith("https://") ? art : "", o.optBoolean("playing", false));
+                        art.startsWith("https://") ? art : "", o.optBoolean("playing", false), o.optBoolean("wave", false));
                 break;
             case "pos":
                 PlaybackService.position(o.optDouble("d", 0), o.optDouble("p", 0), o.optDouble("r", 1));
@@ -586,6 +589,15 @@ public class MainActivity extends Activity {
             case "handoff":
                 startHandoff();
                 break;
+            case "pinwidget": {
+                int k = Math.max(0, Math.min(3, o.optInt("kind", 0)));
+                if (!WidgetKit.pin(this, k)) {
+                    new AlertDialog.Builder(this).setTitle("Добавить виджет")
+                            .setMessage("Ваш рабочий стол не даёт добавить виджет из приложения. Сделайте так: долгое нажатие на пустом месте рабочего стола → «Виджеты» → MKW Music → выберите нужный и перетащите.")
+                            .setPositiveButton("Понятно", null).show();
+                }
+                break;
+            }
             case "checkupdate":
                 checkUpdateNow();
                 break;
@@ -632,6 +644,10 @@ public class MainActivity extends Activity {
 
     private void handleIntent(Intent in) {
         if (in == null) return;
+        if (in.getBooleanExtra("widget_wave", false)) {
+            in.removeExtra("widget_wave");
+            if (pageReady) runJs(WAVE_JS); else pendingWave = true;
+        }
         Uri d = in.getData();
         if (d == null || !"mkwmusic".equals(d.getScheme()) || !"handoff".equals(d.getHost())) return;
         String s = in.getStringExtra("s");

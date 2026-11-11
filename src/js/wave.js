@@ -611,6 +611,12 @@ function paintMoods() {
 export function initWave() {
   const b = $('#wave-btn');
   if (b) b.addEventListener('click', () => startWave());
+  // виджет «MKW Волна» на рабочем столе: включить волну (если уже играет — просто продолжить)
+  window.addEventListener('mkw-widget-wave', () => {
+    const cur = player.queue.current;
+    if (active && cur && cur.wave) { if (!player.st.playing) player.toggle(); return; }
+    startWave();
+  });
   const d = $('#fp-dislike');
   if (d) d.addEventListener('click', dislike);
   paintMoods();

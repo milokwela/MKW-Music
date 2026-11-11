@@ -658,7 +658,7 @@ function setSession(track) {
     navigator.mediaSession.metadata = new MediaMetadata({
       title: track.title,
       artist: track.artist,
-      album: track.album,
+      album: track.wave ? 'MKW Волна' : track.album, // по этой подписи виджет «MKW Волна» понимает, что играет волна
       artwork: src ? [{ src, sizes: '512x512', type: 'image/jpeg' }] : [],
     });
   } catch { /* ignore */ }

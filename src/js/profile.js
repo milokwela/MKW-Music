@@ -10,7 +10,7 @@ import { winterOn, setWinter } from './winter.js';
 import { player2On, setPlayer2 } from './player2.js';
 import { ACCENTS, getTheme, getAccent, getCustomHue, setCustomColor, setTheme, setAccent, hslHex, getNeutral } from './theme.js';
 import { CHANGELOG, VERSION, STAGE, KNOWN_ISSUES } from './changelog.js';
-import { plural, pickTrack, safeUrl } from './utils.js';
+import { plural, pickTrack, safeUrl, artUrl } from './utils.js';
 import { youtubeEnabled, youtubeQuotaOut } from './youtube.js';
 import { audiusEnabled } from './audius.js';
 import { SOURCE_MODES, getSourceMode, setSourceMode } from './sources.js';
@@ -823,6 +823,31 @@ const TABS = ['main', 'friends', 'board', 'set', 'about'];
 const TAB_NAMES = { friends: 'Друзья', board: 'Топ слушателей', set: 'Настройки', about: 'О MKW' };
 const aboutNew = () => { try { return localStorage.getItem('mkw.aboutseen') !== '0.39.0'; } catch { return false; } };
 // меню профиля под тремя точками: все разделы в одном месте
+// Настройки → «Виджеты на рабочий стол»: превью каждого и кнопка «Добавить» (Android сам спросит, куда поставить)
+function openWidgets() {
+  const cur = player.queue.current;
+  const art = cur && cur.artwork ? artUrl(cur.artwork, 200) : '';
+  const t = cur ? cur.title : 'Название трека', a = cur ? cur.artist : 'Исполнитель';
+  const cov = (s) => h('span', { class: 'wp-cov', style: `width:${s}px;height:${s}px;${art ? `background-image:url("${art}")` : ''}` });
+  const btns = (big) => h('span', { class: 'wp-btns' }, big ? h('i', { class: 'r' }) : null, h('i'), h('b'), h('i'), big ? h('i', { class: 'r' }) : null);
+  const txt = () => h('span', { class: 'wp-txt' }, h('small', { text: 'MKW MUSIC' }), h('b', { text: t }), h('em', { text: a }));
+  const bar = () => h('span', { class: 'wp-bar' }, h('i'));
+  const card = (kind, name, desc, size, prev) => h('div', { class: 'wp-card' },
+    h('div', { class: `wp-prev k${kind}`, style: art ? `--wp-art:url("${art}")` : '' }, prev),
+    h('div', { class: 'wp-info' }, h('b', { text: name }), h('small', { text: `${size} · ${desc}` })),
+    h('button', { class: 'btn', type: 'button', onclick: () => { window.MKWNative.pinWidget(kind); toast('Android спросит, куда поставить виджет'); } }, icon('plus'), ' Добавить'));
+  openSheet('Виджеты на рабочий стол', h('div', { class: 'wp-list' },
+    card(2, 'MKW Волна', 'запуск волны, перемотка и кнопки', '4×3',
+      h('span', { class: 'wp-in col' }, h('span', { class: 'wp-head' }, h('img', { src: 'assets/mkw-star.png', alt: '' }), h('b', { text: 'MKW Волна' }), h('em', { text: 'Включить' })),
+        h('span', { class: 'wp-row' }, cov(54), txt()), bar(), btns(true))),
+    card(1, 'Плеер с перемоткой', 'нажмите на полосу — и песня перескочит туда', '4×2',
+      h('span', { class: 'wp-in col' }, h('span', { class: 'wp-row' }, cov(40), txt()), bar(), btns(true))),
+    card(0, 'Мини-плеер', 'что играет и кнопки в одну строку', '4×1',
+      h('span', { class: 'wp-in' }, cov(34), txt(), btns(false))),
+    card(3, 'Обложка', 'квадрат с обложкой и кнопкой «играть»', '2×2',
+      h('span', { class: 'wp-in sq' }, h('small', { text: 'MKW' }), h('span', { class: 'wp-sqt' }, h('b', { text: t }), h('em', { text: a })), h('b', { class: 'wp-play' })))));
+}
+
 function openProfileMenu() {
   const req = requestIds().length, fr = friendIds().length;
   const item = (id, ic, title, desc, badge) => h('button', { type: 'button', class: `pm-item${refs.tab === id ? ' on' : ''}`, onclick: () => { closeSheet(); setTab(id); } },
@@ -989,6 +1014,7 @@ export function buildProfile(nick) {
         row('Слушать в фоне с выключенным экраном', 'Бета: работает не у всех и не со всеми треками. Полный трек переключается на звук, когда вы гасите экран. Из России — с VPN', refs.bgplay, null, 'moon'),
         row('Проверить фон', 'Покажет, что работает на вашем телефоне и в вашей сети', h('span', { class: 'chev', text: '›' }), runBgCheck, 'shield'))),
       inApp ? group('Приложение',
+        window.MKWNative && window.MKWNative.pinWidget ? row('Виджеты на рабочий стол', 'Мини-плеер, плеер с перемоткой, MKW Волна и обложка — выберите и добавьте', chev(), openWidgets, 'library') : null,
         window.MKWNative && window.MKWNative.fullScreenCalls ? (() => {
           const r = row('Звонки на весь экран', window.__mkwFsi === false ? 'Выключено: звонок придёт простым уведомлением. Нажмите, чтобы включить' : 'Входящий звонок открывается на весь экран, даже на заблокированном телефоне', chev(), () => window.MKWNative.fullScreenCalls(true), 'bell');
           window.addEventListener('mkw-fsi', () => { const sm = r.querySelector('small, .set-sub, .sub'); if (sm) sm.textContent = window.__mkwFsi === false ? 'Выключено: звонок придёт простым уведомлением. Нажмите, чтобы включить' : 'Входящий звонок открывается на весь экран, даже на заблокированном телефоне'; });
