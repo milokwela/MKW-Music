@@ -157,6 +157,7 @@ final class OfflineStore {
             JSONArray urls = o.optJSONArray("urls");
             boolean ok = false;
             String why = "звук не нашёлся";
+            lastWhy = "";
             for (int i = 0; urls != null && i < urls.length() && !ok; i++) {
                 String u = urls.optString(i, "");
                 if (!u.startsWith("https://")) continue;
@@ -167,23 +168,8 @@ final class OfflineStore {
                     Log.w(TAG, "dl " + id + ": " + e);
                 }
             }
-            if (ok) {
-                String art = o.optString("art", "");
-                if (art.startsWith("https://")) {
-                    try { fetch(art, cover(id), 2 * 1024 * 1024, false); } catch (Exception ignored) { /* без обложки */ }
-                }
-                synchronized (this) {
-                    try {
-                        JSONObject m = new JSONObject();
-                        m.put("title", o.optString("title", "")); m.put("artist", o.optString("artist", ""));
-                        m.put("album", o.optString("album", "")); m.put("dur", o.optDouble("dur", 0));
-                        m.put("art", art); m.put("at", System.currentTimeMillis());
-                        m.put("t", o.optJSONObject("track") != null ? o.optJSONObject("track") : new JSONObject());
-                        meta.put(id, m);
-                    } catch (Exception ignored) { /* ignore */ }
-                }
-                save();
-            }
+            if (ok) saveMeta(o);
+            else if (!lastWhy.isEmpty()) why = lastWhy;
             busy = "";
             done(id, ok, ok ? "" : why);
         });
@@ -194,36 +180,125 @@ final class OfflineStore {
         push();
     }
 
-    private boolean fetch(String u, File to, long max, boolean needAudio) throws Exception {
-        File tmp = new File(to.getPath() + ".part");
+    private volatile String lastWhy = "";
+
+    private HttpURLConnection open(String u, String range) throws Exception {
         HttpURLConnection c = (HttpURLConnection) new URL(u).openConnection();
         c.setConnectTimeout(15000);
         c.setReadTimeout(30000);
         c.setInstanceFollowRedirects(true);
         c.setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Mobile Safari/537.36");
-        try {
-            int code = c.getResponseCode();
-            if (code != 200 && code != 206) return false;
-            String type = String.valueOf(c.getContentType());
-            if (needAudio && (type.startsWith("text/") || type.contains("html") || type.contains("json"))) return false;
-            long n = 0;
-            try (InputStream in = c.getInputStream(); FileOutputStream out = new FileOutputStream(tmp)) {
-                byte[] buf = new byte[64 * 1024];
-                int r;
-                while ((r = in.read(buf)) > 0) {
-                    out.write(buf, 0, r);
-                    n += r;
-                    if (n > max) throw new Exception("слишком большой файл");
+        // сервер MKW и зеркала отдают звук только «своему» сайту — представляемся страницей MKW
+        c.setRequestProperty("Origin", "https://mkwmusic.ru");
+        c.setRequestProperty("Referer", "https://mkwmusic.ru/");
+        c.setRequestProperty("Accept", "*/*");
+        if (range != null) c.setRequestProperty("Range", range);
+        return c;
+    }
+
+    /** Скачать файл. Сначала просим кусок (как делает плеер) — YouTube так отдаёт быстрее и не обрывает; потом докачиваем кусками. */
+    private boolean fetch(String u, File to, long max, boolean needAudio) throws Exception {
+        File tmp = new File(to.getPath() + ".part");
+        final long CH = 1024L * 1024;
+        long n = 0, total = -1;
+        try (FileOutputStream out = new FileOutputStream(tmp)) {
+            while (true) {
+                HttpURLConnection c = open(u, needAudio ? "bytes=" + n + "-" + (n + CH - 1) : null);
+                try {
+                    int code = c.getResponseCode();
+                    if (code != 200 && code != 206) { lastWhy = "сервер ответил " + code; return false; }
+                    String type = String.valueOf(c.getContentType());
+                    if (needAudio && n == 0 && (type.startsWith("text/") || type.contains("html") || type.contains("json"))) { lastWhy = "вместо звука пришло " + type; return false; }
+                    if (code == 206) {
+                        String cr = c.getHeaderField("Content-Range");
+                        if (cr != null && cr.contains("/")) { try { total = Long.parseLong(cr.substring(cr.lastIndexOf('/') + 1).trim()); } catch (Exception ignored) { /* неизвестно */ } }
+                    }
+                    long got = 0;
+                    try (InputStream in = c.getInputStream()) {
+                        byte[] buf = new byte[64 * 1024];
+                        int r;
+                        while ((r = in.read(buf)) > 0) {
+                            out.write(buf, 0, r);
+                            n += r; got += r;
+                            if (n > max) { lastWhy = "слишком большой файл"; return false; }
+                        }
+                    }
+                    if (code == 200 || got == 0) break;          // отдали целиком
+                    if (total > 0 && n >= total) break;           // докачали
+                    if (total <= 0 && got < CH) break;            // размер не сказали, а кусок неполный — это конец
+                } finally {
+                    c.disconnect();
                 }
             }
-            if (needAudio && n < MIN_BYTES) { //noinspection ResultOfMethodCallIgnored
-                tmp.delete(); return false; }
-            return tmp.renameTo(to);
         } finally {
-            c.disconnect();
-            if (tmp.exists()) { //noinspection ResultOfMethodCallIgnored
+            if (n < (needAudio ? MIN_BYTES : 1)) { //noinspection ResultOfMethodCallIgnored
                 tmp.delete(); }
         }
+        if (needAudio && n < MIN_BYTES) { lastWhy = "файл слишком маленький"; return false; }
+        boolean ok = tmp.renameTo(to);
+        if (tmp.exists()) { //noinspection ResultOfMethodCallIgnored
+            tmp.delete(); }
+        return ok;
+    }
+
+    // ---- запасной путь: страница сама скачала звук (как его скачивает плеер) и передаёт сюда кусками ----
+    private String putId = "";
+    private FileOutputStream putOut;
+    private long putBytes;
+
+    void put(final JSONObject o) {
+        pool.execute(() -> {
+            String id = o.optString("id", "");
+            try {
+                if (o.optInt("seq", 0) == 0) {
+                    if (putOut != null) try { putOut.close(); } catch (Exception ignored) { /* ignore */ }
+                    putId = id; putBytes = 0;
+                    putOut = new FileOutputStream(new File(audio(id).getPath() + ".part"));
+                }
+                if (!id.equals(putId) || putOut == null) return;
+                String b64 = o.optString("b64", "");
+                if (!b64.isEmpty()) {
+                    byte[] b = android.util.Base64.decode(b64, android.util.Base64.DEFAULT);
+                    putOut.write(b);
+                    putBytes += b.length;
+                    if (putBytes > MAX_BYTES) throw new Exception("слишком большой файл");
+                }
+                if (o.optBoolean("last", false)) {
+                    putOut.close(); putOut = null;
+                    File part = new File(audio(id).getPath() + ".part");
+                    boolean ok = putBytes >= MIN_BYTES && part.renameTo(audio(id));
+                    if (part.exists()) { //noinspection ResultOfMethodCallIgnored
+                        part.delete(); }
+                    if (ok) saveMeta(o);
+                    done(id, ok, ok ? "" : "файл слишком маленький");
+                }
+            } catch (Exception e) {
+                try { if (putOut != null) putOut.close(); } catch (Exception ignored) { /* ignore */ }
+                putOut = null;
+                //noinspection ResultOfMethodCallIgnored
+                new File(audio(id).getPath() + ".part").delete();
+                done(id, false, String.valueOf(e.getMessage()));
+            }
+        });
+    }
+
+    private void saveMeta(JSONObject o) {
+        String id = o.optString("id", "");
+        String art = o.optString("art", "");
+        if (art.startsWith("https://")) {
+            try { fetch(art, cover(id), 2 * 1024 * 1024, false); } catch (Exception ignored) { /* без обложки */ }
+        }
+        synchronized (this) {
+            try {
+                JSONObject m = new JSONObject();
+                m.put("title", o.optString("title", "")); m.put("artist", o.optString("artist", ""));
+                m.put("album", o.optString("album", "")); m.put("dur", o.optDouble("dur", 0));
+                m.put("art", art); m.put("at", System.currentTimeMillis());
+                m.put("t", o.optJSONObject("track") != null ? o.optJSONObject("track") : new JSONObject());
+                meta.put(id, m);
+            } catch (Exception ignored) { /* ignore */ }
+        }
+        save();
     }
 
     void remove(final String id) {
