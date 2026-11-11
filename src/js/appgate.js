@@ -3,7 +3,7 @@
 import { h } from './ui.js';
 import { APK_URL } from './apk.js';
 
-export const MIN_APP = '1.3.5';
+export const MIN_APP = '1.3.6';
 
 const appVer = () => { const m = /MKWApp\/([\d.]+)/.exec(navigator.userAgent); return m ? m[1] : ''; };
 const older = (a, b) => {
