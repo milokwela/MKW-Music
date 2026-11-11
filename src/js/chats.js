@@ -38,8 +38,14 @@ function row(u, c, i) {
 // значки «закреплён» и «без уведомлений»
 const flags = (cid) => [isMuted(cid) ? h('span', { class: 'cl-flag', title: muteLabel(cid) }, mi('bell-off')) : null, isPinned(cid) ? h('span', { class: 'cl-flag pin', title: 'Закреплён' }, mi('pin')) : null].filter(Boolean);
 
+// «Удалить из чатов»: переписка пропадает из списка у вас, пока не придёт новое сообщение
+const HK = 'mkw.chat.hidden';
+const hiddenMap = () => { try { return JSON.parse(localStorage.getItem(HK) || '{}'); } catch { return {}; } };
+function hideChat(cid) { const m = hiddenMap(); m[cid] = Date.now(); try { localStorage.setItem(HK, JSON.stringify(m)); } catch { /* ignore */ } }
+const isHidden = (c) => { const t = hiddenMap()[c.id]; return Boolean(t) && (Number(c.at) || 0) <= t; };
+
 // удержание (или правая кнопка мыши) на человеке — меню: закрепить, без уведомлений, заблокировать
-function rowMenu(cid, title, uid) {
+function rowMenu(cid, title, uid, hasChat) {
   const btn = (ic, text, fn, danger) => h('button', { type: 'button', class: `ch-sm${danger ? ' danger' : ''}`, onclick: async () => { closeSheet(); try { await fn(); } catch { toast('Не получилось'); } renderChats(); } }, mi(ic), h('span', { text }));
   const H = 3600000;
   const muted = isMuted(cid);
@@ -54,6 +60,7 @@ function rowMenu(cid, title, uid) {
     uid ? (blockedByMe(uid)
       ? btn('block', 'Разблокировать', async () => { await setBlocked(uid, false); toast('Разблокирован(а)'); })
       : btn('block', 'Заблокировать', async () => { await setBlocked(uid, true); toast('Заблокирован(а): сообщения и звонки от него(неё) не придут'); }, true)) : null,
+    hasChat ? btn('trash', 'Удалить из чатов', async () => { hideChat(cid); toast('Чат убран из списка. Напишут снова — появится'); }, true) : null,
   ].filter(Boolean);
   if (navigator.vibrate) navigator.vibrate(12);
   openSheet(title, h('div', { class: 'cl-menu' }, ...items));
@@ -131,13 +138,13 @@ export async function renderChats() {
     const chats = chatList();
     const dms = chats.filter((c) => !c.group);
     const groups = chats.filter((c) => c.group);
-    const withChat = new Map(dms.map((c) => [otherOf(c), c]));
+    const withChat = new Map(dms.filter((c) => !isHidden(c)).map((c) => [otherOf(c), c]));
     const gMembers = groups.flatMap((c) => (c.members || []).filter((x) => x !== me()).slice(0, 3));
     const cards = await friendCards([...new Set([...dms.map(otherOf), ...ids, ...gMembers])].filter(Boolean).slice(0, 120), 60000);
     const byId = new Map(cards.map((u) => [u.uid, u]));
     const pass = (u) => !filter || String(u.nick || '').toLowerCase().includes(filter);
     // переписки и группы вместе, по времени последнего сообщения
-    const talks = chats.map((c) => (c.group ? (!filter || String(c.name || '').toLowerCase().includes(filter) ? { c } : null) : (byId.get(otherOf(c)) && pass(byId.get(otherOf(c))) ? { u: byId.get(otherOf(c)), c } : null))).filter(Boolean);
+    const talks = chats.filter((c) => !isHidden(c)).map((c) => (c.group ? (!filter || String(c.name || '').toLowerCase().includes(filter) ? { c } : null) : (byId.get(otherOf(c)) && pass(byId.get(otherOf(c))) ? { u: byId.get(otherOf(c)), c } : null))).filter(Boolean);
     let rest = ids.filter((x) => !withChat.has(x)).map((x) => byId.get(x)).filter((u) => u && pass(u));
     // закреплённые — сверху, в порядке закрепления (и друзья без переписки тоже)
     const pins = pinnedChats();
@@ -171,7 +178,7 @@ export async function renderChats() {
     } else {
       let i = 0;
       setKids(list, [
-        ...talks.map((x) => (x.u ? holdable(row(x.u, x.c, i++), () => rowMenu(chatId(me(), x.u.uid), x.u.nick || 'Друг', x.u.uid)) : holdable(groupRow(x.c, byId, i++), () => rowMenu(x.c.id, x.c.name || 'Группа', '')))),
+        ...talks.map((x) => (x.u ? holdable(row(x.u, x.c, i++), () => rowMenu(chatId(me(), x.u.uid), x.u.nick || 'Друг', x.u.uid, Boolean(x.c))) : holdable(groupRow(x.c, byId, i++), () => rowMenu(x.c.id, x.c.name || 'Группа', '', true)))),
         ...(rest.length ? [h('div', { class: 'section-title', text: talks.length ? 'Друзья' : 'Начните переписку' }), ...rest.map((u) => holdable(row(u, null, i++), () => rowMenu(chatId(me(), u.uid), u.nick || 'Друг', u.uid)))] : [])]);
     }
   } finally { busy = false; if (again) { again = false; renderChats(); } }

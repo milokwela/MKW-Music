@@ -133,6 +133,8 @@
     btPair: function (a) { send({ t: 'btpair', a: String(a || '') }); },
     outputSwitch: function () { send({ t: 'outswitch' }); },
     checkUpdate: function () { send({ t: 'checkupdate' }); },
+    saveImage: function (d, n) { send({ t: 'saveimg', d: String(d || ''), n: String(n || 'MKW') }); },
+    ready: function () { send({ t: 'ready' }); },
     fullScreenCalls: function (open) { send({ t: 'fsi', open: !!open }); },
     pinWidget: function (kind) { send({ t: 'pinwidget', kind: Number(kind) || 0 }); },
     // офлайн-музыка: что скачано, скачать, удалить
