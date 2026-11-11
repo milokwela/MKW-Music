@@ -1,5 +1,6 @@
 // Второй вид плеера (0.37): крупная обложка, волнистая полоса перемотки, кнопки-пилюли, скорость воспроизведения.
 // С 0.37.2 включён по умолчанию; классический вид возвращается в Настройках → Внешний вид → «Новый вид плеера».
+import { monthPlays } from './tplays.js';
 import * as player from './player.js';
 import { $, h, icon } from './ui.js';
 import { mi } from './icons2.js';
@@ -157,6 +158,24 @@ export function hideOutPanel() {
   const b = $('#fp-out'); if (b) b.classList.remove('on');
 }
 
+// под исполнителем: сколько раз трек включали на MKW в этом месяце
+const MONTHS = ['январь', 'февраль', 'март', 'апрель', 'май', 'июнь', 'июль', 'август', 'сентябрь', 'октябрь', 'ноябрь', 'декабрь'];
+let playsFor = '';
+function paintPlays() {
+  const t = queue.current, box = $('#fp-artist'); if (!box) return;
+  let el = $('#fp-plays');
+  if (!el) { el = h('small', { id: 'fp-plays', hidden: '' }); box.after(el); }
+  if (!t) { el.hidden = true; return; }
+  if (playsFor === t.id) return;
+  playsFor = t.id; el.hidden = true;
+  monthPlays(t).then((n) => {
+    if (playsFor !== t.id || n === null || n === undefined) return;
+    const mo = MONTHS[new Date().getMonth()];
+    el.textContent = n ? `${n} ${plural(n, 'прослушивание', 'прослушивания', 'прослушиваний')} на MKW за ${mo}` : `За ${mo} на MKW — впервые`;
+    el.hidden = false;
+  });
+}
+
 // шапка: «MKW» (или «MKW Волна», если играет волна) и номер трека в очереди
 function paintHead() {
   const hb = $('#fp2-head b'); if (hb) { const wave = Boolean(queue.current && queue.current.wave); hb.textContent = wave ? 'MKW Волна' : 'MKW'; hb.classList.toggle('wave', wave); }
@@ -221,6 +240,7 @@ export function initPlayer2() {
     if (ev === 'rate') paintRate();
     if (ev === 'track') paintTrack();
     if (ev === 'track' || ev === 'queue') { paintHead(); if (fpEl().classList.contains('queue-on')) drawQueue(); }
+    if (ev === 'track') paintPlays();
     if (!player2On()) return;
     if (ev === 'time') { if (!raf) draw(); } else if (ev === 'state' || ev === 'track') kick();
   });

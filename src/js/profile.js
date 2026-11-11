@@ -950,6 +950,9 @@ function setTab(name) {
   refs.tabs.style.setProperty('--i', String(TABS.indexOf(name)));
   // телефон: вместо ленты вкладок — меню под тремя точками; раздел открывается отдельным экраном с кнопкой «назад»
   const root = $('#view-profile'); if (root) root.classList.toggle('psub', name !== 'main');
+  // системный жест «назад» (свайп от края экрана) — вернуться в профиль
+  const st = window.__mkwStep;
+  if (st && window.innerWidth < 1000) { if (name !== 'main') st.open('psub', () => setTab('main')); else st.close('psub'); }
   if (refs.subhead) { refs.subhead.hidden = name === 'main'; refs.subTitle.textContent = TAB_NAMES[name] || ''; }
   if (name !== 'main' && window.innerWidth < 1000) { try { ($('#view-profile') || {}).scrollTop = 0; window.scrollTo(0, 0); } catch { /* ignore */ } }
   paintQuick();

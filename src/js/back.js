@@ -48,6 +48,19 @@ function onPop() {
   if (el && isOpen(el)) el.classList.remove('open');
 }
 
+// Шаги без своего окна (раздел профиля «Настройки», «О MKW»…): системный «назад» Android возвращает в профиль, а не сворачивает приложение
+export function stepOpen(id, close) {
+  SCREENS[id] = close;
+  if (stack.includes(id)) return;
+  stack.push(id); apply(1, 0);
+}
+export function stepClose(id) {
+  const i = stack.indexOf(id);
+  if (i < 0) return;
+  stack.splice(i, 1); apply(0, 1);
+}
+window.__mkwStep = { open: stepOpen, close: stepClose };
+
 export const backDepth = () => stack.length;
 export function goBack() { if (stack.length) history.back(); }
 

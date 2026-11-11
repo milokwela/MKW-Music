@@ -93,6 +93,9 @@ export async function syncOffline(manual = false) {
   const n = N(), s = offSettings();
   if (!n || prog.running) return;
   if (!manual && !s.auto) return;
+  // свежие сведения о сети от приложения (Wi-Fi включили только что, или он под VPN)
+  n.offState();
+  await new Promise((r) => setTimeout(r, 350));
   if (!navigator.onLine) { prog.wait = 'нет интернета'; emit(); return; }
   if (s.net === 'wifi' && st.wifi === false) { prog.wait = 'ждём Wi-Fi'; emit(); return; }
   const now = Date.now();

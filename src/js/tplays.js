@@ -18,5 +18,5 @@ export async function monthPlays(t) {
   if (!auth.currentUser || !t || !t.id) return null;
   const k = key(t);
   if (seen.has(k)) return seen.get(k);
-  try { const s = await getDoc(doc(db, 'tplays', k)); const n = s.exists() ? Number(s.data().n) || 0 : 0; seen.set(k, n); return n; } catch { return null; }
+  try { const s = await getDoc(doc(db, 'tplays', k)); const n = s.exists() ? Number(s.data().n) || 0 : 0; seen.set(k, n); return n; } catch (e) { console.warn('MKW: счётчик прослушиваний недоступен — проверьте правила Firestore (tplays)', e && e.code); return null; }
 }
