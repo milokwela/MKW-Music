@@ -127,7 +127,8 @@
     btStop: function () { send({ t: 'btstop' }); },
     btState: function () { send({ t: 'btstate' }); },
     btPair: function (a) { send({ t: 'btpair', a: String(a || '') }); },
-    outputSwitch: function () { send({ t: 'outswitch' }); }
+    outputSwitch: function () { send({ t: 'outswitch' }); },
+    checkUpdate: function () { send({ t: 'checkupdate' }); }
   };
 
   /* ---------- «Продолжить с сайта» на экране входа ---------- */

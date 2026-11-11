@@ -211,6 +211,8 @@ function styleLines(nodes, i) {
     n.classList.toggle('now', k === i);
     n.classList.toggle('next', k === i + 1);
     const d = Math.abs(k - base);
+    // далёкие строки всё равно за краем экрана: размытие на них только грузит телефон
+    if (d > 7) { if (n.style.filter) n.style.filter = ''; n.style.opacity = '.2'; continue; }
     if (k === i) { n.style.filter = ''; n.style.opacity = ''; }
     else if (k < i) { n.style.filter = `blur(${Math.min(3, 1 + d * .5).toFixed(1)}px)`; n.style.opacity = String(Math.max(.22, .5 - d * .07).toFixed(2)); }
     else { n.style.filter = `blur(${Math.min(6, (i < 0 ? 0 : 1) + (d - 1) * 1.3).toFixed(1)}px)`; n.style.opacity = String(Math.max(.2, (d === 1 ? .7 : .55) - (d - 1) * .1).toFixed(2)); }
@@ -227,11 +229,16 @@ function frame() {
     let i = -1;
     for (let k = 0; k < lines.length; k++) { if (lines[k].t <= t) i = k; else break; }
     if (i !== active) {
+      const first = active === -2; // текст только что открыли или перерисовали — встаём на текущую строку сразу, без проезда
       if (active >= 0 && nodes[active]) for (const w of nodes[active].children) w.classList.toggle('on', i > active);
       active = i;
       styleLines(nodes, i);
       const el = nodes[Math.max(i, 0)];
-      if (el && Date.now() > userScrollUntil) sc.scrollTo({ top: el.offsetTop - sc.clientHeight * 0.38 + el.offsetHeight / 2, behavior: 'smooth' });
+      if (el && Date.now() > userScrollUntil) {
+        const top = el.offsetTop - sc.clientHeight * 0.38 + el.offsetHeight / 2;
+        if (first) { sc.classList.add('ly-jump'); sc.scrollTop = top; requestAnimationFrame(() => requestAnimationFrame(() => sc.classList.remove('ly-jump'))); }
+        else sc.scrollTo({ top, behavior: 'smooth' });
+      }
     }
     if (i >= 0 && nodes[i]) {
       const end = lines[i + 1] ? lines[i + 1].t : lines[i].t + 4;

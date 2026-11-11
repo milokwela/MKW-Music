@@ -1,6 +1,6 @@
 // «О MKW»: Android-приложение (APK) — кнопка скачивания, контрольная сумма и инструкция по безопасной установке.
 // Файл собирает GitHub Actions (папка android/ в репозитории) и кладёт в релиз «android-beta».
-import { h, toast } from './ui.js';
+import { h, toast, openSheet } from './ui.js';
 import { mi } from './icons2.js';
 
 const REPO = 'milokwela/MKW-Music';
@@ -15,6 +15,25 @@ const loadRelease = () => {
   if (!relP) relP = fetch(API_URL, { headers: { Accept: 'application/vnd.github+json' } }).then((r) => (r.ok ? r.json() : null)).catch(() => null);
   return relP;
 };
+
+// Настройки → «Проверить обновление» (только в приложении). Свежие сборки проверяют сами и показывают системное окно;
+// в старых сравниваем версию здесь и предлагаем скачать.
+const newer = (a, b) => { const x = String(a).split('.').map(Number), y = String(b).split('.').map(Number); for (let i = 0; i < Math.max(x.length, y.length); i++) { const p = x[i] || 0, q = y[i] || 0; if (p !== q) return p > q; } return false; };
+export const appVersion = () => (((typeof navigator !== 'undefined' && navigator.userAgent) || '').match(/MKWApp\/([\w.]+)/) || [])[1] || '';
+export async function checkAppUpdate() {
+  const n = window.MKWNative;
+  if (n && typeof n.checkUpdate === 'function') { n.checkUpdate(); return; }
+  toast('Проверяем обновления…');
+  relP = null;
+  const rel = await loadRelease();
+  const ver = rel && ((rel.body || '').match(/Версия приложения: ([\w.]+)/) || [])[1];
+  const cur = appVersion();
+  if (!ver) { toast('Не получилось проверить. Проверьте интернет и попробуйте ещё раз'); return; }
+  if (cur && !newer(ver, cur)) { toast(`У вас последняя версия — ${cur}`); return; }
+  openSheet(`Вышла новая версия ${ver}`, h('div', { class: 'pw-form' },
+    h('p', { class: 'profile-note', text: `У вас ${cur || 'старая версия'}. Скачайте новую и откройте файл — она встанет поверх, вход и данные сохранятся.` }),
+    h('a', { class: 'btn block', href: APK_URL, target: '_blank', rel: 'noopener noreferrer' }, mi('install'), ' Скачать обновление')));
+}
 
 const link = (text, href) => h('a', { href, target: '_blank', rel: 'noopener noreferrer', text });
 

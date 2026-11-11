@@ -1,6 +1,6 @@
 // Раздел «Чаты» в нижнем меню: все переписки с друзьями, как в мессенджере.
 // Сверху — недавние и непрочитанные, ниже — друзья, с которыми ещё не переписывались.
-import { $, h, toast, openSheet, closeSheet } from './ui.js';
+import { $, h, toast, openSheet, closeSheet, setKids } from './ui.js';
 import { pinnedChats, isPinned, togglePin, isMuted, setMute, muteLabel } from './chatprefs.js';
 import { mi } from './icons2.js';
 import { chatList, isUnread, onChats, openChat, otherOf, clearedAt, blockedByMe, openCid, openGroup, groupAvatar, createGroupSheet, chatId, setBlocked } from './chat.js';
@@ -170,9 +170,9 @@ export async function renderChats() {
         h('small', { text: filter ? 'Попробуйте другой ник' : 'Добавьте друзей в Профиль → Друзья. Когда друг примет заявку, здесь можно будет переписываться и отправлять песни.' })));
     } else {
       let i = 0;
-      list.replaceChildren(
+      setKids(list, [
         ...talks.map((x) => (x.u ? holdable(row(x.u, x.c, i++), () => rowMenu(chatId(me(), x.u.uid), x.u.nick || 'Друг', x.u.uid)) : holdable(groupRow(x.c, byId, i++), () => rowMenu(x.c.id, x.c.name || 'Группа', '')))),
-        ...(rest.length ? [h('div', { class: 'section-title', text: talks.length ? 'Друзья' : 'Начните переписку' }), ...rest.map((u) => holdable(row(u, null, i++), () => rowMenu(chatId(me(), u.uid), u.nick || 'Друг', u.uid)))] : []));
+        ...(rest.length ? [h('div', { class: 'section-title', text: talks.length ? 'Друзья' : 'Начните переписку' }), ...rest.map((u) => holdable(row(u, null, i++), () => rowMenu(chatId(me(), u.uid), u.nick || 'Друг', u.uid)))] : [])]);
     }
   } finally { busy = false; if (again) { again = false; renderChats(); } }
 }

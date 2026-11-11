@@ -11,7 +11,7 @@ const el = (tag, cls, id) => { const e = document.createElement(tag); if (cls) e
 const lowPower = () => { try { return localStorage.getItem('mkw.lowpower') === '1'; } catch { return false; } };
 const calm = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-let raf = 0, cvs = null, ctx = null, flakes = [], W = 0, H = 0, dpr = 1, last = 0, skip = false, dark = true;
+let raf = 0, cvs = null, ctx = null, flakes = [], W = 0, H = 0, dpr = 1, last = 0, dark = true;
 
 function seed(f, top) {
   f.r = 0.8 + Math.random() * Math.random() * 3.2;           // больше мелких, редкие крупные
@@ -22,7 +22,9 @@ function seed(f, top) {
 }
 function size() {
   if (!cvs) return;
-  dpr = Math.min(2, window.devicePixelRatio || 1); W = window.innerWidth; H = window.innerHeight;
+  W = window.innerWidth; H = window.innerHeight;
+  // телефон: снег рисуем в обычном разрешении — мягкие снежинки выглядят так же, а работы в 4–9 раз меньше
+  dpr = W < 700 ? 1 : Math.min(2, window.devicePixelRatio || 1);
   cvs.width = Math.round(W * dpr); cvs.height = Math.round(H * dpr);
   const phone = W < 700;
   const want = calm() ? 20 : lowPower() ? 14 : phone ? 34 : Math.min(80, Math.round((W * H) / 18000) + 18);
@@ -47,11 +49,15 @@ function draw(dt) {
 }
 function tick(t) {
   raf = requestAnimationFrame(tick);
-  // телефон и слабые устройства: 30 кадров в секунду вместо 60 — снег так же плавный, а батарея и скорость целее
-  if (lowPower() || W < 700) { skip = !skip; if (skip) return; }
+  // пока листают или переключают вкладки — снег замирает на долю секунды, телефон занят только прокруткой
+  if (t < pauseUntil) { last = t; return; }
+  // телефон и слабые устройства: 30 кадров в секунду на любом экране (и на 120 Гц) — снег так же плавный, а батарея и скорость целее
+  if ((lowPower() || W < 700) && t - last < 30) return;
   const dt = Math.min(0.07, (t - last) / 1000 || 0.016); last = t;
   draw(dt);
 }
+let pauseUntil = 0;
+const rest = (ms) => { pauseUntil = Math.max(pauseUntil, performance.now() + ms); };
 const covered = () => root.classList.contains('fp-cover');
 function run() { cancelAnimationFrame(raf); raf = 0; if (cvs && !document.hidden && !calm() && !covered()) { last = performance.now(); raf = requestAnimationFrame(tick); } }
 
@@ -96,6 +102,9 @@ export function initWinter() {
   applyWinter();
   window.addEventListener('resize', () => { if (cvs) size(); });
   document.addEventListener('visibilitychange', run);
+  document.addEventListener('scroll', () => rest(220), { capture: true, passive: true });
+  document.addEventListener('touchmove', () => rest(220), { passive: true });
+  document.addEventListener('click', (e) => { if (e.target.closest && e.target.closest('#bottom-nav, .ptab, #lib-tabs')) rest(480); }, { capture: true, passive: true });
   new MutationObserver(run).observe(root, { attributes: true, attributeFilter: ['class'] });
   window.addEventListener('mkw-theme', () => { dark = isDark(); if (cvs && calm()) draw(0); });
 }

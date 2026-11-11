@@ -1,5 +1,5 @@
 // Экран «Библиотека»: лайки, плейлисты, история.
-import { $, $$, h, icon, trackRow, emptyState, askText, toast, openSheet, closeSheet, sheetItem, animateIn } from './ui.js';
+import { $, $$, h, icon, trackRow, emptyState, askText, toast, openSheet, closeSheet, sheetItem, animateIn, setKids } from './ui.js';
 import * as store from './store.js';
 import * as player from './player.js';
 import { openTrackMenu } from './menu.js';
@@ -97,10 +97,15 @@ export function render() {
   $$('#lib-tabs [data-tab]').forEach((c) => c.classList.toggle('active', c.dataset.tab === tab));
   const lc = $('#lib-tabs [data-cnt="likes"]'), pc = $('#lib-tabs [data-cnt="playlists"]');
   try { if (lc) lc.textContent = store.state.likes.length || ''; if (pc) pc.textContent = store.state.playlists.length || ''; } catch { /* ignore */ }
-  if (tab === 'likes') renderLikes(box);
-  else if (tab === 'history') renderHistory(box);
-  else if (openPid) renderPlaylistPage(box);
-  else renderPlaylists(box);
+  // собираем экран в стороне и подменяем, только если что-то изменилось (см. setKids)
+  const tmp = document.createElement('div');
+  const pidWas = openPid;
+  if (tab === 'likes') renderLikes(tmp);
+  else if (tab === 'history') renderHistory(tmp);
+  else if (openPid) renderPlaylistPage(tmp);
+  else renderPlaylists(tmp);
+  if (pidWas && !openPid) return; // плейлист пропал — экран уже перерисован заново
+  setKids(box, [...tmp.childNodes]);
   if (key !== lastKey) { lastKey = key; animateIn(box); }
 }
 

@@ -18,10 +18,21 @@ export function openOutput() {
   const sub = h('small', { text: KIND.phone });
   const side = h('div', { class: 'out-side' });
   const pct = h('span', { text: '' });
-  const range = h('input', { class: 'out-range', type: 'range', min: '0', max: '100', step: '1', value: '50', 'aria-label': 'Громкость телефона' });
-  let dragging = 0;
-  const fill = () => { range.style.setProperty('--v', `${range.value}%`); pct.textContent = `${range.value}%`; };
-  range.addEventListener('input', () => { dragging = Date.now(); fill(); n.setVolume(Number(range.value) / 100, false); });
+  // Свой тонкий ползунок (как полоса в плеере): линия и метка двигаются вместе с пальцем, без рывков и отставания.
+  const range = h('div', { class: 'out-sl', role: 'slider', tabindex: '0', 'aria-label': 'Громкость телефона', 'aria-valuemin': '0', 'aria-valuemax': '100' },
+    h('i', { class: 'out-sl-fill' }), h('b', { class: 'out-sl-th' }));
+  let val = 50, dragging = 0, down = false, sentAt = 0, sendT = 0;
+  const fill = () => { range.style.setProperty('--v', String(val / 100)); range.setAttribute('aria-valuenow', String(val)); pct.textContent = `${val}%`; };
+  const push = () => { sentAt = Date.now(); n.setVolume(val / 100, false); };
+  const send = (now) => { clearTimeout(sendT); if (now || Date.now() - sentAt > 70) push(); else sendT = setTimeout(push, 70); }; // телефону хватает ~14 команд в секунду
+  const fromX = (x) => { const r = range.getBoundingClientRect(); return Math.round(Math.max(0, Math.min(1, (x - r.left - 2) / Math.max(1, r.width - 4))) * 100); };
+  const move = (e) => { const v = fromX(e.clientX); dragging = Date.now(); if (v === val) return; val = v; fill(); send(false); };
+  range.addEventListener('pointerdown', (e) => { down = true; range.classList.add('drag'); try { range.setPointerCapture(e.pointerId); } catch { /* ignore */ } move(e); e.preventDefault(); });
+  range.addEventListener('pointermove', (e) => { if (down) move(e); });
+  const up = () => { if (!down) return; down = false; range.classList.remove('drag'); dragging = Date.now(); send(true); };
+  range.addEventListener('pointerup', up); range.addEventListener('pointercancel', up);
+  for (const ev of ['touchstart', 'touchmove']) range.addEventListener(ev, (e) => e.stopPropagation(), { passive: true }); // шторка не должна ехать вместе с ползунком
+  range.addEventListener('keydown', (e) => { const d = e.key === 'ArrowRight' || e.key === 'ArrowUp' ? 5 : e.key === 'ArrowLeft' || e.key === 'ArrowDown' ? -5 : 0; if (!d) return; e.preventDefault(); val = Math.max(0, Math.min(100, val + d)); dragging = Date.now(); fill(); send(true); });
   const ico = h('span', { class: 'out-ico' }, h('i'), mi('headphones'));
   const hero = h('div', { class: 'out-hero' },
     h('div', { class: 'out-top' }, ico, h('div', { class: 'out-name' }, name, sub), side),
@@ -31,6 +42,7 @@ export function openOutput() {
   swBtn.addEventListener('click', () => (n.outputSwitch ? n.outputSwitch() : n.bluetooth()));
 
   const list = h('div', { class: 'out-list' });
+  const rows = new Map(); // адрес устройства → его строка
   const scanBtn = h('button', { class: 'btn block', type: 'button' }, 'Найти устройства рядом');
   const hint = h('p', { class: 'profile-note out-hint', text: 'Чтобы найти наушники, колонку или машину, Android спросит разрешение «Устройства поблизости». Оно нужно только для поиска, подключения и показа заряда. Геолокация не используется.' });
   const sysBtn = h('button', { class: 'btn tonal block', type: 'button' }, 'Настройки Bluetooth телефона');
@@ -45,7 +57,7 @@ export function openOutput() {
     ico.classList.toggle('live', bt || s.kind === 'wired');
     side.replaceChildren(...(bt && typeof s.bat === 'number' && s.bat >= 0 ? [batPill(s.bat)] : []));
     swBtn.hidden = s.kind === 'phone';
-    if (Date.now() - dragging > 1200 && typeof s.vol === 'number') { range.value = String(Math.round(s.vol * 100)); fill(); }
+    if (!down && Date.now() - dragging > 1600 && typeof s.vol === 'number') { const v = Math.round(s.vol * 100); if (v !== val) { val = v; fill(); } }
   };
   const onBt = (e) => {
     const s = e.detail || {};
@@ -57,16 +69,34 @@ export function openOutput() {
     hint.hidden = Boolean(s.perm) || !s.supported;
     if (s.perm && s.has && s.on === false) { list.replaceChildren(h('p', { class: 'profile-note', text: 'Bluetooth выключен. Включите его в шторке телефона и нажмите «Найти устройства рядом».' })); return; }
     const devs = (s.devices || []).filter((d) => d.n).sort((a, b) => (b.connected - a.connected) || (b.audio - a.audio) || (b.bonded - a.bonded) || ((b.rssi || -200) - (a.rssi || -200)));
-    list.replaceChildren(...devs.map((d, k) => {
+    // Строки не пересоздаём при каждом ответе телефона: иначе во время поиска весь список мигает и «прыгает».
+    // Появляется с анимацией только новое устройство, остальные просто обновляют подпись, заряд и сигнал.
+    let fresh = 0;
+    const rowsNow = devs.map((d) => {
       const st = d.connected ? 'Подключено' : d.bonding ? 'Подключаем…' : d.bonded ? 'Знакомое устройство' : 'Новое — нажмите, чтобы подключить';
-      const row = h('button', { class: `out-dev${d.connected ? ' on' : ''}`, type: 'button', style: `--i:${k}` },
-        h('span', { class: 'out-dico' }, mi(d.audio ? 'headphones' : 'phone')),
-        h('span', { class: 'out-dname' }, h('b', { text: d.n }), h('small', { text: st })),
-        d.connected && d.bat >= 0 ? batPill(d.bat) : null,
-        typeof d.rssi === 'number' ? bars(d.rssi) : null);
-      row.addEventListener('click', () => { if (d.connected) { toast('Уже подключено'); return; } row.classList.add('wait'); n.btPair(d.a); });
-      return row;
-    }));
+      let r = rows.get(d.a);
+      if (!r) {
+        const el = h('button', { class: 'out-dev new', type: 'button', style: `--i:${fresh++}` });
+        r = { el, d, ico: h('span', { class: 'out-dico' }), nm: h('b'), st: h('small'), extra: h('span', { class: 'out-dx' }), sig: '' };
+        el.append(r.ico, h('span', { class: 'out-dname' }, r.nm, r.st), r.extra);
+        el.addEventListener('animationend', () => el.classList.remove('new'), { once: true });
+        el.addEventListener('click', () => { if (r.d.connected) { toast('Уже подключено'); return; } el.classList.add('wait'); n.btPair(r.d.a); });
+        rows.set(d.a, r);
+      }
+      r.d = d;
+      r.el.classList.toggle('on', Boolean(d.connected));
+      if (d.connected || !d.bonding) r.el.classList.remove('wait');
+      if (r.nm.textContent !== d.n) r.nm.textContent = d.n;
+      if (r.st.textContent !== st) r.st.textContent = st;
+      const icon = d.audio ? 'headphones' : 'phone';
+      if (r.icon !== icon) { r.icon = icon; r.ico.replaceChildren(mi(icon)); }
+      const sig = `${d.connected && d.bat >= 0 ? d.bat : ''}|${typeof d.rssi === 'number' ? (d.rssi > -60 ? 4 : d.rssi > -70 ? 3 : d.rssi > -82 ? 2 : 1) : ''}`;
+      if (r.sig !== sig) { r.sig = sig; r.extra.replaceChildren(...[d.connected && d.bat >= 0 ? batPill(d.bat) : null, typeof d.rssi === 'number' ? bars(d.rssi) : null].filter(Boolean)); }
+      return r.el;
+    });
+    for (const [a, r] of rows) if (!rowsNow.includes(r.el)) { r.el.remove(); rows.delete(a); }
+    rowsNow.forEach((el, k) => { if (list.children[k] !== el) list.insertBefore(el, list.children[k] || null); });
+    for (const c of [...list.children]) if (!rowsNow.includes(c)) c.remove();
   };
   const onFail = () => toast('Отсюда подключить не получилось — откройте «Настройки Bluetooth телефона»');
   window.addEventListener('mkw-audio', onAudio);
