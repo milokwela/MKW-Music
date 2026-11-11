@@ -2,6 +2,7 @@
 import { linkFonts } from './profile.js';
 import { watchContrib, initBadgeView } from './contrib.js';
 import { initLanding } from './landing.js';
+import { appGate } from './appgate.js';
 import { initLyrics } from './lyrics.js';
 import { initPerf } from './perf.js';
 import { watchAuth, signIn, signUp, authErrorText } from './auth.js';
@@ -211,6 +212,7 @@ function runSplash() {
 }
 
 function boot() {
+  if (appGate()) return; // старое приложение — только окно «Обновите»
   initBadgeView();
   readIncoming();
   runSplash();
