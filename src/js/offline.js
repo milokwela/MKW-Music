@@ -6,7 +6,8 @@ import { resolveStream } from './stream.js';
 import { artUrl, pickTrack } from './utils.js';
 
 const N = () => (window.MKWNative && window.MKWNative.offState ? window.MKWNative : null);
-export const offlineSupported = () => Boolean(N());
+// Офлайн-музыка убрана (0.42.5): скачивание с серверов MKW работало ненадёжно. Код оставлен, но выключен.
+export const offlineSupported = () => false;
 
 // то же имя файла, что делает приложение (OfflineStore.safe)
 export const offKey = (id) => String(id || '').replace(/[^A-Za-z0-9_.-]/g, '_').slice(0, 120);
@@ -23,11 +24,11 @@ function apply(o) {
   emit();
 }
 apply(st);
-window.addEventListener('mkw-off', (e) => apply(e.detail));
+window.addEventListener('mkw-off', (e) => { if (offlineSupported()) apply(e.detail); });
 
 export const offState = () => st;
 export const isDownloaded = (id) => have.has(String(id));
-export const offlineSrc = (t) => (t && have.has(String(t.id)) ? `/__offline/${offKey(t.id)}` : null);
+export const offlineSrc = (t) => (offlineSupported() && t && have.has(String(t.id)) ? `/__offline/${offKey(t.id)}` : null);
 
 // скачанные треки как обычные треки (обложка — из памяти телефона, чтобы была видна и без сети)
 export function downloadedTracks() {
@@ -178,6 +179,10 @@ export function clearDownloads() { const n = N(); if (n) { stopFlag = true; n.of
 export function initOffline() {
   const n = N();
   if (!n) return;
+  // режим убран: удаляем уже скачанное (освобождаем память телефона) и больше ничего не качаем
+  have.clear(); st = { items: [], total: 0 };
+  try { if (n.offClear) n.offClear(); } catch { /* ignore */ }
+  if (!offlineSupported()) return;
   n.offState();
   store.onStore((what) => { if (what === 'likes' || what === 'playlists') syncSoon(5000); });
   window.addEventListener('online', () => { n.offState(); syncSoon(3000); });

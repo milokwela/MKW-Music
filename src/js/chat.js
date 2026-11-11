@@ -424,7 +424,10 @@ function voiceBubble(src, durSec) {
 // экран с клавиатурой: на iPhone клавиатура не сжимает страницу — подгоняем окно чата под видимую часть сами
 function fitKeyboard(p, list) {
   const vv = window.visualViewport;
-  if (!vv || !matchMedia('(pointer: coarse)').matches) return () => {};
+  // на Android страница сама сжимается под клавиатуру (interactive-widget=resizes-content); если ещё и двигать окно чата
+  // по visualViewport — при каждой букве лента дёргается вверх. Подгоняем вручную только на iPhone/iPad.
+  const ios = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  if (!vv || !ios || !matchMedia('(pointer: coarse)').matches) return () => {};
   const f = () => {
     if (!p.classList.contains('open')) return;
     const atBottom = list.scrollHeight - list.scrollTop - list.clientHeight < 60;

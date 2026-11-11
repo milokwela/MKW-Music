@@ -20,6 +20,13 @@ export function initLanding() {
   const scr = document.getElementById('auth-screen');
   const card = scr && scr.querySelector('.auth-card');
   if (!scr || !card) return;
+  // в приложении — не промо-страница сайта, а простой экран входа на весь экран, как в обычных приложениях
+  if (inApp) {
+    scr.classList.add('app-auth');
+    const logo = card.querySelector('.auth-logo'); if (logo) logo.src = 'assets/mkw-mark.png';
+    card.append(h('p', { class: 'aa-foot' }, h('span', { text: 'MKW Music · by MiloKwel' }), ' · ', h('a', { href: PRIVACY_URL, target: '_blank', rel: 'noopener', text: 'Конфиденциальность' })));
+    return;
+  }
   const tab = (mode) => { const b = scr.querySelector(`#auth-tabs [data-mode="${mode}"]`); if (b) b.click(); };
   const toCard = (mode) => {
     tab(mode);
