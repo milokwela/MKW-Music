@@ -126,6 +126,7 @@
     btScan: function () { send({ t: 'btscan' }); },
     btStop: function () { send({ t: 'btstop' }); },
     btState: function () { send({ t: 'btstate' }); },
+    btEnable: function () { send({ t: 'bton' }); },
     btPair: function (a) { send({ t: 'btpair', a: String(a || '') }); },
     outputSwitch: function () { send({ t: 'outswitch' }); },
     checkUpdate: function () { send({ t: 'checkupdate' }); }

@@ -138,6 +138,22 @@ final class BtHelper {
         push();
     }
 
+    /** «Включить Bluetooth»: сам Android показывает своё окно с вопросом — без согласия человека приложение Bluetooth не включает. */
+    void enable() {
+        if (supported() && !hasPerm()) {
+            act.requestPermissions(new String[]{Manifest.permission.BLUETOOTH_CONNECT, Manifest.permission.BLUETOOTH_SCAN}, REQ);
+            return;
+        }
+        try {
+            BluetoothAdapter ad = adapter();
+            if (ad != null && !ad.isEnabled()) act.startActivityForResult(new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE), REQ);
+        } catch (Exception e) {
+            Log.w(TAG, "enable", e);
+            try { act.startActivity(new Intent(android.provider.Settings.ACTION_BLUETOOTH_SETTINGS)); } catch (Exception ignored) { /* нет настроек */ }
+        }
+        push();
+    }
+
     void stop() {
         try {
             BluetoothAdapter ad = adapter();

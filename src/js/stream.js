@@ -30,8 +30,12 @@ async function getJson(url, ms) {
 }
 
 // Сначала m4a (играет везде, включая iPhone), потом opus/webm; внутри — по битрейту
+// В приложении и в Chrome играет и opus — он на YouTube звучит лучше (≈160 кбит/с против ≈128 у m4a), поэтому там берём самый качественный поток.
+const opusOk = (() => { try { const ua = navigator.userAgent || ''; if (/iPhone|iPad|iPod/.test(ua) || (/Safari/.test(ua) && !/Chrome|Chromium|Android/.test(ua))) return false; return new Audio().canPlayType('audio/webm; codecs="opus"') !== ''; } catch { return false; } })();
 function rank(list) {
-  const score = (f) => (/mp4|m4a/.test(f.type) ? 1e7 : 0) + (Number(f.bitrate) || 0);
+  const score = (f) => (opusOk
+    ? (Number(f.bitrate) || 0) * (/opus|webm/.test(f.type) ? 1.3 : 1)
+    : (/mp4|m4a/.test(f.type) ? 1e7 : 0) + (Number(f.bitrate) || 0));
   return list.sort((a, b) => score(b) - score(a)).map((f) => f.url);
 }
 
@@ -67,7 +71,12 @@ async function fromWorker(vid, t) {
   const cands = (Array.isArray(j.cands) && j.cands.length ? j.cands : [{ urls: j.urls, src: j.src || 'worker', label: '', id: j.src || 'w' }]).filter((c) => !bad.has(c.id));
   if (!cands.length) throw new Error('все варианты отклонены');
   const urls = [];
-  for (const c of cands) for (const u of c.urls) { urls.push(u); meta.set(u, { src: c.src, label: c.label || '', id: c.id }); }
+  // ссылки YouTube внутри варианта: лучший по качеству поток первым (itag 251 — opus 160, 140 — m4a 128, 250/249 — opus пониже)
+  const itagRank = (u) => { const m = /[?&]itag=(\d+)/.exec(u); const t = m ? m[1] : ''; return opusOk ? ({ 251: 4, 140: 3, 250: 2, 249: 1 }[t] || 0) : ({ 140: 4, 251: 1 }[t] || 0); };
+  for (const c of cands) {
+    const list = [...c.urls].map((u, i) => ({ u, i })).sort((a, b) => (itagRank(b.u) - itagRank(a.u)) || (a.i - b.i)).map((x) => x.u);
+    for (const u of list) { urls.push(u); meta.set(u, { src: c.src, label: c.label || '', id: c.id }); }
+  }
   return { urls, src: cands[0].src, label: cands[0].label, id: cands[0].id, worker: true };
 }
 

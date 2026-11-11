@@ -29,7 +29,9 @@ export async function setNotify(v) {
 }
 
 async function system(title, body, tag, onClick, always) {
-  if ((!notifyOn() && !always) || !systemAllowed() || !document.hidden) return;
+  // в приложении, пока играет музыка, страница всегда «видима» — настоящее состояние сообщает само приложение (__mkwFg)
+  const away = document.hidden || window.__mkwFg === false;
+  if ((!notifyOn() && !always) || !systemAllowed() || !away) return;
   const opt = { body, tag, icon: 'assets/ic5-192.png', badge: 'assets/fav-96.png', renotify: true };
   try {
     const reg = navigator.serviceWorker && await navigator.serviceWorker.getRegistration();

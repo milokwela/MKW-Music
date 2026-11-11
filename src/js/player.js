@@ -112,12 +112,15 @@ function fallbackToPreview() {
   if (yt) { try { yt.stopVideo(); } catch { /* ignore */ } }
   if (!track) return;
   const id = loadId;
-  if (track.previewUrl) {
-    st.message = 'Полный трек недоступен, играет фрагмент 30 сек';
-    startPreview(track, id);
-  } else {
-    unavailable(id);
+  // Фрагмент 30 секунд — самый последний вариант. Сначала ещё раз ищем полный трек звуком: по видео, потом по названию.
+  if (rescued !== id) {
+    rescued = id;
+    st.loading = true; st.playing = false; st.message = 'Ищу полную версию…';
+    emit('state');
+    rescue(track, id).then((ok) => { if (!ok && id === loadId) toPreview(track, id); });
+    return;
   }
+  toPreview(track, id);
 }
 
 // Заранее поднимаем YouTube-плеер, чтобы первый трек стартовал быстрее.
@@ -186,7 +189,7 @@ async function startCurrent() {
     // 2) приложение свёрнуто, а звук по видео не нашёлся — видео в фоне не заиграет: ищем звук по названию, иначе фрагмент
     if (document.hidden && streamsOn()) {
       if (await bgFallback(track, id)) return;
-      if (track.previewUrl) { startPreview(track, id); return; }
+      if (track.previewUrl) { rescued = id; toPreview(track, id); return; }
     }
     // 3) видеоплеер YouTube
     if (await startYT(track, vid, id)) return;
@@ -199,8 +202,8 @@ async function startCurrent() {
     if (id !== loadId) return;
     if (urls && urls.length) { startStream(track, key, urls, id, 0); return; }
   }
-  if (track.previewUrl) startPreview(track, id);
-  else unavailable(id);
+  rescued = id; // звук по названию только что искали — второй раз подряд не ждём, но продолжим искать, пока играет фрагмент
+  toPreview(track, id);
 }
 
 // звук по названию (SoundCloud и др. через сервер MKW) — запасной путь, когда видео в фоне не заиграет
@@ -363,6 +366,47 @@ function startPreview(track, id) {
     emit('state');
   });
   emit('track');
+}
+
+let rescued = 0;
+const waitMs = (ms) => new Promise((r) => setTimeout(() => r(null), ms));
+async function rescue(track, id) {
+  const keys = [];
+  if (/^[\w-]{11}$/.test(st.vid || '')) keys.push(st.vid);
+  keys.push(`sc:${track.id}`);
+  for (const key of keys) {
+    const urls = peekStream(key) || await Promise.race([resolveStream(key, track, true), waitMs(9000)]);
+    if (id !== loadId) return true;
+    if (urls && urls.length) { st.message = ''; startStream(track, key, urls, id, 0); return true; }
+  }
+  return false;
+}
+function toPreview(track, id) {
+  if (id !== loadId) return;
+  if (!track.previewUrl) { unavailable(id); return; }
+  st.message = 'Полный трек недоступен, играет фрагмент 30 сек';
+  startPreview(track, id);
+  upgradeLater(track, id);
+}
+// Фрагмент уже играет — продолжаем искать полный трек и незаметно переключаемся на него с того же места.
+function upgradeLater(track, id) {
+  const attempt = async () => {
+    if (id !== loadId || st.mode !== 'preview' || st.full) return true;
+    const key = `sc:${track.id}`;
+    let urls = await Promise.race([resolveStream(key, track, true), waitMs(15000)]);
+    let vid = key;
+    if (!(urls && urls.length) && youtubeEnabled()) {
+      const y = await findYouTubeId(track).catch(() => null);
+      if (y) { vid = y; urls = await Promise.race([resolveStream(y, track, true), waitMs(12000)]); }
+    }
+    if (id !== loadId || st.mode !== 'preview' || st.full) return true;
+    if (!(urls && urls.length)) return false;
+    const at = audio.currentTime || 0;
+    st.message = '';
+    startStream(track, vid, urls, id, at);
+    return true;
+  };
+  setTimeout(async () => { if (!(await attempt())) setTimeout(attempt, 9000); }, 3000);
 }
 
 function unavailable(id) {

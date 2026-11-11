@@ -66,10 +66,10 @@ function paintTrack() {
 function paintRate() { const b = $('#fp-speed'); if (b) { b.textContent = rateText(player.getRate()); b.classList.toggle('on', player.getRate() !== 1); } }
 
 // ---------- «сцена» (телефон и компьютер): обложка, текст и очередь живут в одном месте, название и кнопки не двигаются ----------
-let stage = null, qBox = null, qFind = null, anim = null, collapsed = false;
+let stage = null, qBox = null, qFind = null, oBox = null, anim = null, collapsed = false;
 const calmUI = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 const fpEl = () => $('#full-player');
-const panelOpen = () => { const fp = fpEl(); return fp.classList.contains('lyrics-on') || fp.classList.contains('queue-on'); };
+const panelOpen = () => { const fp = fpEl(); return fp.classList.contains('lyrics-on') || fp.classList.contains('queue-on') || fp.classList.contains('out-on'); };
 const useStage = () => player2On();
 
 function mountStage(on) {
@@ -79,10 +79,11 @@ function mountStage(on) {
     stage = h('div', { id: 'fp-stage' });
     art.parentNode.insertBefore(stage, art);
     stage.append(art, lyr, qBox);
+    if (oBox) stage.append(oBox);
   } else if (!on && stage) {
     stage.parentNode.insertBefore(art, stage); stage.parentNode.insertBefore(lyr, stage); stage.remove(); stage = null;
     if (anim) { anim.cancel(); anim = null; } art.style.transform = ''; collapsed = false;
-    fpEl().classList.remove('queue-on'); $('#fp-queue').classList.remove('on');
+    fpEl().classList.remove('queue-on', 'out-on'); $('#fp-queue').classList.remove('on');
   }
   // на компьютере очередь стоит справа, на месте текста
   if (!on && qBox && lyr.parentNode && qBox.parentNode !== lyr.parentNode) lyr.after(qBox);
@@ -133,14 +134,32 @@ function drawQueue() {
 function toggleQueue() {
   const fp = fpEl();
   const on = !fp.classList.contains('queue-on');
+  if (on) hideOutPanel();
   if (on && fp.classList.contains('lyrics-on')) $('#fp-lyrics-btn').click();
   fp.classList.toggle('queue-on', on);
   $('#fp-queue').classList.toggle('on', on);
   if (on) { if (qFind) qFind.value = ''; drawQueue(); }
 }
 
-// шапка: «MKW» и номер трека в очереди
+// ---------- «Подключить устройство» на месте обложки (только в Android-приложении, см. output.js) ----------
+export function showOutPanel(node) {
+  const fp = fpEl();
+  if (!stage) return;
+  if (!oBox) { oBox = h('div', { id: 'fp-out2' }); stage.append(oBox); }
+  oBox.replaceChildren(node); oBox.scrollTop = 0;
+  if (fp.classList.contains('lyrics-on')) $('#fp-lyrics-btn').click();
+  fp.classList.remove('queue-on'); $('#fp-queue').classList.remove('on');
+  fp.classList.add('out-on');
+  const b = $('#fp-out'); if (b) b.classList.add('on');
+}
+export function hideOutPanel() {
+  fpEl().classList.remove('out-on');
+  const b = $('#fp-out'); if (b) b.classList.remove('on');
+}
+
+// шапка: «MKW» (или «MKW Волна», если играет волна) и номер трека в очереди
 function paintHead() {
+  const hb = $('#fp2-head b'); if (hb) { const wave = Boolean(queue.current && queue.current.wave); hb.textContent = wave ? 'MKW Волна' : 'MKW'; hb.classList.toggle('wave', wave); }
   const n = $('#fp2-head .p2-n'); if (!n) return;
   n.textContent = queue.length ? `Трек ${queue.index + 1} из ${queue.length}` : '';
   const q = $('#fp2-head .p2-q'); if (q) q.textContent = queue.length ? `Очередь · ${queue.length} ${plural(queue.length, 'трек', 'трека', 'треков')}` : 'Очередь';
@@ -154,6 +173,10 @@ export function applyPlayer2() {
   if (on) {
     if (b && extra && b.parentElement !== extra) extra.prepend(b);
     if (sleep && like && sleep.parentElement !== like.parentElement) like.parentElement.insertBefore(sleep, like);
+    // наушники («Подключить устройство») — в нижнем ряду, сразу за скоростью: шапка остаётся ровной, а кнопка под пальцем
+    const out = $('#fp-out'), sp = $('#fp-speed');
+    if (out && sp && extra && out.previousElementSibling !== sp) sp.after(out);
+    if (extra) extra.classList.toggle('has-out', Boolean(out));
   } else if (sleep && extra && sleep.parentElement !== extra) extra.append(sleep);
   mountStage(useStage());
   syncStage(true);
@@ -182,10 +205,12 @@ export function initPlayer2() {
     if (!e.target.closest('#fp-queue')) return;
     e.preventDefault(); e.stopImmediatePropagation(); toggleQueue();
   }, true);
+  document.addEventListener('click', (e) => { if (e.target.closest && e.target.closest('#fp-lyrics-btn') && fpEl().classList.contains('out-on') && e.isTrusted) hideOutPanel(); }, true);
   // текст включили — очередь закрываем; любое переключение — обложка плавно едет
   new MutationObserver(() => {
     const fp = fpEl();
     if (fp.classList.contains('lyrics-on') && fp.classList.contains('queue-on')) { fp.classList.remove('queue-on'); $('#fp-queue').classList.remove('on'); }
+    if (!fp.classList.contains('open') && fp.classList.contains('out-on')) hideOutPanel();
     if (useStage()) syncStage(false);
   }).observe(fpEl(), { attributes: true, attributeFilter: ['class'] });
   let rz = 0;
@@ -204,7 +229,7 @@ export function initPlayer2() {
   new MutationObserver(() => {
     const fp = fpEl(), on = fp.classList.contains('open') && !fp.classList.contains('dragging');
     clearTimeout(coverT);
-    if (on) coverT = setTimeout(() => document.documentElement.classList.add('fp-cover'), 380);
+    if (on) coverT = setTimeout(() => document.documentElement.classList.add('fp-cover'), 470);
     else document.documentElement.classList.remove('fp-cover');
   }).observe(fpEl(), { attributes: true, attributeFilter: ['class'] });
   // открытие плеера и возвращение на вкладку — перерисовать и запустить волну

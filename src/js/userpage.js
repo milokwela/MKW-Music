@@ -2,7 +2,9 @@
 import { $, h, trackRow, animateIn } from './ui.js';
 import * as player from './player.js';
 import { openTrackMenu } from './menu.js';
-import { getProfile } from './leaders.js';
+import { getProfile, watchCard } from './leaders.js';
+import { auth } from './firebase.js';
+import { safeUrl, artUrl } from './utils.js';
 import { topListeners, countProfiles } from './leaders.js';
 import { ACH, ACHIEVEMENTS, achDone, viewAch, bannerCss, formatListened } from './profile.js';
 import { artistPic } from './artistpic.js';
@@ -125,6 +127,26 @@ function openAchViewer(u) {
   });
 }
 
+// «Слушает: исполнитель — трек» с маленькой обложкой. Нажали — включается та же песня.
+const nowArt = new Map();
+function nowChip(u, isMe) {
+  if (!u.now || !isOnline(u.seen)) return null;
+  const [artist, ...rest] = String(u.now).split(' — ');
+  const title = rest.join(' — ');
+  const art = h('span', { class: 'hn-art' }, mi('note'));
+  const eq = h('span', { class: 'hn-eq', 'aria-hidden': 'true' }, h('i'), h('i'), h('i'));
+  const chip = h('button', { type: 'button', class: 'hero-now', 'data-now': u.now, title: isMe ? 'Вы слушаете это сейчас' : 'Нажмите, чтобы слушать то же' },
+    art, h('span', { class: 'hn-txt' }, h('small', { text: isMe ? 'Вы слушаете' : 'Слушает сейчас' }), h('b', { text: title || artist }), title ? h('em', { text: artist }) : null), isMe ? eq : h('span', { class: 'hn-play' }, mi('play-circle')));
+  const find = () => { if (!nowArt.has(u.now)) nowArt.set(u.now, searchTracks(u.now).catch(() => [])); return nowArt.get(u.now); };
+  find().then((f) => { const a = f && f[0] && safeUrl(f[0].artwork); if (a && chip.isConnected !== false) { art.style.backgroundImage = `url("${artUrl(a, 200)}")`; art.classList.add('ok'); } });
+  chip.addEventListener('click', async () => {
+    if (isMe) return;
+    const f = await find();
+    if (f && f.length) { player.playTracks(f.slice(0, 10), 0); toast(`Включаю: ${title || artist}`); } else toast('Не нашла этот трек');
+  });
+  return chip;
+}
+
 function render(u, isMe) {
   const t = formatListened(Number(u.sec) || 0);
   const stat = (ic, val, label) => h('div', { class: 'up-stat' }, mi(ic), h('b', { text: String(val) }), h('small', { text: label }));
@@ -139,7 +161,7 @@ function render(u, isMe) {
         u.seen ? h('div', { class: `hero-seen${isOnline(u.seen) ? ' on' : ''}`, text: seenText(u.seen) }) : null,
         u.status ? richText(h('div', { class: 'hero-status' }), u.status) : null,
         u.bio ? richText(h('div', { class: 'hero-bio' }), u.bio) : null,
-        u.now && isOnline(u.seen) ? h('div', { class: 'hero-now' }, mi('note'), h('span', { text: `Слушает: ${u.now}` })) : null,
+        nowChip(u, isMe),
         u.days ? h('div', { class: 'hero-since', text: `С MKW ${u.days} ${plural(u.days, 'день', 'дня', 'дней')}` }) : null,
         h('div', { class: 'pbadges' }, ...(u.badges || []).filter((id) => ACH[id]).map((id) => h('span', { class: `pbadge${ACH[id].cls ? ` ${ACH[id].cls}` : ''}`, title: ACH[id].hint, role: 'button', tabindex: '0', onclick: () => viewAch(ACH[id], true, null, 1) }, mi(ACH[id].i), h('b', { text: ACH[id].title })))))),
     !isMe && u.uid ? (() => {
@@ -159,11 +181,7 @@ function render(u, isMe) {
       });
       if (!friendsLoaded()) loadFriends().then(paint);
       paint();
-      const play = u.now && isOnline(u.seen) ? h('button', { class: 'btn tonal up-friend', type: 'button', onclick: async () => {
-        const f = await searchTracks(u.now).catch(() => []);
-        if (f.length) player.playTracks(f.slice(0, 10), 0); else toast('Не нашла этот трек');
-      } }, mi('play-circle'), ' Слушать то же') : null;
-      return h('div', { class: 'up-actions' }, btn, chatBtn, play);
+      return h('div', { class: 'up-actions' }, btn, chatBtn);
     })() : null,
     !isMe && u.uid && friendState(u.uid) === 'friend' ? chatActions(u.uid, u) : null,
     h('div', { class: 'up-stats' },
@@ -183,13 +201,17 @@ function render(u, isMe) {
 
 // компьютер: две колонки — слева карточка человека и кнопки, справа статистика, исполнители и треки
 function pcLayout(kids) {
-  if (!matchMedia('(min-width: 980px) and (pointer: fine)').matches) return kids;
+  if (!matchMedia('(min-width: 980px) and (pointer: fine)').matches) return kids.filter(Boolean);
   const left = [], right = [];
   for (const k of kids.filter(Boolean)) (k.classList && (k.classList.contains('up-hero') || k.classList.contains('up-actions') || k.classList.contains('up-chat')) ? left : right).push(k);
   return [h('div', { class: 'up-cols' }, h('div', { class: 'up-left' }, ...left), h('div', { class: 'up-right' }, ...right))];
 }
 
+let unwatch = null;
 export async function openUserPage(uid, basic, isMe = false) {
+  // свой профиль — всегда «мой», откуда бы его ни открыли (рейтинг, «сейчас слушают», чат): без «Добавить в друзья»
+  if (uid && auth.currentUser && auth.currentUser.uid === uid) isMe = true;
+  if (unwatch) { unwatch(); unwatch = null; }
   if (basic && !basic.uid) basic = { ...basic, uid };
   const page = $('#user-page'), body = $('#user-body');
   const fp = document.getElementById('full-player'); if (fp) { fp.classList.remove('open', 'dragging'); fp.style.transform = ''; }
@@ -202,8 +224,19 @@ export async function openUserPage(uid, basic, isMe = false) {
   const full = uid ? await getProfile(uid) : null;
   if (mine !== seq) return;
   if (full) body.replaceChildren(...pcLayout(render({ ...(basic || {}), ...full, uid, full: true }, isMe)));
+  // пока профиль открыт, «Слушает …» и «в сети» обновляются сами, как только человек переключил трек
+  if (uid && (full || basic)) unwatch = watchCard(uid, (c) => {
+    if (mine !== seq) return;
+    const hero = body.querySelector('.up-hero'); if (!hero) return;
+    const u2 = { ...(basic || {}), ...(full || {}), uid, now: c.now, seen: c.seen };
+    const old = hero.querySelector('.hero-now'), chip = nowChip(u2, isMe);
+    if (old && chip) { if (old.dataset.now !== chip.dataset.now) old.replaceWith(chip); }
+    else if (old) old.remove();
+    else if (chip) { const at = hero.querySelector('.hero-since') || hero.querySelector('.pbadges'); if (at) at.before(chip); }
+    const seen = hero.querySelector('.hero-seen'); if (seen && c.seen) { seen.textContent = seenText(c.seen); seen.classList.toggle('on', isOnline(c.seen)); }
+  });
   else if (!basic) body.replaceChildren(h('p', { class: 'profile-note center', text: isMe ? 'Профиль ещё не опубликован. Подождите несколько секунд и откройте снова.' : 'Профиль скрыт или недоступен.' }));
 }
 
-export function closeUserPage() { $('#user-page').classList.remove('open'); seq += 1; }
+export function closeUserPage() { $('#user-page').classList.remove('open'); seq += 1; if (unwatch) { unwatch(); unwatch = null; } }
 export function initUserPage() { $('#user-back').addEventListener('click', closeUserPage); }

@@ -1,5 +1,6 @@
 // Данные пользователя в Firestore: лайки, плейлисты, история.
 // users/{uid}/likes/{trackId}, users/{uid}/playlists/{id}, users/{uid}/history/{auto}
+import { countPlay } from './tplays.js';
 import { db } from './firebase.js';
 import {
   collection, doc, setDoc, deleteDoc, addDoc, updateDoc, onSnapshot, query, orderBy, limit, increment,
@@ -128,6 +129,7 @@ export async function logPlay(track) {
   try {
     await addDoc(collection(db, 'users', state.uid, 'history'), { ...t, playedAt: now });
     setDoc(doc(db, 'users', state.uid), { plays: increment(1) }, { merge: true }).catch(() => {});
+    countPlay(t);
   } catch (e) { console.warn('История не записана', e); }
 }
 

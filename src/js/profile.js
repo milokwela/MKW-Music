@@ -723,6 +723,7 @@ async function loadBoard(force) {
       h('div', { class: 'lb-time' }, h('b', { text: String(t.value) }), h('small', { text: t.unit })),
       h('span', { class: 'chev', text: '›' }));
   }));
+  paintQuick();
   if (myRank) refs.myRank.textContent = `Ваше место: ${myRank} из ${list.length}`;
   else refs.myRank.textContent = hiddenFromBoard() ? 'Вы скрыты из рейтинга' : 'Вас пока нет в топе. Послушайте ещё!';
   updateAch();
@@ -819,6 +820,32 @@ function watchFriendsTab() {
 }
 
 const TABS = ['main', 'friends', 'board', 'set', 'about'];
+const TAB_NAMES = { friends: 'Друзья', board: 'Топ слушателей', set: 'Настройки', about: 'О MKW' };
+const aboutNew = () => { try { return localStorage.getItem('mkw.aboutseen') !== '0.39.0'; } catch { return false; } };
+// меню профиля под тремя точками: все разделы в одном месте
+function openProfileMenu() {
+  const req = requestIds().length, fr = friendIds().length;
+  const item = (id, ic, title, desc, badge) => h('button', { type: 'button', class: `pm-item${refs.tab === id ? ' on' : ''}`, onclick: () => { closeSheet(); setTab(id); } },
+    h('span', { class: 'pm-ic' }, mi(ic)), h('span', { class: 'pm-txt' }, h('b', { text: title }), h('small', { text: desc })), badge ? h('em', { class: 'pm-badge', text: badge }) : h('span', { class: 'chev', text: '›' }));
+  openSheet('Меню', h('div', { class: 'pm-menu' },
+    item('main', 'person', 'Мой профиль', 'Статистика, задания и награды'),
+    item('friends', 'group', 'Друзья', fr ? `${fr} ${plural(fr, 'друг', 'друга', 'друзей')}${req ? ' · есть заявки' : ''}` : 'Найдите друзей по нику', req ? String(req) : ''),
+    item('board', 'trophy', 'Топ слушателей', myRank ? `Ваше место: ${myRank}` : 'Кто слушает больше всех'),
+    item('set', 'palette', 'Настройки', 'Тема, звук, уведомления, приложение'),
+    item('about', 'note', 'О MKW', 'Что нового и приложение для Android', aboutNew() ? 'новое' : '')));
+}
+// быстрые переходы под шапкой профиля
+function paintQuick() {
+  if (!refs.quick) return;
+  const req = requestIds().length, fr = friendIds().length;
+  const pill = (id, ic, text, badge) => h('button', { type: 'button', class: 'pq-pill', onclick: () => setTab(id) }, mi(ic), h('span', { text }), badge ? h('em', { text: badge }) : null);
+  refs.quick.replaceChildren(
+    pill('friends', 'group', fr ? `Друзья · ${fr}` : 'Друзья', req ? String(req) : ''),
+    pill('board', 'trophy', myRank ? `Топ · №${myRank}` : 'Топ'),
+    pill('set', 'palette', 'Настройки'),
+    pill('about', 'note', 'О MKW', aboutNew() ? '•' : ''));
+  if (refs.moreBtn) refs.moreBtn.classList.toggle('has-new', req > 0 || aboutNew());
+}
 // линза под активной вкладкой: на телефоне вкладки разной ширины и листаются пальцем
 function placeLens(scroll) {
   const bar = refs.tabs; if (!bar) return;
@@ -842,8 +869,8 @@ function swipeTabs(area) {
     if (!ok || window.innerWidth >= 1000) return;
     const t = e.changedTouches[0], dx = t.clientX - x0, dy = t.clientY - y0;
     if (Math.abs(dx) < 70 || Math.abs(dx) < Math.abs(dy) * 1.6 || Date.now() - t0 > 700) return;
-    const i = TABS.indexOf(refs.tab || 'main') + (dx < 0 ? 1 : -1);
-    if (i >= 0 && i < TABS.length) setTab(TABS[i]);
+    // на телефоне разделы — отдельные экраны: свайп вправо возвращает в профиль
+    if ((refs.tab || 'main') !== 'main' && dx > 0) setTab('main');
   }, { passive: true });
 }
 window.addEventListener('resize', () => placeLens(false));
@@ -855,6 +882,11 @@ function setTab(name) {
   $$('.ptab').forEach((b) => b.classList.toggle('active', b.dataset.tab === name));
   $$('.ppane').forEach((p) => { p.hidden = p.dataset.pane !== name; p.classList.toggle('from-right', dir > 0); p.classList.toggle('from-left', dir < 0); });
   refs.tabs.style.setProperty('--i', String(TABS.indexOf(name)));
+  // телефон: вместо ленты вкладок — меню под тремя точками; раздел открывается отдельным экраном с кнопкой «назад»
+  const root = $('#view-profile'); if (root) root.classList.toggle('psub', name !== 'main');
+  if (refs.subhead) { refs.subhead.hidden = name === 'main'; refs.subTitle.textContent = TAB_NAMES[name] || ''; }
+  if (name !== 'main' && window.innerWidth < 1000) { try { ($('#view-profile') || {}).scrollTop = 0; window.scrollTo(0, 0); } catch { /* ignore */ } }
+  paintQuick();
   placeLens(true);
   if (name === 'board') loadBoard();
   if (name === 'friends') { watchFriendsTab(); renderFriends(); }
@@ -910,7 +942,8 @@ export function buildProfile(nick) {
         h('button', { class: 'av-pen', type: 'button', 'aria-label': 'Сменить фото', title: 'Сменить фото', onclick: () => avatarMenu(nick) }, mi('edit'))),
       h('div', { class: 'phero-btns' },
         h('button', { class: 'btn tonal phero-edit', type: 'button', onclick: () => openUserPage(myUid(), null, true), title: 'Как видят другие' }, mi('person')),
-        h('button', { class: 'btn tonal phero-edit', type: 'button', onclick: editProfile }, mi('edit'), ' Изменить'))),
+        h('button', { class: 'btn tonal phero-edit', type: 'button', onclick: editProfile }, mi('edit'), ' Изменить'),
+        refs.moreBtn = h('button', { class: 'btn tonal phero-edit phero-more', type: 'button', 'aria-label': 'Меню профиля', title: 'Меню', onclick: openProfileMenu }, mi('more')))),
     h('div', { class: 'phero-fx' }, ...Array.from({ length: 10 }, () => h('i'))),
     h('div', { class: 'phero-info' }, refs.nick, refs.marks = h('div', { class: 'nick-marks' }), refs.avHint = h('button', { class: 'av-hint', type: 'button', hidden: '', onclick: () => avatarMenu(nick) }, mi('edit'), h('span', { text: 'Поставьте своё фото — нажмите на аватар' })), refs.status, refs.bio, refs.since, refs.heroBadges));
 
@@ -923,7 +956,12 @@ export function buildProfile(nick) {
   root.replaceChildren(
     h('div', { class: 'p-side' }, refs.hero, refs.tabs),
     refs.pmain = h('div', { class: 'p-main' },
+    refs.subhead = h('div', { class: 'p-subhead', hidden: '' },
+      h('button', { class: 'icon-btn', type: 'button', 'aria-label': 'Назад в профиль', onclick: () => setTab('main') }, icon('back')),
+      refs.subTitle = h('b', { text: '' }),
+      h('button', { class: 'icon-btn', type: 'button', 'aria-label': 'Меню профиля', onclick: openProfileMenu }, mi('more'))),
     h('div', { class: 'ppane', 'data-pane': 'main' },
+      refs.quick = h('div', { class: 'p-quick' }),
       refs.fanCard = h('div', { class: 'fan-card', hidden: '' },
         h('img', { class: 'fan-star', src: 'assets/mkw-star.png', alt: '' }),
         h('div', { class: 'fan-txt' }, h('b', { text: 'Нравится MKW?' }), h('small', { text: 'Нажмите — и получите значок фаната со своим номером. Его увидят все рядом с вашим ником' })),
@@ -1023,7 +1061,7 @@ export function buildProfile(nick) {
     let lastNow = '';
     // «Слушает»: друзья видят новый трек почти сразу (через 3 секунды после смены — чтобы не писать на каждое переключение)
     let nowT = 0;
-    player.onPlayer((ev) => { if (ev !== 'state' && ev !== 'track') return; const n = nowPlaying(); if (n !== lastNow) { lastNow = n; clearTimeout(nowT); nowT = setTimeout(() => ping(nowPlaying(), true), 3000); } });
+    player.onPlayer((ev) => { if (ev !== 'state' && ev !== 'track') return; const n = nowPlaying(); if (n !== lastNow) { lastNow = n; clearTimeout(nowT); nowT = setTimeout(() => ping(nowPlaying(), true), 700); } });
   }
   if (!restored) {
     restored = true;

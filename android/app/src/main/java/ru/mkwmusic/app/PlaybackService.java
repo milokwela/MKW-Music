@@ -155,8 +155,11 @@ public class PlaybackService extends Service {
         refresh();
     }
 
+    static boolean alive() { return instance != null; }
+
     private void refresh() {
         updateSession();
+        PlayerWidget.push(this, title, artist, cover, playing, true);
         Notification n = buildNotification();
         if (!foreground) startFg(n);
         else {
@@ -320,6 +323,7 @@ public class PlaybackService extends Service {
             session = null;
         }
         if (instance == this) instance = null;
+        PlayerWidget.push(this, title, artist, cover, false, false);
         MainActivity.holdVisible(false);
         super.onDestroy();
     }
