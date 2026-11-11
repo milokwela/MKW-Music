@@ -76,3 +76,22 @@ export async function pushTo(uid, kind, title, body, tag, url) {
     });
   } catch { /* без уведомления — друг увидит внутри приложения */ }
 }
+
+// ---- Android-приложение: уведомления через Firebase Cloud Messaging (доходят, даже когда MKW закрыт) ----
+// Приложение передаёт токен устройства, мы кладём его в тот же список push/{uid} (запись { fcm, at }).
+let fcmTok = window.__mkwFcmTok || '';
+async function saveFcm() {
+  if (!fcmTok || !me()) return;
+  const mark = `${me()}|${fcmTok}`;
+  try { if (localStorage.getItem('mkw.fcm.saved') === mark && Date.now() - Number(localStorage.getItem('mkw.fcm.at') || 0) < 3 * 864e5) return; } catch { /* ignore */ }
+  try {
+    const ref = doc(db, 'push', me());
+    let list = [];
+    try { const s = await getDoc(ref); list = (s.exists() && Array.isArray(s.data().subs)) ? s.data().subs : []; } catch { /* ignore */ }
+    list = [{ fcm: fcmTok, at: Date.now() }, ...list.filter((x) => x && x.fcm !== fcmTok)].slice(0, 6);
+    await setDoc(ref, { subs: list, updatedAt: Date.now() });
+    try { localStorage.setItem('mkw.fcm.saved', mark); localStorage.setItem('mkw.fcm.at', String(Date.now())); } catch { /* ignore */ }
+  } catch (e) { console.warn('fcm', e); }
+}
+window.__mkwFcm = (t) => { fcmTok = String(t || ''); saveFcm(); };
+try { auth.onAuthStateChanged(() => saveFcm()); } catch { /* ignore */ }

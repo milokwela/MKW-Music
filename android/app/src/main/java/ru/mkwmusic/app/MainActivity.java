@@ -345,6 +345,9 @@ public class MainActivity extends Activity {
                 pageReady = isOurs(url == null ? null : Uri.parse(url));
                 if (pageReady && !offlineShown && offline().online()) shell().saveIndex(SITE_ROOT);
                 if (pageReady) v.postDelayed(MainActivity.this::prefetchSite, 20000);
+                // токен уведомлений устройства — страница сохранит его в аккаунте, и звонки дойдут даже до закрытого MKW
+                if (pageReady) PushService.fetch(MainActivity.this, (t) -> runOnUiThread(() -> runJs("window.__mkwFcmTok=" + JSONObject.quote(t)
+                        + ";window.__mkwFcm&&window.__mkwFcm(window.__mkwFcmTok)")));
                 if (pageReady && splash != null) {
                     v.evaluateJavascript("(function(){var e=document.getElementById('splash');if(e)e.remove();})()", null);
                     pollReady(0);
@@ -958,6 +961,9 @@ public class MainActivity extends Activity {
 
     private AlertDialog forcedDialog;
 
+    /** Приложение сейчас на экране — уведомления из FCM не дублируем. */
+    static volatile boolean visible;
+
     /** Обязательное обновление: окно нельзя закрыть, приложение ждёт установки новой версии. */
     private Updater updaterObj;
     private String updVersion = "";
@@ -985,12 +991,14 @@ public class MainActivity extends Activity {
     @Override
     protected void onStart() {
         super.onStart();
+        visible = true;
         runJs("window.__mkwFg=true;window.dispatchEvent(new Event('mkw-fg'))");
     }
 
     @Override
     protected void onStop() {
         super.onStop();
+        visible = false;
         prefetchSite();
         runJs("window.__mkwFg=false;window.dispatchEvent(new Event('mkw-fg'))");
         // после звонка приложение не должно оставаться поверх экрана блокировки
