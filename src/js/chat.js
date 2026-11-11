@@ -1106,7 +1106,7 @@ async function openConv(cv) {
     const nodes = [];
     docs.forEach((d) => {
       const m = d.data();
-      const dd = dayOf(m.at); if (dd !== day) { day = dd; prevFrom = ''; nodes.push(h('div', { class: 'ch-day', text: dd })); }
+      const dd = dayOf(m.at); if (dd !== day) { day = dd; prevFrom = ''; let de = drawn.get(`day:${dd}`); if (!de) { de = { el: h('div', { class: 'ch-day', text: dd }) }; drawn.set(`day:${dd}`, de); } nodes.push(de.el); }
       const sig = sigOf(m);
       let x = drawn.get(d.id);
       if (!x || x.sig !== sig) { x = { el: build(d.id, m), sig }; drawn.set(d.id, x); }
@@ -1116,7 +1116,9 @@ async function openConv(cv) {
       nodes.push(x.el);
     });
     first = false;
-    list.replaceChildren(...nodes);
+    // переставляем только то, что изменилось: без этого каждое новое сообщение заново раскладывало весь чат
+    nodes.forEach((n, k) => { if (list.children[k] !== n) list.insertBefore(n, list.children[k] || null); });
+    while (list.children.length > nodes.length) list.lastElementChild.remove();
     paintTicks();
     if (atBottom || list.dataset.first !== '1') { list.scrollTop = list.scrollHeight; list.dataset.first = '1'; stick = true; requestAnimationFrame(() => { if (stick) list.scrollTop = list.scrollHeight; }); }
   };
@@ -1193,13 +1195,15 @@ async function openConv(cv) {
     if (!g.mode) {
       if (Math.abs(mx) < 9 && Math.abs(my) < 9) return;
       clearTimeout(g.timer);
-      g.mode = mx < 0 && Math.abs(mx) > Math.abs(my) * 1.4 ? 'swipe' : 'scroll';
+      // своё сообщение тянем влево, сообщение собеседника — вправо (как в Telegram)
+      g.dir = g.el.classList.contains('me') ? -1 : 1;
+      g.mode = mx * g.dir > 0 && Math.abs(mx) > Math.abs(my) * 1.4 && g.x > 24 ? 'swipe' : 'scroll';
     }
     if (g.mode === 'swipe') {
       e.preventDefault();
-      g.dx = Math.max(-96, Math.min(0, mx));
+      g.dx = g.dir < 0 ? Math.max(-96, Math.min(0, mx)) : Math.min(96, Math.max(0, mx));
       g.el.style.transform = `translateX(${g.dx}px)`;
-      const ok = g.dx < -58;
+      const ok = Math.abs(g.dx) > 58;
       if (ok !== g.el.classList.contains('swipe-ok')) { g.el.classList.toggle('swipe-ok', ok); if (ok && navigator.vibrate) navigator.vibrate(8); }
     }
   }, { passive: false });
@@ -1211,7 +1215,7 @@ async function openConv(cv) {
       el.style.transition = 'transform .22s cubic-bezier(.2,.8,.2,1)'; el.style.transform = '';
       setTimeout(() => { el.style.transition = ''; }, 240);
       el.classList.remove('swipe-ok');
-      if (g.dx < -58) { const m = byId.get(el.dataset.id); if (m) setReply(el.dataset.id, m); }
+      if (Math.abs(g.dx) > 58) { const m = byId.get(el.dataset.id); if (m) setReply(el.dataset.id, m); }
     } else if (!g.mode) {
       const now = Date.now(), id = el.dataset.id;
       if (lastTap.id === id && now - lastTap.t < 300) { const m = byId.get(id); if (m) react(cid, id, '❤️', (m.rx || {})[me()]).catch(() => {}); lastTap = { id: '', t: 0 }; }

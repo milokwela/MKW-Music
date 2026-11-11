@@ -78,13 +78,25 @@ final class OfflineStore {
     private File audio(String id) { return new File(dir, safe(id) + ".a"); }
     private File cover(String id) { return new File(dir, safe(id) + ".jpg"); }
 
-    /** Wi-Fi (или любая безлимитная сеть) — да; мобильный интернет — нет. */
+    /**
+     * Wi-Fi (или любая безлимитная сеть) — да; мобильный интернет — нет.
+     * С включённым VPN активной сетью считается сам VPN, и у него часто нет пометки «безлимитная», хотя под ним Wi-Fi.
+     * Поэтому смотрим ещё и на все сети: если подключён Wi-Fi или Ethernet с интернетом — значит, Wi-Fi.
+     */
     boolean unmetered() {
         try {
             ConnectivityManager cm = app.getSystemService(ConnectivityManager.class);
             if (cm == null) return false;
-            NetworkCapabilities nc = cm.getNetworkCapabilities(cm.getActiveNetwork());
-            return nc != null && nc.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED);
+            NetworkCapabilities a = cm.getNetworkCapabilities(cm.getActiveNetwork());
+            if (a != null && (a.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED)
+                    || a.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) || a.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET))) return true;
+            if (!cm.isActiveNetworkMetered()) return true;
+            for (android.net.Network n : cm.getAllNetworks()) {
+                NetworkCapabilities nc = cm.getNetworkCapabilities(n);
+                if (nc != null && nc.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                        && (nc.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) || nc.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET))) return true;
+            }
+            return false;
         } catch (Exception e) {
             return false;
         }

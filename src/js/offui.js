@@ -54,23 +54,24 @@ export function openOffline() {
     const s = offSettings(), o = offState(), c = counts(), list = downloadedTracks();
     const k = c.w ? c.got / c.w : 0;
     const sw = (on, fn) => h('button', { type: 'button', class: `switch${on ? ' active' : ''}`, role: 'switch', 'aria-checked': String(on), onclick: fn }, h('i'));
-    const row = (ic, title, desc, ctrl) => h('div', { class: 'off-row' }, h('span', { class: 'off-ic' }, mi(ic)), h('span', { class: 'off-rt' }, h('b', { text: title }), desc ? h('small', { text: desc }) : null), ctrl);
-    const seg = h('div', { class: 'off-seg', style: `--i:${s.net === 'any' ? 1 : 0}` }, h('i'),
-      h('button', { type: 'button', class: s.net !== 'any' ? 'on' : '', onclick: () => setOffSettings({ net: 'wifi' }) }, mi('wifi'), 'Только Wi-Fi'),
-      h('button', { type: 'button', class: s.net === 'any' ? 'on' : '', onclick: () => setOffSettings({ net: 'any' }) }, mi('signal'), 'Wi-Fi и мобильный'));
-    body.replaceChildren(
+    // те же строки и карточки, что в Настройках — окно выглядит частью приложения
+    const row = (ic, title, desc, ctrl, onclick) => h('div', { class: `set-row${onclick ? ' tap' : ''}`, onclick },
+      h('span', { class: 'set-ic' }, mi(ic)), h('div', { class: 'set-txt' }, h('b', { text: title }), desc ? h('small', { text: desc }) : null), ctrl);
+    const group = (title, ...kids) => h('div', { class: 'set-group' }, title ? h('div', { class: 'set-gt', text: title }) : null, h('div', { class: 'set-card' }, ...kids.filter(Boolean)));
+    const pick = (val, ic, title, desc) => row(ic, title, desc, h('span', { class: `off-radio${(s.net === 'any') === (val === 'any') ? ' on' : ''}` }), () => setOffSettings({ net: val }));
+    const kids = [
       h('div', { class: 'off-hero' },
         h('div', { class: 'off-big', style: `--k:${k}` }, h('b', { text: String(c.got) }), h('small', { text: `из ${c.w}` })),
         h('div', { class: 'off-hi' },
-          h('b', { text: 'Музыка без интернета' }),
           h('small', { class: `off-st${prog.running ? ' run' : ''}`, text: statusText() }),
           h('div', { class: 'off-bar' }, h('i', { style: `width:${Math.round(k * 100)}%` })),
-          h('small', { text: `Занято ${mb(o.total || 0)}${o.free ? ` · свободно ${mb(o.free)}` : ''}` }))),
-      h('div', { class: 'off-card2' },
-        row('heart', 'Скачивать лайки автоматически', 'Лайкнули — трек скачается сам. Убрали лайк — удалится', sw(s.auto, () => setOffSettings({ auto: !s.auto }))),
+          h('small', { class: 'off-mem', text: `Занято ${mb(o.total || 0)}${o.free ? ` · свободно ${mb(o.free)}` : ''}` }))),
+      group('Что скачивать',
+        row('heart', 'Лайки — автоматически', 'Лайкнули — скачается. Убрали лайк — удалится', sw(s.auto, () => setOffSettings({ auto: !s.auto }))),
         row('playlist', 'И треки из плейлистов', 'Ваши плейлисты тоже будут играть без сети', sw(s.pl, () => setOffSettings({ pl: !s.pl })))),
-      h('div', { class: 'off-lbl', text: 'Скачивать через' }), seg,
-      h('small', { class: 'off-note', text: s.net === 'any' ? 'Песня — примерно 3–6 МБ. На мобильном интернете это расходует трафик' : 'На мобильном интернете ничего не качается — только когда телефон в Wi-Fi' }),
+      group('Через какой интернет',
+        pick('wifi', 'wifi', 'Только Wi-Fi', 'Мобильный трафик не тратится'),
+        pick('any', 'signal', 'Wi-Fi и мобильный', 'Песня — примерно 3–6 МБ трафика')),
       h('div', { class: 'off-btns' },
         prog.running
           ? h('button', { type: 'button', class: 'btn tonal', onclick: () => { stopSync(); toast('Остановлю после текущего трека'); } }, mi('pause'), ' Остановить')
@@ -79,12 +80,16 @@ export function openOffline() {
           if (Date.now() - ask > 3000) { ask = Date.now(); toast('Нажмите ещё раз, чтобы удалить всё скачанное'); return; }
           ask = 0; clearDownloads(); toast('Скачанное удалено');
         } }, icon('trash'), ' Удалить всё') : null),
-      list.length ? h('div', { class: 'section-title', text: `Скачано · ${list.length}` }) : null,
-      list.length ? h('div', { class: 'list off-list' }, list.map((t, i) => {
-        const r = trackRow(t, { onPlay: () => player.playTracks(list, i), onMore: () => { removeDownload(t.id); toast('Удалено с телефона'); }, current: player.queue.current?.id === t.id, sub: `${t.artist} · ${mb(t.size)}` });
+    ];
+    if (list.length) {
+      kids.push(h('div', { class: 'section-title', text: `Скачано · ${list.length}` }));
+      kids.push(h('div', { class: 'list off-list' }, ...list.map((t, i) => {
+        const r = trackRow(t, { onPlay: () => player.playTracks(list, i), onMore: () => { removeDownload(t.id); toast('Удалено с телефона'); }, current: player.queue.current?.id === t.id });
         const more = r.querySelector('.more, [aria-label*="еню"]'); if (more) { more.replaceChildren(icon('trash')); more.setAttribute('aria-label', 'Удалить с телефона'); }
         return r;
-      })) : h('p', { class: 'off-empty', text: 'Пока ничего не скачано. Включите автоскачивание или нажмите «Скачать сейчас»' }));
+      })));
+    } else kids.push(h('p', { class: 'off-empty', text: 'Пока ничего не скачано. Включите «Лайки — автоматически» или нажмите «Скачать сейчас»' }));
+    body.replaceChildren(...kids.filter(Boolean));
   };
   paint();
   openSheet('Офлайн-музыка', body);

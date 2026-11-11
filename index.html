@@ -55,7 +55,7 @@ if(mem<=2||cpu<=4&&/Android/.test(u)){c.push('weak');try{if(localStorage.getItem
 if(!CSS.supports('backdrop-filter','blur(1px)')&&!CSS.supports('-webkit-backdrop-filter','blur(1px)'))c.push('no-blur');
 d.className+=' '+c.join(' ');})();
 </script>
-<link rel="stylesheet" href="app.css?v=0.42.0">
+<link rel="stylesheet" href="app.css?v=0.42.1">
 </head>
 <body>
 <script>
@@ -168,7 +168,7 @@ document.addEventListener('click',function(){var e=s();if(e&&e.parentNode)e.pare
   <main>
     <section class="view" id="view-search">
       <div class="hello">
-        <div class="hello-sky" aria-hidden="true"><svg class="moon" viewBox="0 0 64 64"><path d="M44 8a26 26 0 1 0 12 40A22 22 0 0 1 44 8z" fill="currentColor"/></svg><i></i><i></i><i></i><i></i><i></i></div>
+        <div class="hello-sky" aria-hidden="true"><img class="moon mark" src="mkw-mark.png" alt="" width="64" height="64" decoding="async"><i></i><i></i><i></i><i></i><i></i></div>
         <p class="hello-sub" id="search-hello"></p><h1 class="view-title">Что послушаем?</h1></div>
       <form class="search-form" id="search-form" role="search">
         <svg class="icon lead"><use href="#i-search"/></svg>
@@ -287,6 +287,6 @@ document.addEventListener('click',function(){var e=s();if(e&&e.parentNode)e.pare
 <audio id="preview-player" preload="none"></audio>
 <div id="yt-holder" style="position:fixed;width:1px;height:1px;left:-10px;top:-10px;overflow:hidden;opacity:0;pointer-events:none"><div id="yt-target"></div></div>
 
-<script type="module" src="app.js?v=0.42.0"></script>
+<script type="module" src="app.js?v=0.42.1"></script>
 </body>
 </html>

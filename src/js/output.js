@@ -48,7 +48,8 @@ export function openOutput() {
   const x = inStage ? h('button', { class: 'out-x', type: 'button', 'aria-label': 'Закрыть', onclick: () => hideOutPanel() }, icon('close')) : null;
   const hero = h('div', { class: 'out-hero' },
     h('div', { class: 'out-top' }, ico, h('div', { class: 'out-name' }, name, sub), side, x),
-    h('div', { class: 'out-volrow' }, volIc, range, pct));
+    h('div', { class: 'out-vl' }, h('span', { text: 'Громкость' }), pct),
+    h('div', { class: 'out-volrow' }, volIc, range));
   const swBtn = h('button', { class: 'out-btn', type: 'button', hidden: '' }, mi('swap'), h('span', { text: 'Сменить или отключить' }));
   swBtn.addEventListener('click', () => (n.outputSwitch ? n.outputSwitch() : n.bluetooth()));
 
@@ -75,7 +76,8 @@ export function openOutput() {
     const s = e.detail || {}; lastAudio = s;
     const bt = s.kind === 'bt';
     name.textContent = s.kind !== 'phone' && s.name ? s.name : (s.kind === 'wired' ? 'Наушники' : 'Этот телефон');
-    sub.textContent = KIND[s.kind] || KIND.phone;
+    // заряд наушников или колонки — прямо под названием (если устройство его сообщает)
+    sub.textContent = `${KIND[s.kind] || KIND.phone}${bt && typeof s.bat === 'number' && s.bat >= 0 ? ` · заряд ${s.bat}%` : bt ? ' · заряд не сообщает' : ''}`;
     ico.classList.toggle('live', bt || s.kind === 'wired');
     paintSide();
     swBtn.hidden = s.kind === 'phone';
