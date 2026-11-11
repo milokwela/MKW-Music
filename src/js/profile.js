@@ -3,7 +3,6 @@ import { seenOnline, realSeen } from './clock.js';
 import { nickEmo, richText, plainRich, emojiPicker, catSrc } from './stickers.js';
 import { betaCard } from './poll.js';
 import { apkCard, checkAppUpdate, appVersion } from './apk.js';
-import { openOffline } from './offui.js';
 import { $, $$, h, icon, openSheet, closeSheet, toast, sheetItem, trackRow } from './ui.js';
 import * as store from './store.js';
 import * as player from './player.js';
@@ -1057,7 +1056,6 @@ export function buildProfile(nick) {
         row('Слушать в фоне с выключенным экраном', 'Бета: работает не у всех и не со всеми треками. Полный трек переключается на звук, когда вы гасите экран. Из России — с VPN', refs.bgplay, null, 'moon'),
         row('Проверить фон', 'Покажет, что работает на вашем телефоне и в вашей сети', h('span', { class: 'chev', text: '›' }), runBgCheck, 'shield'))),
       inApp ? group('Приложение',
-        window.MKWNative && window.MKWNative.offState ? row('Офлайн-музыка', 'Лайки и плейлисты играют без интернета. Wi-Fi или мобильный — на выбор', chev(), openOffline, 'download') : null,
         window.MKWNative && window.MKWNative.pinWidget ? row('Виджеты на рабочий стол', 'Мини-плеер, плеер с перемоткой, MKW Волна и обложка — выберите и добавьте', chev(), openWidgets, 'library') : null,
         window.MKWNative && window.MKWNative.fullScreenCalls ? (() => {
           const r = row('Звонки на весь экран', window.__mkwFsi === false ? 'Выключено: звонок придёт простым уведомлением. Нажмите, чтобы включить' : 'Входящий звонок открывается на весь экран, даже на заблокированном телефоне', chev(), () => window.MKWNative.fullScreenCalls(true), 'bell');

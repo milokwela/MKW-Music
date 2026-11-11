@@ -110,7 +110,24 @@ export function openPhotoEditor(files, { title = 'Фото', caption = '', onSen
     const w = it.base.width * k, hh = it.base.height * k;
     canvas.width = Math.round(r.width * dpr); canvas.height = Math.round(r.height * dpr);
     canvas.style.width = `${r.width}px`; canvas.style.height = `${r.height}px`;
-    view = { k, ox: (r.width - w) / 2, oy: (r.height - hh) / 2, w, h: hh, dpr };
+    base0 = { ox: (r.width - w) / 2, oy: (r.height - hh) / 2, w, h: hh };
+    zoom = 1;
+    view = { k, ox: base0.ox, oy: base0.oy, w, h: hh, dpr };
+    paint();
+  }
+  // приближение двумя пальцами: z — во сколько раз, (ox, oy) — где левый верхний угол фото
+  let base0 = { ox: 0, oy: 0, w: 1, h: 1 }, zoom = 1;
+  function setZoom(z, ox, oy) {
+    const r = stage.getBoundingClientRect();
+    zoom = Math.max(1, Math.min(6, z));
+    const w = base0.w * zoom, hh = base0.h * zoom;
+    if (zoom <= 1.001) { ox = base0.ox; oy = base0.oy; }
+    else {
+      // фото не уезжает за край экрана дальше, чем нужно
+      ox = w <= r.width ? (r.width - w) / 2 : Math.min(0, Math.max(r.width - w, ox));
+      oy = hh <= r.height ? (r.height - hh) / 2 : Math.min(0, Math.max(r.height - hh, oy));
+    }
+    view = { ...view, k: view.k, ox, oy, w, h: hh };
     paint();
   }
   function paint() {
@@ -158,15 +175,29 @@ export function openPhotoEditor(files, { title = 'Фото', caption = '', onSen
 
   // ---- пальцем / мышью ----
   const toImg = (e) => { const r = canvas.getBoundingClientRect(); return [(e.clientX - r.left - view.ox) / view.w, (e.clientY - r.top - view.oy) / view.h]; };
-  let drag = null;
+  let drag = null, pinch = null;
+  const fingers = new Map();
+  const local = (e) => { const r = canvas.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; };
+  const startPinch = () => {
+    const [a, b] = [...fingers.values()];
+    // второй палец: начатый штрих или сдвиг рамки отменяем — это жест приближения
+    const it = items[cur];
+    if (drag && it) { const p = it.hist && it.hist.pop(); if (p) { it.strokes = p.strokes; it.crop = p.crop; } paintUndo(); }
+    drag = null;
+    pinch = { d: Math.hypot(a[0] - b[0], a[1] - b[1]) || 1, m: [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2], z: zoom, ox: view.ox, oy: view.oy };
+    paint();
+  };
   canvas.addEventListener('pointerdown', (e) => {
     const it = items[cur]; if (!it) return;
     e.preventDefault();
     try { canvas.setPointerCapture(e.pointerId); } catch { /* ignore */ }
+    fingers.set(e.pointerId, local(e));
+    if (fingers.size >= 2) { startPinch(); return; }
+    if (pinch) return;
     const [x, y] = toImg(e);
     snap(it);
     if (mode === 'draw') {
-      const s = { c: color, s: size, pts: [[x, y]] }; it.strokes.push(s); drag = { kind: 'draw', s }; paint(); return;
+      const s = { c: color, s: size / zoom, pts: [[x, y]] }; it.strokes.push(s); drag = { kind: 'draw', s }; paint(); return;
     }
     const c = it.crop, tol = 26 / Math.min(view.w, view.h);
     const corners = { tl: [c.x, c.y], tr: [c.x + c.w, c.y], bl: [c.x, c.y + c.h], br: [c.x + c.w, c.y + c.h] };
@@ -181,6 +212,16 @@ export function openPhotoEditor(files, { title = 'Фото', caption = '', onSen
     drag = { kind: hit, x, y, c0: { ...c } };
   });
   canvas.addEventListener('pointermove', (e) => {
+    if (fingers.has(e.pointerId)) fingers.set(e.pointerId, local(e));
+    if (pinch && fingers.size >= 2) {
+      const [a, b] = [...fingers.values()];
+      const d = Math.hypot(a[0] - b[0], a[1] - b[1]) || 1, m = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+      const z = Math.max(1, Math.min(6, pinch.z * (d / pinch.d)));
+      // точка фото под пальцами остаётся под пальцами
+      const px = (pinch.m[0] - pinch.ox) / (base0.w * pinch.z), py = (pinch.m[1] - pinch.oy) / (base0.h * pinch.z);
+      setZoom(z, m[0] - px * base0.w * z, m[1] - py * base0.h * z);
+      return;
+    }
     if (!drag) return;
     const it = items[cur]; const [x, y] = toImg(e);
     if (drag.kind === 'draw') { drag.s.pts.push([x, y]); paint(); return; }
@@ -196,7 +237,9 @@ export function openPhotoEditor(files, { title = 'Фото', caption = '', onSen
     it.crop = { x: L, y: T, w: R - L, h: B - T };
     paint();
   });
-  const up = () => {
+  const up = (e) => {
+    fingers.delete(e.pointerId);
+    if (pinch) { if (!fingers.size) pinch = null; drag = null; return; }
     // просто тапнули по рамке и ничего не сдвинули — отменять нечего
     const it = items[cur];
     if (drag && drag.kind !== 'draw' && it && it.hist && it.hist.length) { const p = it.hist[it.hist.length - 1], c = it.crop; if (p.base === it.base && p.crop.x === c.x && p.crop.y === c.y && p.crop.w === c.w && p.crop.h === c.h && p.strokes.length === it.strokes.length) { it.hist.pop(); paintUndo(); } }
