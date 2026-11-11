@@ -166,17 +166,17 @@ public class MainActivity extends Activity {
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         splash.loadDataWithBaseURL("about:blank", html, "text/html", "utf-8", null);
         splashStart = android.os.SystemClock.uptimeMillis();
-        splashHandler.postDelayed(this::maybeHideSplash, 3200);
-        splashHandler.postDelayed(this::hideSplash, 9000); // страховка, если сайт долго грузится
+        splashHandler.postDelayed(this::maybeHideSplash, 1600);
+        splashHandler.postDelayed(this::hideSplash, 6000); // страховка, если сайт долго грузится
     }
 
     private long splashStart;
     private boolean splashPageDone;
 
-    /** Убираем заставку не раньше 3,2 с и только когда сайт уже готов — чтобы под ней не мелькало ничего старого. */
+    /** Убираем заставку не раньше 1,6 с и только когда сайт уже готов — чтобы под ней не мелькало ничего старого. */
     private void maybeHideSplash() {
         if (splash == null) return;
-        if (splashPageDone && android.os.SystemClock.uptimeMillis() - splashStart >= 3200) hideSplash();
+        if (splashPageDone && android.os.SystemClock.uptimeMillis() - splashStart >= 1600) hideSplash();
     }
 
     private void hideSplash() {
@@ -185,7 +185,7 @@ public class MainActivity extends Activity {
         splash = null;
         splashHandler.removeCallbacksAndMessages(null);
         if (web != null) web.evaluateJavascript("(function(){var e=document.getElementById('splash');if(e)e.remove();})()", null);
-        v.animate().alpha(0f).setDuration(380).withEndAction(() -> {
+        v.animate().alpha(0f).setDuration(300).withEndAction(() -> {
             root.removeView(v);
             v.destroy();
         }).start();

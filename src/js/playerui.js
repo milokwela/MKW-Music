@@ -19,8 +19,14 @@ let scrim = null;
 function dim(k, live) {
   if (!scrim) { scrim = h('div', { id: 'fp-scrim', 'aria-hidden': 'true' }); document.body.appendChild(scrim); }
   scrim.classList.toggle('live', Boolean(live));
-  scrim.style.opacity = String(Math.max(0, Math.min(1, k)));
+  const o = Math.max(0, Math.min(1, k));
+  clearTimeout(scrimT);
+  // размытие под плеером дорогое: когда затемнение погасло, слой убираем совсем, иначе телефон пересчитывает его при каждой прокрутке
+  if (o > 0) scrim.style.display = '';
+  else scrimT = setTimeout(() => { if (scrim.style.opacity === '0') scrim.style.display = 'none'; }, live ? 0 : 460);
+  scrim.style.opacity = String(o);
 }
+let scrimT = 0;
 function openFull() { const f = $('#full-player'); f.style.transform = ''; f.classList.remove('dragging'); f.classList.add('open'); dim(1); }
 function closeFull() { const f = $('#full-player'); f.style.transform = ''; f.classList.remove('dragging'); f.classList.remove('open'); dim(0); }
 
