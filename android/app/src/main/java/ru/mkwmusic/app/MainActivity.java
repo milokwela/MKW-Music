@@ -71,7 +71,7 @@ public class MainActivity extends Activity {
     private static final int REQ_FILE = 1001;
     private static final int REQ_PERM = 1002;
     private static final int REQ_NOTIF = 1003;
-    private static final long UPDATE_EVERY_MS = 6L * 60 * 60 * 1000;
+    private static final long UPDATE_EVERY_MS = 15L * 60 * 1000; // раз в 15 минут: обязательное обновление доходит до всех быстро
     private static final Pattern LOCAL_IMG = Pattern.compile("/mkw-[a-z0-9-]+\\.webp");
 
     /** Нужна службе музыки, чтобы передать кнопки шторки обратно на страницу. */
