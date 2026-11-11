@@ -49,6 +49,7 @@ public class PlaybackService extends Service {
     private Bitmap cover;
     private long durationMs, positionMs, positionAt;
     private float rate = 1f;
+    private boolean wave;
     private boolean noisyOn;
     /** Наушники выдернули или отключился Bluetooth — ставим на паузу, чтобы музыка не заиграла из динамика. */
     private final android.content.BroadcastReceiver noisy = new android.content.BroadcastReceiver() {
@@ -66,18 +67,20 @@ public class PlaybackService extends Service {
         s.positionAt = android.os.SystemClock.elapsedRealtime();
         s.rate = r > 0 && r < 8 ? (float) r : 1f;
         if (metaChanged) s.updateSession(); else s.updateState();
+        WidgetKit.position(s, s.durationMs, s.positionMs, s.positionAt, s.rate);
     }
 
     /** Вызывается из приложения, когда сайт сообщил о смене трека или паузе. */
-    static void push(Context c, String title, String artist, String art, boolean playing) {
+    static void push(Context c, String title, String artist, String art, boolean playing, boolean wave) {
         PlaybackService s = instance;
         if (s != null) {
+            s.wave = wave;
             s.apply(title, artist, art, playing);
             return;
         }
         if (!playing) return;
         Intent i = new Intent(c, PlaybackService.class)
-                .putExtra("title", title).putExtra("artist", artist).putExtra("art", art).putExtra("playing", true);
+                .putExtra("title", title).putExtra("artist", artist).putExtra("art", art).putExtra("playing", true).putExtra("wave", wave);
         try {
             if (Build.VERSION.SDK_INT >= 26) c.startForegroundService(i); else c.startService(i);
         } catch (Exception ignored) {
@@ -103,13 +106,7 @@ public class PlaybackService extends Service {
             @Override public void onStop() { dispatch("pause"); }
             @Override public void onSkipToNext() { dispatch("nexttrack"); }
             @Override public void onSkipToPrevious() { dispatch("previoustrack"); }
-            @Override public void onSeekTo(long pos) {
-                positionMs = Math.max(0, pos);
-                positionAt = android.os.SystemClock.elapsedRealtime();
-                updateState();
-                MainActivity m = MainActivity.current;
-                if (m != null) m.runJs("window.__mkwAct&&window.__mkwAct('seekto',{seekTime:" + (pos / 1000.0) + "})");
-            }
+            @Override public void onSeekTo(long pos) { seekTo(pos); }
         });
     }
 
@@ -119,7 +116,14 @@ public class PlaybackService extends Service {
             String act = intent.getStringExtra("act");
             if (act != null) {
                 dispatch(act);
+            } else if (intent.hasExtra("seekpct") || intent.hasExtra("seekrel")) {
+                // виджет: нажали на полосу (место в тысячных долях) или «±15 секунд»
+                long cur = livePos();
+                long to = intent.hasExtra("seekpct") ? durationMs * intent.getIntExtra("seekpct", 0) / 1000
+                        : cur + intent.getIntExtra("seekrel", 0);
+                if (durationMs > 0) seekTo(Math.max(0, Math.min(durationMs - 1000, to)));
             } else if (intent.hasExtra("title")) {
+                wave = intent.getBooleanExtra("wave", false);
                 apply(intent.getStringExtra("title"), intent.getStringExtra("artist"),
                         intent.getStringExtra("art"), intent.getBooleanExtra("playing", true));
             }
@@ -157,9 +161,41 @@ public class PlaybackService extends Service {
 
     static boolean alive() { return instance != null; }
 
+    private long livePos() {
+        long p = positionMs;
+        if (playing && positionAt > 0) p += (long) ((android.os.SystemClock.elapsedRealtime() - positionAt) * rate);
+        return Math.max(0, p);
+    }
+
+    private void seekTo(long pos) {
+        positionMs = Math.max(0, pos);
+        positionAt = android.os.SystemClock.elapsedRealtime();
+        updateState();
+        WidgetKit.position(this, durationMs, positionMs, positionAt, rate);
+        MainActivity m = MainActivity.current;
+        if (m != null) m.runJs("window.__mkwAct&&window.__mkwAct('seekto',{seekTime:" + (pos / 1000.0) + "})");
+    }
+
+    /** Пока играет и экран включён — раз в секунду двигаем полосу на виджетах с перемоткой. */
+    private final Runnable widgetTick = new Runnable() {
+        @Override public void run() {
+            handler.removeCallbacks(this);
+            if (instance != PlaybackService.this || !playing) return;
+            android.os.PowerManager pm = getSystemService(android.os.PowerManager.class);
+            if ((pm == null || pm.isInteractive()) && WidgetKit.anyWithProgress(PlaybackService.this)) {
+                WidgetKit.tick(PlaybackService.this);
+                handler.postDelayed(this, 1000);
+            } else {
+                handler.postDelayed(this, 5000);
+            }
+        }
+    };
+
     private void refresh() {
         updateSession();
-        PlayerWidget.push(this, title, artist, cover, playing, true);
+        WidgetKit.push(this, title, artist, cover, playing, true, wave, durationMs, positionMs, positionAt, rate);
+        handler.removeCallbacks(widgetTick);
+        if (playing) handler.postDelayed(widgetTick, 1000);
         Notification n = buildNotification();
         if (!foreground) startFg(n);
         else {
@@ -323,7 +359,8 @@ public class PlaybackService extends Service {
             session = null;
         }
         if (instance == this) instance = null;
-        PlayerWidget.push(this, title, artist, cover, false, false);
+        handler.removeCallbacks(widgetTick);
+        WidgetKit.push(this, title, artist, cover, false, false, wave, durationMs, livePos(), 0, rate);
         MainActivity.holdVisible(false);
         super.onDestroy();
     }

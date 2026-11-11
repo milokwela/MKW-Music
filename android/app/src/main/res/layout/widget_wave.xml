@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android" android:id="@+id/w_root" android:layout_width="match_parent" android:layout_height="match_parent"
+    android:background="@drawable/wg_bg" android:clipToOutline="true">
+    <ImageView android:id="@+id/w_bg" android:layout_width="match_parent" android:layout_height="match_parent"
+        android:scaleType="centerCrop" android:contentDescription="@null" />
+    <ImageView android:layout_width="match_parent" android:layout_height="match_parent" android:src="@drawable/wg_shade"
+        android:scaleType="fitXY" android:contentDescription="@null" />
+    <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical"
+        android:paddingStart="16dp" android:paddingEnd="16dp" android:paddingTop="14dp" android:paddingBottom="10dp">
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical">
+            <ImageView android:layout_width="22dp" android:layout_height="22dp" android:src="@drawable/widget_logo" android:contentDescription="@null" />
+            <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:layout_marginStart="8dp"
+                android:text="MKW Волна" android:textColor="#FFFFFFFF" android:textSize="17sp" android:textStyle="bold" />
+            <TextView android:id="@+id/w_wave" android:layout_width="wrap_content" android:layout_height="30dp" android:gravity="center"
+                android:background="@drawable/wg_pill_hi" android:paddingStart="12dp" android:paddingEnd="12dp"
+                android:text="Включить" android:textColor="#FF121016" android:textSize="12sp" android:textStyle="bold" />
+        </LinearLayout>
+        <LinearLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:orientation="horizontal" android:gravity="center_vertical">
+            <ImageView android:id="@+id/w_cover" android:layout_width="84dp" android:layout_height="84dp" android:background="@drawable/wg_cover_frame"
+            android:scaleType="centerCrop" android:src="@drawable/widget_logo" android:padding="0dp" android:contentDescription="@null" />
+            <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:layout_marginStart="14dp" android:orientation="vertical">
+                <TextView android:id="@+id/w_badge" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginBottom="2dp"
+                    android:text="ПОД ВАШ ВКУС" android:letterSpacing="0.12" android:textColor="#FFFFC2DC" android:textSize="10sp" android:textStyle="bold" />
+                <TextView android:id="@+id/w_title" android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:ellipsize="end" android:maxLines="1" android:text="MKW Music" android:textColor="#FFFFFFFF" android:textSize="18sp" android:textStyle="bold" />
+            <TextView android:id="@+id/w_artist" android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:ellipsize="end" android:maxLines="1" android:text="Нажмите, чтобы открыть" android:textColor="#B3FFFFFF" android:textSize="14sp" />
+            </LinearLayout>
+        </LinearLayout>
+        
+        <FrameLayout android:layout_width="match_parent" android:layout_height="22dp">
+            <ProgressBar android:id="@+id/w_prog" style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="match_parent" android:layout_height="5dp" android:layout_gravity="center_vertical"
+                android:max="1000" android:progress="0" android:progressDrawable="@drawable/wg_progress" />
+            <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="horizontal"><FrameLayout android:id="@+id/w_z0" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" /><FrameLayout android:id="@+id/w_z1" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" /><FrameLayout android:id="@+id/w_z2" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" /><FrameLayout android:id="@+id/w_z3" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" /><FrameLayout android:id="@+id/w_z4" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" /><FrameLayout android:id="@+id/w_z5" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" /><FrameLayout android:id="@+id/w_z6" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" /><FrameLayout android:id="@+id/w_z7" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" /><FrameLayout android:id="@+id/w_z8" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" /><FrameLayout android:id="@+id/w_z9" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" /></LinearLayout>
+        </FrameLayout>
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
+            <TextView android:id="@+id/w_tcur" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
+                android:text="0:00" android:textColor="#B3FFFFFF" android:textSize="11sp" android:fontFeatureSettings="tnum" />
+            <TextView android:id="@+id/w_tdur" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:text="0:00" android:textColor="#B3FFFFFF" android:textSize="11sp" android:fontFeatureSettings="tnum" />
+        </LinearLayout>
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center" android:layout_marginTop="2dp">
+            <ImageButton android:id="@+id/w_rew" android:layout_width="38dp" android:layout_height="38dp"
+            android:background="@drawable/wg_btn" android:src="@drawable/wg_ic_rew"
+            android:scaleType="fitCenter" android:padding="8dp" android:contentDescription="Назад на 15 секунд" /><FrameLayout android:layout_width="12dp" android:layout_height="1dp" /><ImageButton android:id="@+id/w_prev" android:layout_width="42dp" android:layout_height="42dp"
+            android:background="@drawable/wg_btn" android:src="@drawable/wg_ic_prev"
+            android:scaleType="fitCenter" android:padding="9dp" android:contentDescription="Назад" /><FrameLayout android:layout_width="12dp" android:layout_height="1dp" /><ImageButton android:id="@+id/w_play" android:layout_width="54dp" android:layout_height="54dp"
+            android:background="@drawable/wg_btn_main" android:src="@drawable/wg_ic_play"
+            android:scaleType="fitCenter" android:padding="13dp" android:contentDescription="Играть или пауза" /><FrameLayout android:layout_width="12dp" android:layout_height="1dp" /><ImageButton android:id="@+id/w_next" android:layout_width="42dp" android:layout_height="42dp"
+            android:background="@drawable/wg_btn" android:src="@drawable/wg_ic_next"
+            android:scaleType="fitCenter" android:padding="9dp" android:contentDescription="Дальше" /><FrameLayout android:layout_width="12dp" android:layout_height="1dp" /><ImageButton android:id="@+id/w_fwd" android:layout_width="38dp" android:layout_height="38dp"
+            android:background="@drawable/wg_btn" android:src="@drawable/wg_ic_fwd"
+            android:scaleType="fitCenter" android:padding="8dp" android:contentDescription="Вперёд на 15 секунд" />
+        </LinearLayout>
+    </LinearLayout>
+</FrameLayout>

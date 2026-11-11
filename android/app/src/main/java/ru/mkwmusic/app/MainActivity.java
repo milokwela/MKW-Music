@@ -81,6 +81,8 @@ public class MainActivity extends Activity {
     private WebView web;
     private boolean debuggable;
     private boolean pageReady;
+    private boolean pendingWave;
+    private static final String WAVE_JS = "window.dispatchEvent(new Event('mkw-widget-wave'))";
     private String pendingAdopt;
     private boolean setupShowing;
 
@@ -242,6 +244,7 @@ public class MainActivity extends Activity {
                     v.evaluateJavascript("(function(){var e=document.getElementById('splash');if(e)e.remove();})()", null);
                     splashHandler.postDelayed(() -> { splashPageDone = true; maybeHideSplash(); }, 600);
                 }
+                if (pageReady && pendingWave) { pendingWave = false; v.postDelayed(() -> runJs(WAVE_JS), 1500); }
                 if (pageReady && pendingAdopt != null) {
                     String json = pendingAdopt;
                     pendingAdopt = null;
@@ -534,7 +537,7 @@ public class MainActivity extends Activity {
             case "media":
                 String art = o.optString("art", "");
                 PlaybackService.push(this, o.optString("title", ""), o.optString("artist", ""),
-                        art.startsWith("https://") ? art : "", o.optBoolean("playing", false));
+                        art.startsWith("https://") ? art : "", o.optBoolean("playing", false), o.optBoolean("wave", false));
                 break;
             case "pos":
                 PlaybackService.position(o.optDouble("d", 0), o.optDouble("p", 0), o.optDouble("r", 1));
@@ -586,8 +589,24 @@ public class MainActivity extends Activity {
             case "handoff":
                 startHandoff();
                 break;
+            case "pinwidget": {
+                int k = Math.max(0, Math.min(3, o.optInt("kind", 0)));
+                if (!WidgetKit.pin(this, k)) {
+                    new AlertDialog.Builder(this).setTitle("Добавить виджет")
+                            .setMessage("Ваш рабочий стол не даёт добавить виджет из приложения. Сделайте так: долгое нажатие на пустом месте рабочего стола → «Виджеты» → MKW Music → выберите нужный и перетащите.")
+                            .setPositiveButton("Понятно", null).show();
+                }
+                break;
+            }
             case "checkupdate":
                 checkUpdateNow();
+                break;
+            case "fsi":
+                if (o.optBoolean("open", false)) {
+                    if (Notifier.fullScreenOk(this)) android.widget.Toast.makeText(this, "Уже включено: звонки откроются на весь экран", android.widget.Toast.LENGTH_SHORT).show();
+                    else Notifier.openFullScreenSettings(this);
+                }
+                runJs("window.__mkwFsi=" + Notifier.fullScreenOk(this) + ";window.dispatchEvent(new Event('mkw-fsi'))");
                 break;
             default:
                 break;
@@ -625,6 +644,10 @@ public class MainActivity extends Activity {
 
     private void handleIntent(Intent in) {
         if (in == null) return;
+        if (in.getBooleanExtra("widget_wave", false)) {
+            in.removeExtra("widget_wave");
+            if (pageReady) runJs(WAVE_JS); else pendingWave = true;
+        }
         Uri d = in.getData();
         if (d == null || !"mkwmusic".equals(d.getScheme()) || !"handoff".equals(d.getHost())) return;
         String s = in.getStringExtra("s");
@@ -823,6 +846,20 @@ public class MainActivity extends Activity {
         try { if (android.os.Build.VERSION.SDK_INT >= 27) setShowWhenLocked(false); } catch (Exception ignored) { /* не критично */ }
     }
 
+    /** Android 14+: если звонки на весь экран выключены — один раз объясняем и предлагаем включить. */
+    private void askFullScreenOnce() {
+        if (isFinishing() || Notifier.fullScreenOk(this) || !Notifier.enabled(this)) return;
+        android.content.SharedPreferences p = getSharedPreferences("mkw", MODE_PRIVATE);
+        if (p.getBoolean("fsiAsked", false)) return;
+        p.edit().putBoolean("fsiAsked", true).apply();
+        new AlertDialog.Builder(this)
+                .setTitle("Звонки на весь экран")
+                .setMessage("Чтобы входящий звонок от друга открывался на весь экран, как обычный звонок, даже на заблокированном телефоне — разрешите это MKW. Иначе звонок придёт простым уведомлением.")
+                .setPositiveButton("Включить", (d, w) -> Notifier.openFullScreenSettings(this))
+                .setNegativeButton("Не сейчас", null)
+                .show();
+    }
+
     /** Открыли по входящему звонку: показываем поверх экрана блокировки и включаем экран. */
     private void wakeForCall(Intent i) {
         if (i == null || !i.getBooleanExtra("call", false)) return;
@@ -837,6 +874,8 @@ public class MainActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
+        runJs("window.__mkwFsi=" + Notifier.fullScreenOk(this) + ";window.dispatchEvent(new Event('mkw-fsi'))");
+        if (root != null) root.postDelayed(this::askFullScreenOnce, 6000);
         wakeForCall(getIntent());
         Notifier.cancelCalls(this);
         showForced();

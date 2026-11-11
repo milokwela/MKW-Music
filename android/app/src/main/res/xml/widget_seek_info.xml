@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:description="@string/wd_seek" android:initialLayout="@layout/widget_seek" android:previewLayout="@layout/widget_seek"
+    android:minWidth="250dp" android:minHeight="130dp" android:minResizeWidth="200dp" android:minResizeHeight="120dp"
+    android:targetCellWidth="4" android:targetCellHeight="2"
+    android:resizeMode="horizontal|vertical" android:updatePeriodMillis="0" android:widgetCategory="home_screen" />
