@@ -81,6 +81,20 @@ public class MainActivity extends Activity {
     private WebView web;
     private boolean debuggable;
     private boolean pageReady;
+    private boolean offlineShown;
+    private static final String SITE_ROOT = "https://mkwmusic.ru/";
+    private OfflineStore offlineStore;
+    private ShellCache shellCache;
+
+    synchronized OfflineStore offline() {
+        if (offlineStore == null) offlineStore = new OfflineStore(this, this::runJs);
+        return offlineStore;
+    }
+
+    synchronized ShellCache shell() {
+        if (shellCache == null) shellCache = new ShellCache(this);
+        return shellCache;
+    }
     private boolean pendingWave;
     private static final String WAVE_JS = "window.dispatchEvent(new Event('mkw-widget-wave'))";
     private String pendingAdopt;
@@ -240,6 +254,7 @@ public class MainActivity extends Activity {
             @Override
             public void onPageFinished(WebView v, String url) {
                 pageReady = isOurs(url == null ? null : Uri.parse(url));
+                if (pageReady && !offlineShown && offline().online()) shell().saveIndex(SITE_ROOT);
                 if (pageReady && splash != null) {
                     v.evaluateJavascript("(function(){var e=document.getElementById('splash');if(e)e.remove();})()", null);
                     splashHandler.postDelayed(() -> { splashPageDone = true; maybeHideSplash(); }, 600);
@@ -262,7 +277,14 @@ public class MainActivity extends Activity {
                 if (!request.isForMainFrame()) return;
                 int code = error.getErrorCode();
                 if (code == ERROR_HOST_LOOKUP || code == ERROR_CONNECT || code == ERROR_TIMEOUT || code == ERROR_IO) {
-                    v.loadDataWithBaseURL(null, OFFLINE_HTML, "text/html", "UTF-8", null);
+                    // нет интернета: открываем сохранённую копию MKW — скачанная музыка играет и без сети
+                    String saved = shell().index();
+                    if (saved != null && !offlineShown) {
+                        offlineShown = true;
+                        v.loadDataWithBaseURL(SITE_ROOT, saved, "text/html", "UTF-8", SITE_ROOT);
+                    } else {
+                        v.loadDataWithBaseURL(null, OFFLINE_HTML, "text/html", "UTF-8", null);
+                    }
                 }
             }
 
@@ -333,13 +355,21 @@ public class MainActivity extends Activity {
     private WebResourceResponse localImage(WebResourceRequest request) {
         try {
             Uri u = request.getUrl();
-            if (!"GET".equals(request.getMethod()) || !isOurs(u)) return null;
+            if (!"GET".equals(request.getMethod())) return null;
+            // библиотека Firebase (адрес с версией не меняется) — из памяти приложения: быстрее и работает без интернета
+            if ("www.gstatic.com".equals(u.getHost()) && u.getPath() != null && u.getPath().startsWith("/firebasejs/")) {
+                return shell().immutable(u.toString(), "text/javascript");
+            }
+            if (!isOurs(u)) return null;
             String path = u.getPath();
             if (path == null) return null;
+            if (path.startsWith("/__offline/")) return offline().serve(path, request.getRequestHeaders());
             // код сайта той же версии, что вшита в приложение, берём из приложения — запуск без ожидания сети
             if ("/app.js".equals(path) || "/app.css".equals(path)) {
                 String v = u.getQueryParameter("v");
-                if (v == null || !v.equals(bundledVersion())) return null;
+                if (v == null) return null;
+                // другая версия, чем вшита в приложение, — сохраняем её у себя, чтобы следующий запуск (и без сети) был мгновенным
+                if (!v.equals(bundledVersion())) return shell().immutable(u.toString(), path.endsWith(".js") ? "text/javascript" : "text/css");
                 Map<String, String> h = new HashMap<>();
                 h.put("Cache-Control", "public, max-age=31536000, immutable");
                 return new WebResourceResponse(path.endsWith(".js") ? "text/javascript" : "text/css", "utf-8", 200, "OK", h,
@@ -482,7 +512,7 @@ public class MainActivity extends Activity {
                                           boolean isMainFrame, JavaScriptReplyProxy reply) {
                     if (!isMainFrame || !isOurs(sourceOrigin)) return;
                     String data = message.getData();
-                    if (data == null || data.length() > 16384) return;
+                    if (data == null || data.length() > 65536) return;
                     try {
                         handleMessage(new JSONObject(data));
                     } catch (Exception e) {
@@ -598,6 +628,18 @@ public class MainActivity extends Activity {
                 }
                 break;
             }
+            case "off":
+                offline().push();
+                break;
+            case "offdl":
+                offline().download(o, o.optBoolean("wifiOnly", true));
+                break;
+            case "offrm":
+                offline().remove(clip(o.optString("id", ""), 200));
+                break;
+            case "offclear":
+                offline().clear();
+                break;
             case "checkupdate":
                 checkUpdateNow();
                 break;
@@ -817,8 +859,16 @@ public class MainActivity extends Activity {
     private AlertDialog forcedDialog;
 
     /** Обязательное обновление: окно нельзя закрыть, приложение ждёт установки новой версии. */
+    private Updater updaterObj;
+    private String updVersion = "";
+
+    synchronized Updater updater() {
+        if (updaterObj == null) updaterObj = new Updater(this);
+        return updaterObj;
+    }
+
     private void showForced() {
-        if (isFinishing() || (forcedDialog != null && forcedDialog.isShowing())) return;
+        if (isFinishing() || (forcedDialog != null && forcedDialog.isShowing()) || (updaterObj != null && updaterObj.running())) return;
         SharedPreferences p = prefs();
         if (p.getInt("upd_need_build", 0) <= versionCode()) return;
         forcedDialog = new AlertDialog.Builder(this)
@@ -826,7 +876,7 @@ public class MainActivity extends Activity {
                 .setMessage("Вышла версия " + p.getString("upd_need_ver", "") + ". Старая больше не поддерживается: скачайте новую и "
                         + "откройте файл — она встанет поверх, вход и данные сохранятся.")
                 .setCancelable(false)
-                .setPositiveButton("Скачать обновление", (d, w) -> openExternal(Uri.parse(UpdateChecker.APK_URL)))
+                .setPositiveButton("Обновить", (d, w) -> updater().start(p.getString("upd_need_ver", ""), false, true))
                 .show();
     }
 
@@ -877,6 +927,8 @@ public class MainActivity extends Activity {
         runJs("window.__mkwFsi=" + Notifier.fullScreenOk(this) + ";window.dispatchEvent(new Event('mkw-fsi'))");
         if (root != null) root.postDelayed(this::askFullScreenOnce, 6000);
         wakeForCall(getIntent());
+        if (updaterObj != null) updaterObj.onResume(updVersion.isEmpty() ? prefs().getString("upd_need_ver", "") : updVersion,
+                prefs().getInt("upd_need_build", 0) > versionCode());
         Notifier.cancelCalls(this);
         showForced();
         if (root != null) root.postDelayed(this::checkUpdate, 3000);
@@ -897,11 +949,14 @@ public class MainActivity extends Activity {
                 return;
             }
             String key = version + "#" + build;
+            updVersion = version;
+            // на Wi-Fi обновление скачивается само и тихо — останется только нажать «Установить»
+            if (offline().unmetered()) { updater().start(version, true, false); return; }
             if (key.equals(p.getString("upd_skip", ""))) return;
             new AlertDialog.Builder(this)
                     .setTitle("Вышла новая версия " + version)
                     .setMessage("Скачайте её и откройте файл — она встанет поверх, вход и данные сохранятся.")
-                    .setPositiveButton("Скачать", (d, w) -> openExternal(Uri.parse(UpdateChecker.APK_URL)))
+                    .setPositiveButton("Обновить", (d, w) -> updater().start(version, false, false))
                     .setNegativeButton("Позже", (d, w) -> p.edit().putString("upd_skip", key).apply())
                     .show();
         }));
@@ -919,7 +974,7 @@ public class MainActivity extends Activity {
                     new AlertDialog.Builder(MainActivity.this)
                             .setTitle("Вышла новая версия " + version)
                             .setMessage("У вас " + current + ". Скачайте новую и откройте файл — она встанет поверх, вход и данные сохранятся.")
-                            .setPositiveButton("Скачать", (d, w) -> openExternal(Uri.parse(UpdateChecker.APK_URL)))
+                            .setPositiveButton("Обновить", (d, w) -> updater().start(version, false, forced))
                             .setNegativeButton("Позже", null)
                             .show();
                 });

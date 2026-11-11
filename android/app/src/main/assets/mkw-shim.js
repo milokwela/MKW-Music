@@ -118,6 +118,8 @@
   /* ---------- громкость телефона и устройство вывода ---------- */
   window.__mkwBt = function (o) { try { window.dispatchEvent(new CustomEvent('mkw-bt', { detail: o })); } catch (e) { /* ignore */ } };
   window.__mkwBtFail = function () { try { window.dispatchEvent(new CustomEvent('mkw-bt-fail')); } catch (e) { /* ignore */ } };
+  window.__mkwOff = function (o) { window.__mkwOffState = o; try { window.dispatchEvent(new CustomEvent('mkw-off', { detail: o })); } catch (e) { /* ignore */ } };
+  window.__mkwOffDone = function (id, ok, why) { try { window.dispatchEvent(new CustomEvent('mkw-off-done', { detail: { id: id, ok: ok, why: why } })); } catch (e) { /* ignore */ } };
   window.__mkwAudio = function (o) { try { window.dispatchEvent(new CustomEvent('mkw-audio', { detail: o })); } catch (e) { /* ignore */ } };
   window.MKWNative = {
     audio: function () { send({ t: 'audio' }); },
@@ -132,7 +134,12 @@
     outputSwitch: function () { send({ t: 'outswitch' }); },
     checkUpdate: function () { send({ t: 'checkupdate' }); },
     fullScreenCalls: function (open) { send({ t: 'fsi', open: !!open }); },
-    pinWidget: function (kind) { send({ t: 'pinwidget', kind: Number(kind) || 0 }); }
+    pinWidget: function (kind) { send({ t: 'pinwidget', kind: Number(kind) || 0 }); },
+    // офлайн-музыка: что скачано, скачать, удалить
+    offState: function () { send({ t: 'off' }); },
+    offDownload: function (o) { var x = {}; for (var k in o) x[k] = o[k]; x.t = 'offdl'; send(x); },
+    offRemove: function (id) { send({ t: 'offrm', id: String(id) }); },
+    offClear: function () { send({ t: 'offclear' }); }
   };
 
   /* ---------- «Продолжить с сайта» на экране входа ---------- */

@@ -34,6 +34,8 @@ import { chatOpen, closeChat } from './chat.js';
 import { initWave, waveDebug } from './wave.js';
 import { initTheme } from './theme.js';
 import { initWinter } from './winter.js';
+import { initOffline } from './offline.js';
+import { offlineStart } from './offui.js';
 import { initPlayer2 } from './player2.js';
 import * as player from './player.js';
 import { $, $$, toast, isSheetOpen } from './ui.js';
@@ -163,6 +165,7 @@ function onUser(user) {
     showView('search');
     player.warmUp();
     setTimeout(initHome, 1500);
+    offlineStart();
     setTimeout(startNotify, 2500);
     setTimeout(showIncoming, 600);
     setTimeout(showIconUpdate, 2600);
@@ -224,6 +227,7 @@ function boot() {
   initLibrary();
   initPlayerUI();
   initPlayer2();
+  initOffline();
   initLyrics();
   initPerf();
   initWave();

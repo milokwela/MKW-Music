@@ -1463,3 +1463,50 @@ html.fp-cover #fp-scrim { display: none; }
 .wp-sqt b { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .wp-sqt em { font-style: normal; font-size: 10px; opacity: .75; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .wp-play { position: absolute; right: 10px; bottom: 10px; width: 32px; height: 32px; border-radius: 50%; background: #fff; }
+
+/* ===== 0.42: офлайн-музыка ===== */
+.off-card { display: flex; align-items: center; gap: 14px; width: 100%; margin: 0 0 14px; padding: 12px 14px; border: 1px solid color-mix(in srgb, var(--primary) 22%, transparent); border-radius: 22px;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--primary) 16%, transparent), color-mix(in srgb, currentColor 4%, transparent)); color: inherit; font: inherit; text-align: left; }
+.off-card:active { transform: scale(.98); }
+.off-ring { --k: 0; flex: none; position: relative; width: 46px; height: 46px; border-radius: 50%; display: grid; place-items: center; color: var(--primary);
+  background: conic-gradient(var(--primary) calc(var(--k) * 360deg), color-mix(in srgb, currentColor 14%, transparent) 0); }
+.off-ring::before { content: ""; position: absolute; inset: 4px; border-radius: 50%; background: var(--surface, #1c1a1e); }
+.off-ring .mi { position: relative; width: 22px; height: 22px; }
+.off-card.busy .off-ring .mi { animation: offDl 1.2s ease-in-out infinite; }
+.off-card.full .off-ring .mi { color: #7fe0a8; }
+@keyframes offDl { 50% { transform: translateY(3px); opacity: .6; } }
+.off-txt { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.off-txt b { font-size: 16px; }
+.off-txt small { font-size: 13px; opacity: .7; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.off-card .chev { opacity: .45; font-size: 22px; }
+.off-sheet { display: grid; gap: 12px; padding-bottom: 8px; }
+.off-hero { display: flex; align-items: center; gap: 16px; padding: 16px; border-radius: 26px; background: linear-gradient(140deg, color-mix(in srgb, var(--primary) 26%, transparent), color-mix(in srgb, currentColor 5%, transparent)); }
+.off-big { --k: 0; flex: none; position: relative; width: 92px; height: 92px; border-radius: 50%; display: grid; place-content: center; text-align: center;
+  background: conic-gradient(var(--primary) calc(var(--k) * 360deg), color-mix(in srgb, currentColor 14%, transparent) 0); }
+.off-big::before { content: ""; position: absolute; inset: 7px; border-radius: 50%; background: var(--surface, #1c1a1e); }
+.off-big b, .off-big small { position: relative; }
+.off-big b { font-size: 28px; line-height: 1; font-variant-numeric: tabular-nums; }
+.off-big small { font-size: 12px; opacity: .65; }
+.off-hi { flex: 1; min-width: 0; display: grid; gap: 6px; }
+.off-hi b { font-size: 18px; }
+.off-hi small { font-size: 13px; opacity: .72; line-height: 1.35; }
+.off-st.run { opacity: 1 !important; color: var(--primary); }
+.off-bar { height: 6px; border-radius: 3px; background: color-mix(in srgb, currentColor 14%, transparent); overflow: hidden; }
+.off-bar i { display: block; height: 100%; border-radius: inherit; background: var(--primary); transition: width .5s cubic-bezier(.2, .8, .2, 1); }
+.off-card2 { display: grid; border-radius: 22px; background: color-mix(in srgb, currentColor 5%, transparent); overflow: hidden; }
+.off-row { display: flex; align-items: center; gap: 12px; padding: 12px 14px; }
+.off-row + .off-row { border-top: 1px solid color-mix(in srgb, currentColor 8%, transparent); }
+.off-ic { flex: none; width: 40px; height: 40px; border-radius: 13px; display: grid; place-items: center; background: color-mix(in srgb, var(--primary) 18%, transparent); color: var(--primary); }
+.off-ic .mi { width: 20px; height: 20px; }
+.off-rt { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.off-rt b { font-size: 15px; }
+.off-rt small { font-size: 12.5px; opacity: .65; line-height: 1.3; }
+.off-lbl { margin: 4px 4px -4px; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; opacity: .6; }
+.off-seg { --i: 0; position: relative; display: grid; grid-template-columns: 1fr 1fr; padding: 4px; border-radius: 999px; background: color-mix(in srgb, currentColor 7%, transparent); }
+.off-seg > i { position: absolute; top: 4px; bottom: 4px; left: 4px; width: calc(50% - 4px); border-radius: 999px; background: var(--primary); transform: translateX(calc(var(--i) * 100%)); transition: transform .35s cubic-bezier(.2, .8, .2, 1); }
+.off-seg button { position: relative; display: flex; align-items: center; justify-content: center; gap: 6px; height: 42px; border: 0; background: none; color: inherit; font: inherit; font-size: 13.5px; font-weight: 600; border-radius: 999px; transition: color .25s; }
+.off-seg button.on { color: var(--on-primary, #1a1016); }
+.off-seg .mi { width: 18px; height: 18px; }
+.off-note { margin: -4px 6px 0; font-size: 12.5px; opacity: .6; line-height: 1.35; }
+.off-btns { display: flex; flex-wrap: wrap; gap: 8px; }
+.off-empty { margin: 4px; font-size: 14px; opacity: .6; text-align: center; }

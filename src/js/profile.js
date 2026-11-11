@@ -3,6 +3,7 @@ import { seenOnline, realSeen } from './clock.js';
 import { nickEmo, richText, plainRich, emojiPicker, catSrc } from './stickers.js';
 import { betaCard } from './poll.js';
 import { apkCard, checkAppUpdate, appVersion } from './apk.js';
+import { openOffline } from './offui.js';
 import { $, $$, h, icon, openSheet, closeSheet, toast, sheetItem, trackRow } from './ui.js';
 import * as store from './store.js';
 import * as player from './player.js';
@@ -887,16 +888,56 @@ function inHScroll(el, stop) {
   }
   return false;
 }
+// Раздел профиля (Настройки, О MKW, Друзья, Топ) на телефоне: смахните влево или вправо — экран едет за пальцем и возвращает в профиль.
 function swipeTabs(area) {
-  let x0 = 0, y0 = 0, t0 = 0, ok = false;
-  area.addEventListener('touchstart', (e) => { const t = e.touches[0]; x0 = t.clientX; y0 = t.clientY; t0 = Date.now(); ok = e.touches.length === 1 && !inHScroll(e.target, area); }, { passive: true });
-  area.addEventListener('touchend', (e) => {
-    if (!ok || window.innerWidth >= 1000) return;
-    const t = e.changedTouches[0], dx = t.clientX - x0, dy = t.clientY - y0;
-    if (Math.abs(dx) < 70 || Math.abs(dx) < Math.abs(dy) * 1.6 || Date.now() - t0 > 700) return;
-    // на телефоне разделы — отдельные экраны: свайп вправо возвращает в профиль
-    if ((refs.tab || 'main') !== 'main' && dx > 0) setTab('main');
+  let x0 = 0, y0 = 0, t0 = 0, dx = 0, mode = '';
+  const W = () => area.offsetWidth || window.innerWidth;
+  const sub = () => (refs.tab || 'main') !== 'main' && window.innerWidth < 1000;
+  const set = (x, anim) => {
+    area.style.transition = anim ? 'transform .32s cubic-bezier(.2,.8,.2,1), opacity .32s ease' : 'none';
+    area.style.transform = x ? `translateX(${x}px) scale(${1 - Math.min(0.06, Math.abs(x) / W() * 0.08)})` : '';
+    area.style.opacity = x ? String(Math.max(0.35, 1 - Math.abs(x) / W() * 0.9)) : '';
+  };
+  area.addEventListener('touchstart', (e) => {
+    mode = '';
+    if (!sub() || e.touches.length !== 1 || inHScroll(e.target, area)) return;
+    const t = e.touches[0];
+    if (t.clientX < 22 || t.clientX > window.innerWidth - 22) return; // у самого края — системный жест «назад» Android
+    x0 = t.clientX; y0 = t.clientY; t0 = Date.now(); dx = 0; mode = 'wait';
   }, { passive: true });
+  area.addEventListener('touchmove', (e) => {
+    if (!mode) return;
+    const t = e.touches[0]; dx = t.clientX - x0; const dy = t.clientY - y0;
+    if (mode === 'wait') {
+      if (Math.abs(dx) < 10 && Math.abs(dy) < 10) return;
+      mode = Math.abs(dx) > Math.abs(dy) * 1.3 ? 'drag' : '';
+      if (!mode) return;
+    }
+    if (e.cancelable) e.preventDefault();
+    set(dx, false);
+  }, { passive: false });
+  const end = () => {
+    if (mode !== 'drag') { mode = ''; return; }
+    mode = '';
+    const v = Math.abs(dx) / Math.max(1, Date.now() - t0);
+    if (Math.abs(dx) > W() * 0.28 || (v > 0.55 && Math.abs(dx) > 50)) {
+      // уезжает до конца в сторону пальца, профиль появляется с другой стороны
+      const dir = dx > 0 ? 1 : -1;
+      set(dir * W(), true);
+      setTimeout(() => {
+        set(0, false);
+        setTab('main');
+        area.style.transform = `translateX(${-dir * W() * 0.25}px)`; area.style.opacity = '0';
+        requestAnimationFrame(() => requestAnimationFrame(() => set(0, true)));
+        setTimeout(() => { area.style.transition = ''; }, 360);
+      }, 260);
+    } else {
+      set(0, true);
+      setTimeout(() => { area.style.transition = ''; }, 340);
+    }
+  };
+  area.addEventListener('touchend', end, { passive: true });
+  area.addEventListener('touchcancel', end, { passive: true });
 }
 window.addEventListener('resize', () => placeLens(false));
 
@@ -986,7 +1027,6 @@ export function buildProfile(nick) {
       refs.subTitle = h('b', { text: '' }),
       h('button', { class: 'icon-btn', type: 'button', 'aria-label': 'Меню профиля', onclick: openProfileMenu }, mi('more'))),
     h('div', { class: 'ppane', 'data-pane': 'main' },
-      refs.quick = h('div', { class: 'p-quick' }),
       refs.fanCard = h('div', { class: 'fan-card', hidden: '' },
         h('img', { class: 'fan-star', src: 'assets/mkw-star.png', alt: '' }),
         h('div', { class: 'fan-txt' }, h('b', { text: 'Нравится MKW?' }), h('small', { text: 'Нажмите — и получите значок фаната со своим номером. Его увидят все рядом с вашим ником' })),
@@ -1014,6 +1054,7 @@ export function buildProfile(nick) {
         row('Слушать в фоне с выключенным экраном', 'Бета: работает не у всех и не со всеми треками. Полный трек переключается на звук, когда вы гасите экран. Из России — с VPN', refs.bgplay, null, 'moon'),
         row('Проверить фон', 'Покажет, что работает на вашем телефоне и в вашей сети', h('span', { class: 'chev', text: '›' }), runBgCheck, 'shield'))),
       inApp ? group('Приложение',
+        window.MKWNative && window.MKWNative.offState ? row('Офлайн-музыка', 'Лайки и плейлисты играют без интернета. Wi-Fi или мобильный — на выбор', chev(), openOffline, 'download') : null,
         window.MKWNative && window.MKWNative.pinWidget ? row('Виджеты на рабочий стол', 'Мини-плеер, плеер с перемоткой, MKW Волна и обложка — выберите и добавьте', chev(), openWidgets, 'library') : null,
         window.MKWNative && window.MKWNative.fullScreenCalls ? (() => {
           const r = row('Звонки на весь экран', window.__mkwFsi === false ? 'Выключено: звонок придёт простым уведомлением. Нажмите, чтобы включить' : 'Входящий звонок открывается на весь экран, даже на заблокированном телефоне', chev(), () => window.MKWNative.fullScreenCalls(true), 'bell');
