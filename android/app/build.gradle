@@ -53,4 +53,6 @@ android {
 dependencies {
     // мост «страница ↔ приложение» (уведомления, фон, вход через сайт) с проверкой источника
     implementation 'androidx.webkit:webkit:1.11.0'
+    // звонки и сообщения, когда приложение закрыто (Firebase Cloud Messaging)
+    implementation 'com.google.firebase:firebase-messaging:24.0.3'
 }

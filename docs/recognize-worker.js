@@ -525,9 +525,41 @@ async function encryptPush(sub, text) {
 // только настоящие сервисы уведомлений браузеров
 const PUSH_HOSTS = /(^|\.)(fcm\.googleapis\.com|android\.googleapis\.com|push\.services\.mozilla\.com|notify\.windows\.com|push\.apple\.com)$/;
 const fsStr = (f, k) => (f && f[k] && f[k].stringValue) || '';
+
+// ---- Firebase Cloud Messaging: уведомления в Android-приложение, даже когда оно закрыто ----
+// Нужен секрет FCM_KEY — JSON-ключ сервисного аккаунта Firebase (Настройки проекта → Сервисные аккаунты → Создать ключ).
+let fcmAuth = null;
+async function fcmAccess(env) {
+  if (!env.FCM_KEY) return null;
+  if (fcmAuth && fcmAuth.exp > Date.now() + 60000) return fcmAuth;
+  let sa; try { sa = JSON.parse(env.FCM_KEY); } catch { return null; }
+  if (!sa.private_key || !sa.client_email) return null;
+  const pem = sa.private_key.replace(/-----[^-]+-----/g, '').replace(/\s+/g, '');
+  const der = Uint8Array.from(atob(pem), (c) => c.charCodeAt(0));
+  const key = await crypto.subtle.importKey('pkcs8', der, { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' }, false, ['sign']);
+  const now = Math.floor(Date.now() / 1000);
+  const enc = (o) => b64u(new TextEncoder().encode(JSON.stringify(o)));
+  const unsigned = `${enc({ alg: 'RS256', typ: 'JWT' })}.${enc({ iss: sa.client_email, scope: 'https://www.googleapis.com/auth/firebase.messaging', aud: 'https://oauth2.googleapis.com/token', iat: now, exp: now + 3600 })}`;
+  const sig = new Uint8Array(await crypto.subtle.sign('RSASSA-PKCS1-v1_5', key, new TextEncoder().encode(unsigned)));
+  const r = await fetch('https://oauth2.googleapis.com/token', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: `grant_type=${encodeURIComponent('urn:ietf:params:oauth:grant-type:jwt-bearer')}&assertion=${unsigned}.${b64u(sig)}` });
+  if (!r.ok) return null;
+  const j = await r.json();
+  fcmAuth = { token: j.access_token, exp: Date.now() + (Number(j.expires_in) || 3600) * 1000, project: sa.project_id };
+  return fcmAuth;
+}
+async function fcmSend(env, token, data, kind) {
+  const a = await fcmAccess(env);
+  if (!a) return false;
+  const r = await fetch(`https://fcm.googleapis.com/v1/projects/${a.project}/messages:send`, {
+    method: 'POST', headers: { Authorization: `Bearer ${a.token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message: { token, data, android: { priority: 'HIGH', ttl: kind === 'call' ? '45s' : '86400s' } } }),
+  });
+  return r.ok;
+}
+
 async function push(request, env, cors) {
   const v = await vapidKeys(env);
-  if (!v) return json({ error: 'no-vapid' }, 501, cors);
+  if (!v && !env.FCM_KEY) return json({ error: 'no-vapid' }, 501, cors);
   const tok = (request.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '');
   let b;
   try { b = await request.json(); } catch { return json({ error: 'bad' }, 400, cors); }
@@ -539,12 +571,16 @@ async function push(request, env, cors) {
   if (!r.ok) return json({ error: 'denied' }, 403, cors);
   const d = await r.json();
   const vals = (((d.fields || {}).subs || {}).arrayValue || {}).values || [];
-  const subs = vals.map((x) => { const f = (x.mapValue || {}).fields || {}; return { endpoint: fsStr(f, 'endpoint'), p256dh: fsStr(f, 'p256dh'), auth: fsStr(f, 'auth') }; })
+  const all = vals.map((x) => { const f = (x.mapValue || {}).fields || {}; return { endpoint: fsStr(f, 'endpoint'), p256dh: fsStr(f, 'p256dh'), auth: fsStr(f, 'auth'), fcm: fsStr(f, 'fcm') }; });
+  const fcms = all.map((s) => s.fcm).filter((t) => /^[\w:-]{20,300}$/.test(t)).slice(0, 6);
+  const subs = (v ? all : [])
     .filter((s) => { try { const u = new URL(s.endpoint); return u.protocol === 'https:' && PUSH_HOSTS.test(u.hostname) && s.p256dh && s.auth; } catch { return false; } })
     .slice(0, 6);
   const kind = ['call', 'missed', 'msg'].includes(b.kind) ? b.kind : 'msg';
   const text = JSON.stringify({ kind, title: String(b.title || 'MKW Music').slice(0, 60), body: String(b.body || '').slice(0, 160), tag: String(b.tag || kind).slice(0, 80), url: String(b.url || './').slice(0, 200), at: Date.now() });
   let sent = 0;
+  const data = JSON.parse(text); data.at = String(data.at);
+  await Promise.all(fcms.map(async (t) => { try { if (await fcmSend(env, t, data, kind)) sent += 1; } catch { /* устройство недоступно */ } }));
   await Promise.all(subs.map(async (s) => {
     try {
       const res = await fetch(s.endpoint, {
@@ -555,13 +591,13 @@ async function push(request, env, cors) {
       if (res.ok) sent += 1;
     } catch { /* устройство недоступно */ }
   }));
-  return json({ sent, of: subs.length }, 200, cors);
+  return json({ sent, of: subs.length + fcms.length }, 200, cors);
 }
 
 export default {
   async fetch(request, env) {
     const path = new URL(request.url).pathname;
-    if (request.method === 'GET' && path === '/ping') return new Response(JSON.stringify({ ok: true, proxy: true, lyrics: true, bg: 3, ytsearch: 1, turn: 1, stt: env.AI ? 1 : 0, push: env.VAPID_SEED ? 1 : 0 }), { headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
+    if (request.method === 'GET' && path === '/ping') return new Response(JSON.stringify({ ok: true, proxy: true, lyrics: true, bg: 3, ytsearch: 1, turn: 1, stt: env.AI ? 1 : 0, push: env.VAPID_SEED ? 1 : 0, fcm: env.FCM_KEY ? 1 : 0 }), { headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
     if (request.method === 'GET' && path === '/geo') return new Response(JSON.stringify({ country: (request.cf && request.cf.country) || '' }), { headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'no-store' } });
     if (request.method === 'GET' && path === '/proxy') return proxy(request, env);
     if (request.method === 'GET' && path === '/lyrics') return lyrics(request);
