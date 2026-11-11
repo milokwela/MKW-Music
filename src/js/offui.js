@@ -18,11 +18,10 @@ function counts() {
 function statusText() {
   const s = offSettings(), c = counts();
   if (prog.running && prog.cur) return `Скачиваю «${prog.cur.title}» · ${prog.done + 1} из ${prog.total}`;
-  if (prog.wait === 'ждём Wi-Fi') return 'Ждём Wi-Fi — на мобильном интернете не качаем';
   if (prog.wait === 'нет интернета') return 'Нет интернета — играет то, что уже скачано';
   if (!s.auto) return c.got ? `Скачано ${c.got} · автоскачивание выключено` : 'Включите — и лайки будут играть без интернета';
   if (c.w && c.got >= c.w) return 'Всё скачано — можно слушать без интернета';
-  if (prog.fail) return `Скачано ${c.got} из ${c.w}. ${prog.fail} ${plural(prog.fail, 'трек', 'трека', 'треков')} не нашлось — попробую позже`;
+  if (prog.fail) return `Скачано ${c.got} из ${c.w}. ${prog.fail} ${plural(prog.fail, 'трек', 'трека', 'треков')} не скачалось${prog.why ? ` (${prog.why})` : ''} — попробую позже`;
   return `Скачано ${c.got} из ${c.w}`;
 }
 
@@ -58,7 +57,6 @@ export function openOffline() {
     const row = (ic, title, desc, ctrl, onclick) => h('div', { class: `set-row${onclick ? ' tap' : ''}`, onclick },
       h('span', { class: 'set-ic' }, mi(ic)), h('div', { class: 'set-txt' }, h('b', { text: title }), desc ? h('small', { text: desc }) : null), ctrl);
     const group = (title, ...kids) => h('div', { class: 'set-group' }, title ? h('div', { class: 'set-gt', text: title }) : null, h('div', { class: 'set-card' }, ...kids.filter(Boolean)));
-    const pick = (val, ic, title, desc) => row(ic, title, desc, h('span', { class: `off-radio${(s.net === 'any') === (val === 'any') ? ' on' : ''}` }), () => setOffSettings({ net: val }));
     const kids = [
       h('div', { class: 'off-hero' },
         h('div', { class: 'off-big', style: `--k:${k}` }, h('b', { text: String(c.got) }), h('small', { text: `из ${c.w}` })),
@@ -67,11 +65,8 @@ export function openOffline() {
           h('div', { class: 'off-bar' }, h('i', { style: `width:${Math.round(k * 100)}%` })),
           h('small', { class: 'off-mem', text: `Занято ${mb(o.total || 0)}${o.free ? ` · свободно ${mb(o.free)}` : ''}` }))),
       group('Что скачивать',
-        row('heart', 'Лайки — автоматически', 'Лайкнули — скачается. Убрали лайк — удалится', sw(s.auto, () => setOffSettings({ auto: !s.auto }))),
+        row('heart', 'Лайки — автоматически', 'Лайкнули — скачается. Убрали лайк — удалится. Качает по Wi-Fi и мобильному сам', sw(s.auto, () => setOffSettings({ auto: !s.auto }))),
         row('playlist', 'И треки из плейлистов', 'Ваши плейлисты тоже будут играть без сети', sw(s.pl, () => setOffSettings({ pl: !s.pl })))),
-      group('Через какой интернет',
-        pick('wifi', 'wifi', 'Только Wi-Fi', 'Мобильный трафик не тратится'),
-        pick('any', 'signal', 'Wi-Fi и мобильный', 'Песня — примерно 3–6 МБ трафика')),
       h('div', { class: 'off-btns' },
         prog.running
           ? h('button', { type: 'button', class: 'btn tonal', onclick: () => { stopSync(); toast('Остановлю после текущего трека'); } }, mi('pause'), ' Остановить')
@@ -85,7 +80,7 @@ export function openOffline() {
       kids.push(h('div', { class: 'section-title', text: `Скачано · ${list.length}` }));
       kids.push(h('div', { class: 'list off-list' }, ...list.map((t, i) => {
         const r = trackRow(t, { onPlay: () => player.playTracks(list, i), onMore: () => { removeDownload(t.id); toast('Удалено с телефона'); }, current: player.queue.current?.id === t.id });
-        const more = r.querySelector('.more, [aria-label*="еню"]'); if (more) { more.replaceChildren(icon('trash')); more.setAttribute('aria-label', 'Удалить с телефона'); }
+        const more = r.querySelector('.icon-btn[aria-label="Действия"]'); if (more) { more.replaceChildren(icon('trash')); more.setAttribute('aria-label', 'Удалить с телефона'); }
         return r;
       })));
     } else kids.push(h('p', { class: 'off-empty', text: 'Пока ничего не скачано. Включите «Лайки — автоматически» или нажмите «Скачать сейчас»' }));

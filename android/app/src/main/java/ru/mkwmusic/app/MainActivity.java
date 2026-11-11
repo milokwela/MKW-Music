@@ -634,6 +634,9 @@ public class MainActivity extends Activity {
             case "offdl":
                 offline().download(o, o.optBoolean("wifiOnly", true));
                 break;
+            case "offput":
+                offline().put(o);
+                break;
             case "offrm":
                 offline().remove(clip(o.optString("id", ""), 200));
                 break;

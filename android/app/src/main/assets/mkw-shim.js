@@ -138,6 +138,7 @@
     // офлайн-музыка: что скачано, скачать, удалить
     offState: function () { send({ t: 'off' }); },
     offDownload: function (o) { var x = {}; for (var k in o) x[k] = o[k]; x.t = 'offdl'; send(x); },
+    offPut: function (o) { var x = {}; for (var k in o) x[k] = o[k]; x.t = 'offput'; send(x); },
     offRemove: function (id) { send({ t: 'offrm', id: String(id) }); },
     offClear: function () { send({ t: 'offclear' }); }
   };

@@ -59,7 +59,7 @@ export function wanted() {
 }
 
 // ---------- загрузка ----------
-export const prog = { running: false, total: 0, done: 0, fail: 0, cur: null, wait: '' };
+export const prog = { running: false, total: 0, done: 0, fail: 0, cur: null, wait: '', why: '' };
 const failed = new Map(); // id → когда не вышло (повторим не раньше чем через 6 часов)
 let stopFlag = false;
 const timeout = (p, ms) => Promise.race([p, new Promise((r) => setTimeout(() => r(null), ms))]);
@@ -89,6 +89,49 @@ function askNative(t, urls, wifiOnly) {
 
 export function stopSync() { stopFlag = true; }
 
+// Запасной путь: страница скачивает звук сама (как плеер) и кусками по ~48 КБ передаёт приложению.
+const b64 = (u8) => { let s = ''; for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000)); return btoa(s); };
+async function viaPage(t, urls) {
+  const n = N();
+  if (!n || !n.offPut) return { ok: false, why: 'обновите приложение' };
+  let why = '';
+  for (const u of urls.slice(0, 4)) {
+    try {
+      const ctl = new AbortController(); const tm = setTimeout(() => ctl.abort(), 120000);
+      const res = await fetch(u, { signal: ctl.signal, credentials: 'omit' });
+      if (!res.ok || !res.body) { clearTimeout(tm); why = `сервер ответил ${res.status}`; continue; }
+      const type = res.headers.get('content-type') || '';
+      if (/text|html|json/.test(type)) { clearTimeout(tm); why = 'вместо звука пришла страница'; continue; }
+      const done = new Promise((res2) => {
+        const on = (e) => { const d = e.detail || {}; if (d.id !== String(t.id)) return; window.removeEventListener('mkw-off-done', on); res2(d); };
+        window.addEventListener('mkw-off-done', on);
+        setTimeout(() => { window.removeEventListener('mkw-off-done', on); res2({ ok: false, why: 'долго' }); }, 240000);
+      });
+      const rd = res.body.getReader();
+      let seq = 0, buf = new Uint8Array(0);
+      const flush = (last) => {
+        const part = last ? buf : buf.subarray(0, 48 * 1024);
+        const msg = { id: String(t.id), seq: seq++, b64: b64(part), last };
+        if (last) Object.assign(msg, { title: t.title || '', artist: t.artist || '', album: t.album || '', dur: Number(t.duration) || 0, art: t.artwork ? artUrl(t.artwork, 600) : '', track: pickTrack(t) });
+        n.offPut(msg);
+        buf = last ? new Uint8Array(0) : buf.subarray(part.length);
+      };
+      for (;;) {
+        const { value, done: end } = await rd.read();
+        if (value && value.length) { const nb = new Uint8Array(buf.length + value.length); nb.set(buf); nb.set(value, buf.length); buf = nb; }
+        while (buf.length >= 48 * 1024) flush(false);
+        if (end) break;
+      }
+      clearTimeout(tm);
+      flush(true);
+      const r = await done;
+      if (r.ok) return r;
+      why = r.why || why;
+    } catch (e) { why = e && e.name === 'AbortError' ? 'долго качалось' : 'ссылка не открылась'; }
+  }
+  return { ok: false, why: why || 'не получилось' };
+}
+
 export async function syncOffline(manual = false) {
   const n = N(), s = offSettings();
   if (!n || prog.running) return;
@@ -97,10 +140,9 @@ export async function syncOffline(manual = false) {
   n.offState();
   await new Promise((r) => setTimeout(r, 350));
   if (!navigator.onLine) { prog.wait = 'нет интернета'; emit(); return; }
-  if (s.net === 'wifi' && st.wifi === false) { prog.wait = 'ждём Wi-Fi'; emit(); return; }
   const now = Date.now();
   const list = wanted().filter((t) => !have.has(String(t.id)) && !(failed.get(String(t.id)) > now - 6 * 3600e3 && !manual));
-  Object.assign(prog, { running: true, total: list.length, done: 0, fail: 0, cur: null, wait: '' });
+  Object.assign(prog, { running: true, total: list.length, done: 0, fail: 0, cur: null, wait: '', why: '' });
   stopFlag = false;
   emit();
   for (const t of list) {
@@ -109,7 +151,11 @@ export async function syncOffline(manual = false) {
     prog.cur = t; emit();
     const urls = await linksFor(t);
     if (!urls) { prog.fail += 1; failed.set(String(t.id), Date.now()); emit(); continue; }
-    const r = await askNative(t, urls, offSettings().net === 'wifi');
+    // сеть приложение выбирает само: качает и по Wi-Fi, и по мобильному (песня — несколько МБ)
+    let r = await askNative(t, urls, false);
+    // не вышло у приложения — скачиваем так же, как это делает плеер на странице, и передаём файл приложению
+    if (!r.ok && r.why !== 'нет интернета') { const r2 = await viaPage(t, urls); if (r2.ok) r = r2; else r = { ...r, why: r2.why || r.why }; }
+    if (!r.ok && r.why) prog.why = r.why;
     if (r.ok) prog.done += 1;
     else if (r.why === 'ждём Wi-Fi' || r.why === 'нет интернета') { prog.wait = r.why; break; }
     else { prog.fail += 1; failed.set(String(t.id), Date.now()); }
