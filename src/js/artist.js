@@ -1,4 +1,6 @@
 // Страница исполнителя: треки, слушать, перемешать, «не рекомендовать».
+import { monthPlays } from './tplays.js';
+const MONTH_NAMES = ['январь', 'февраль', 'март', 'апрель', 'май', 'июнь', 'июль', 'август', 'сентябрь', 'октябрь', 'ноябрь', 'декабрь'];
 import { searchTracks, mapItunes, mapDeezer } from './catalog.js';
 import { jsonp } from './jsonp.js';
 import { prefetchYouTubeIds } from './youtube.js';
@@ -156,7 +158,23 @@ export async function openArtist(name) {
     // волна от исполнителя: начнётся с его песни и продолжится похожими
     h('button', { class: 'btn tonal', type: 'button', onclick: () => { if (tracks.length) { closeArtist(); startWave(tracks[0]); } } }, mi('sparkle'), ' Волна'),
     blockBtn);
-  const row = (t, i) => trackRow(t, { onPlay: () => player.playTracks(tracks, i), onMore: () => openTrackMenu(t), current: player.queue.current?.id === t.id, allowNoPreview: true });
+  // у каждой песни — сколько раз её включали на MKW в этом месяце; сверху — сумма по исполнителю
+  let mkwSum = 0, mkwSeen = 0;
+  const mkwTotal = h('div', { class: 'artist-mkw', hidden: '' });
+  const row = (t, i) => {
+    const r = trackRow(t, { onPlay: () => player.playTracks(tracks, i), onMore: () => openTrackMenu(t), current: player.queue.current?.id === t.id, allowNoPreview: true });
+    monthPlays(t).then((n) => {
+      if (n === null || n === undefined) return;
+      mkwSeen += 1;
+      if (n > 0) {
+        mkwSum += n;
+        const sub = r.querySelector('.track-sub');
+        if (sub) sub.append(h('span', { class: 'mkw-plays', title: 'Прослушиваний на MKW в этом месяце' }, mi('play-circle'), String(n)));
+      }
+      if (mkwSum > 0) { mkwTotal.hidden = false; mkwTotal.replaceChildren(mi('play-circle'), h('span', { text: `${mkwSum} ${plural(mkwSum, 'прослушивание', 'прослушивания', 'прослушиваний')} на MKW за ${MONTH_NAMES[new Date().getMonth()]}` })); }
+    });
+    return r;
+  };
   const FIRST = 20;
   const list = h('div', { class: 'list' }, tracks.slice(0, FIRST).map(row));
   const moreBtn = tracks.length > FIRST ? h('div', { style: 'text-align:center;margin:14px 0' }, h('button', { class: 'chip', type: 'button', onclick: (e) => {
@@ -244,7 +262,7 @@ export async function openArtist(name) {
     relBox.hidden = false;
   }).catch(() => {});
   body.replaceChildren(
-    headBox, bar, bio, freshBox,
+    headBox, bar, mkwTotal, bio, freshBox,
     h('div', { class: 'section-title', text: tracks.length ? `Популярное · ${tracks.length}` : '' }),
     tracks.length ? list : h('div', { class: 'empty' }, h('div', { text: 'Треков не нашлось' })),
     moreBtn, albumsBox, relBox);

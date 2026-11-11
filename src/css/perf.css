@@ -1,7 +1,8 @@
 /* Режим «слабое устройство» */
 .lowpower *, .lowpower *::before, .lowpower *::after { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; filter: none !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
 .lowpower .aurora, .lowpower #stars, .lowpower .glow, .lowpower .hl-orbit, .lowpower .hl-ring, .lowpower #fp-bg, .lowpower #fp-glow, .lowpower .sp-stars { display: none !important; }
-.lowpower #viz, .lowpower canvas { display: none !important; }
+/* экономия: прячем только украшения (визуализатор, снег). Рабочие холсты — редактор фото, полоса перемотки — остаются */
+.lowpower #viz, .lowpower canvas#viz, .lowpower .winter-snow, .lowpower #winter-snow { display: none !important; }
 .lowpower #splash { display: none !important; }
 
 /* Текст песни: размытая обложка текущего трека за текстом */
