@@ -1,6 +1,6 @@
 // Рейтинг слушателей: у каждого публичная карточка leaders/{uid} (ник, часы, статус, значки, маленькое фото).
 import { db, auth } from './firebase.js';
-import { doc, getDoc, setDoc, deleteDoc, collection, query, orderBy, limit, getDocs, where, getCountFromServer } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+import { doc, getDoc, setDoc, deleteDoc, collection, query, orderBy, limit, getDocs, where, getCountFromServer, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 import { srvNow, offlineStamp, onlineStamp } from './clock.js';
 
 const KEY = 'mkw.leaders.hide';
@@ -17,6 +17,11 @@ export async function ping(now, force) {
   const data = { seen: onlineStamp(), now: String(now || '').slice(0, 120) };
   try { await setDoc(doc(db, 'leaders', uid), data, { merge: true }); } catch { /* нет карточки — не страшно */ }
   try { await setDoc(doc(db, 'profiles', uid), data, { merge: true }); } catch { /* ignore */ }
+}
+
+// Живая карточка человека: что он слушает и в сети ли он — приходит сразу, как только меняется (пока открыт его профиль)
+export function watchCard(uid, cb) {
+  try { return onSnapshot(doc(db, 'leaders', uid), (s) => { if (s.exists()) cb(s.data()); }, () => {}); } catch { return () => {}; }
 }
 
 // Ушли из приложения — сразу «не в сети» (отметку сдвигаем в прошлое, чтобы друзья не ждали 3 минуты)

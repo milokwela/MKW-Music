@@ -1,5 +1,7 @@
 // Меню действий над треком и выбор плейлиста.
-import { h, openSheet, closeSheet, sheetItem, askText, toast } from './ui.js';
+import { h, icon, openSheet, closeSheet, sheetItem, askText, toast } from './ui.js';
+import { safeUrl, artUrl, plural } from './utils.js';
+import { monthPlays } from './tplays.js';
 import * as store from './store.js';
 import { shareTrack } from './share.js';
 import { openArtistFor, openArtist } from './artist.js';
@@ -49,27 +51,36 @@ export function pickPlaylist(track) {
 }
 
 // ctx: { playlistId } — если трек открыт из плейлиста, появляется пункт «Убрать из плейлиста».
+// Вид: карточка трека с обложкой, четыре крупные быстрые кнопки и остальные действия списком.
 export function openTrackMenu(track, ctx = {}) {
   const liked = store.isLiked(track.id);
-  const box = h('div',
-    h('div', { class: 'sheet-note', text: `${track.title} — ${track.artist}` }),
-    sheetItem('next-up', 'Играть следующим', () => { closeSheet(); player.playNext(track); toast('Сыграет следующим'); }),
+  const art = safeUrl(track.artwork);
+  const stat = h('small', { class: 'tm-stat', hidden: '' });
+  monthPlays(track).then((n) => { if (n === null || n === undefined) return; stat.hidden = false; stat.textContent = n ? `На MKW в этом месяце: ${n} ${plural(n, 'прослушивание', 'прослушивания', 'прослушиваний')}` : 'На MKW в этом месяце ещё не слушали'; });
+  const head = h('div', { class: 'tm-head' },
+    h('span', { class: 'tm-art', style: art ? `background-image:url("${artUrl(art, 200)}")` : '' }, art ? null : icon('music')),
+    h('span', { class: 'tm-txt' }, h('b', { text: track.title }), h('em', { text: track.artist }), stat));
+  const tile = (cls, ic, text, fn) => h('button', { type: 'button', class: `tm-tile ${cls}`, onclick: fn }, icon(ic), h('span', { text }));
+  const tiles = h('div', { class: 'tm-tiles' },
+    tile(`pink${liked ? ' on' : ''}`, liked ? 'heart-fill' : 'heart', liked ? 'В лайках' : 'Лайк', () => { closeSheet(); likeToggle(track); }),
+    tile('blue', 'next-up', 'Следующим', () => { closeSheet(); player.playNext(track); toast('Сыграет следующим'); }),
+    tile('mint', 'queue', 'В очередь', () => { closeSheet(); player.addToQueue(track); toast('Добавлено в очередь'); }),
+    tile('peach', 'share', 'Поделиться', () => { closeSheet(); shareTrack(track); }));
+  const names = splitArtists(track.artist);
+  const list = h('div', { class: 'tm-list' },
     sheetItem('shuffle', 'Волна по этому треку', () => { closeSheet(); startWave(track); toast('Волна по треку: дальше — похожее'); }),
-    sheetItem('queue', 'Добавить в очередь', () => { closeSheet(); player.addToQueue(track); toast('Добавлено в очередь'); }),
-    sheetItem(liked ? 'heart-fill' : 'heart', liked ? 'Убрать из лайков' : 'В лайки', () => { closeSheet(); likeToggle(track); }),
     sheetItem('plus', 'В плейлист…', () => pickPlaylist(track)),
-    sheetItem('user', 'В общий плейлист с друзьями…', () => pickSharedFor(track)),
-    sheetItem('user', 'Отправить другу', () => { closeSheet(); setTimeout(() => pickFriendFor(track), 250); }),
+    sheetItem('library', 'В общий плейлист с друзьями…', () => pickSharedFor(track)),
+    sheetItem('chat', 'Отправить другу', () => { closeSheet(); setTimeout(() => pickFriendFor(track), 250); }),
     sheetItem('music', 'Поставить на звонок', () => { closeSheet(); setRingtone(track); }),
-    sheetItem('share', 'Поделиться', () => { closeSheet(); shareTrack(track); }),
-    ...(splitArtists(track.artist).length > 1
-      ? splitArtists(track.artist).map((n) => sheetItem('user', `Исполнитель: ${n}`, () => { closeSheet(); openArtist(n); }))
+    ...(names.length > 1
+      ? names.map((n) => sheetItem('user', `Исполнитель: ${n}`, () => { closeSheet(); openArtist(n); }))
       : [sheetItem('user', 'Перейти к исполнителю', () => { closeSheet(); openArtistFor(track.artist); })]));
   if (ctx.playlistId) {
-    box.appendChild(sheetItem('trash', 'Убрать из плейлиста', async () => {
+    list.appendChild(sheetItem('trash', 'Убрать из плейлиста', async () => {
       closeSheet();
       try { await store.removeFromPlaylist(ctx.playlistId, track.id); toast('Убрано'); } catch (e) { fail(e); }
     }, true));
   }
-  openSheet('', box);
+  openSheet('', h('div', { class: 'tm' }, head, tiles, list));
 }

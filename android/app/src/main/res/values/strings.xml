@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">MKW Music</string>
+    <string name="widget_desc">Плеер MKW Music: что играет и кнопки управления</string>
+    <string name="widget_name">Плеер MKW</string>
 </resources>

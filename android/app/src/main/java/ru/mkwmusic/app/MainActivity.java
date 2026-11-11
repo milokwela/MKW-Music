@@ -554,6 +554,9 @@ public class MainActivity extends Activity {
             case "btstate":
                 bt().push();
                 break;
+            case "bton":
+                bt().enable();
+                break;
             case "btpair":
                 if (!bt().pair(o.optString("a", ""))) runJs("window.__mkwBtFail&&window.__mkwBtFail()");
                 bt().push();
@@ -569,8 +572,13 @@ public class MainActivity extends Activity {
                 }
                 break;
             case "notify":
-                Notifier.message(this, clip(o.optString("title", ""), 120), clip(o.optString("body", ""), 400),
-                        clip(o.optString("tag", ""), 64));
+                if (o.optString("tag", "").startsWith("call-")) {
+                    Notifier.call(this, clip(o.optString("title", ""), 120), clip(o.optString("body", ""), 400),
+                            clip(o.optString("tag", ""), 64));
+                } else {
+                    Notifier.message(this, clip(o.optString("title", ""), 120), clip(o.optString("body", ""), 400),
+                            clip(o.optString("tag", ""), 64));
+                }
                 break;
             case "perm":
                 requestNotifications(null);
@@ -799,9 +807,38 @@ public class MainActivity extends Activity {
                 .show();
     }
 
+    // Странице нужно знать, видит ли человек приложение на самом деле: пока играет музыка, WebView «думает», что он на экране
+    // (иначе звук встанет на паузу), и без этой подсказки сообщения и звонки в фоне не показывались бы уведомлением.
+    @Override
+    protected void onStart() {
+        super.onStart();
+        runJs("window.__mkwFg=true;window.dispatchEvent(new Event('mkw-fg'))");
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        runJs("window.__mkwFg=false;window.dispatchEvent(new Event('mkw-fg'))");
+        // после звонка приложение не должно оставаться поверх экрана блокировки
+        try { if (android.os.Build.VERSION.SDK_INT >= 27) setShowWhenLocked(false); } catch (Exception ignored) { /* не критично */ }
+    }
+
+    /** Открыли по входящему звонку: показываем поверх экрана блокировки и включаем экран. */
+    private void wakeForCall(Intent i) {
+        if (i == null || !i.getBooleanExtra("call", false)) return;
+        try {
+            if (android.os.Build.VERSION.SDK_INT >= 27) { setShowWhenLocked(true); setTurnScreenOn(true); }
+            else getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED | android.view.WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON);
+        } catch (Exception ignored) { /* не критично */ }
+        i.removeExtra("call");
+        Notifier.cancelCalls(this);
+    }
+
     @Override
     protected void onResume() {
         super.onResume();
+        wakeForCall(getIntent());
+        Notifier.cancelCalls(this);
         showForced();
         if (root != null) root.postDelayed(this::checkUpdate, 3000);
     }

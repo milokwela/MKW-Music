@@ -14,8 +14,15 @@ const { queue, st } = player;
 let seeking = false;
 let lastTrackId = null;
 
-function openFull() { const f = $('#full-player'); f.style.transform = ''; f.classList.remove('dragging'); f.classList.add('open'); }
-function closeFull() { const f = $('#full-player'); f.style.transform = ''; f.classList.remove('dragging'); f.classList.remove('open'); }
+// Затемнение с лёгким размытием под плеером: следует за пальцем, пока плеер тянут, и плавно гаснет, когда он открыт или убран.
+let scrim = null;
+function dim(k, live) {
+  if (!scrim) { scrim = h('div', { id: 'fp-scrim', 'aria-hidden': 'true' }); document.body.appendChild(scrim); }
+  scrim.classList.toggle('live', Boolean(live));
+  scrim.style.opacity = String(Math.max(0, Math.min(1, k)));
+}
+function openFull() { const f = $('#full-player'); f.style.transform = ''; f.classList.remove('dragging'); f.classList.add('open'); dim(1); }
+function closeFull() { const f = $('#full-player'); f.style.transform = ''; f.classList.remove('dragging'); f.classList.remove('open'); dim(0); }
 
 // Жест: тянем мини-плеер вверх — шторка открывается; тянем большой вниз — закрывается.
 function initDrag() {
@@ -28,7 +35,7 @@ function initDrag() {
     if (m === 'close' && e.target.closest('#fp-art') && !e.target.closest('.fp-top')) { /* вертикаль разрешена, горизонталь отменит move */ }
     if (m === 'close' && full.querySelector('.fp-inner').scrollTop > 0) return;
     // очередь и текст листаются сами — шторку плеера они не сворачивают
-    if (m === 'close' && e.target.closest('#fp-q2, #fp-lyrics, .p2q-list')) return;
+    if (m === 'close' && e.target.closest('#fp-q2, #fp-lyrics, .p2q-list, #fp-out2')) return;
     const pt = e.touches[0]; sy = pt.clientY; sx0 = pt.clientX; dy = 0; dx = 0; hs = false; t0 = Date.now(); mode = m; on = true;
   };
   const move = (e) => {
@@ -49,11 +56,11 @@ function initDrag() {
     if (mode === 'open') {
       if (dy > 0) dy = 0;
       if (dy < -8) { full.classList.add('dragging'); if (e.cancelable) e.preventDefault(); }
-      if (full.classList.contains('dragging')) full.style.transform = `translateY(${Math.max(0, H() + dy)}px)`;
+      if (full.classList.contains('dragging')) { full.style.transform = `translateY(${Math.max(0, H() + dy)}px)`; dim(-dy / H(), true); }
     } else {
       if (dy < 0) dy = 0;
       if (dy > 8) { full.classList.add('dragging'); if (e.cancelable) e.preventDefault(); }
-      if (full.classList.contains('dragging')) full.style.transform = `translateY(${dy}px)`;
+      if (full.classList.contains('dragging')) { full.style.transform = `translateY(${dy}px)`; dim(1 - dy / H(), true); }
     }
   };
   const end = () => {
@@ -76,8 +83,11 @@ function initDrag() {
     full.style.transform = '';
     if (mode === 'open') { if (far) full.classList.add('open'); else full.classList.remove('open'); }
     else if (far) full.classList.remove('open');
+    dim(full.classList.contains('open') ? 1 : 0);
     swallow = true; setTimeout(() => { swallow = false; }, 350);
   };
+  // плеер могут закрыть и не жестом (открыли профиль, исполнителя) — затемнение всегда следует за его состоянием
+  new MutationObserver(() => { if (!full.classList.contains('dragging')) dim(full.classList.contains('open') ? 1 : 0); }).observe(full, { attributes: true, attributeFilter: ['class'] });
   let swallow = false;
   mini.addEventListener('touchstart', start('open'), { passive: true });
   full.addEventListener('touchstart', start('close'), { passive: true });
