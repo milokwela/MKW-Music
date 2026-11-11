@@ -120,6 +120,7 @@ public class MainActivity extends Activity {
         if (!restored) web.loadUrl(startUrl(getIntent()));
         if (savedInstanceState == null) handleIntent(getIntent());
 
+        preferSmoothDisplay();
         if (savedInstanceState == null) showSplash();
         root.post(this::firstRunSetup);
         root.postDelayed(this::checkUpdate, 5000);
@@ -577,6 +578,9 @@ public class MainActivity extends Activity {
             case "handoff":
                 startHandoff();
                 break;
+            case "checkupdate":
+                checkUpdateNow();
+                break;
             default:
                 break;
         }
@@ -825,6 +829,54 @@ public class MainActivity extends Activity {
                     .setNegativeButton("Позже", (d, w) -> p.edit().putString("upd_skip", key).apply())
                     .show();
         }));
+    }
+
+    /** Ручная проверка из настроек: всегда отвечает — либо предлагает скачать, либо говорит, что версия последняя. */
+    private void checkUpdateNow() {
+        final String current = versionName();
+        android.widget.Toast.makeText(this, "Проверяем обновления…", android.widget.Toast.LENGTH_SHORT).show();
+        UpdateChecker.check(current, versionCode(), new UpdateChecker.Callback() {
+            @Override
+            public void onNewer(String version, int build, boolean forced) {
+                runOnUiThread(() -> {
+                    if (isFinishing()) return;
+                    new AlertDialog.Builder(MainActivity.this)
+                            .setTitle("Вышла новая версия " + version)
+                            .setMessage("У вас " + current + ". Скачайте новую и откройте файл — она встанет поверх, вход и данные сохранятся.")
+                            .setPositiveButton("Скачать", (d, w) -> openExternal(Uri.parse(UpdateChecker.APK_URL)))
+                            .setNegativeButton("Позже", null)
+                            .show();
+                });
+            }
+
+            @Override
+            public void onNone(boolean error) {
+                runOnUiThread(() -> {
+                    if (isFinishing()) return;
+                    android.widget.Toast.makeText(MainActivity.this,
+                            error ? "Не получилось проверить. Проверьте интернет и попробуйте ещё раз"
+                                    : "У вас последняя версия — " + current,
+                            android.widget.Toast.LENGTH_LONG).show();
+                });
+            }
+        });
+    }
+
+    /** Экран 120 Гц: просим самый плавный режим, который умеет дисплей (иначе WebView может остаться на 60). */
+    private void preferSmoothDisplay() {
+        try {
+            android.view.Display d = getWindowManager().getDefaultDisplay();
+            android.view.Display.Mode cur = d.getMode(), best = cur;
+            for (android.view.Display.Mode m : d.getSupportedModes()) {
+                if (m.getPhysicalWidth() == cur.getPhysicalWidth() && m.getPhysicalHeight() == cur.getPhysicalHeight()
+                        && m.getRefreshRate() > best.getRefreshRate()) best = m;
+            }
+            android.view.WindowManager.LayoutParams lp = getWindow().getAttributes();
+            lp.preferredDisplayModeId = best.getModeId();
+            getWindow().setAttributes(lp);
+        } catch (Exception ignored) {
+            // не получилось — остаётся режим по умолчанию
+        }
     }
 
     // ---------- окно ----------

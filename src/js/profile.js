@@ -2,7 +2,7 @@
 import { seenOnline, realSeen } from './clock.js';
 import { nickEmo, richText, plainRich, emojiPicker, catSrc } from './stickers.js';
 import { betaCard } from './poll.js';
-import { apkCard } from './apk.js';
+import { apkCard, checkAppUpdate, appVersion } from './apk.js';
 import { $, $$, h, icon, openSheet, closeSheet, toast, sheetItem, trackRow } from './ui.js';
 import * as store from './store.js';
 import * as player from './player.js';
@@ -950,6 +950,8 @@ export function buildProfile(nick) {
       inApp ? null : h('div', { class: 'set-group bg-beta' }, h('div', { class: 'set-card' },
         row('Слушать в фоне с выключенным экраном', 'Бета: работает не у всех и не со всеми треками. Полный трек переключается на звук, когда вы гасите экран. Из России — с VPN', refs.bgplay, null, 'moon'),
         row('Проверить фон', 'Покажет, что работает на вашем телефоне и в вашей сети', h('span', { class: 'chev', text: '›' }), runBgCheck, 'shield'))),
+      inApp ? group('Приложение',
+        row('Проверить обновление', `У вас версия ${appVersion() || '—'}. Проверим, не вышла ли новая, и предложим скачать`, chev(), () => checkAppUpdate(), 'install')) : null,
       inApp ? null : group('Приложение',
         row('Установить как приложение', standalone() ? 'Уже установлено — вы в приложении' : 'Своя иконка и отдельное окно. Покажу, куда нажать — в Яндекс Браузере, Chrome, Edge и на телефоне', chev(), () => openInstall(false), 'install')),
       group('Внешний вид',

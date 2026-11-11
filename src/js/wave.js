@@ -539,6 +539,21 @@ async function seedQueue(fromTrack) {
   const md = moodOf();
   let first = [];
   if (fromTrack) first = [{ ...fromTrack, wave: true, waveSrc: 'radio', waveWhy: 'С этого трека начинается волна' }];
+  // Быстрый старт: музыка начинается сразу с любимой песни, которую давно не включали, а подбор идёт уже под неё —
+  // не нужно ждать «Подбираю…» в тишине. В режиме «Открытия» ждём подбор: там первой должна быть новая песня.
+  let quick = null;
+  if (!fromTrack && md.id !== 'discover') {
+    const dis0 = dislikedTracks();
+    const cand = store.state.likes.filter((t) => t && t.id && t.title && !recent.has(t.id) && !dis0.has(t.id) && !isJunk(t) && !(skips[t.id] && skips[t.id].n >= 2)
+      && (!md.re || md.re.test(`${t.title} ${t.artist} ${t.genre || ''} ${t.album || ''}`)) && !artistsOf(t).some((a) => isArtistBlocked(a)));
+    if (cand.length) {
+      const ranked = cand.map((t) => ({ t, s: Math.max(...artistsOf(t).map((a) => weight(a)), 0) * 0.3 + (peekYouTubeId(t) ? 1 : 0) + Math.random() * 2 })).sort((a, b) => b.s - a.s);
+      quick = { ...ranked[0].t, wave: true, waveSrc: 'liked', waveNew: false };
+      first = [quick];
+      player.playTracks([quick], 0);
+      setActive(true);
+    }
+  }
   let pool = await gather(12);
   await prefetchYouTubeIds(pool);
   const liked = new Set(store.state.likes.map((t) => t.id));
@@ -553,6 +568,14 @@ async function seedQueue(fromTrack) {
   // первой — уверенное попадание (знакомый исполнитель), дальше уже открытия
   if (!first.length && md.id !== 'discover') { const i = mix.findIndex((t) => isKnown(t, liked) && peekYouTubeId(t)); const j = i >= 0 ? i : mix.findIndex((t) => isKnown(t, liked)); if (j > 0) mix = [mix[j], ...mix.slice(0, j), ...mix.slice(j + 1)]; }
   const start = [...first, ...mix].slice(0, 10).map((t) => { const { _src, _fx, ...clean } = t; return { ...clean, wave: true, waveSrc: _src || clean.waveSrc, waveNew: !isKnown(t, liked), waveFx: _fx }; });
+  if (quick) {
+    // первая песня уже играет — просто дописываем подобранное в очередь (если волну за это время не выключили)
+    if (!active || !player.queue.current) return;
+    const have = new Set(player.queue.items.flatMap((t) => [t.id, fp(t)]));
+    for (const t of start.slice(1)) if (!have.has(t.id) && !have.has(fp(t))) player.addToQueue(t);
+    if (remaining() < 5) refill(10);
+    return;
+  }
   if (!start.length) { setActive(false); toast('Не получилось подобрать. Проверьте интернет'); return; }
   player.playTracks(start, 0);
   setActive(true);

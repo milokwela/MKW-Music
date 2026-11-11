@@ -110,6 +110,7 @@ function initAuthForm() {
 }
 
 // ---------- вкладки ----------
+let profT = 0;
 function showView(name) {
   const dir = viewDirection(name);
   for (const v of ['search', 'library', 'chats', 'profile']) $(`#view-${v}`).hidden = v !== name;
@@ -120,7 +121,8 @@ function showView(name) {
   if (name !== 'chats' && chatOpen()) closeChat();
   $$('#bottom-nav .nav-btn').forEach((b) => b.classList.toggle('active', b.dataset.view === name));
   if (name === 'library') renderLibrary();
-  if (name === 'profile') updateProfile();
+  // профиль пересчитывает статистику и достижения — делаем это после анимации перехода, чтобы вкладка открывалась без рывка
+  if (name === 'profile') { clearTimeout(profT); profT = setTimeout(() => { if (!$('#view-profile').hidden) updateProfile(); }, 380); }
   if (name === 'chats') renderChats();
   window.scrollTo(0, 0);
 }

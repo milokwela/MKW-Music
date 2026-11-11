@@ -118,6 +118,18 @@ export function skeleton(n = 6) {
 }
 
 // Плавное появление дочерних элементов по очереди.
+// Заменить содержимое блока, только если оно реально изменилось. Экран, который открывают повторно без изменений,
+// не перестраивается: не мигают обложки, не пересчитывается вёрстка, вкладки переключаются без рывка.
+const KIDS = new WeakMap();
+export function setKids(box, nodes) {
+  const list = nodes.filter(Boolean);
+  const sig = list.map((n) => (typeof n === 'string' ? n : n.outerHTML)).join('\u0001');
+  if (KIDS.get(box) === sig && box.childNodes.length === list.length) return false;
+  KIDS.set(box, sig);
+  box.replaceChildren(...list);
+  return true;
+}
+
 export function animateIn(el) {
   if (!el) return;
   el.classList.remove('enter');
