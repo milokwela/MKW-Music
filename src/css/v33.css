@@ -1551,3 +1551,13 @@ html.in-app, html.in-app body { touch-action: pan-x pan-y; -webkit-text-size-adj
 #auth-screen.app-auth .aa-foot a { color: inherit; }
 @keyframes aaIn { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
 @keyframes aaLogo { from { opacity: 0; transform: scale(.6); } to { opacity: 1; transform: none; } }
+
+/* ===== 0.42.6: обязательное обновление приложения ===== */
+.app-gate { position: fixed; inset: 0; z-index: 2147483000; background: #000; display: flex; align-items: center; justify-content: center; padding: 24px; animation: aaIn .4s both; }
+html.gated body > *:not(.app-gate) { visibility: hidden; }
+.ag-card { width: 100%; max-width: 380px; text-align: center; color: #fff; }
+.ag-logo { width: 84px; height: 84px; object-fit: contain; margin: 0 auto 22px; display: block; filter: drop-shadow(0 0 24px color-mix(in srgb, var(--primary) 60%, transparent)); }
+.ag-card h1 { font-size: 26px; margin: 0 0 10px; letter-spacing: -.02em; }
+.ag-card p { opacity: .7; font-size: 15px; line-height: 1.45; margin: 0 0 26px; text-wrap: balance; }
+.ag-go { min-height: 56px; border-radius: 28px; font-size: 16px; }
+.ag-alt { display: inline-block; margin-top: 16px; font-size: 13px; color: inherit; opacity: .5; }
