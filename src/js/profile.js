@@ -18,6 +18,9 @@ import { gesturesOn, setGestures, showGestureGuide } from './gestures.js';
 import { listenerStats } from './stats.js';
 import { liveBg, setLiveBg } from './viz.js';
 import { qualityMode, setQualityMode, qualityInfo, device, awake } from './quality.js';
+import { feedbackCard } from './feedback.js';
+import { telemetryOn, setTelemetry } from './telemetry.js';
+import { isOwnerMe, openInbox, unreadCount } from './inbox.js';
 import { logOut, changePassword, changeNick, authErrorText } from './auth.js';
 import { connectionCountry } from './geo.js';
 import { goOffline, publishCard, publishProfile, myCard, getProfile, topListeners, hiddenFromBoard, setHidden, myUid } from './leaders.js';
@@ -223,7 +226,7 @@ function syncControls() {
   $$('.src-chip').forEach((c) => c.classList.toggle('active', c.dataset.id === getSourceMode()));
   if (refs.srcnote) refs.srcnote.textContent = `iTunes: работает · YouTube: работает без лимита (через сервер MKW${youtubeQuotaOut() ? ', ключ на сегодня исчерпан' : ''}) · Audius: ${audiusEnabled() ? 'работает' : 'нет ключа'}`;
   const tog = (el, v) => { if (el) { el.classList.toggle('active', v); el.setAttribute('aria-checked', String(v)); } };
-  tog(refs.gest, gesturesOn()); tog(refs.voice, voiceOn()); tog(refs.notify, notifyOn()); tog(refs.bgplay, streamsOn()); tog(refs.livebg, liveBg()); tog(refs.winter, winterOn()); tog(refs.player2, player2On()); tog(refs.board, !hiddenFromBoard());
+  tog(refs.gest, gesturesOn()); tog(refs.tm, telemetryOn()); tog(refs.voice, voiceOn()); tog(refs.notify, notifyOn()); tog(refs.bgplay, streamsOn()); tog(refs.livebg, liveBg()); tog(refs.winter, winterOn()); tog(refs.player2, player2On()); tog(refs.board, !hiddenFromBoard());
   $$('.swatch').forEach((c) => c.classList.toggle('active', c.dataset.id === getAccent()));
   if (refs.customSw) {
     const nt = getNeutral();
@@ -999,6 +1002,7 @@ export function buildProfile(nick) {
   refs.winter = sw(() => { setWinter(!winterOn()); syncControls(); });
   refs.player2 = sw(() => { setPlayer2(!player2On()); syncControls(); });
   refs.gest = sw(async () => { await setGestures(!gesturesOn()); syncControls(); });
+  refs.tm = sw(() => { setTelemetry(!telemetryOn()); syncControls(); toast(telemetryOn() ? 'Статистика включена — спасибо!' : 'Статистика выключена'); });
   refs.voice = sw(() => { setVoice(!voiceOn()); syncControls(); });
   refs.notify = sw(async () => { await setNotify(!notifyOn()); syncControls(); });
   refs.bgplay = sw(() => { setStreams(!streamsOn()); syncControls(); toast(streamsOn() ? 'Готово: выключите экран — музыка продолжит играть' : 'Фоновый режим выключен'); });
@@ -1109,7 +1113,8 @@ export function buildProfile(nick) {
         row('Рингтон звонка', (() => { const r = getRingtone(); return r ? `${r.artist} — ${r.title}. Нажмите, чтобы вернуть гудки` : 'Гудки. Любую песню: меню трека (⋮) → «Поставить на звонок»'; })(), chev(), () => { if (getRingtone()) { clearRingtone(); setTimeout(() => { const t = refs.tab; refs.tab = ''; buildProfile(curNick); setTab(t || 'set'); }, 200); } else toast('Откройте меню любой песни (⋮) → «Поставить на звонок»'); }, 'bell'),
         row('Какие жесты показывать', 'Список жестов и что они делают', chev(), showGestureGuide, 'hand-peace'),
         row('Голосовое управление', voiceSupported() ? 'Скажите «МКВ» или «Музыка», потом команду: «МКВ, следующая», «МКВ, включить Баста», «МКВ, позвони Лере»' : 'Этот браузер не поддерживает', refs.voice, null, 'mic'),
-        row('Какие команды говорить', 'Все голосовые команды', chev(), showVoiceGuide, 'note')),
+        row('Какие команды говорить', 'Все голосовые команды', chev(), showVoiceGuide, 'note'),
+        row('Анонимная статистика', 'Раз в день сообщать разработчику, как MKW работает на этом телефоне: плавность, нагрев, ошибки. Без ника и того, что вы слушаете', refs.tm, null, 'signal')),
       group('Аккаунт',
         row('Изменить профиль', 'Фото, баннер, статус, витрина', chev(), editProfile, 'edit'),
         isDev(curNick) ? row('Часы прослушивания', 'Поставить любое количество или вернуть как было', chev(), () => {
@@ -1122,12 +1127,15 @@ export function buildProfile(nick) {
         isDev(curNick) ? row('Значок Contributor', 'Выдать или забрать значок у пользователей', chev(), () => openContribAdmin(() => topListeners(400)), 'star') : null,
         row('Сменить ник', 'Имя в приложении и вход', chev(), openNickSheet, 'person'),
         row('Сменить пароль', '', chev(), openPasswordSheet, 'shield'),
-        row('Выйти', '', h('span', { class: 'chev' }, icon('logout')), () => logOut()))),
+        row('Выйти', '', h('span', { class: 'chev' }, icon('logout')), () => logOut())),
+      isOwnerMe() ? group('Разработчик',
+        row('Сообщения', 'Ошибки, оценки и статистика от слушателей', h('span', { class: 'ib-right' }, refs.inboxN = h('span', { class: 'ib-n', hidden: '' }), chev()), openInbox, 'chat')) : null),
     h('div', { class: 'ppane', 'data-pane': 'about', hidden: '' },
       // приложение: только версии приложения; список версий сайта — на сайте
       /MKWApp\//.test(navigator.userAgent) ? h('div', { class: 'about-card' },
         h('div', { class: 'about-top' }, h('img', { src: 'assets/mkw-logo.png', alt: '', class: 'about-logo' }), h('div', {}, h('b', { text: 'MKW Music' }), h('span', { class: 'beta-badge', text: `приложение · v${appVersion() || '—'}` }))),
         appVersionCard(),
+        feedbackCard(),
         refs.listeners,
         h('p', { class: 'profile-note', text: 'MKW Music — название сервиса. MiloKwel — его создатель: он делает все обновления и разработку.' }),
         APP_CHANGELOG.map((e, i) => changelogEntry({ ...e, version: `${e.version}${e.stage ? ` ${e.stage}` : ''}` }, i === 0))) :
@@ -1135,6 +1143,7 @@ export function buildProfile(nick) {
         h('div', { class: 'about-top' }, h('img', { src: 'assets/mkw-logo.png', alt: '', class: 'about-logo' }), h('div', {}, h('b', { text: 'MKW Music' }), h('span', { class: 'beta-badge', text: `${STAGE} · v${VERSION}` }))),
         betaCard(),
         apkCard(),
+        feedbackCard(),
         refs.listeners,
         h('p', { class: 'profile-note', text: 'MKW Music — название сервиса. MiloKwel — его создатель: он делает все обновления и разработку. Бета-версия: что-то может ломаться, всё чиним.' }),
         CHANGELOG.map((e, i) => changelogEntry(e, i === 0)),
@@ -1142,6 +1151,12 @@ export function buildProfile(nick) {
         h('ul', {}, KNOWN_ISSUES.map((t) => h('li', { text: t })))))));
 
   built = true;
+  if (refs.inboxN) {
+    const syncInbox = async () => { const n = await unreadCount(); refs.inboxN.hidden = !n; refs.inboxN.textContent = String(n); };
+    syncInbox();
+    window.addEventListener('mkw-inbox', syncInbox);
+    setInterval(() => { if (awake()) syncInbox(); }, 120000);
+  }
   pinDarkBadge();
   pinWaitBadge();
   if (!refs.voiceSync) { refs.voiceSync = true; window.addEventListener('mkw-voice', () => syncControls()); }

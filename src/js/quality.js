@@ -34,6 +34,8 @@ let memLow = false; // Android сообщил, что памяти мало: д�
 let hzMax = null;
 
 export const quality = () => level;
+// для анонимной статистики (telemetry.js): как часто телефон не успевал, сколько раз пришлось убавить графику, нагрев
+export const qStats = { probes: 0, bad: 0, medSum: 0, lostSum: 0, steps: 0, thMax: 0, saver: false, memLow: 0 };
 export const qualityMode = () => { const m = get(MODE); return m === '0' || m === '1' || m === '2' || m === '3' ? m : 'auto'; };
 export function setQualityMode(m) {
   put(MODE, m === 'auto' ? null : String(m));
@@ -131,6 +133,7 @@ function stepDown() {
   const to = Math.max(0, level - 1);
   if (to === level) return;
   put(CAP, JSON.stringify({ v: to, at: Date.now() }));
+  qStats.steps += 1;
   quietUntil = performance.now() + 20000; // даём новому уровню показать себя
   apply();
 }
@@ -139,7 +142,8 @@ function finish(ds, total) {
   probing = false;
   if (inBg() || total <= 0) return;
   let bad;
-  if (ds.length < 8) bad = true; // меньше ~12 кадров в секунду
+  qStats.probes += 1;
+  if (ds.length < 8) { bad = true; qStats.medSum += total / Math.max(1, ds.length); qStats.lostSum += 1; } // меньше ~12 кадров в секунду
   else {
     const sorted = ds.slice().sort((a, b) => a - b);
     const median = sorted[sorted.length >> 1];
@@ -147,7 +151,9 @@ function finish(ds, total) {
     let lost = 0;
     for (const d of ds) if (d > base * 1.6) lost += d - base;
     bad = lost / total > 0.22 || median > 24;
+    qStats.medSum += median; qStats.lostSum += Math.min(1, lost / total);
   }
+  if (bad) qStats.bad += 1;
   samples.push(bad);
   if (samples.length > 6) samples.shift();
   if (samples.length < 4) return;
@@ -174,7 +180,7 @@ function probe() {
 
 export function initQuality() {
   const d = device();
-  if (d) { thermal = Number(d.thermal) || 0; saver = Boolean(d.saver); }
+  if (d) { thermal = Number(d.thermal) || 0; saver = Boolean(d.saver); qStats.thMax = thermal; qStats.saver = saver; }
   // раньше «режим для слабых устройств» включался сам на телефонах с 4 ядрами — теперь это делает «Авто», и мягче
   if (get('mkw.lowpower') !== null) {
     if (get('mkw.lowpower') === '1' && get(MODE) === null && get(CAP) === null) put(CAP, JSON.stringify({ v: 1, at: Date.now() }));
@@ -183,9 +189,9 @@ export function initQuality() {
   // приложение сообщает о нагреве, энергосбережении и нехватке памяти
   window.__mkwPerf = (o) => {
     if (!o) return;
-    if ('thermal' in o) thermal = Number(o.thermal) || 0;
-    if ('saver' in o) saver = Boolean(o.saver);
-    if (o.mem) { if (o.mem === 10 || o.mem === 15) memLow = true; fire('mkw-mem', o.mem); }
+    if ('thermal' in o) { thermal = Number(o.thermal) || 0; qStats.thMax = Math.max(qStats.thMax, thermal); }
+    if ('saver' in o) { saver = Boolean(o.saver); if (saver) qStats.saver = true; }
+    if (o.mem) { if (o.mem === 10 || o.mem === 15) { memLow = true; qStats.memLow += 1; } fire('mkw-mem', o.mem); }
     apply();
   };
   apply();

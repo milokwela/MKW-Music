@@ -248,7 +248,8 @@ service cloud.firestore {
     // пуш-уведомления: подписки устройств (до 6). Прочитать их может только сам человек и его взаимные друзья —
     // наш Worker читает их от имени отправителя, когда тот звонит или пишет
     match /push/{uid} {
-      allow get: if request.auth != null && (request.auth.uid == uid || mutual(request.auth.uid, uid));
+      // создателю MKW уведомление о новом сообщении об ошибке может отправить любой вошедший
+      allow get: if request.auth != null && (request.auth.uid == uid || mutual(request.auth.uid, uid) || uid == 'IqBq9kGF1oZG4Iz0m6LU1nSyx5H2');
       allow create, update: if request.auth != null && request.auth.uid == uid
         && request.resource.data.keys().hasOnly(['subs', 'updatedAt'])
         && request.resource.data.subs is list && request.resource.data.subs.size() <= 6;
@@ -283,6 +284,38 @@ service cloud.firestore {
         && request.resource.data.keys().hasOnly(['n']) && request.resource.data.n == 1;
       allow update: if request.auth != null
         && request.resource.data.keys().hasOnly(['n']) && request.resource.data.n == resource.data.n + 1;
+    }
+    // «Сообщить об ошибке» и «Оценить оптимизацию»: пишет любой вошедший (только от своего имени), читает и удаляет только создатель
+    match /reports/{rid} {
+      allow read, delete: if isOwner();
+      allow update: if isOwner() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
+      allow create, update: if request.auth != null
+        && request.resource.data.uid == request.auth.uid
+        && (resource == null || resource.data.uid == request.auth.uid)
+        && request.resource.data.keys().hasOnly(['kind', 'uid', 'nick', 'text', 'score', 'ver', 'att', 'env', 'at', 'up', 'read'])
+        && request.resource.data.kind in ['bug', 'rate']
+        && request.resource.data.text is string && request.resource.data.text.size() <= 2000
+        && request.resource.data.nick is string && request.resource.data.nick.size() <= 32
+        && request.resource.data.read == false
+        && request.resource.data.att is list && request.resource.data.att.size() <= 4
+        && (request.resource.data.kind == 'bug' || (request.resource.data.score is int && request.resource.data.score >= 0 && request.resource.data.score <= 10));
+      // вложения кусками до ~1 МБ: добавить может только автор сообщения
+      match /parts/{pid} {
+        allow read, delete: if isOwner();
+        allow create: if request.auth != null
+          && get(/databases/$(database)/documents/reports/$(rid)).data.uid == request.auth.uid
+          && request.resource.data.keys().hasOnly(['d'])
+          && request.resource.data.d is string && request.resource.data.d.size() <= 1000000;
+      }
+    }
+    // анонимная статистика работы (без uid): пишет любой вошедший, читает только создатель
+    match /perf/{pid} {
+      allow read, delete: if isOwner();
+      allow create, update: if request.auth != null && pid.size() <= 40
+        && request.resource.data.keys().hasOnly(['day', 'v', 's', 'dev', 'q', 'm', 'sess', 'fg', 'pr', 'bad', 'med', 'lost', 'st', 'th', 'sv', 'mem', 'err', 'errs', 'lt', 'ltms', 'boot', 'heap', 'net', 'at'])
+        && request.resource.data.day is string && request.resource.data.day.size() == 10
+        && request.resource.data.dev is map && request.resource.data.dev.size() <= 12
+        && request.resource.data.errs is list && request.resource.data.errs.size() <= 5;
     }
   }
 }

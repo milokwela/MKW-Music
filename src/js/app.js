@@ -36,6 +36,8 @@ import { initWave, waveDebug } from './wave.js';
 import { initTheme } from './theme.js';
 import { initWinter } from './winter.js';
 import { checkWebView } from './wvcheck.js';
+import { initTelemetry } from './telemetry.js';
+import { initInbox, openInbox } from './inbox.js';
 import { qualityDebug } from './quality.js';
 import { initOffline } from './offline.js';
 import { offlineStart } from './offui.js';
@@ -223,7 +225,7 @@ function boot() {
   if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
   initTheme();
   initWinter();
-  try { if (localStorage.getItem('mkw.debug') === '1') window.__mkw = { player, waveDebug, quality: qualityDebug }; } catch { /* ignore */ }
+  try { if (localStorage.getItem('mkw.debug') === '1') window.__mkw = { player, waveDebug, quality: qualityDebug, inbox: openInbox }; } catch { /* ignore */ }
   initAuthForm();
   initApkHandoff();
   initNav();
@@ -245,6 +247,8 @@ function boot() {
   initListenFlush();
   startUpdateWatch();
   checkWebView();
+  initTelemetry();
+  initInbox();
   onStore((what) => { if (!$('#view-profile').hidden && (what === 'profile' || what === 'likes' || what === 'playlists' || what === 'history')) updateProfile(); });
   watchAuth(onUser);
   // встроенный браузер (Telegram, VK) иногда не отдаёт вход — не оставляем пустой экран
