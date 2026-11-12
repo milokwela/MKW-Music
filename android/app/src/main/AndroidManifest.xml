@@ -28,6 +28,11 @@
     <uses-feature android:name="android.hardware.camera" android:required="false" />
     <uses-feature android:name="android.hardware.microphone" android:required="false" />
 
+    <!-- Android 11+: без этого приложение не «видит» сервисы Google и решило бы, что их нет -->
+    <queries>
+        <package android:name="com.google.android.gms" />
+    </queries>
+
     <application
         android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
@@ -35,6 +40,10 @@
         android:theme="@style/Theme.MKW"
         android:usesCleartextTraffic="false"
         android:supportsRtl="true">
+        <!-- Firebase не запрашивает токен уведомлений сам при запуске: на телефонах без сервисов Google
+             (Huawei, Honor) это бесполезные повторные попытки. Токен просим вручную, только если сервисы Google есть -->
+        <meta-data android:name="firebase_messaging_auto_init_enabled" android:value="false" />
+        <meta-data android:name="firebase_analytics_collection_enabled" android:value="false" />
 
         <activity
             android:name=".MainActivity"

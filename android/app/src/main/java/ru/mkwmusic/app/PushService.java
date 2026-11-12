@@ -33,11 +33,23 @@ public class PushService extends FirebaseMessagingService {
 
     /** Запросить токен устройства (новый придёт и в onNewToken). */
     static void fetch(Context c, java.util.function.Consumer<String> done) {
+        if (!hasGms(c)) { Log.i(TAG, "нет сервисов Google — уведомления через FCM недоступны"); return; }
         try {
+            FirebaseMessaging.getInstance().setAutoInitEnabled(true);
             FirebaseMessaging.getInstance().getToken().addOnSuccessListener((t) -> { save(c, t); done.accept(t); })
                     .addOnFailureListener((e) -> Log.w(TAG, "token: " + e));
         } catch (Exception e) {
             Log.w(TAG, "fcm: " + e);
+        }
+    }
+
+    /** Есть ли на телефоне сервисы Google (на Huawei Mate 50, P50 и новее их нет). */
+    static boolean hasGms(Context c) {
+        try {
+            c.getPackageManager().getPackageInfo("com.google.android.gms", 0);
+            return true;
+        } catch (Exception e) {
+            return false;
         }
     }
 
