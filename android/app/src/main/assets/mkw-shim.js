@@ -137,6 +137,8 @@
     ready: function () { send({ t: 'ready' }); },
     /* частота экрана: true — самая плавная, false — спокойные 60 Гц (нагрев, энергосбережение) */
     refresh: function (max) { send({ t: 'hz', max: !!max }); },
+    /* частота экрана: 'max' | 'auto' (решает телефон) | 'low' (60 Гц) */
+    refreshMode: function (mode) { send({ t: 'hz', mode: String(mode) }); },
     /* проверка устройства: снимок температуры, частот, памяти (ответ — в window.__mkwDiag) и «не гасить экран» */
     diag: function () { send({ t: 'diag' }); },
     keepOn: function (on) { send({ t: 'keepon', on: !!on }); },

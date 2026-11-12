@@ -108,6 +108,7 @@ function summarize(phases, meta) {
       cpuT: avg('cpu') !== null && avg('cpu') > 0 ? r1(avg('cpu') / 10) : null, cpuMax: s.reduce((m, x) => Math.max(m, x.cpu || 0), 0) / 10 || null,
       battRise: rise(p, 'batt') !== null ? r1(rise(p, 'batt')) : null, cpuRise: rise(p, 'cpu') !== null ? r1(rise(p, 'cpu')) : null,
       fps: avg('fps') !== null ? Math.round(avg('fps')) : null, score: avg('score'), freq: avg('freq') !== null ? Math.round(avg('freq')) : null, cap: avg('cap') !== null ? Math.round(avg('cap')) : null,
+      hz: s.reduce((m, x) => Math.max(m, x.hz || 0), 0) || null,
       freezes: p.freezes, maxGap: Math.round(p.maxGap), paused: Math.round((p.paused || 0) / 1000), longMs: Math.round(p.longMs), free: avg('free') !== null ? Math.round(avg('free')) : null,
     };
   });
@@ -147,7 +148,12 @@ function summarize(phases, meta) {
     verdict.push(`Фризы: ${fr} раз (больше всего на этапе «${worst.name}», самый долгий ${worst.maxGap} мс).`);
   } else verdict.push(fr ? `Фризов почти нет (${fr}).` : 'Фризов не было.');
   const minPow = Math.min(...stat.map((x) => x.power || 100));
-  if (minPow < 65) verdict.push(`Процессор к концу работал на ${minPow}% от начальной силы — телефон сбрасывал частоты из-за нагрева (отсюда и тормоза).`);
+  const hotEnd = stat.some((x) => (x.batt1 && x.batt1 >= 40) || (x.cpuMax && x.cpuMax >= 80));
+  if (minPow < 65 && hotEnd) verdict.push(`Процессор к концу работал на ${minPow}% от начальной силы — телефон сбрасывал частоты из-за нагрева (отсюда и тормоза).`);
+  // плавность прокрутки относительно частоты экрана (120 Гц экран должен давать около 120 кадров)
+  const sc = stat.find((x) => x.id === 'scroll');
+  if (sc && sc.fps && sc.hz && sc.fps < sc.hz * 0.85) verdict.push(`Прокрутка: ${sc.fps} кадров в секунду при экране ${sc.hz} Гц — не дотягивает до частоты экрана.`);
+  else if (sc && sc.fps && sc.hz) verdict.push(`Прокрутка плавная: ${sc.fps} кадров при экране ${sc.hz} Гц.`);
   const lowFps = stat.filter((x) => x.fps && x.fps < 40);
   if (lowFps.length) verdict.push(`Мало кадров: ${lowFps.map((x) => `${x.name} — ${x.fps}`).join(', ')} в секунду.`);
   return { stat, verdict, tip };
@@ -208,7 +214,7 @@ async function run() {
       if (p.id === 'idle') { if (player.st.playing) player.pause(); }
       if (p.id === 'music') { const ok = await ensureMusic(); if (!ok) hint.textContent = 'Музыка не включилась — включите любой трек вручную, проверка продолжится.'; }
       if (p.id === 'lite') setQualityMode('1');
-      if (p.id === 'scroll') { setQualityMode(prevMode); if (!player.st.playing) await ensureMusic(); closePlayer(); startScroll(); }
+      if (p.id === 'scroll') { setQualityMode(prevMode); if (!player.st.playing) await ensureMusic(); closePlayer(); window.dispatchEvent(new Event('pointerdown')); startScroll(); }
       if (p.id === 'cool') { stopScroll(); if (player.st.playing) player.pause(); setQualityMode('0'); }
       const pStart = Date.now();
       while (Date.now() - pStart < PHASE_MS && !stop) {

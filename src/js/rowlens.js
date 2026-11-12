@@ -49,10 +49,9 @@ export function initRowLens() {
       if (Math.abs(t.clientX - sx) > 8 || Math.abs(t.clientY - sy) > 8) clearTimeout(timer);
       return;
     }
-    if (e.cancelable) e.preventDefault();
     const row = rowAt(t.clientX, t.clientY);
     if (row) show(row);
-  }, { passive: false });
+  }, { passive: true }); // не блокирует прокрутку: пока «лупа» открыта, прокрутку держит класс lens-on (v34.css)
 
   const end = () => {
     clearTimeout(timer);

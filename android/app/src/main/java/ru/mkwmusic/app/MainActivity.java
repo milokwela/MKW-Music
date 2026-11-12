@@ -704,9 +704,13 @@ public class MainActivity extends Activity {
                 if (o.optBoolean("on", false)) getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
                 else getWindow().clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
                 break;
-            case "hz":
-                if (o.optBoolean("max", true) != hzMax) preferDisplay(o.optBoolean("max", true));
+            case "hz": {
+                // max — самая высокая частота; auto — решает сам телефон (LTPO-экраны снижают её в покое и поднимают при касании);
+                // low — 60 Гц (нагрев, энергосбережение)
+                String mode = o.optString("mode", o.optBoolean("max", true) ? "max" : "low");
+                if (!mode.equals(hzMode)) setDisplayMode(mode);
                 break;
+            }
             case "outswitch":
                 openOutputSwitcher();
                 break;
@@ -1138,6 +1142,23 @@ public class MainActivity extends Activity {
      * max = true — самый плавный режим экрана (90/120/144 Гц). max = false — спокойные 60 Гц:
      * так страница просит, когда телефон греется или включено энергосбережение (вдвое меньше кадров — меньше тепла).
      */
+    private String hzMode = "max";
+
+    private void setDisplayMode(String mode) {
+        if ("auto".equals(mode)) {
+            try {
+                android.view.WindowManager.LayoutParams lp = getWindow().getAttributes();
+                lp.preferredDisplayModeId = 0;
+                lp.preferredRefreshRate = 0;
+                getWindow().setAttributes(lp);
+            } catch (Exception ignored) { /* остаётся как было */ }
+            hzMax = false;
+        } else {
+            preferDisplay("max".equals(mode));
+        }
+        hzMode = mode;
+    }
+
     private void preferDisplay(boolean max) {
         try {
             android.view.Display d = getWindowManager().getDefaultDisplay();

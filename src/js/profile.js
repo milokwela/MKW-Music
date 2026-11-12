@@ -921,6 +921,7 @@ function swipeTabs(area) {
     area.style.transform = x ? `translateX(${x}px) scale(${1 - Math.min(0.06, Math.abs(x) / W() * 0.08)})` : '';
     area.style.opacity = x ? String(Math.max(0.35, 1 - Math.abs(x) / W() * 0.9)) : '';
   };
+  area.style.touchAction = 'pan-y';
   area.addEventListener('touchstart', (e) => {
     mode = '';
     if (!sub() || e.touches.length !== 1 || inHScroll(e.target, area)) return;
@@ -936,9 +937,8 @@ function swipeTabs(area) {
       mode = Math.abs(dx) > Math.abs(dy) * 1.3 ? 'drag' : '';
       if (!mode) return;
     }
-    if (e.cancelable) e.preventDefault();
     set(dx, false);
-  }, { passive: false });
+  }, { passive: true }); // браузер сам не листает вбок (touch-action: pan-y), поэтому вертикальная прокрутка не ждёт скрипт
   const end = () => {
     if (mode !== 'drag') { mode = ''; return; }
     mode = '';

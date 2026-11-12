@@ -1215,13 +1215,12 @@ async function openConv(cv) {
       g.mode = mx * g.dir > 0 && Math.abs(mx) > Math.abs(my) * 1.4 && g.x > 24 ? 'swipe' : 'scroll';
     }
     if (g.mode === 'swipe') {
-      e.preventDefault();
       g.dx = g.dir < 0 ? Math.max(-96, Math.min(0, mx)) : Math.min(96, Math.max(0, mx));
       g.el.style.transform = `translateX(${g.dx}px)`;
       const ok = Math.abs(g.dx) > 58;
       if (ok !== g.el.classList.contains('swipe-ok')) { g.el.classList.toggle('swipe-ok', ok); if (ok && navigator.vibrate) navigator.vibrate(8); }
     }
-  }, { passive: false });
+  }, { passive: true }); // сообщения не листаются вбок (touch-action: pan-y), прокрутка переписки не ждёт скрипт
   const touchEnd = () => {
     if (!g) return;
     clearTimeout(g.timer);
