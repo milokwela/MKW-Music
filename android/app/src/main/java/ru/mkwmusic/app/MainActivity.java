@@ -657,6 +657,8 @@ public class MainActivity extends Activity {
             init.put("v", versionName());
             init.put("perm", notifState());
             init.put("dev", DeviceProfile.read(this));
+            // страницу пересоздали, пока играла музыка: она сама продолжит трек с того же места
+            if (resumeOnLoad) init.put("resume", System.currentTimeMillis());
             return shimTemplate.replace("__MKW_INIT__", init.toString());
         } catch (Exception e) {
             Log.w(TAG, "shim source", e);
@@ -1214,12 +1216,37 @@ public class MainActivity extends Activity {
         long now = android.os.SystemClock.elapsedRealtime();
         if (now - crashWindow > 120000) { crashWindow = now; crashes = 0; }
         crashes++;
+        // экран выключен, а музыка играла: систему выгрузила страницу ради памяти — собираем её сразу, и трек продолжится
+        if (!visible && PlaybackService.playingNow() && crashes <= 3) { rebuildWeb(true); return; }
         if (!visible) { recoverPending = true; return; } // приложение свёрнуто — соберём, когда его откроют
         if (crashes > 3) {
             Toast.makeText(this, "MKW не может отрисовать экран. Перезапустите приложение или обновите Android System WebView", Toast.LENGTH_LONG).show();
             return;
         }
         recreate();
+    }
+
+    private boolean resumeOnLoad = false;
+
+    /** Новая страница вместо выгруженной — без пересоздания экрана (можно и при выключенном экране). */
+    private void rebuildWeb(boolean resume) {
+        try {
+            WebView old = web;
+            if (old != null) { root.removeView(old); try { old.destroy(); } catch (Exception ignored) { /* уже мёртвая */ } }
+            resumeOnLoad = resume;
+            web = new BgWebView(this);
+            web.setBackgroundColor(BG);
+            root.addView(web, 0, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+            configure(web);
+            installBridge();
+            interceptLocalImages();
+            if (PlaybackService.alive() && web instanceof BgWebView) ((BgWebView) web).setHold(true);
+            pageReady = false;
+            web.loadUrl(startUrl(getIntent()));
+        } catch (Exception e) {
+            Log.w(TAG, "rebuild web", e);
+            recoverPending = true;
+        }
     }
 
     /** Вернулись в приложение: проверяем, что страница живая и отвечает; если молчит 3 секунды — перезагружаем. */

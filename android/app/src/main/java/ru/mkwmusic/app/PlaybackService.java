@@ -160,6 +160,8 @@ public class PlaybackService extends Service {
     }
 
     static boolean alive() { return instance != null; }
+    /** Музыка сейчас играет (служба запущена и не на паузе). */
+    static boolean playingNow() { PlaybackService s = instance; return s != null && s.playing; }
 
     private long livePos() {
         long p = positionMs;

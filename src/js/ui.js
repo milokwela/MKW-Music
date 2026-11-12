@@ -148,6 +148,7 @@ export function trackRow(track, opts = {}) {
         h('div', { class: 'track-title', text: track.title }),
         h('div', { class: 'track-sub', text: opts.sub ?? track.artist }))),
     opts.onMore ? h('button', { class: 'icon-btn', type: 'button', 'aria-label': 'Действия', onclick: opts.onMore }, icon('more')) : null);
+  row._track = track; // для заблаговременного поиска звука (player.prefetchVisible)
   if (opts.current) row.classList.add('current');
   if (unavailable && opts.dimUnavailable) row.classList.add('unavailable');
   return row;

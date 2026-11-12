@@ -249,6 +249,10 @@ function boot() {
   startUpdateWatch();
   checkWebView();
   initTelemetry();
+  // заранее ищем звук для треков на экране (после загрузки и после прокрутки) — нажатие запускает музыку быстрее
+  { const pf = () => { const ri = window.requestIdleCallback || ((f) => setTimeout(f, 300)); ri(() => player.prefetchVisible()); }; setTimeout(pf, 4000); let st = 0; document.addEventListener('scroll', () => { clearTimeout(st); st = setTimeout(pf, 900); }, { passive: true, capture: true }); }
+  // приложение пересобрало страницу, пока играла музыка (экран был выключен) — продолжаем трек
+  try { const r = window.__MKW_APP && window.__MKW_APP.resume; if (r && Date.now() - r < 60000 && sessionStorage.getItem('mkw.resumed') !== String(r)) { sessionStorage.setItem('mkw.resumed', String(r)); setTimeout(() => player.resumeSession(), 800); } } catch { /* ignore */ }
   initFeedbackIntro();
   initInbox();
   onStore((what) => { if (!$('#view-profile').hidden && (what === 'profile' || what === 'likes' || what === 'playlists' || what === 'history')) updateProfile(); });
