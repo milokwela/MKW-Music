@@ -1,5 +1,5 @@
 // История версий. Новые записи добавляйте сверху.
-export const VERSION = '0.46.1';
+export const VERSION = '0.46.2';
 export const STAGE = 'beta';
 
 export const CHANGELOG = [

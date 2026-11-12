@@ -110,6 +110,11 @@ service cloud.firestore {
     // группа: id начинается с «g», участники — в members (3–10 человек)
     function isGroupId(cid) { return cid.matches('g[A-Za-z0-9]+'); }
     function chatMembers(cid) { return get(/databases/$(database)/documents/chats/$(cid)).data.members; }
+    // переписка с создателем MKW: он пишет любому без дружбы, человек отвечает в уже начатой им переписке
+    function ownerChat(cid) {
+      return 'IqBq9kGF1oZG4Iz0m6LU1nSyx5H2' in cid.split('_')
+        && (isOwner() || exists(/databases/$(database)/documents/chats/$(cid)));
+    }
     function inChat(cid) { return request.auth.uid in cid.split('_') || (isGroupId(cid) && request.auth.uid in chatMembers(cid)); }
     match /chats/{cid} {
       allow get: if request.auth != null && (request.auth.uid in cid.split('_') || request.auth.uid in resource.data.members);
@@ -119,7 +124,7 @@ service cloud.firestore {
         && request.resource.data.members == cid.split('_')
         && request.auth.uid in request.resource.data.members
         && request.resource.data.keys().hasOnly(['members', 'last', 'at', 'read'])
-        && mutual(cid.split('_')[0], cid.split('_')[1]);
+        && (mutual(cid.split('_')[0], cid.split('_')[1]) || isOwner());
       // группа: создатель добавляет только своих друзей
       allow create: if request.auth != null && isGroupId(cid)
         && request.resource.data.group == true
@@ -155,7 +160,7 @@ service cloud.firestore {
           && (!('img' in request.resource.data) || (request.resource.data.img is string && request.resource.data.img.size() <= 400000))
           && (!('voice' in request.resource.data) || (request.resource.data.voice is string && request.resource.data.voice.size() <= 400000))
           && request.resource.data.at is number
-          && (isGroupId(cid) || (mutual(cid.split('_')[0], cid.split('_')[1]) && notBlocked(cid)));
+          && (isGroupId(cid) || ((mutual(cid.split('_')[0], cid.split('_')[1]) || ownerChat(cid)) && notBlocked(cid)));
         // свои сообщения можно изменить (только текст) — реакции ставит любой участник, только свою
         allow update: if request.auth != null && inChat(cid)
           && ((resource.data.from == request.auth.uid
@@ -249,7 +254,7 @@ service cloud.firestore {
     // наш Worker читает их от имени отправителя, когда тот звонит или пишет
     match /push/{uid} {
       // создателю MKW уведомление о новом сообщении об ошибке может отправить любой вошедший
-      allow get: if request.auth != null && (request.auth.uid == uid || mutual(request.auth.uid, uid) || uid == 'IqBq9kGF1oZG4Iz0m6LU1nSyx5H2');
+      allow get: if request.auth != null && (request.auth.uid == uid || mutual(request.auth.uid, uid) || uid == 'IqBq9kGF1oZG4Iz0m6LU1nSyx5H2' || isOwner());
       allow create, update: if request.auth != null && request.auth.uid == uid
         && request.resource.data.keys().hasOnly(['subs', 'updatedAt'])
         && request.resource.data.subs is list && request.resource.data.subs.size() <= 6;
