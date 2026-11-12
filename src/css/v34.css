@@ -46,6 +46,9 @@ html.touch-dev .ch-msg.photo time { background: rgba(0, 0, 0, .55) !important; }
 /* большой плеер открыт — мини-плеер под ним не виден; плавный ход его полоски там шёл бы через процессор на каждом кадре */
 html.fp-cover #mini-progress { transition: none !important; }
 
+/* в покое полоска мини-плеера прыгает, а не плывёт: иначе экран перерисовывается без остановки, пока играет музыка */
+html.app-idle #mini-progress { transition: none !important; }
+
 /* ---------- текст песни: размытие соседних строк — только на максимальном уровне ---------- */
 html:not(.q3) .ly-line { filter: none !important; transition: opacity .45s, transform .45s cubic-bezier(.2,.8,.2,1), color .4s !important; will-change: auto !important; }
 html.lite #fp-lyrics::before { filter: none !important; opacity: .22 !important; }

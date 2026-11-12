@@ -71,7 +71,7 @@ function payload(a) {
   const net = (navigator.connection && navigator.connection.effectiveType) || '';
   return {
     day: a.day, v: e.app, s: e.site,
-    dev: { model: e.model, brand: e.brand, os: e.os, ram: e.ram, cores: e.cores, hz: e.hz, wv: e.wv, tier: e.tier, scr: e.scr },
+    dev: { model: e.model, brand: e.brand, os: e.os, ram: e.ram, cores: e.cores, hz: e.hz, wv: e.wv, tier: e.tier, scr: e.scr, batt: Math.round((qStats.batt || 0) / 10) },
     q: quality(), m: qualityMode(),
     sess: a.sess, fg: a.fg, pr: a.pr, bad: a.bad,
     med: a.pr ? Math.round((a.med / a.pr) * 10) / 10 : 0,      // средний шаг кадра при прокрутке, мс

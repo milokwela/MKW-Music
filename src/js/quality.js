@@ -35,7 +35,7 @@ let hzMax = null;
 
 export const quality = () => level;
 // для анонимной статистики (telemetry.js): как часто телефон не успевал, сколько раз пришлось убавить графику, нагрев
-export const qStats = { probes: 0, bad: 0, medSum: 0, lostSum: 0, steps: 0, thMax: 0, saver: false, memLow: 0 };
+export const qStats = { probes: 0, bad: 0, medSum: 0, lostSum: 0, steps: 0, thMax: 0, saver: false, memLow: 0, batt: 0 };
 export const qualityMode = () => { const m = get(MODE); return m === '0' || m === '1' || m === '2' || m === '3' ? m : 'auto'; };
 export function setQualityMode(m) {
   put(MODE, m === 'auto' ? null : String(m));
@@ -46,7 +46,9 @@ export function setQualityMode(m) {
 
 function baseLevel() {
   const d = device();
-  if (d && typeof d.tier === 'number') return Math.max(1, Math.min(3, d.tier + 1));
+  // Huawei и Honor рисуют страницы своим движком (Huawei WebView), он заметно сильнее греет телефон на эффектах — максимум не включаем
+  const hw = /huawei|honor/i.test((d && d.brand) || '') || /HUAWEI|HONOR|HarmonyOS/i.test(navigator.userAgent);
+  if (d && typeof d.tier === 'number') return Math.max(1, Math.min(hw ? 2 : 3, d.tier + 1));
   if (!matchMedia('(pointer: coarse)').matches) return 3; // компьютер
   const mem = Number(navigator.deviceMemory) || 8;
   const cores = Number(navigator.hardwareConcurrency) || 8;
@@ -85,7 +87,7 @@ function apply() {
   root.classList.toggle('lowpower', l === 0);
   put(LAST, String(l));
   // частота экрана: самая плавная, пока телефон не горячий и не экономит заряд
-  const want = !(saver || thermal >= 3);
+  const want = !(saver || thermal >= 3 || idle);
   if (want !== hzMax) {
     hzMax = want;
     try { const n = window.MKWNative; if (n && n.refresh) n.refresh(want); } catch { /* старая версия приложения */ }
@@ -112,11 +114,11 @@ function checkIdle() {
   idleT = 0;
   const left = IDLE_MS - (Date.now() - lastAct);
   if (left > 50) { idleT = setTimeout(checkIdle, left); return; }
-  if (!idle) { idle = true; root.classList.add('app-idle'); fire('mkw-idle', true); }
+  if (!idle) { idle = true; root.classList.add('app-idle'); fire('mkw-idle', true); apply(); }
 }
 function act() {
   lastAct = Date.now();
-  if (idle) { idle = false; root.classList.remove('app-idle'); fire('mkw-idle', false); }
+  if (idle) { idle = false; root.classList.remove('app-idle'); fire('mkw-idle', false); apply(); }
   if (!idleT) idleT = setTimeout(checkIdle, IDLE_MS);
 }
 
@@ -191,6 +193,7 @@ export function initQuality() {
     if (!o) return;
     if ('thermal' in o) { thermal = Number(o.thermal) || 0; qStats.thMax = Math.max(qStats.thMax, thermal); }
     if ('saver' in o) { saver = Boolean(o.saver); if (saver) qStats.saver = true; }
+    if (o.batt) qStats.batt = Math.max(qStats.batt, Number(o.batt) || 0);
     if (o.mem) { if (o.mem === 10 || o.mem === 15) { memLow = true; qStats.memLow += 1; } fire('mkw-mem', o.mem); }
     apply();
   };

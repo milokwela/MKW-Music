@@ -59,7 +59,7 @@ q=+q;c.push(q>=3?'q3':q===2?'q2':q===1?'q1':'lowpower');if(q<=1)c.push('lite');i
 if(!CSS.supports('backdrop-filter','blur(1px)')&&!CSS.supports('-webkit-backdrop-filter','blur(1px)'))c.push('no-blur');
 d.className+=' '+c.join(' ');})();
 </script>
-<link rel="stylesheet" href="app.css?v=0.46.2">
+<link rel="stylesheet" href="app.css?v=0.47.0">
 </head>
 <body>
 <script>
@@ -291,6 +291,18 @@ document.addEventListener('click',function(){var e=s();if(e&&e.parentNode)e.pare
 <audio id="preview-player" preload="none"></audio>
 <div id="yt-holder" style="position:fixed;width:1px;height:1px;left:-10px;top:-10px;overflow:hidden;opacity:0;pointer-events:none"><div id="yt-target"></div></div>
 
-<script type="module" src="app.js?v=0.46.2"></script>
+<script>
+/* Страховка от «чёрного экрана»: если за 15 секунд не появился ни вход, ни главный экран — показываем, что случилось, и кнопку перезапуска */
+(function(){var errs=[];window.addEventListener('error',function(e){if(errs.length<3)errs.push(String(e&&e.message||e&&e.target&&e.target.src||'ошибка загрузки').slice(0,140))},true);
+window.addEventListener('unhandledrejection',function(e){var r=e&&e.reason;if(errs.length<3)errs.push(String(r&&(r.message||r.code)||r||'').slice(0,140))});
+setTimeout(function(){var ok=function(s){var x=document.querySelector(s);return x&&!x.hidden};if(ok('#app')||ok('#auth-screen')||document.querySelector('.app-gate'))return;
+var d=document.createElement('div');d.className='app-gate boot-fail';d.innerHTML='<b>MKW не загрузился</b><p>'+(navigator.onLine?'Сайт MKW не ответил или загрузился не полностью.':'Нет интернета.')+(errs.length?' Ошибка: '+errs.join(' · ').replace(/[<>&]/g,''):'')+'</p><button type="button" id="bf-re">Перезапустить</button><button type="button" id="bf-clr">Очистить кэш и перезапустить</button>';
+d.style.cssText='position:fixed;inset:0;z-index:99999;display:grid;place-content:center;gap:12px;padding:24px;text-align:center;background:#14111a;color:#fff;font:15px/1.45 system-ui,sans-serif';
+document.body.appendChild(d);d.querySelectorAll('button').forEach(function(b){b.style.cssText='padding:13px 18px;border:0;border-radius:14px;background:#f4a6d0;color:#1a1020;font:600 15px system-ui'});
+document.getElementById('bf-re').onclick=function(){location.reload()};
+document.getElementById('bf-clr').onclick=function(){var go=function(){location.reload()};try{caches.keys().then(function(k){return Promise.all(k.map(function(x){return caches.delete(x)}))}).then(go,go)}catch(e){go()}};
+try{if(window.MKWNative&&window.MKWNative.ready)window.MKWNative.ready()}catch(e){}},15000)})();
+</script>
+<script type="module" src="app.js?v=0.47.0"></script>
 </body>
 </html>
