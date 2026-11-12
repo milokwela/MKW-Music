@@ -82,6 +82,21 @@ async function removeReport(r) {
   await b.commit();
 }
 
+// итог «Проверки устройства»: этапы с нагревом, температурой процессора, частотами, кадрами и фризами
+function diagTable(d) {
+  const st = (d && d.stat) || [], dv = (d && d.device) || {};
+  const c = (v, suf = '') => (v === null || v === undefined ? '—' : `${v}${suf}`);
+  return h('div', { class: 'dg-box' },
+    h('div', { class: 'dg-table wide' },
+      h('div', { class: 'dg-tr head' }, ...['Этап', 'Бат. °C', '°/мин', 'Проц. °C', 'Частота', 'Сила', 'Кадр/с', 'Фризы'].map((t) => h('span', { text: t }))),
+      ...st.map((x) => h('div', { class: 'dg-tr' },
+        h('span', { text: x.name }), h('span', { text: x.batt0 ? `${x.batt0}→${x.batt1}` : '—' }), h('span', { class: x.battRise >= 1 ? 'bad' : '', text: c(x.battRise) }),
+        h('span', { text: x.cpuMax ? `${x.cpuT}/${x.cpuMax}` : '—' }), h('span', { text: x.freq >= 0 ? `${x.freq}%${x.cap >= 0 && x.cap < 100 ? ` (≤${x.cap}%)` : ''}` : '—' }),
+        h('span', { class: x.power && x.power < 70 ? 'bad' : '', text: c(x.power, '%') }), h('span', { class: x.fps && x.fps < 40 ? 'bad' : '', text: c(x.fps) }),
+        h('span', { class: x.freezes ? 'bad' : '', text: x.freezes ? `${x.freezes} (${x.maxGap} мс)` : '0' })))),
+    h('div', { class: 'rp-env', text: [dv.maker, dv.model, dv.emui, dv.harmony ? `HarmonyOS ${dv.harmony}` : '', dv.sdk ? `SDK ${dv.sdk}` : '', dv.gms === false ? 'без сервисов Google' : '', dv.wv, dv.charging ? 'ЗАРЯЖАЛСЯ' : '', dv.full === false ? 'остановлена раньше' : ''].filter(Boolean).join(' · ') }));
+}
+
 function reportCard(r, onGone) {
   const card = h('div', { class: `rp-card${r.read ? '' : ' new'}` },
     h('div', { class: 'rp-head' },
@@ -90,6 +105,7 @@ function reportCard(r, onGone) {
       h('span', { class: 'rp-time', text: when(r.at) })),
     r.kind === 'rate' ? h('div', { class: 'rp-rate-t', text: RATE_TEXT[r.score] || '' }) : null,
     r.text ? h('p', { class: 'rp-text', text: r.text }) : null,
+    r.env && r.env.diag ? diagTable(r.env.diag) : null,
     r.up ? h('p', { class: 'rp-warn', text: 'Вложения не догрузились — человек мог закрыть приложение во время отправки' }) : null,
     (r.att || []).length ? h('div', { class: 'rp-atts' }, ...(r.att || []).map((a) => attTile(r.id, a))) : null,
     h('div', { class: 'rp-env', text: envLine(r.env) }),

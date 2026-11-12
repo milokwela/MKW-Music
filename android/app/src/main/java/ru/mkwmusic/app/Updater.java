@@ -146,10 +146,12 @@ final class Updater {
         if (act.isFinishing()) return;
         new AlertDialog.Builder(act)
                 .setTitle("Обновление " + version + " готово")
-                .setMessage("Нажмите «Установить» — Android спросит подтверждение, и MKW обновится. Вход, лайки и скачанная музыка сохранятся.")
+                .setMessage(forced ? "Это обязательное обновление: старая версия больше не работает. Нажмите «Установить» — Android спросит подтверждение. Вход, лайки и музыка сохранятся."
+                        : "Хотите установить? Это необязательно — можно остаться на своей версии. Вход, лайки и музыка сохранятся.")
                 .setCancelable(!forced)
                 .setPositiveButton("Установить", (d, w) -> install(version, forced))
-                .setNegativeButton(forced ? null : "Позже", null)
+                .setNegativeButton(forced ? null : "Нет, остаться", (d, w) -> act.getSharedPreferences("mkw", android.content.Context.MODE_PRIVATE).edit()
+                        .putString("upd_skip_ver", version).apply())
                 .show();
     }
 

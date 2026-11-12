@@ -140,4 +140,98 @@ final class DeviceProfile {
             return 0;
         }
     }
+
+    // ---------- проверка устройства (js/diag.js): снимок раз в 5 секунд ----------
+
+    /** Самая горячая из датчиков процессора, °C×10 (0 — система не даёт их читать). */
+    static int cpuTemp() {
+        int best = 0;
+        for (int i = 0; i < 80; i++) {
+            String type = readLine("/sys/class/thermal/thermal_zone" + i + "/type");
+            if (type == null) { if (i > 4) break; else continue; }
+            String t = type.toLowerCase(java.util.Locale.ROOT);
+            if (!(t.contains("cpu") || t.contains("soc") || t.contains("tsens") || t.contains("apc") || t.contains("gpu") || t.contains("big") || t.contains("little"))) continue;
+            String v = readLine("/sys/class/thermal/thermal_zone" + i + "/temp");
+            if (v == null) continue;
+            try {
+                long raw = Long.parseLong(v.trim());
+                int c10 = (int) (raw > 1000 ? raw / 100 : raw * 10);
+                if (c10 > 150 && c10 < 1300) best = Math.max(best, c10);
+            } catch (Exception ignored) { /* не число */ }
+        }
+        return best;
+    }
+
+    /** Текущая частота ядер относительно максимальной, % (−1 — не читается). Сильно ниже 100 при нагрузке — телефон сбрасывает частоты. */
+    static int[] cpuFreq(int cores) {
+        long cur = 0, max = 0; int n = 0; long top = 0;
+        for (int i = 0; i < Math.min(cores, 16); i++) {
+            String c = readLine("/sys/devices/system/cpu/cpu" + i + "/cpufreq/scaling_cur_freq");
+            String m = readLine("/sys/devices/system/cpu/cpu" + i + "/cpufreq/cpuinfo_max_freq");
+            String lim = readLine("/sys/devices/system/cpu/cpu" + i + "/cpufreq/scaling_max_freq");
+            try {
+                if (c != null && m != null) { cur += Long.parseLong(c.trim()); max += Long.parseLong(m.trim()); n++; }
+                if (lim != null && m != null) top = Math.max(top, Long.parseLong(lim.trim()) * 100 / Math.max(1, Long.parseLong(m.trim())));
+            } catch (Exception ignored) { /* ядро выключено */ }
+        }
+        return new int[] { n > 0 && max > 0 ? (int) (cur * 100 / max) : -1, n > 0 ? (int) top : -1 };
+    }
+
+    private static String readLine(String path) {
+        try (BufferedReader r = new BufferedReader(new FileReader(path))) { return r.readLine(); } catch (Exception e) { return null; }
+    }
+
+    static JSONObject diag(Activity a) {
+        JSONObject o = new JSONObject();
+        try {
+            o.put("t", System.currentTimeMillis());
+            o.put("batt", batteryTemp(a));
+            o.put("cpu", cpuTemp());
+            o.put("thermal", thermal(a));
+            int cores = Runtime.getRuntime().availableProcessors();
+            int[] f = cpuFreq(cores);
+            o.put("freq", f[0]);
+            o.put("cap", f[1]);
+            o.put("appCpu", android.os.Process.getElapsedCpuTime());
+            ActivityManager am = (ActivityManager) a.getSystemService(Context.ACTIVITY_SERVICE);
+            ActivityManager.MemoryInfo mi = new ActivityManager.MemoryInfo();
+            am.getMemoryInfo(mi);
+            o.put("free", mi.availMem / (1024L * 1024L));
+            o.put("lowMem", mi.lowMemory);
+            o.put("saver", powerSave(a));
+            android.content.Intent b = a.registerReceiver(null, new android.content.IntentFilter(android.content.Intent.ACTION_BATTERY_CHANGED));
+            if (b != null) {
+                int st = b.getIntExtra(android.os.BatteryManager.EXTRA_STATUS, -1);
+                o.put("charging", st == android.os.BatteryManager.BATTERY_STATUS_CHARGING || st == android.os.BatteryManager.BATTERY_STATUS_FULL);
+                int lvl = b.getIntExtra(android.os.BatteryManager.EXTRA_LEVEL, -1), sc = b.getIntExtra(android.os.BatteryManager.EXTRA_SCALE, 100);
+                o.put("level", lvl >= 0 ? lvl * 100 / Math.max(1, sc) : -1);
+            }
+            try { o.put("hzNow", Math.round(a.getWindowManager().getDefaultDisplay().getRefreshRate())); } catch (Exception ignored) { /* нет */ }
+            o.put("model", Build.MODEL);
+            o.put("maker", Build.MANUFACTURER);
+            o.put("sdk", Build.VERSION.SDK_INT);
+            o.put("emui", sysProp("ro.build.version.emui"));
+            o.put("harmony", sysProp("hw_sc.build.platform.version"));
+            o.put("gms", PushService.hasGms(a));
+            try {
+                if (Build.VERSION.SDK_INT >= 26) {
+                    PackageInfo p = WebView.getCurrentWebViewPackage();
+                    if (p != null) { o.put("wvPkg", p.packageName); o.put("wvVer", p.versionName); }
+                }
+            } catch (Exception ignored) { /* нет */ }
+        } catch (Exception ignored) {
+            // что успели — то и отдаём
+        }
+        return o;
+    }
+
+    private static String sysProp(String key) {
+        try {
+            Class<?> c = Class.forName("android.os.SystemProperties");
+            Object v = c.getMethod("get", String.class).invoke(null, key);
+            return v == null ? "" : String.valueOf(v);
+        } catch (Exception e) {
+            return "";
+        }
+    }
 }
