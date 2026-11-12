@@ -3,7 +3,7 @@ import { audiusStreamUrl } from './audius.js';
 import { Queue } from './queue.js';
 import { offlineSrc } from './offline.js';
 import { findYouTubeId, peekYouTubeId, loadYouTubeApi, youtubeEnabled } from './youtube.js';
-import { logPlay, addListened } from './store.js';
+import { logPlay, addListened, state as lib } from './store.js';
 import { artUrl } from './utils.js';
 import { proxify } from './bypass.js';
 import { resolveStream, peekStream, dropStream, streamsOn, markWrong, streamInfo } from './stream.js';
@@ -190,8 +190,10 @@ async function startCurrent() {
     // 1) «Слушать в фоне»: если звук уже найден — сразу им; если приложение свёрнуто — ждём звук (видео в фоне не заиграет)
     if (streamsOn()) {
       let urls = peekStream(vid);
-      if (!urls && hiddenNow()) urls = await Promise.race([resolveStream(vid, track), new Promise((r) => setTimeout(() => r(null), 12000))]);
+      // экран выключен: ждём звук недолго — если не успел, сразу включаем готовый трек из лайков, чтобы не было тишины
+      if (!urls && hiddenNow()) urls = await Promise.race([resolveStream(vid, track), waitMs(spareReady() ? 8000 : 20000)]);
       if (id !== loadId) return;
+      if (!(urls && urls.length) && hiddenNow() && playSpare(track, id)) return;
       if (urls && urls.length) { startStream(track, vid, urls, id, 0); return; }
       resolveStream(vid, track); // ищем звук, пока играет видео: пригодится, когда выключите экран
     }
@@ -380,7 +382,7 @@ function startPreview(track, id) {
 }
 
 let rescued = 0;
-const waitMs = (ms) => new Promise((r) => setTimeout(() => r(null), ms));
+function waitMs(ms) { return new Promise((r) => setTimeout(() => r(null), ms)); }
 async function rescue(track, id) {
   const keys = [];
   if (/^[\w-]{11}$/.test(st.vid || '')) keys.push(st.vid);
@@ -394,6 +396,8 @@ async function rescue(track, id) {
 }
 function toPreview(track, id) {
   if (id !== loadId) return;
+  // экран выключен: вместо фрагмента 30 сек — полный трек из лайков, звук для которого уже найден
+  if (hiddenNow() && playSpare(track, id)) return;
   if (!track.previewUrl) { unavailable(id); return; }
   st.message = 'Полный трек недоступен, играет фрагмент 30 сек';
   startPreview(track, id);
@@ -755,3 +759,53 @@ export function prefetchVisible() {
     if (known) go(known); else findYouTubeId(t).then(go).catch(() => {});
   }
 }
+
+// ---------- экран выключен: следующий трек должен начаться сразу и полностью ----------
+// 1) За 45 секунд до конца трека ещё раз проверяем, что звук следующего найден (ссылки могли не успеть найтись или устареть).
+// 2) Держим «запас»: 2–3 трека из лайков, для которых звук уже найден. Если следующий трек в фоне не нашёлся —
+//    вместо фрагмента 30 сек сразу играет трек из лайков, полностью.
+const spares = []; // { t, key }
+let spareAt = 0, aheadFor = '';
+const keyOf = (t) => t.ytId || peekYouTubeId(t);
+function spareReady() { return spares.some((x) => peekStream(x.key)); }
+function warmSpares() {
+  if (!streamsOn() || !lib.likes.length || Date.now() - spareAt < 60000) return;
+  spareAt = Date.now();
+  const cur = new Set(queue.items.slice(Math.max(0, queue.index - 3), queue.index + 4).map((t) => String(t.id)));
+  for (let i = spares.length - 1; i >= 0; i--) if (cur.has(String(spares[i].t.id)) || !peekStream(spares[i].key)) spares.splice(i, 1);
+  const pool = lib.likes.filter((t) => !cur.has(String(t.id)) && !t.auId && !spares.some((x) => x.t.id === t.id));
+  for (let n = spares.length; n < 3 && pool.length; n++) {
+    const t = pool.splice(Math.floor(Math.random() * pool.length), 1)[0];
+    const add = (k) => { if (k) resolveStream(k, t).then((u) => { if (u && u.length && !spares.some((x) => x.t.id === t.id)) spares.push({ t, key: k }); }); };
+    const k = keyOf(t);
+    if (k) add(k); else findYouTubeId(t).then((v) => add(v || `sc:${t.id}`)).catch(() => add(`sc:${t.id}`));
+  }
+}
+function playSpare(failed, id) {
+  if (id !== loadId || !streamsOn()) return false;
+  const i = spares.findIndex((x) => peekStream(x.key) && String(x.t.id) !== String(failed && failed.id));
+  if (i < 0) return false;
+  const { t } = spares.splice(i, 1)[0];
+  queue.addNext(t);
+  queue.next(false);
+  spareAt = 0;
+  startCurrent();
+  return true;
+}
+onPlayer((ev) => {
+  if (ev !== 'time' || !hiddenNow() || !st.playing || !queue.current) return;
+  const left = (st.duration || 0) - (st.time || 0);
+  if (left > 0 && left < 45 && aheadFor !== queue.current.id) {
+    aheadFor = queue.current.id;
+    const nxt = queue.items[queue.index + 1];
+    if (nxt) {
+      const k = keyOf(nxt);
+      if (k && !peekStream(k)) resolveStream(k, nxt, true);
+      else if (!k && youtubeEnabled()) findYouTubeId(nxt).then((v) => { if (v) resolveStream(v, nxt, true); }).catch(() => {});
+    }
+    warmSpares();
+  }
+});
+const onBg = () => { if (hiddenNow() && st.playing) { warmSpares(); prefetchNext(); } };
+document.addEventListener('visibilitychange', onBg);
+window.addEventListener('mkw-fg', onBg);
