@@ -13,7 +13,7 @@ import { mi } from './icons2.js';
 import { plural } from './utils.js';
 import { openImage } from './viewer.js';
 import { isDev, devBadge, showDev, validFan, fanBadge, isContrib, contribBadge } from './dev.js';
-import { friendState, addFriend, removeFriend, loadFriends, friendsLoaded, ONLINE_MS } from './friends.js';
+import { friendState, addFriend, removeFriend, loadFriends, friendsLoaded, ONLINE_MS, me } from './friends.js';
 import { openChat, chatActions } from './chat.js';
 // удалить друга — двойное нажатие за 3 секунды, чтобы не убрать случайно
 let rmAsk = '';
@@ -177,7 +177,7 @@ function render(u, isMe) {
       const btn = h('button', { class: 'btn up-friend', type: 'button' });
       const chatBtn = h('button', { class: 'btn tonal up-friend', type: 'button', onclick: () => openChat(u.uid, u) }, mi('chat'), ' Написать');
       const LBL = { friend: ['check', ' В друзьях'], sent: ['hourglass', ' Заявка отправлена'], incoming: ['person-add', ' Принять заявку'], none: ['person-add', ' Добавить в друзья'] };
-      const paint = () => { const st = friendState(u.uid); btn.classList.toggle('tonal', st === 'friend' || st === 'sent'); btn.replaceChildren(mi(LBL[st][0]), LBL[st][1]); chatBtn.hidden = st !== 'friend'; };
+      const paint = () => { const st = friendState(u.uid); btn.classList.toggle('tonal', st === 'friend' || st === 'sent'); btn.replaceChildren(mi(LBL[st][0]), LBL[st][1]); chatBtn.hidden = st !== 'friend' && !(me() === 'IqBq9kGF1oZG4Iz0m6LU1nSyx5H2'); };
       btn.addEventListener('click', async () => {
         const st = friendState(u.uid);
         try {

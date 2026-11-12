@@ -28,6 +28,9 @@ import { pcmCapture, loadLame, encodeMp3, decodeBlob, blobToDataUrl, toWavUrl, w
 import { openSharedSheet } from './sharedui.js';
 
 export const chatId = (a, b) => [a, b].sort().join('_');
+// создатель MKW может написать любому, не добавляясь в друзья; человек отвечает ему в этой же переписке
+const OWNER = 'IqBq9kGF1oZG4Iz0m6LU1nSyx5H2';
+export const devTalk = (uid) => me() === OWNER || uid === OWNER;
 const isGroupId = (cid) => String(cid || '').startsWith('g') && !String(cid).includes('_');
 
 // События звонка в переписке: «пропущенный», «отклонил», «звонок · 3 мин». Хранятся как текст с меткой —
@@ -491,7 +494,7 @@ async function playTrack(t) {
 export async function openChat(uid, card) {
   warmCalls();
   if (!uid) return;
-  if (!isFriend(uid)) { toast('Писать можно только друзьям. Дождитесь, пока заявку примут'); return; }
+  if (!isFriend(uid) && !devTalk(uid)) { toast('Писать можно только друзьям. Дождитесь, пока заявку примут'); return; }
   const u = card || (await cardOf(uid)) || { uid, nick: 'друг' };
   const cid = chatId(me(), uid);
   await openConv({ cid, group: false, peer: uid, u, title: u.nick || 'друг', members: cid.split('_'), cards: new Map([[uid, u]]) });
