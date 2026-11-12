@@ -49,6 +49,15 @@ html.fp-cover #mini-progress { transition: none !important; }
 /* в покое полоска мини-плеера прыгает, а не плывёт: иначе экран перерисовывается без остановки, пока играет музыка */
 html.app-idle #mini-progress { transition: none !important; }
 
+/* ---------- плеер: текст, очередь и «устройства» переключаются мгновенно ----------
+   Панели не перестраиваются при каждом открытии: они остаются готовыми, а скрытые не рисуются (visibility),
+   переключение — только прозрачность и сдвиг, их ведёт видеокарта. */
+#full-player.fp2 #fp-stage > #fp-lyrics, #full-player.fp2 #fp-stage > #fp-q2, #full-player.fp2 #fp-stage > #fp-out2 {
+  visibility: hidden; transition: opacity .26s ease, transform .32s cubic-bezier(.22,.8,.18,1), visibility 0s linear .32s !important; transition-delay: 0s, 0s, .32s !important; }
+#full-player.fp2.lyrics-on #fp-stage > #fp-lyrics, #full-player.fp2.queue-on #fp-stage > #fp-q2, #full-player.fp2.out-on #fp-stage > #fp-out2 {
+  visibility: visible; transition-delay: .04s, .04s, 0s !important; }
+#full-player.fp2 #fp-art { will-change: transform; }
+
 /* ---------- прокрутка без ожидания скриптов ----------
    Свайпы вбок (вкладки профиля, ответ на сообщение) объявлены через touch-action — браузер сам не листает вбок,
    а вертикальную прокрутку ведёт отдельным быстрым потоком на полной частоте экрана. */
@@ -57,7 +66,7 @@ html.app-idle #mini-progress { transition: none !important; }
 html:has(body.lens-on), body.lens-on { overflow: hidden !important; touch-action: none; }
 
 /* ---------- текст песни: размытие соседних строк — только на максимальном уровне ---------- */
-html:not(.q3) .ly-line { filter: none !important; transition: opacity .45s, transform .45s cubic-bezier(.2,.8,.2,1), color .4s !important; will-change: auto !important; }
+html .ly-line { filter: none !important; transition: opacity .45s, transform .45s cubic-bezier(.2,.8,.2,1), color .4s !important; will-change: auto !important; }
 html.lite #fp-lyrics::before { filter: none !important; opacity: .22 !important; }
 
 /* ---------- Настройки → «Качество графики» ---------- */
