@@ -62,8 +62,13 @@ html.app-idle #mini-progress { transition: none !important; }
    Свайпы вбок (вкладки профиля, ответ на сообщение) объявлены через touch-action — браузер сам не листает вбок,
    а вертикальную прокрутку ведёт отдельным быстрым потоком на полной частоте экрана. */
 .ch-msg { touch-action: pan-y; }
-/* «лупа» по долгому нажатию на трек: пока она открыта, список не листается */
-html:has(body.lens-on), body.lens-on { overflow: hidden !important; touch-action: none; }
+/* ---------- шторка большого плеера: тянется пальцем на полной частоте экрана ----------
+   Плеер и мини-плеер — отдельные слои видеокарты: при перетаскивании они только сдвигаются, без перерисовки.
+   Приложение под открытым плеером больше не прячется: раньше при сворачивании его приходилось заново рисовать
+   на первом кадре жеста — отсюда рывок. Украшения под плеером при этом спят (см. boost.js, winter.js). */
+#full-player, #mini-player { will-change: transform; }
+#full-player.warm { visibility: visible !important; }
+html.fp-cover #app { visibility: visible !important; } /* приложение под плеером остаётся нарисованным: свернуть плеер можно сразу, без рывка */
 
 /* ---------- текст песни: размытие соседних строк — только на максимальном уровне ---------- */
 html .ly-line { filter: none !important; transition: opacity .45s, transform .45s cubic-bezier(.2,.8,.2,1), color .4s !important; will-change: auto !important; }

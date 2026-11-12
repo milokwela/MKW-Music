@@ -33,6 +33,23 @@ export function initRowLens() {
     return r && list && list.contains(r) ? r : null;
   };
 
+  // Пока «лупа» открыта, страница не должна листаться под пальцем. Прокрутку замораживаем так, чтобы место на странице
+  // не менялось: тело страницы фиксируется на текущем сдвиге, а после отпускания возвращаем ровно туда же.
+  let lockY = -1;
+  const lockScroll = () => {
+    if (lockY >= 0) return;
+    lockY = window.scrollY || document.documentElement.scrollTop || 0;
+    const b = document.body.style;
+    b.position = 'fixed'; b.top = `${-lockY}px`; b.left = '0'; b.right = '0'; b.width = '100%';
+  };
+  const unlockScroll = () => {
+    if (lockY < 0) return;
+    const y = lockY; lockY = -1;
+    const b = document.body.style;
+    b.position = ''; b.top = ''; b.left = ''; b.right = ''; b.width = '';
+    window.scrollTo(0, y);
+  };
+
   document.addEventListener('touchstart', (e) => {
     const row = e.target.closest && e.target.closest('.track-row');
     if (!row || e.target.closest('.icon-btn')) return;
@@ -40,7 +57,7 @@ export function initRowLens() {
     if (!list) return;
     sx = e.touches[0].clientX; sy = e.touches[0].clientY;
     clearTimeout(timer);
-    timer = setTimeout(() => { active = true; document.body.classList.add('lens-on'); show(row); if (navigator.vibrate) navigator.vibrate(10); }, 260);
+    timer = setTimeout(() => { active = true; lockScroll(); document.body.classList.add('lens-on'); show(row); if (navigator.vibrate) navigator.vibrate(10); }, 260);
   }, { passive: true });
 
   document.addEventListener('touchmove', (e) => {
@@ -57,7 +74,7 @@ export function initRowLens() {
     clearTimeout(timer);
     if (!active) return;
     active = false;
-    document.body.classList.remove('lens-on');
+    document.body.classList.remove('lens-on'); unlockScroll();
     const row = cur;
     hide();
     swallow = true;
@@ -65,7 +82,7 @@ export function initRowLens() {
     if (row) { const b = row.querySelector('.main'); if (b) b.click(); }
   };
   document.addEventListener('touchend', end);
-  document.addEventListener('touchcancel', () => { clearTimeout(timer); if (active) { active = false; document.body.classList.remove('lens-on'); hide(); } });
+  document.addEventListener('touchcancel', () => { clearTimeout(timer); if (active) { active = false; document.body.classList.remove('lens-on'); unlockScroll(); hide(); } });
   document.addEventListener('click', (e) => { if (swallow && e.target.closest && e.target.closest('.track-row')) { e.stopPropagation(); e.preventDefault(); } }, true);
   document.addEventListener('contextmenu', (e) => { if (active || e.target.closest?.('.track-row')) { if (active) e.preventDefault(); } });
 
