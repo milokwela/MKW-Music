@@ -19,7 +19,7 @@ import { listenerStats } from './stats.js';
 import { liveBg, setLiveBg } from './viz.js';
 import { qualityMode, setQualityMode, qualityInfo, device, awake } from './quality.js';
 import { feedbackCard } from './feedback.js';
-import { telemetryOn, setTelemetry } from './telemetry.js';
+import { telemetryOn, setTelemetry, openTelemetryInfo } from './telemetry.js';
 import { isOwnerMe, openInbox, unreadCount } from './inbox.js';
 import { logOut, changePassword, changeNick, authErrorText } from './auth.js';
 import { connectionCountry } from './geo.js';
@@ -1002,7 +1002,7 @@ export function buildProfile(nick) {
   refs.winter = sw(() => { setWinter(!winterOn()); syncControls(); });
   refs.player2 = sw(() => { setPlayer2(!player2On()); syncControls(); });
   refs.gest = sw(async () => { await setGestures(!gesturesOn()); syncControls(); });
-  refs.tm = sw(() => { setTelemetry(!telemetryOn()); syncControls(); toast(telemetryOn() ? 'Статистика включена — спасибо!' : 'Статистика выключена'); });
+  refs.tm = sw((e) => { if (e) e.stopPropagation(); setTelemetry(!telemetryOn()); syncControls(); toast(telemetryOn() ? 'Статистика включена — спасибо!' : 'Статистика выключена'); });
   refs.voice = sw(() => { setVoice(!voiceOn()); syncControls(); });
   refs.notify = sw(async () => { await setNotify(!notifyOn()); syncControls(); });
   refs.bgplay = sw(() => { setStreams(!streamsOn()); syncControls(); toast(streamsOn() ? 'Готово: выключите экран — музыка продолжит играть' : 'Фоновый режим выключен'); });
@@ -1114,7 +1114,7 @@ export function buildProfile(nick) {
         row('Какие жесты показывать', 'Список жестов и что они делают', chev(), showGestureGuide, 'hand-peace'),
         row('Голосовое управление', voiceSupported() ? 'Скажите «МКВ» или «Музыка», потом команду: «МКВ, следующая», «МКВ, включить Баста», «МКВ, позвони Лере»' : 'Этот браузер не поддерживает', refs.voice, null, 'mic'),
         row('Какие команды говорить', 'Все голосовые команды', chev(), showVoiceGuide, 'note'),
-        row('Анонимная статистика', 'Раз в день сообщать разработчику, как MKW работает на этом телефоне: плавность, нагрев, ошибки. Без ника и того, что вы слушаете', refs.tm, null, 'signal')),
+        row('Анонимная статистика', 'Помогает улучшать MKW: разработчик видит, на каких телефонах приложение тормозит или греется, и чинит это. Без ника и личных данных. Нажмите — что именно отправляется', refs.tm, () => openTelemetryInfo(syncControls), 'signal')),
       group('Аккаунт',
         row('Изменить профиль', 'Фото, баннер, статус, витрина', chev(), editProfile, 'edit'),
         isDev(curNick) ? row('Часы прослушивания', 'Поставить любое количество или вернуть как было', chev(), () => {

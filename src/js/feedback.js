@@ -6,7 +6,7 @@
 // так создатель видит даже недогруженное сообщение и может его удалить вместе с кусками.
 import { db, auth } from './firebase.js';
 import { doc, setDoc, updateDoc, collection } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
-import { h, toast, openSheet, closeSheet } from './ui.js';
+import { h, toast, openSheet, closeSheet, isSheetOpen } from './ui.js';
 import { mi } from './icons2.js';
 import { appVersion } from './apk.js';
 import { VERSION } from './changelog.js';
@@ -240,4 +240,25 @@ export function feedbackCard() {
   return h('div', { class: 'fb-card' },
     item('rocket', `Оценить оптимизацию ${RATE_VER}`, rateSub, openRate),
     item('chat', 'Сообщить об ошибке', h('small', { text: 'Опишите, что не так, приложите скриншот или видео' }), openBugReport));
+}
+
+// Один раз после обновления: окно «Теперь можно написать разработчику» с теми же двумя пунктами, что и в «О MKW».
+const INTRO = 'mkw.fb.intro.1';
+export function initFeedbackIntro() {
+  if (get(INTRO)) return;
+  let tries = 0;
+  const show = () => {
+    // ждём, пока человек войдёт и на экране не будет другого окна (обновление, подсказка про WebView и т.п.)
+    if (!me() || isSheetOpen() || document.querySelector('.app-gate, #auth-screen:not([hidden])') || document.hidden) {
+      if (++tries < 40) setTimeout(show, 3000);
+      return;
+    }
+    put(INTRO, '1');
+    openSheet('Пишите разработчику', h('div', { class: 'fbi-box' },
+      h('p', { text: 'Теперь прямо из MKW можно сообщить об ошибке — с описанием, скриншотом или записью экрана — и оценить новую оптимизацию 1.5. Всё приходит напрямую разработчику, он читает каждое сообщение.' }),
+      feedbackCard(),
+      h('p', { class: 'fb-note', text: 'Найти это потом: Профиль → меню → О MKW.' }),
+      h('button', { class: 'btn tonal block', type: 'button', text: 'Позже', onclick: closeSheet })));
+  };
+  setTimeout(show, 5000);
 }

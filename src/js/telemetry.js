@@ -7,6 +7,7 @@ import { db, auth } from './firebase.js';
 import { doc, setDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 import { qStats, quality, qualityMode, inBg } from './quality.js';
 import { envInfo } from './feedback.js';
+import { h, openSheet, closeSheet, toast } from './ui.js';
 
 const ON = 'mkw.tm.on';
 const ID = 'mkw.tm.id';
@@ -123,4 +124,32 @@ export function initTelemetry() {
   document.addEventListener('visibilitychange', () => { if (document.hidden) flush(false); });
   // первая отправка за день — через минуту после запуска, чтобы уже были замеры
   setTimeout(() => { if (!lastFlush) flush(true); }, 60000);
+}
+
+/** Настройки → «Анонимная статистика»: что именно отправляется, куда и зачем. */
+export function openTelemetryInfo(onChange) {
+  const li = (b, t) => h('li', {}, h('b', { text: b }), ` — ${t}`);
+  const btn = h('button', { class: 'btn block', type: 'button' });
+  const paint = () => { btn.textContent = telemetryOn() ? 'Выключить статистику' : 'Включить статистику'; btn.classList.toggle('tonal', telemetryOn()); };
+  btn.addEventListener('click', () => {
+    setTelemetry(!telemetryOn()); paint(); if (onChange) onChange();
+    toast(telemetryOn() ? 'Статистика включена — спасибо!' : 'Статистика выключена');
+  });
+  paint();
+  openSheet('Анонимная статистика', h('div', { class: 'tm-info' },
+    h('p', { text: 'Зачем: MKW работает на сотнях разных телефонов — Samsung, Xiaomi, Tecno, Huawei и других. Статистика показывает разработчику, где приложение тормозит, греет телефон или падает с ошибкой, чтобы это исправить в следующих обновлениях.' }),
+    h('div', { class: 'tm-h', text: 'Что отправляется' }),
+    h('ul', {},
+      li('Телефон', 'модель, версия Android, объём памяти, число ядер, частота экрана'),
+      li('Версия MKW', 'приложения и сайта, уровень графики'),
+      li('Плавность', 'сколько раз при прокрутке телефон не успевал рисовать кадры'),
+      li('Нагрев', 'грелся ли телефон и включалось ли энергосбережение'),
+      li('Скорость', 'за сколько секунд запускается приложение, сколько минут оно было открыто'),
+      li('Ошибки', 'сколько раз что-то сломалось в коде и короткий текст ошибки')),
+    h('div', { class: 'tm-h', text: 'Что НЕ отправляется' }),
+    h('p', { text: 'Ник, аккаунт, почта, номер телефона, местоположение, что вы слушаете, ваши сообщения, друзья и фото. По статистике нельзя узнать, кто вы: вместо имени — случайный номер, который MKW придумывает сам.' }),
+    h('div', { class: 'tm-h', text: 'Как и куда' }),
+    h('p', { text: 'Раз в день, когда вы сворачиваете приложение, — на сервер MKW (Google Firebase). Видит только разработчик MKW, сводной таблицей по всем телефонам. Никому не передаётся и не продаётся.' }),
+    btn,
+    h('button', { class: 'btn tonal block', type: 'button', text: 'Понятно', onclick: closeSheet })));
 }

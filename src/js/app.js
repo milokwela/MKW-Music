@@ -37,6 +37,7 @@ import { initTheme } from './theme.js';
 import { initWinter } from './winter.js';
 import { checkWebView } from './wvcheck.js';
 import { initTelemetry } from './telemetry.js';
+import { initFeedbackIntro } from './feedback.js';
 import { initInbox, openInbox } from './inbox.js';
 import { qualityDebug } from './quality.js';
 import { initOffline } from './offline.js';
@@ -248,6 +249,7 @@ function boot() {
   startUpdateWatch();
   checkWebView();
   initTelemetry();
+  initFeedbackIntro();
   initInbox();
   onStore((what) => { if (!$('#view-profile').hidden && (what === 'profile' || what === 'likes' || what === 'playlists' || what === 'history')) updateProfile(); });
   watchAuth(onUser);
