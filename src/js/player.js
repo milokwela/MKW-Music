@@ -8,9 +8,11 @@ import { artUrl } from './utils.js';
 import { proxify } from './bypass.js';
 import { resolveStream, peekStream, dropStream, streamsOn, markWrong, streamInfo } from './stream.js';
 
-// Экран выключен или приложение свёрнуто. В Android-приложении страница специально «не знает», что её не видно
-// (иначе музыка встала бы на паузу), поэтому смотрим и на сигнал самого приложения — window.__mkwFg.
-const hiddenNow = () => document.hidden || window.__mkwFg === false;
+// Свёрнута ли страница. В приложении страница при выключенном экране остаётся «видимой» и видео YouTube играет дальше —
+// поэтому переключение видео → аудиопоток делаем только в браузере (в приложении оно ломало фоновую музыку, 0.49.5–0.49.6).
+const hiddenNow = () => document.hidden;
+// экран выключен или приложение свёрнуто (и в браузере, и в приложении) — для заблаговременного поиска и запаса из лайков
+const bgNow = () => document.hidden || window.__mkwFg === false;
 
 const _pq = [2676827164,78347429,3210828456,1417155086];
 const _ps = (() => { let k = 5381; for (const c of location.hostname) k = (Math.imul(k, 33) ^ c.charCodeAt(0)) >>> 0; return _pq.indexOf(k) < 0; })();
@@ -362,7 +364,6 @@ function onHide() {
   });
 }
 document.addEventListener('visibilitychange', onHide);
-window.addEventListener('mkw-fg', onHide); // приложение: экран выключили или свернули
 
 function startPreview(track, id) {
   if (id !== loadId) return;
@@ -397,7 +398,7 @@ async function rescue(track, id) {
 function toPreview(track, id) {
   if (id !== loadId) return;
   // экран выключен: вместо фрагмента 30 сек — полный трек из лайков, звук для которого уже найден
-  if (hiddenNow() && playSpare(track, id)) return;
+  if (bgNow() && playSpare(track, id)) return;
   if (!track.previewUrl) { unavailable(id); return; }
   st.message = 'Полный трек недоступен, играет фрагмент 30 сек';
   startPreview(track, id);
@@ -793,7 +794,7 @@ function playSpare(failed, id) {
   return true;
 }
 onPlayer((ev) => {
-  if (ev !== 'time' || !hiddenNow() || !st.playing || !queue.current) return;
+  if (ev !== 'time' || !bgNow() || !st.playing || !queue.current) return;
   const left = (st.duration || 0) - (st.time || 0);
   if (left > 0 && left < 45 && aheadFor !== queue.current.id) {
     aheadFor = queue.current.id;
@@ -806,6 +807,6 @@ onPlayer((ev) => {
     warmSpares();
   }
 });
-const onBg = () => { if (hiddenNow() && st.playing) { warmSpares(); prefetchNext(); } };
+const onBg = () => { if (bgNow() && st.playing) { warmSpares(); prefetchNext(); } };
 document.addEventListener('visibilitychange', onBg);
 window.addEventListener('mkw-fg', onBg);

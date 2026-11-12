@@ -678,6 +678,7 @@ async function openConv(cv) {
       if (text && text !== ed.text) { try { await editMsg(cid, ed.id, text); } catch { toast('Изменения заработают после обновления правил базы'); } }
       return;
     }
+    stick = true; userAt = 0; // своё сообщение — всегда показываем внизу
     if (!text && !track) return;
     if (blockedNow()) { toast(blockedByMe(uid) ? 'Сначала разблокируйте собеседника' : `${u.nick || 'Собеседник'} ограничил(а) сообщения`); return; }
     const re = replyTo; replyTo = null;
@@ -1076,7 +1077,7 @@ async function openConv(cv) {
     const cat = stickerOf(m.img);
     const photoOnly = m.img && !voiceSrc && !cat && !m.text && !m.track && !m.re;
     const img = !voiceSrc && m.img && safeUrl(m.img).startsWith('data:image/') ? h('img', { class: 'ch-img', src: m.img, alt: 'Фото', decoding: 'async', onclick: () => openImage(m.img, '') }) : null;
-    if (img) img.addEventListener('load', () => { if (list.scrollHeight - list.scrollTop - list.clientHeight < 400) list.scrollTop = list.scrollHeight; }, { once: true });
+    if (img) img.addEventListener('load', () => { if (stick && !userBusy()) list.scrollTop = list.scrollHeight; }, { once: true });
     const text = (voiceSrc && m.text === VOICE_TXT) || (cat && m.text === STICKER_TXT) ? '' : m.text;
     const sticker = cat ? h('img', { class: `ch-sticker${cat.big ? ' big' : ''}`, src: cat.src, alt: cat.name, title: cat.name, draggable: 'false' }) : null;
     const meta = h('div', { class: 'ch-meta' }, h('img', { src: avSrc(avOf(m.from)), alt: '', loading: 'lazy' }), h('b', { text: nickOf(m.from) }), h('span', { text: `${dayOf(m.at)}, ${timeOf(m.at)}` }));
@@ -1103,11 +1104,17 @@ async function openConv(cv) {
   };
   // чат «прилипает» к низу: пока вы внизу (или печатаете), новые сообщения и рост поля ввода не уводят ленту вверх
   let stick = true;
-  list.addEventListener('scroll', () => { stick = list.scrollHeight - list.scrollTop - list.clientHeight < 120; }, { passive: true });
+  // человек сам листает (палец на экране или лента ещё летит по инерции) — ленту никуда не тянем.
+  // Иначе догружающиеся стикеры и фото меняли высоту, и чат дёргало обратно вниз.
+  let userAt = 0;
+  const userBusy = () => Date.now() - userAt < 1200;
+  const dist = () => list.scrollHeight - list.scrollTop - list.clientHeight;
+  for (const ev of ['touchstart', 'touchmove', 'wheel', 'pointerdown']) list.addEventListener(ev, () => { userAt = Date.now(); }, { passive: true });
+  list.addEventListener('scroll', () => { if (userBusy()) userAt = Date.now(); stick = dist() < 120; }, { passive: true });
   // следим и за окном ленты, и за каждым сообщением: картинка/стикер догрузился или поле ввода выросло — лента остаётся внизу
   let ro = null;
   const seen = new WeakSet();
-  try { ro = new ResizeObserver(() => { if (stick) list.scrollTop = list.scrollHeight; }); ro.observe(list); } catch { /* старый браузер */ }
+  try { ro = new ResizeObserver(() => { if (stick && !userBusy()) list.scrollTop = list.scrollHeight; }); ro.observe(list); } catch { /* старый браузер */ }
   const watchSize = (n) => { if (ro && !seen.has(n)) { seen.add(n); ro.observe(n); } };
   const render = () => {
     if (!lastDocs) return;
@@ -1115,7 +1122,7 @@ async function openConv(cv) {
     const c = chatById(cid), from = clearedAt(c), bl = cv.group ? 0 : blockedByMe(uid);
     const docs = lastDocs.slice().reverse().filter((d) => { const m = d.data(); const at = Number(m.at) || 0; return at > from && !(bl && m.from === uid && at > bl); });
     byId.clear(); docs.forEach((d) => byId.set(d.id, d.data()));
-    const atBottom = stick || document.activeElement === input || list.scrollHeight - list.scrollTop - list.clientHeight < 160;
+    const atBottom = userBusy() ? dist() < 60 : (stick || dist() < 160);
     if (!docs.length) { list.replaceChildren(h('p', { class: 'ch-empty', text: from ? 'Здесь пока пусто — чат очищен.' : cv.group ? 'Группа создана. Напишите первым!' : `Напишите ${u.nick || 'другу'} первым. Можно отправить трек, который сейчас играет — кнопка с нотой, или голосовое — кнопка с микрофоном.` })); return; }
     let day = '', prevFrom = '', prevAt = 0;
     const nodes = [];
@@ -1135,7 +1142,7 @@ async function openConv(cv) {
     nodes.forEach((n, k) => { if (list.children[k] !== n) list.insertBefore(n, list.children[k] || null); watchSize(n); });
     while (list.children.length > nodes.length) list.lastElementChild.remove();
     paintTicks();
-    if (atBottom || list.dataset.first !== '1') { list.scrollTop = list.scrollHeight; list.dataset.first = '1'; stick = true; requestAnimationFrame(() => { if (stick) list.scrollTop = list.scrollHeight; }); }
+    if (atBottom || list.dataset.first !== '1') { list.scrollTop = list.scrollHeight; list.dataset.first = '1'; stick = true; requestAnimationFrame(() => { if (stick && !userBusy()) list.scrollTop = list.scrollHeight; }); }
   };
 
   // ---- меню сообщения: реакции, ответить, копировать, изменить, удалить ----
