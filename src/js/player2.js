@@ -5,6 +5,7 @@ import * as player from './player.js';
 import { $, h, icon } from './ui.js';
 import { mi } from './icons2.js';
 import { safeUrl, plural } from './utils.js';
+import { inBg, quality } from './quality.js';
 
 const KEY = 'mkw.player.skin';
 const { st, queue } = player;
@@ -14,9 +15,14 @@ const RATES = [1, 1.25, 1.5, 2, 0.75];
 const rateText = (r) => `${String(r).replace('.', ',')}x`;
 let cvs = null, ctx = null, raf = 0, amp = 0, phase = 0, last = 0, dragging = false;
 
+// Размер полосы запоминаем и обновляем только при её изменении: раньше он спрашивался у страницы на каждом кадре,
+// и страница 60 раз в секунду пересчитывала раскладку всего плеера.
+let cw = 0, chh = 0, ro = null;
+function measure() { if (cvs) { cw = cvs.clientWidth; chh = cvs.clientHeight; } }
 function size() {
   if (!cvs) return;
-  const dpr = Math.min(3, window.devicePixelRatio || 1), w = cvs.clientWidth, hh = cvs.clientHeight;
+  if (!cw || !chh) measure();
+  const dpr = Math.min(3, window.devicePixelRatio || 1), w = cw, hh = chh;
   if (!w || !hh) return;
   if (cvs.width !== Math.round(w * dpr) || cvs.height !== Math.round(hh * dpr)) { cvs.width = Math.round(w * dpr); cvs.height = Math.round(hh * dpr); }
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -24,7 +30,7 @@ function size() {
 function draw() {
   if (!cvs || !ctx) return;
   size();
-  const w = cvs.clientWidth, hh = cvs.clientHeight, mid = hh / 2;
+  const w = cw, hh = chh, mid = hh / 2;
   if (!w) return;
   const seek = $('#fp-seek');
   const frac = dragging && seek ? Number(seek.value) / 1000 : (st.duration > 0 ? Math.min(1, st.time / st.duration) : 0);
@@ -47,16 +53,18 @@ function draw() {
   ctx.fillStyle = '#fff'; const bw = 4, bh = 20, bx = x - bw / 2, by = mid - bh / 2;
   ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(bx, by, bw, bh, 2); else ctx.rect(bx, by, bw, bh); ctx.fill();
 }
-const visible = () => player2On() && !document.hidden && $('#full-player').classList.contains('open');
+const visible = () => player2On() && !inBg() && $('#full-player').classList.contains('open');
+// Волна рисуется 30 раз в секунду (на лёгком уровне графики — 20): глазу этого хватает, а работы вдвое-вчетверо меньше, чем на экране 120 Гц
 function tick(t) {
   raf = 0;
   if (!visible()) return;
-  const dt = Math.min(0.05, (t - last) / 1000 || 0.016); last = t;
+  const dt = Math.min(0.08, (t - last) / 1000 || 0.016); last = t;
   const target = st.playing ? 1 : 0;
   amp += (target - amp) * Math.min(1, dt * 6);
   if (st.playing) phase += dt * 4.2;
   draw();
-  if (st.playing || Math.abs(target - amp) > 0.01) raf = requestAnimationFrame(tick);
+  // следующий кадр — через таймер: между кадрами страница спит, а не просыпается на каждое обновление экрана
+  if (st.playing || Math.abs(target - amp) > 0.01) { raf = -1; setTimeout(() => { raf = requestAnimationFrame(tick); }, quality() <= 1 ? 42 : 25); }
 }
 function kick() { if (!raf && visible()) { last = performance.now(); raf = requestAnimationFrame(tick); } }
 
@@ -207,6 +215,7 @@ export function initPlayer2() {
   const seekBox = $('#full-player .fp-seek'), seek = $('#fp-seek'), meta = $('#full-player .fp-meta'), extra = $('#full-player .fp-extra');
   if (!seekBox || !seek || !meta || !extra) return;
   cvs = h('canvas', { id: 'fp-wave', 'aria-hidden': 'true' }); ctx = cvs.getContext('2d');
+  if ('ResizeObserver' in window) { ro = new ResizeObserver(() => { measure(); if (player2On()) draw(); }); ro.observe(cvs); }
   seekBox.prepend(cvs);
   meta.prepend(h('span', { id: 'fp-mini-art', 'aria-hidden': 'true' }));
   extra.prepend(h('button', { id: 'fp-speed', type: 'button', 'aria-label': 'Скорость воспроизведения', title: 'Скорость воспроизведения', onclick: () => {
@@ -255,6 +264,7 @@ export function initPlayer2() {
   // открытие плеера и возвращение на вкладку — перерисовать и запустить волну
   new MutationObserver(() => { if (player2On()) { draw(); kick(); } }).observe($('#full-player'), { attributes: true, attributeFilter: ['class'] });
   document.addEventListener('visibilitychange', kick);
-  window.addEventListener('resize', () => { if (player2On()) draw(); });
+  window.addEventListener('mkw-vis', kick);
+  window.addEventListener('resize', () => { measure(); if (player2On()) draw(); });
   paintTrack(); applyPlayer2();
 }

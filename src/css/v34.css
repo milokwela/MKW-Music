@@ -1,0 +1,216 @@
+/* MKW Music 0.45 — движок плавности (js/quality.js).
+   Уровни качества на <html>: .q3 — максимум, .q2 — сбалансированно, .q1 + .lite — лёгкий, .lowpower + .lite — экономия.
+   .app-bg — приложение свёрнуто, .app-idle — экран 20 секунд никто не трогал.
+   Главное правило: экран в покое не должен стоить ничего — ни процессору, ни видеокарте. */
+
+/* ---------- свёрнуто: всё замирает (музыка играет, экран никто не видит) ---------- */
+html.app-bg *, html.app-bg *::before, html.app-bg *::after { animation-play-state: paused !important; }
+
+/* ---------- снег гаснет, когда экран не трогают, и возвращается с первым касанием ---------- */
+#winter-snow { transition: opacity 1.2s ease; }
+html.app-idle #winter-snow, html.lite #winter-snow { opacity: 0 !important; }
+
+/* ---------- эквалайзер играющего трека: растягивается видеокартой, а не меняет высоту (та пересчитывала всю страницу 60 раз в секунду) ---------- */
+@keyframes eqS { 0%, 100% { transform: scaleY(.27); } 50% { transform: scaleY(1); } }
+.eq i { height: 22px; transform: scaleY(.27); transform-origin: 50% 100%; }
+body.is-playing .track-row.current .eq i { animation-name: eqS; }
+.wave-eq u { height: 22px; transform: scaleY(.27); transform-origin: 50% 100%; animation-name: eqS; }
+
+/* ---------- заглушки загрузки: мягкое мерцание вместо бегущего блика ---------- */
+@keyframes skP { 0%, 100% { opacity: 1; } 50% { opacity: .55; } }
+html.touch-dev .sk, html.touch-dev .sk-line, html.touch-dev .lb-row.sk { animation: skP 1.3s ease-in-out infinite !important; }
+
+/* ---------- огоньки в окнах новогоднего меню: внутри SVG анимация шла через процессор на каждом экране ---------- */
+html.touch-dev .winter-nav .wn-w { animation: none !important; }
+
+/* ---------- размытие «стекла» ----------
+   Размытие — самое дорогое для видеокарты: всё, что под стеклом, перерисовывается заново при каждом движении.
+   На телефонах оно остаётся только там, где его видно всегда: нижнее меню, мини-плеер, шапка и поле ввода чата.
+   Раньше размытых слоёв на главной было 16 (у меню — четыре друг на друге, плюс по одному на каждой карточке). */
+html.touch-dev *, html.touch-dev *::before, html.touch-dev *::after { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
+html.touch-dev.q3 #bottom-nav { backdrop-filter: blur(16px) saturate(1.6) !important; -webkit-backdrop-filter: blur(16px) saturate(1.6) !important; }
+html.touch-dev.q3 #mini-player { backdrop-filter: blur(18px) saturate(1.5) !important; -webkit-backdrop-filter: blur(18px) saturate(1.5) !important; }
+html.touch-dev.q3 .ch-head, html.touch-dev.q3 .ch-bar { backdrop-filter: blur(12px) !important; -webkit-backdrop-filter: blur(12px) !important; }
+/* сбалансированно: стекло только у нижнего меню и мини-плеера, и оно легче */
+html.touch-dev.q2 #bottom-nav, html.touch-dev.q2 #mini-player { backdrop-filter: blur(12px) !important; -webkit-backdrop-filter: blur(12px) !important; }
+html.touch-dev.q2 .ch-head, html.touch-dev.q2 .ch-bar { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
+/* лёгкий и экономия: размытия нет нигде, даже на компьютере */
+html.lite *, html.lite *::before, html.lite *::after { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
+/* там, где стекла не стало, фон плотнее — чтобы текст под ним не просвечивал */
+html.lite #bottom-nav { background: color-mix(in srgb, var(--surface, #18151d) 97%, transparent) !important; }
+html.touch-dev:not(.q3) .ch-head, html.touch-dev:not(.q3) .ch-bar { background: var(--surface, #18151d) !important; }
+html.touch-dev .ch-msg.photo time { background: rgba(0, 0, 0, .55) !important; }
+
+/* ---------- полоска мини-плеера: растягивается видеокартой (раньше менялась ширина — раскладка страницы считалась на каждом кадре) ---------- */
+#mini-progress { width: 100% !important; transform: scaleX(var(--mp, 0)); transform-origin: 0 50%; transition: transform .5s linear !important; }
+/* большой плеер открыт — мини-плеер под ним не виден; плавный ход его полоски там шёл бы через процессор на каждом кадре */
+html.fp-cover #mini-progress { transition: none !important; }
+
+/* ---------- текст песни: размытие соседних строк — только на максимальном уровне ---------- */
+html:not(.q3) .ly-line { filter: none !important; transition: opacity .45s, transform .45s cubic-bezier(.2,.8,.2,1), color .4s !important; will-change: auto !important; }
+html.lite #fp-lyrics::before { filter: none !important; opacity: .22 !important; }
+
+/* ---------- Настройки → «Качество графики» ---------- */
+.q-list { display: grid; gap: 2px; }
+.q-opt { align-items: flex-start !important; text-align: left; gap: 12px !important; height: auto !important; min-height: 0 !important; padding: 11px 8px !important; white-space: normal; }
+.q-opt .q-dot { width: 18px; height: 18px; flex: none; margin-top: 2px; border-radius: 50%; border: 2px solid rgba(128, 128, 128, .6); box-sizing: border-box; }
+.q-opt.on .q-dot { border-color: var(--primary); background: radial-gradient(circle, var(--primary) 0 42%, transparent 48%); }
+.q-opt .q-txt { display: grid; gap: 3px; min-width: 0; flex: 1; }
+.q-opt .q-txt b { font-weight: 600; }
+.q-opt .q-txt small { opacity: .7; font-size: 12.5px; line-height: 1.35; font-weight: 400; white-space: normal; }
+.q-dev { margin: 10px 8px 2px; font-size: 12px; opacity: .55; }
+.wv-note { display: grid; gap: 12px; padding: 4px 2px 8px; }
+.wv-note p { margin: 0; line-height: 1.45; font-size: 14.5px; opacity: .9; }
+.wv-note .btn { width: 100%; text-decoration: none; justify-content: center; }
+
+/* ---------- маленькие экраны: узкие (до 350 px) и невысокие (до 700 px) — бюджетные телефоны и крупный масштаб экрана ---------- */
+@media (max-width: 350px) {
+  /* кнопки плеера не помещались в ряд — «Повтор» уезжал за край */
+  #full-player.fp2 .fp-controls { gap: 4px !important; }
+  #full-player.fp2 #fp-shuffle, #full-player.fp2 #fp-repeat { width: 38px !important; height: 38px !important; }
+  #full-player.fp2 #fp-prev, #full-player.fp2 #fp-next { width: 46px !important; height: 46px !important; }
+  #full-player.fp2 #fp-toggle { width: 74px !important; height: 60px !important; }
+}
+@media (max-width: 350px) {
+  /* профиль: кнопка «Изменить» уезжала за край; главная: заголовок залезал под новогоднего кота; чат: поле ввода сжималось до двух строк */
+  .phero-btns { gap: 6px; }
+  .phero-edit { padding: 9px !important; font-size: 0 !important; gap: 0 !important; }
+  .hello .view-title { font-size: 27px; }
+  .winter-hello { display: none !important; }
+  .ch-bar textarea::placeholder { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ch-bar { gap: 5px; padding-left: 8px; padding-right: 8px; }
+  .ch-send, .ch-share { width: 38px; height: 38px; }
+  .ch-send .mi, .ch-share .mi { width: 20px; height: 20px; }
+}
+@media (max-width: 899px) {
+  /* текст песни и очередь не длиннее «сцены»: на невысоких экранах они наезжали на название трека */
+  #full-player.fp2 #fp-stage > #fp-lyrics, #full-player.fp2 #fp-stage > #fp-q2, #full-player.fp2 #fp-stage > #fp-out2 { min-height: 0 !important; }
+}
+@media (max-width: 899px) and (max-height: 700px) {
+  /* обложка и текст песни ужимаются, а не наезжают на название трека */
+  #full-player.fp2 #fp-stage { min-height: 140px !important; }
+  #full-player.fp2 .fp-controls { margin-top: 10px !important; }
+  #full-player.fp2.lyrics-on .fp-meta, #full-player.fp2.queue-on .fp-meta { margin-top: 10px !important; }
+}
+
+/* ==== ниже — список, собранный скриптом scripts/gen-perf-css.py (руками не править) ==== */
+
+/* тяжёлые бесконечные анимации (не transform/opacity): на телефонах выключены */
+html.touch-dev #full-player.playing .fp-play,
+html.touch-dev #sheet:has(.pe),
+html.touch-dev #wave-btn,
+html.touch-dev #wave-btn .play-btn,
+html.touch-dev #wave-btn .wave-play,
+html.touch-dev #wave-btn > :first-child,
+html.touch-dev .av-hint,
+html.touch-dev .ch-fire-go,
+html.touch-dev .dev-badge,
+html.touch-dev .dev-badge.v2,
+html.touch-dev .dl-claim,
+html.touch-dev .hello .view-title,
+html.touch-dev .hello-sky .moon.mark,
+html.touch-dev .hl-name,
+html.touch-dev .lb-av[data-frame="aurora"],
+html.touch-dev .lb-av[data-frame="fire"],
+html.touch-dev .lb-av[data-frame="garland"],
+html.touch-dev .lb-av[data-frame="pulse"],
+html.touch-dev .lb-av[data-frame="rainbow"],
+html.touch-dev .pe-sm.fr[data-frame="aurora"] i,
+html.touch-dev .pe-sm.fr[data-frame="fire"] i,
+html.touch-dev .pe-sm.fr[data-frame="garland"] i,
+html.touch-dev .pe-sm.fr[data-frame="pulse"] i,
+html.touch-dev .pe-sm.fx[data-effect="aurora"],
+html.touch-dev .phero[data-effect="aurora"] .phero-fx i:nth-child(-n+3),
+html.touch-dev .phero[data-effect="aurorafx"] .phero-fx { animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
+
+/* то же для шапки профиля — кроме мощных телефонов */
+html.touch-dev:not(.q3) .hero-nick[data-style="gold"],
+html.touch-dev:not(.q3) .hero-nick[data-style="rainbow"],
+html.touch-dev:not(.q3) .hero-nick[data-style="silver"],
+html.touch-dev:not(.q3) .phero.dev::before,
+html.touch-dev:not(.q3) .phero[data-frame="aurora"] .hero-avatar,
+html.touch-dev:not(.q3) .phero[data-frame="fire"] .hero-avatar,
+html.touch-dev:not(.q3) .phero[data-frame="garland"] .hero-avatar,
+html.touch-dev:not(.q3) .phero[data-frame="pulse"] .hero-avatar,
+html.touch-dev:not(.q3) .phero[data-frame="rainbow"] .hero-avatar { animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
+/* мощные телефоны: украшения шапки профиля играют два раза и замирают */
+html.touch-dev.q3 .hero-nick[data-style="gold"],
+html.touch-dev.q3 .hero-nick[data-style="rainbow"],
+html.touch-dev.q3 .hero-nick[data-style="silver"],
+html.touch-dev.q3 .phero.dev::before,
+html.touch-dev.q3 .phero[data-frame="aurora"] .hero-avatar,
+html.touch-dev.q3 .phero[data-frame="fire"] .hero-avatar,
+html.touch-dev.q3 .phero[data-frame="garland"] .hero-avatar,
+html.touch-dev.q3 .phero[data-frame="pulse"] .hero-avatar,
+html.touch-dev.q3 .phero[data-frame="rainbow"] .hero-avatar { animation-iteration-count: 2 !important; }
+
+/* лёгкий уровень графики: декоративные бесконечные анимации выключены */
+html.lite #full-player.fp2 #fp-glow i,
+html.lite #winter-garland i::before,
+html.lite #winter-sky i:nth-child(1),
+html.lite #winter-sky i:nth-child(2),
+html.lite #winter-sky i:nth-child(3),
+html.lite .ach-view.on .achv-ico,
+html.lite .auth-logo,
+html.lite .auth-logo-wrap i,
+html.lite .blobs i,
+html.lite .fan-star,
+html.lite .fire svg,
+html.lite .fire-pop.start .fp-ic .fire svg,
+html.lite .fp-ic .fire svg,
+html.lite .hello-sky .moon,
+html.lite .hello-sky i,
+html.lite .hero-now .mi,
+html.lite .hl-icon,
+html.lite .hl-icon::after,
+html.lite .hl-orbit,
+html.lite .hl-ring,
+html.lite .listen-ring i,
+html.lite .mx-card.loading .mx-ic,
+html.lite .nw-ring,
+html.lite .nw-slide.on .nw-orb,
+html.lite .pbadge.ach-crash::after,
+html.lite .pbadge.ach-dark::after,
+html.lite .pe-prev::after,
+html.lite .pe-sm.fx[data-effect="bubbles"] i,
+html.lite .pe-sm.fx[data-effect="cats"] i,
+html.lite .pe-sm.fx[data-effect="confetti"] i,
+html.lite .pe-sm.fx[data-effect="crosses"] i,
+html.lite .pe-sm.fx[data-effect="fireflies"] i,
+html.lite .pe-sm.fx[data-effect="flakes"] i,
+html.lite .pe-sm.fx[data-effect="gifts"] i,
+html.lite .pe-sm.fx[data-effect="hearts"] i,
+html.lite .pe-sm.fx[data-effect="matrix"] i,
+html.lite .pe-sm.fx[data-effect="meteor"] i,
+html.lite .pe-sm.fx[data-effect="notes"] i,
+html.lite .pe-sm.fx[data-effect="rain"] i,
+html.lite .pe-sm.fx[data-effect="sakura"] i,
+html.lite .pe-sm.fx[data-effect="snow"] i,
+html.lite .pe-sm.fx[data-effect="sparks"] i,
+html.lite .pe-sm.fx[data-effect="stars"] i,
+html.lite .pe::before,
+html.lite .phero[data-effect="bubbles"] .phero-fx i,
+html.lite .phero[data-effect="cats"] .phero-fx i,
+html.lite .phero[data-effect="confetti"] .phero-fx i,
+html.lite .phero[data-effect="crosses"] .phero-fx i,
+html.lite .phero[data-effect="fireflies"] .phero-fx i,
+html.lite .phero[data-effect="flakes"] .phero-fx i,
+html.lite .phero[data-effect="gifts"] .phero-fx i,
+html.lite .phero[data-effect="hearts"] .phero-fx i,
+html.lite .phero[data-effect="matrix"] .phero-fx i,
+html.lite .phero[data-effect="meteor"] .phero-fx i,
+html.lite .phero[data-effect="notes"] .phero-fx i,
+html.lite .phero[data-effect="rain"] .phero-fx i,
+html.lite .phero[data-effect="sakura"] .phero-fx i,
+html.lite .phero[data-effect="snow"] .phero-fx i,
+html.lite .phero[data-effect="sparks"] .phero-fx i,
+html.lite .phero[data-effect="stars"] .phero-fx i,
+html.lite .phero[data-effect="waves"] .phero-fx i:nth-child(-n+2),
+html.lite .rc-cover,
+html.lite .rc::before,
+html.lite .voice-badge .mi,
+html.lite .wave-bg i,
+html.lite .wave-bg s,
+html.lite .winter-hello,
+html.lite .winter-nav .wn-w,
+html.lite body::before { animation-duration: .01ms !important; animation-iteration-count: 1 !important; }

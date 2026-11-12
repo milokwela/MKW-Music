@@ -4,11 +4,14 @@
 // 2) Анимации, которые сейчас за краем экрана, тоже стоят на паузе и оживают, когда появляются.
 // Пауза ставится атрибутом data-zz на сами анимированные элементы (см. v30.css) — это дешевле,
 // чем пересчитывать стили всей страницы, и не ломает анимации, которые CSS сам включает и выключает.
+import { awake, isIdle } from './quality.js';
+
 const ATTR = 'data-zz';
 let holding = false;
 let holdT = 0;
 const held = new Set();       // элементы, остановленные на время прокрутки / перехода
 const offscreen = new Set();  // элементы за краем экрана
+const slept = new Set();      // украшения, уснувшие, пока экран никто не трогает (см. quality.js)
 const watched = new WeakSet();
 let io = null;
 
@@ -18,7 +21,7 @@ const infinite = (a) => {
 const hostOf = (a) => { const t = a.effect && a.effect.target; return t && t.nodeType === 1 ? t : null; };
 
 function paint(el) {
-  const stop = held.has(el) || offscreen.has(el);
+  const stop = held.has(el) || offscreen.has(el) || slept.has(el);
   if (stop) { if (!el.hasAttribute(ATTR)) el.setAttribute(ATTR, ''); } else if (el.hasAttribute(ATTR)) el.removeAttribute(ATTR);
 }
 
@@ -28,6 +31,22 @@ function liveHosts() {
   try { list = document.getAnimations(); } catch { return out; }
   for (const a of list) if (a.playState === 'running' && infinite(a)) { const el = hostOf(a); if (el) out.add(el); }
   return out;
+}
+
+// Анимации «по делу» не засыпают никогда: эквалайзер играющего трека, загрузка, набор текста, запись голоса, звонок, обновление.
+const WORKING = /^(eq|tgEq|hnEq|tyDot|rec[A-Z]|call[A-Z]|ci[A-Z]|upd[A-Z]|out[A-Z]|offDl|spin|shimmer|skel|sk$|sp\d|vGlow)/;
+function sleepAll() {
+  let list = [];
+  try { list = document.getAnimations(); } catch { return; }
+  for (const a of list) {
+    if (a.playState !== 'running' || !infinite(a) || WORKING.test(a.animationName || '')) continue;
+    const el = hostOf(a);
+    if (el && !slept.has(el)) { slept.add(el); paint(el); }
+  }
+}
+function wakeAll() {
+  const list = [...slept]; slept.clear();
+  for (const el of list) paint(el);
 }
 
 // остановить декоративные анимации на ms миллисекунд (продлевается, пока идёт прокрутка)
@@ -76,6 +95,8 @@ export function initBoost() {
   document.addEventListener('scroll', () => hold(240), { capture: true, passive: true });
   document.addEventListener('touchmove', () => hold(240), { passive: true });
   // новые экраны и карточки появляются постоянно — раз в несколько секунд в простое подхватываем их анимации
-  setInterval(() => { if (!document.hidden) idle(scan); }, 3000);
+  setInterval(() => { if (awake()) idle(scan); }, 3000);
+  // 20 секунд никто не трогал экран — украшения засыпают; первое же касание будит их
+  window.addEventListener('mkw-idle', () => { if (isIdle()) sleepAll(); else wakeAll(); });
   idle(scan);
 }

@@ -3,6 +3,7 @@
 import { queue, st, onPlayer } from './player.js';
 import { $ } from './ui.js';
 import { jsonp } from './jsonp.js';
+import { inBg, quality } from './quality.js';
 
 export const liveBg = () => { try { return localStorage.getItem('mkw.livebg') !== '0'; } catch { return true; } };
 export function setLiveBg(on) {
@@ -99,9 +100,11 @@ async function syncTrack() {
 function frame(now) {
   const full = $('#full-player');
   // большой плеер закрыт — цикл не крутим вовсе (экономим батарею и плавность)
+  // свёрнуто или лёгкий уровень графики — живой фон стоит
+  if (inBg() || quality() <= 1) { raf = 0; return; }
   if (!liveBg() || !full || full.classList.contains('fp2') || (!full.classList.contains('open') && !full.classList.contains('dragging'))) { raf = 0; return; }
   // в новом плеере пульсирующего фона нет — цикл каждый кадр пересчитывал стили всего плеера и мешал плавности
-  raf = requestAnimationFrame(frame);
+  raf = -1; setTimeout(() => { raf = requestAnimationFrame(frame); }, 25); // ~30 кадров в секунду, между ними страница спит
   const el = $('#fp-glow');
   const t = (now - t0) / 1000;
   let beat = 0;
@@ -131,5 +134,7 @@ export function initViz() {
   const full = $('#full-player');
   const kick = () => { if (!raf) raf = requestAnimationFrame(frame); };
   if (full) new MutationObserver(kick).observe(full, { attributes: true, attributeFilter: ['class'] });
+  window.addEventListener('mkw-vis', kick);
+  window.addEventListener('mkw-q', kick);
   kick();
 }

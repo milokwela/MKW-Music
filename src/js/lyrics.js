@@ -3,6 +3,7 @@
 import { safeUrl } from './utils.js';
 import { $, h, toast } from './ui.js';
 import * as player from './player.js';
+import { inBg, quality } from './quality.js';
 import { RECOGNIZE_URL } from './shazam-config.js';
 
 const API = 'https://lrclib.net/api';
@@ -204,6 +205,7 @@ function paintOffset() {
 
 function styleLines(nodes, i) {
   const base = Math.max(i, -1);
+  const blurOk = quality() >= 3; // размытие соседних строк — только на максимальном уровне графики
   for (let k = 0; k < nodes.length; k++) {
     const n = nodes[k];
     if (!n.classList.contains('ly-line')) continue;
@@ -212,16 +214,18 @@ function styleLines(nodes, i) {
     n.classList.toggle('next', k === i + 1);
     const d = Math.abs(k - base);
     // далёкие строки всё равно за краем экрана: размытие на них только грузит телефон
-    if (d > 7) { if (n.style.filter) n.style.filter = ''; n.style.opacity = '.2'; continue; }
+    if (d > 7 || !blurOk) { if (n.style.filter) n.style.filter = ''; n.style.opacity = d > 7 ? '.2' : k === i ? '' : String(Math.max(.22, (k < i ? .5 : .62) - d * .07).toFixed(2)); continue; }
     if (k === i) { n.style.filter = ''; n.style.opacity = ''; }
     else if (k < i) { n.style.filter = `blur(${Math.min(3, 1 + d * .5).toFixed(1)}px)`; n.style.opacity = String(Math.max(.22, .5 - d * .07).toFixed(2)); }
     else { n.style.filter = `blur(${Math.min(6, (i < 0 ? 0 : 1) + (d - 1) * 1.3).toFixed(1)}px)`; n.style.opacity = String(Math.max(.2, (d === 1 ? .7 : .55) - (d - 1) * .1).toFixed(2)); }
   }
 }
 
+// Подсветка строк и слов: проверяем 16 раз в секунду, а не на каждом кадре (на экране 120 Гц это было 120 проверок),
+// на паузе и в свёрнутом приложении цикл стоит — его будят события плеера и возвращение на экран.
 function frame() {
   raf = 0;
-  if (!open) return;
+  if (!open || inBg()) return;
   if (lines.length && mode === 'sync') {
     const sc = box(), nodes = sc.children;
     // смещение > 0 — текст идёт позже (если раньше спешил)
@@ -248,7 +252,7 @@ function frame() {
       for (let k = 0; k < ws.length; k++) ws[k].classList.toggle('on', k < on);
     }
   }
-  raf = requestAnimationFrame(frame);
+  if (player.st.playing) { raf = -1; setTimeout(() => { if (raf === -1) raf = requestAnimationFrame(frame); }, 55); }
 }
 
 function setOpen(v) {
@@ -281,9 +285,10 @@ export function initLyrics() {
   root.prepend(tl);
   const sc = box();
   for (const ev of ['wheel', 'touchmove', 'pointerdown']) sc.addEventListener(ev, () => { userScrollUntil = Date.now() + 3500; }, { passive: true });
+  window.addEventListener('mkw-vis', () => { if (open && !raf) raf = requestAnimationFrame(frame); });
   $('#fp-lyrics-btn').addEventListener('click', () => { if (!player.queue.current) { toast('Сначала включите песню'); return; } setOpen(!open); });
   player.onPlayer((ev) => {
-    if (ev === 'time' || ev === 'state') stamp = { t: player.st.time, at: performance.now() };
+    if (ev === 'time' || ev === 'state') { stamp = { t: player.st.time, at: performance.now() }; if (open && !raf) raf = requestAnimationFrame(frame); }
     if (ev === 'track' && open) {
       if (!player.queue.current) { setOpen(false); return; }
       root.style.setProperty('--ly-art', safeUrl(player.queue.current.artwork) ? `url("${safeUrl(player.queue.current.artwork)}")` : 'none');
