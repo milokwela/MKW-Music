@@ -50,6 +50,7 @@ final class DeviceProfile {
             o.put("brand", String.valueOf(Build.MANUFACTURER).toLowerCase(java.util.Locale.ROOT));
             o.put("saver", powerSave(a));
             o.put("thermal", thermal(a));
+            o.put("batt", batteryTemp(a));
         } catch (Exception ignored) {
             // без профиля сайт определит всё сам
         }
@@ -114,14 +115,29 @@ final class DeviceProfile {
 
     /** Нагрев: 0 — норма, 1 — слегка тёплый, 2 — тёплый, 3+ — горячий (Android 10+, иначе всегда 0). */
     static int thermal(Context c) {
+        int s = 0;
         try {
             if (Build.VERSION.SDK_INT >= 29) {
                 PowerManager pm = (PowerManager) c.getSystemService(Context.POWER_SERVICE);
-                if (pm != null) return pm.getCurrentThermalStatus();
+                if (pm != null) s = pm.getCurrentThermalStatus();
             }
         } catch (Exception ignored) {
             // на части прошивок статус недоступен
         }
-        return 0;
+        // Huawei, Honor и часть других оболочек не сообщают нагрев через Android (всегда «норма») —
+        // поэтому смотрим и на температуру батареи: она есть на любом телефоне
+        int t = batteryTemp(c);
+        int b = t >= 460 ? 3 : t >= 420 ? 2 : t >= 390 ? 1 : 0;
+        return Math.max(s, b);
+    }
+
+    /** Температура батареи в десятых долях градуса (415 = 41,5 °C), 0 — неизвестно. */
+    static int batteryTemp(Context c) {
+        try {
+            android.content.Intent i = c.registerReceiver(null, new android.content.IntentFilter(android.content.Intent.ACTION_BATTERY_CHANGED));
+            return i == null ? 0 : i.getIntExtra(android.os.BatteryManager.EXTRA_TEMPERATURE, 0);
+        } catch (Exception e) {
+            return 0;
+        }
     }
 }

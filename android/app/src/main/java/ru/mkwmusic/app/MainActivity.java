@@ -391,7 +391,8 @@ public class MainActivity extends Activity {
 
             @Override
             public boolean onRenderProcessGone(WebView v, RenderProcessGoneDetail detail) {
-                runOnUiThread(() -> recreate());
+                final boolean crashed = detail != null && detail.didCrash();
+                runOnUiThread(() -> onRendererGone(crashed));
                 return true;
             }
         });
@@ -1004,9 +1005,11 @@ public class MainActivity extends Activity {
     protected void onStart() {
         super.onStart();
         visible = true;
+        if (recoverPending) { recoverPending = false; recreate(); return; }
         runJs("window.__mkwFg=true;window.dispatchEvent(new Event('mkw-fg'))");
         watchPerf();
         pushPerf();
+        if (root != null) { root.removeCallbacks(perfTick); root.postDelayed(perfTick, 30000); root.postDelayed(this::checkAlive, 1200); }
     }
 
     @Override
@@ -1150,8 +1153,58 @@ public class MainActivity extends Activity {
     private Object thermalListener;
     private android.content.BroadcastReceiver saverReceiver;
 
+    private int lastPerf = -1;
     private void pushPerf() {
-        runJs("window.__mkwPerf&&window.__mkwPerf({thermal:" + DeviceProfile.thermal(this) + ",saver:" + DeviceProfile.powerSave(this) + "})");
+        int th = DeviceProfile.thermal(this);
+        boolean sv = DeviceProfile.powerSave(this);
+        int key = th * 2 + (sv ? 1 : 0);
+        lastPerf = key;
+        runJs("window.__mkwPerf&&window.__mkwPerf({thermal:" + th + ",saver:" + sv + ",batt:" + DeviceProfile.batteryTemp(this) + "})");
+    }
+
+    /** Раз в 30 секунд, пока приложение на экране: нагрев по температуре батареи (не на всех телефонах о нём сообщает сам Android). */
+    private final Runnable perfTick = new Runnable() {
+        @Override
+        public void run() {
+            if (!visible || root == null) return;
+            int key = DeviceProfile.thermal(MainActivity.this) * 2 + (DeviceProfile.powerSave(MainActivity.this) ? 1 : 0);
+            if (key != lastPerf) pushPerf();
+            root.postDelayed(this, 30000);
+        }
+    };
+
+    // ---------- страница «умерла» (чёрный экран) ----------
+    private boolean recoverPending = false;
+    private int crashes = 0;
+    private long crashWindow = 0;
+
+    /** Процесс, который рисует страницу, упал или его выгрузила система ради памяти: собираем экран заново. */
+    private void onRendererGone(boolean crashed) {
+        Log.w(TAG, crashed ? "renderer crashed" : "renderer killed by system");
+        long now = android.os.SystemClock.elapsedRealtime();
+        if (now - crashWindow > 120000) { crashWindow = now; crashes = 0; }
+        crashes++;
+        if (!visible) { recoverPending = true; return; } // приложение свёрнуто — соберём, когда его откроют
+        if (crashes > 3) {
+            Toast.makeText(this, "MKW не может отрисовать экран. Перезапустите приложение или обновите Android System WebView", Toast.LENGTH_LONG).show();
+            return;
+        }
+        recreate();
+    }
+
+    /** Вернулись в приложение: проверяем, что страница живая и отвечает; если молчит 3 секунды — перезагружаем. */
+    private void checkAlive() {
+        final WebView w = web;
+        // только когда страница уже один раз полностью загрузилась — при первом запуске не мешаем ей грузиться
+        if (w == null || root == null || !pageReady || !splashPageDone) return;
+        final boolean[] ok = { false };
+        try { w.evaluateJavascript("1", (v) -> ok[0] = true); } catch (Exception e) { return; }
+        root.postDelayed(() -> {
+            if (!ok[0] && visible && web == w) {
+                Log.w(TAG, "page not responding — reload");
+                try { w.reload(); } catch (Exception ignored) { /* соберётся при следующем входе */ }
+            }
+        }, 3000);
     }
 
     private void watchPerf() {

@@ -34,7 +34,7 @@ function liveHosts() {
 }
 
 // Анимации «по делу» не засыпают никогда: эквалайзер играющего трека, загрузка, набор текста, запись голоса, звонок, обновление.
-const WORKING = /^(eq|tgEq|hnEq|tyDot|rec[A-Z]|call[A-Z]|ci[A-Z]|upd[A-Z]|out[A-Z]|offDl|spin|shimmer|skel|sk$|sp\d|vGlow)/;
+const WORKING = /^(tyDot|rec[A-Z]|call[A-Z]|ci[A-Z]|upd[A-Z]|out[A-Z]|offDl|spin|shimmer|skel|sk$|sp\d|vGlow)/;
 function sleepAll() {
   let list = [];
   try { list = document.getAnimations(); } catch { return; }
