@@ -697,6 +697,13 @@ public class MainActivity extends Activity {
                 if (!bt().pair(o.optString("a", ""))) runJs("window.__mkwBtFail&&window.__mkwBtFail()");
                 bt().push();
                 break;
+            case "diag":
+                runJs("window.__mkwDiag&&window.__mkwDiag(" + DeviceProfile.diag(this) + ")");
+                break;
+            case "keepon":
+                if (o.optBoolean("on", false)) getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+                else getWindow().clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+                break;
             case "hz":
                 if (o.optBoolean("max", true) != hzMax) preferDisplay(o.optBoolean("max", true));
                 break;
@@ -1078,13 +1085,15 @@ public class MainActivity extends Activity {
             String key = version + "#" + build;
             updVersion = version;
             // на Wi-Fi обновление скачивается само и тихо — останется только нажать «Установить»
+            // выбрали «Нет, остаться» — про эту версию больше не спрашиваем
+            if (key.equals(p.getString("upd_skip", "")) || version.equals(p.getString("upd_skip_ver", ""))) return;
             if (offline().unmetered()) { updater().start(version, true, false); return; }
-            if (key.equals(p.getString("upd_skip", ""))) return;
             new AlertDialog.Builder(this)
                     .setTitle("Вышла новая версия " + version)
-                    .setMessage("Скачайте её и откройте файл — она встанет поверх, вход и данные сохранятся.")
+                    .setMessage("Хотите обновить? Это необязательно: ваша версия " + current + " продолжит работать. "
+                            + "Новая встанет поверх, вход и данные сохранятся. Что нового — Профиль → О MKW.")
                     .setPositiveButton("Обновить", (d, w) -> updater().start(version, false, false))
-                    .setNegativeButton("Позже", (d, w) -> p.edit().putString("upd_skip", key).apply())
+                    .setNegativeButton("Нет, остаться", (d, w) -> p.edit().putString("upd_skip", key).apply())
                     .show();
         }));
     }

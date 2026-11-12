@@ -105,14 +105,14 @@ async function prepVideo(file) {
 
 // ---------- отправка ----------
 
-async function send(kind, payload, atts, onProgress) {
+async function send(kind, payload, atts, onProgress, extraEnv) {
   const uid = me();
   if (!uid) throw Object.assign(new Error('auth'), { userText: 'Войдите в аккаунт' });
   const ref = doc(collection(db, 'reports'));
   const id = kind === 'rate' ? `rate-${RATE_VER.replace('.', '')}-${uid}` : ref.id;
   const target = doc(db, 'reports', id);
   const att = atts.map((a, i) => ({ i, type: a.type, mime: a.mime, parts: Math.ceil(a.data.length / PART), size: Math.round(a.data.length * 0.75), thumb: a.thumb || '', w: a.w || 0, h: a.h || 0, dur: a.dur || 0 }));
-  const base = { kind, uid, nick: myNick().slice(0, 32), text: String(payload.text || '').slice(0, 2000), env: envInfo(), at: Date.now(), read: false, up: att.length > 0, att };
+  const base = { kind, uid, nick: myNick().slice(0, 32), text: String(payload.text || '').slice(0, 2000), env: extraEnv ? { ...envInfo(), diag: extraEnv } : envInfo(), at: Date.now(), read: false, up: att.length > 0, att };
   if (kind === 'rate') { base.score = payload.score; base.ver = RATE_VER; }
   await setDoc(target, base);
   const total = att.reduce((s, a) => s + a.parts, 0);
@@ -134,6 +134,9 @@ async function send(kind, payload, atts, onProgress) {
   }
   return id;
 }
+
+/** Итог «Проверки устройства» (diag.js) — разработчику, с таблицей этапов. */
+export function sendDiag(text, diag) { return send('bug', { text }, [], null, diag); }
 
 function tooOften() {
   const last = Number(get(LAST_SENT)) || 0;
@@ -239,7 +242,8 @@ export function feedbackCard() {
     h('span', { class: 'set-ic' }, mi(ic)), h('span', { class: 'fb-item-t' }, h('b', { text: title }), sub), h('span', { class: 'chev', text: '›' }));
   return h('div', { class: 'fb-card' },
     item('rocket', `Оценить оптимизацию ${RATE_VER}`, rateSub, openRate),
-    item('chat', 'Сообщить об ошибке', h('small', { text: 'Опишите, что не так, приложите скриншот или видео' }), openBugReport));
+    item('chat', 'Сообщить об ошибке', h('small', { text: 'Опишите, что не так, приложите скриншот или видео' }), openBugReport),
+    item('signal', 'Проверка устройства', h('small', { text: 'Телефон греется или тормозит? 10 минут — и станет понятно почему' }), () => import('./diag.js').then((m) => m.openDiag())));
 }
 
 // Один раз после обновления: окно «Теперь можно написать разработчику» с теми же двумя пунктами, что и в «О MKW».

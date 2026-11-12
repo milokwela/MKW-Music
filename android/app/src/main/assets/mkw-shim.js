@@ -137,6 +137,9 @@
     ready: function () { send({ t: 'ready' }); },
     /* частота экрана: true — самая плавная, false — спокойные 60 Гц (нагрев, энергосбережение) */
     refresh: function (max) { send({ t: 'hz', max: !!max }); },
+    /* проверка устройства: снимок температуры, частот, памяти (ответ — в window.__mkwDiag) и «не гасить экран» */
+    diag: function () { send({ t: 'diag' }); },
+    keepOn: function (on) { send({ t: 'keepon', on: !!on }); },
     fullScreenCalls: function (open) { send({ t: 'fsi', open: !!open }); },
     pinWidget: function (kind) { send({ t: 'pinwidget', kind: Number(kind) || 0 }); },
     // офлайн-музыка: что скачано, скачать, удалить
