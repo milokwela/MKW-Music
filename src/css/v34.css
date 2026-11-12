@@ -49,6 +49,13 @@ html.fp-cover #mini-progress { transition: none !important; }
 /* в покое полоска мини-плеера прыгает, а не плывёт: иначе экран перерисовывается без остановки, пока играет музыка */
 html.app-idle #mini-progress { transition: none !important; }
 
+/* ---------- прокрутка без ожидания скриптов ----------
+   Свайпы вбок (вкладки профиля, ответ на сообщение) объявлены через touch-action — браузер сам не листает вбок,
+   а вертикальную прокрутку ведёт отдельным быстрым потоком на полной частоте экрана. */
+.ch-msg { touch-action: pan-y; }
+/* «лупа» по долгому нажатию на трек: пока она открыта, список не листается */
+html:has(body.lens-on), body.lens-on { overflow: hidden !important; touch-action: none; }
+
 /* ---------- текст песни: размытие соседних строк — только на максимальном уровне ---------- */
 html:not(.q3) .ly-line { filter: none !important; transition: opacity .45s, transform .45s cubic-bezier(.2,.8,.2,1), color .4s !important; will-change: auto !important; }
 html.lite #fp-lyrics::before { filter: none !important; opacity: .22 !important; }

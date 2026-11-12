@@ -86,11 +86,17 @@ function apply() {
   root.classList.toggle('lite', l <= 1);
   root.classList.toggle('lowpower', l === 0);
   put(LAST, String(l));
-  // частота экрана: самая плавная, пока телефон не горячий и не экономит заряд
-  const want = !(saver || thermal >= 3 || idle);
-  if (want !== hzMax) {
-    hzMax = want;
-    try { const n = window.MKWNative; if (n && n.refresh) n.refresh(want); } catch { /* старая версия приложения */ }
+  // Частота экрана. Пока экраном пользуются — самая высокая. В покое не заставляем экран работать на максимуме, но и не
+  // прижимаем к 60 Гц: частоту выбирает сам телефон (LTPO-экраны сами снижают её в покое и мгновенно поднимают при касании).
+  // Горячий телефон или энергосбережение — спокойные 60 Гц.
+  const n = window.MKWNative;
+  const hot = saver || thermal >= 3;
+  if (n && n.refreshMode) {
+    const mode = hot ? 'low' : idle ? 'auto' : 'max';
+    if (mode !== hzMax) { hzMax = mode; try { n.refreshMode(mode); } catch { /* ignore */ } }
+  } else {
+    const want = !hot; // старые версии приложения умеют только «максимум» или «60 Гц» — в покое оставляем максимум
+    if (want !== hzMax) { hzMax = want; try { if (n && n.refresh) n.refresh(want); } catch { /* старая версия приложения */ } }
   }
   if (changed) fire('mkw-q', l);
 }
