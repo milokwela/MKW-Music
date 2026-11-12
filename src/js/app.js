@@ -35,6 +35,8 @@ import { chatOpen, closeChat } from './chat.js';
 import { initWave, waveDebug } from './wave.js';
 import { initTheme } from './theme.js';
 import { initWinter } from './winter.js';
+import { checkWebView } from './wvcheck.js';
+import { qualityDebug } from './quality.js';
 import { initOffline } from './offline.js';
 import { offlineStart } from './offui.js';
 import { initPlayer2 } from './player2.js';
@@ -213,6 +215,7 @@ function runSplash() {
 
 function boot() {
   if (appGate()) return; // старое приложение — только окно «Обновите»
+  initPerf();            // движок плавности — первым: остальные модули сразу знают уровень графики
   initBadgeView();
   readIncoming();
   runSplash();
@@ -220,7 +223,7 @@ function boot() {
   if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
   initTheme();
   initWinter();
-  try { if (localStorage.getItem('mkw.debug') === '1') window.__mkw = { player, waveDebug }; } catch { /* ignore */ }
+  try { if (localStorage.getItem('mkw.debug') === '1') window.__mkw = { player, waveDebug, quality: qualityDebug }; } catch { /* ignore */ }
   initAuthForm();
   initApkHandoff();
   initNav();
@@ -231,7 +234,6 @@ function boot() {
   initPlayer2();
   initOffline();
   initLyrics();
-  initPerf();
   initWave();
   initClock();
   initBoost();
@@ -242,6 +244,7 @@ function boot() {
   initRowLens();
   initListenFlush();
   startUpdateWatch();
+  checkWebView();
   onStore((what) => { if (!$('#view-profile').hidden && (what === 'profile' || what === 'likes' || what === 'playlists' || what === 'history')) updateProfile(); });
   watchAuth(onUser);
   // встроенный браузер (Telegram, VK) иногда не отдаёт вход — не оставляем пустой экран

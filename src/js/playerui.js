@@ -9,6 +9,7 @@ import * as store from './store.js';
 import { likeToggle, openTrackMenu } from './menu.js';
 import { formatTime, safeUrl } from './utils.js';
 import { youtubeEnabled } from './youtube.js';
+import { inBg } from './quality.js';
 
 const { queue, st } = player;
 let seeking = false;
@@ -27,7 +28,7 @@ function dim(k, live) {
   scrim.style.opacity = String(o);
 }
 let scrimT = 0;
-function openFull() { const f = $('#full-player'); f.style.transform = ''; f.classList.remove('dragging'); f.classList.add('open'); dim(1); }
+function openFull() { const f = $('#full-player'); f.style.transform = ''; f.classList.remove('dragging'); f.classList.add('open'); dim(1); renderTime(); }
 function closeFull() { const f = $('#full-player'); f.style.transform = ''; f.classList.remove('dragging'); f.classList.remove('open'); dim(0); }
 
 // Жест: тянем мини-плеер вверх — шторка открывается; тянем большой вниз — закрывается.
@@ -61,7 +62,7 @@ function initDrag() {
     if (mode === 'close' && !full.classList.contains('dragging') && Math.abs(e.touches[0].clientX - sx0) > Math.abs(dy)) { on = false; return; }
     if (mode === 'open') {
       if (dy > 0) dy = 0;
-      if (dy < -8) { full.classList.add('dragging'); if (e.cancelable) e.preventDefault(); }
+      if (dy < -8) { const was = full.classList.contains('dragging'); full.classList.add('dragging'); if (!was) renderTime(); if (e.cancelable) e.preventDefault(); }
       if (full.classList.contains('dragging')) { full.style.transform = `translateY(${Math.max(0, H() + dy)}px)`; dim(-dy / H(), true); }
     } else {
       if (dy < 0) dy = 0;
@@ -227,15 +228,21 @@ function renderState() {
 function renderTime() {
   const d = st.duration > 0 ? st.duration : 0;
   const pct = d ? Math.min(100, (st.time / d) * 100) : 0;
-  $('#mini-progress').style.width = `${pct}%`;
-  $('#full-player').style.setProperty('--prog', `${pct}%`);
-  if (!seeking) $('#fp-seek').style.setProperty('--val', `${pct}%`);
+  // полоска мини-плеера растягивается видеокартой (transform), а не меняет ширину: раньше из-за этого страница
+  // пересчитывала раскладку на каждом кадре, пока играет музыка
+  $('#mini-progress').style.setProperty('--mp', (pct / 100).toFixed(4));
+  const full = $('#full-player');
+  // большой плеер закрыт — его полосу и время не трогаем (обновятся при открытии)
+  if (!full.classList.contains('open') && !full.classList.contains('dragging')) return;
   if (!seeking) {
-    $('#fp-seek').value = d ? Math.round((st.time / d) * 1000) : 0;
-    $('#fp-cur').textContent = formatTime(st.time);
+    const seek = $('#fp-seek');
+    seek.style.setProperty('--val', `${pct.toFixed(2)}%`);
+    seek.value = d ? Math.round((st.time / d) * 1000) : 0;
+    setText($('#fp-cur'), formatTime(st.time));
   }
-  $('#fp-dur').textContent = formatTime(d);
+  setText($('#fp-dur'), formatTime(d));
 }
+const setText = (el, v) => { if (el && el.textContent !== v) el.textContent = v; };
 
 // ---------- очередь ----------
 function openQueue() {
@@ -309,12 +316,13 @@ export function initPlayerUI() {
     if (ev === 'track') renderTrack();
     if ((ev === 'state' || ev === 'track') && miniGone && player.st.playing) showMiniAgain();
     else if (ev === 'state' || ev === 'queue' || ev === 'sleep') { renderState(); if (ev === 'queue' && queue.current) renderCarousel(); }
-    else if (ev === 'time') renderTime();
+    else if (ev === 'time') { if (!inBg()) renderTime(); } // свёрнуто — полосу перемотки никто не видит, не трогаем страницу
     else if (ev === 'error') { toast(st.message); renderState(); }
     else if (ev === 'end') toast('Это последний трек в очереди');
     if (ev === 'queue' && !queue.current) renderTrack();
   });
   store.onStore((what) => { if (what === 'likes') renderLike(); });
+  window.addEventListener('mkw-vis', () => { if (!inBg()) renderTime(); });
   renderTrack();
 }
 

@@ -1,9 +1,9 @@
-// Режим для слабых устройств: выключает размытие, тяжёлые анимации и фоновые эффекты. По умолчанию выключен.
-const KEY = 'mkw.lowpower';
-export const lowPower = () => { try { return localStorage.getItem(KEY) === '1'; } catch { return false; } };
-export function setLowPower(v) {
-  try { localStorage.setItem(KEY, v ? '1' : '0'); } catch { /* ignore */ }
-  apply();
-}
-export function apply() { document.documentElement.classList.toggle('lowpower', lowPower()); }
-export function initPerf() { apply(); }
+// Раньше здесь был ручной «режим для слабых устройств». Теперь качеством графики управляет движок плавности (quality.js):
+// он сам подбирает уровень под телефон. Эти функции оставлены для старых мест в коде.
+import { quality, qualityMode, setQualityMode, initQuality } from './quality.js';
+
+export const lowPower = () => quality() === 0;
+export function setLowPower(v) { setQualityMode(v ? '0' : 'auto'); }
+export function apply() { /* классы на <html> ставит quality.js */ }
+export function initPerf() { initQuality(); }
+export { qualityMode };

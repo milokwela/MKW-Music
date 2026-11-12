@@ -17,7 +17,7 @@ import { SOURCE_MODES, getSourceMode, setSourceMode } from './sources.js';
 import { gesturesOn, setGestures, showGestureGuide } from './gestures.js';
 import { listenerStats } from './stats.js';
 import { liveBg, setLiveBg } from './viz.js';
-import { lowPower, setLowPower } from './perf.js';
+import { qualityMode, setQualityMode, qualityInfo, device, awake } from './quality.js';
 import { logOut, changePassword, changeNick, authErrorText } from './auth.js';
 import { connectionCountry } from './geo.js';
 import { goOffline, publishCard, publishProfile, myCard, getProfile, topListeners, hiddenFromBoard, setHidden, myUid } from './leaders.js';
@@ -197,12 +197,33 @@ function swatch(id, name, hue, onclick) {
     h('span', { class: 'sw-name', text: name }));
 }
 
+// ---------- качество графики (движок плавности, quality.js) ----------
+function qualityLine() {
+  const q = qualityInfo();
+  return q.auto ? `Авто · сейчас «${q.name}»${q.why ? ` (${q.why})` : ''}. Приложение само подбирает под телефон` : `${q.name} · выбрано вручную`;
+}
+function openQuality() {
+  const cur = qualityMode();
+  const d = device();
+  const opt = (id, title, desc) => h('button', { class: `sheet-item q-opt${cur === id ? ' on' : ''}`, type: 'button', onclick: () => { setQualityMode(id); closeSheet(); syncControls(); toast(id === 'auto' ? 'Качество подбирается автоматически' : `Качество графики: ${title}`); } },
+    h('span', { class: 'q-dot' }), h('span', { class: 'q-txt' }, h('b', { text: title }), h('small', { text: desc })));
+  const box = h('div', { class: 'q-list' },
+    opt('auto', 'Авто (рекомендуется)', 'Приложение следит за плавностью и нагревом и само убавляет эффекты, если телефон не успевает'),
+    opt('3', 'Максимум', 'Все эффекты: стекло, свечение, снег. Для мощных телефонов'),
+    opt('2', 'Сбалансированно', 'Стекло только у меню и мини-плеера, меньше украшений'),
+    opt('1', 'Лёгкий', 'Без размытия и украшений, переходы остаются. Меньше нагрев и расход батареи'),
+    opt('0', 'Экономия', 'Без анимаций вовсе — для самых слабых телефонов'),
+    d && d.ram ? h('p', { class: 'q-dev', text: `Этот телефон: память ${Math.round((d.ram || 0) / 1024 * 10) / 10} ГБ, ядер ${d.cores || '?'}, экран ${d.hz || 60} Гц` }) : null);
+  openSheet('Качество графики', box);
+}
+
 function syncControls() {
+  if (refs.qrow) { const sm = refs.qrow.querySelector('.set-txt small'); if (sm) sm.textContent = qualityLine(); }
   $$('.theme-card').forEach((c) => c.classList.toggle('active', c.dataset.mode === getTheme()));
   $$('.src-chip').forEach((c) => c.classList.toggle('active', c.dataset.id === getSourceMode()));
   if (refs.srcnote) refs.srcnote.textContent = `iTunes: работает · YouTube: работает без лимита (через сервер MKW${youtubeQuotaOut() ? ', ключ на сегодня исчерпан' : ''}) · Audius: ${audiusEnabled() ? 'работает' : 'нет ключа'}`;
   const tog = (el, v) => { if (el) { el.classList.toggle('active', v); el.setAttribute('aria-checked', String(v)); } };
-  tog(refs.gest, gesturesOn()); tog(refs.voice, voiceOn()); tog(refs.notify, notifyOn()); tog(refs.bgplay, streamsOn()); tog(refs.lowp, lowPower()); tog(refs.livebg, liveBg()); tog(refs.winter, winterOn()); tog(refs.player2, player2On()); tog(refs.board, !hiddenFromBoard());
+  tog(refs.gest, gesturesOn()); tog(refs.voice, voiceOn()); tog(refs.notify, notifyOn()); tog(refs.bgplay, streamsOn()); tog(refs.livebg, liveBg()); tog(refs.winter, winterOn()); tog(refs.player2, player2On()); tog(refs.board, !hiddenFromBoard());
   $$('.swatch').forEach((c) => c.classList.toggle('active', c.dataset.id === getAccent()));
   if (refs.customSw) {
     const nt = getNeutral();
@@ -977,7 +998,6 @@ export function buildProfile(nick) {
   refs.livebg = sw(() => { setLiveBg(!liveBg()); syncControls(); });
   refs.winter = sw(() => { setWinter(!winterOn()); syncControls(); });
   refs.player2 = sw(() => { setPlayer2(!player2On()); syncControls(); });
-  refs.lowp = sw(() => { setLowPower(!lowPower()); syncControls(); });
   refs.gest = sw(async () => { await setGestures(!gesturesOn()); syncControls(); });
   refs.voice = sw(() => { setVoice(!voiceOn()); syncControls(); });
   refs.notify = sw(async () => { await setNotify(!notifyOn()); syncControls(); });
@@ -1083,7 +1103,7 @@ export function buildProfile(nick) {
         row('Страна подключения', 'С VPN покажет страну VPN', refs.country = h('span', { class: 'conn-country', text: '…' }), null, 'globe'),
         h('div', { class: 'vpn-note' }, h('span', { class: 'set-ic' }, mi('shield')), h('div', {}, h('b', { text: 'Нет звука или обложек из России?' }), h('small', { text: 'Провайдеры блокируют часть музыкальных серверов. Включите любой VPN, и всё заработает.' })))),
       group('Устройство',
-        row('Оптимизация для слабых устройств', 'Отключает размытие и тяжёлые анимации', refs.lowp, null, 'rocket'),
+        refs.qrow = row('Качество графики', qualityLine(), chev(), openQuality, 'rocket'),
         row('Жесты (бета)', 'Управление рукой через камеру, взмах ладонью — сменить трек', refs.gest, null, 'hand-open'),
         row('Уведомления', 'Звонки, сообщения и заявки в друзья — уведомлением на телефон и компьютер, даже когда MKW закрыт', refs.notify, null, 'bell'),
         row('Рингтон звонка', (() => { const r = getRingtone(); return r ? `${r.artist} — ${r.title}. Нажмите, чтобы вернуть гудки` : 'Гудки. Любую песню: меню трека (⋮) → «Поставить на звонок»'; })(), chev(), () => { if (getRingtone()) { clearRingtone(); setTimeout(() => { const t = refs.tab; refs.tab = ''; buildProfile(curNick); setTab(t || 'set'); }, 200); } else toast('Откройте меню любой песни (⋮) → «Поставить на звонок»'); }, 'bell'),
@@ -1249,7 +1269,7 @@ export function resetProfile() {
 }
 
 setInterval(() => { if (built) pushCard(true); }, 900000);
-setInterval(() => { if (built && !$('#view-profile').hidden) updateProfile(); }, 10000);
+setInterval(() => { if (built && awake() && !$('#view-profile').hidden) updateProfile(); }, 10000);
 
 function openPasswordSheet() {
   const cur = h('input', { type: 'password', placeholder: 'Текущий пароль (можно пусто)', autocomplete: 'current-password', class: 'sheet-input' });

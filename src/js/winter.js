@@ -2,13 +2,13 @@
 // Включено по умолчанию, выключается в Настройках → Внешний вид. Сам цвет акцента не меняет.
 import { isDark } from './theme.js';
 import { stSrc } from './stickers.js';
+import { quality, awake } from './quality.js';
 
 const KEY = 'mkw.winter';
 export const winterOn = () => { try { return localStorage.getItem(KEY) !== '0'; } catch { return true; } };
 
 const root = document.documentElement;
 const el = (tag, cls, id) => { const e = document.createElement(tag); if (cls) e.className = cls; if (id) e.id = id; return e; };
-const lowPower = () => { try { return localStorage.getItem('mkw.lowpower') === '1'; } catch { return false; } };
 const calm = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 let raf = 0, cvs = null, ctx = null, flakes = [], W = 0, H = 0, dpr = 1, last = 0, dark = true;
@@ -17,7 +17,7 @@ function seed(f, top) {
   f.r = 0.8 + Math.random() * Math.random() * 3.2;           // больше мелких, редкие крупные
   f.x = Math.random() * W; f.y = top ? -8 - Math.random() * 40 : Math.random() * H;
   f.vy = 14 + f.r * 13 + Math.random() * 10; f.sw = 6 + Math.random() * 16; f.ph = Math.random() * 6.28; f.sp = 0.4 + Math.random() * 0.9;
-  f.o = 0.35 + Math.random() * 0.55; f.star = f.r > 2.9;
+  f.o = 0.35 + Math.random() * 0.55; f.star = f.r > 2.9; f.b = Math.min(2, Math.floor((f.o - 0.35) / 0.19)); f.cx = f.x;
   return f;
 }
 function size() {
@@ -27,39 +27,61 @@ function size() {
   dpr = W < 700 ? 1 : Math.min(2, window.devicePixelRatio || 1);
   cvs.width = Math.round(W * dpr); cvs.height = Math.round(H * dpr);
   const phone = W < 700;
-  const want = calm() ? 20 : lowPower() ? 14 : phone ? 34 : Math.min(80, Math.round((W * H) / 18000) + 18);
+  // лёгкий уровень графики — снег не идёт вовсе (остаются неподвижные украшения); сбалансированный — снежинок меньше
+  const q = quality();
+  const want = q <= 1 ? 0 : calm() ? 20 : phone ? (q === 2 ? 22 : 34) : Math.min(80, Math.round((W * H) / 18000) + 18);
   while (flakes.length < want) flakes.push(seed({}, false));
   flakes.length = want;
   if (calm()) draw(0);
 }
 function draw(dt) {
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, W, H);
-  const col = dark ? '255,255,255' : '96,150,214';
+  ctx.fillStyle = ctx.strokeStyle = dark ? 'rgb(255,255,255)' : 'rgb(96,150,214)'; ctx.lineWidth = 1.1;
   for (const f of flakes) {
-    f.ph += f.sp * dt; f.y += f.vy * dt; const x = f.x + Math.sin(f.ph) * f.sw;
-    if (f.y > H + 10) seed(f, true);
-    ctx.globalAlpha = f.o;
-    if (f.star) {                                              // крупная снежинка — шесть лучей
-      ctx.strokeStyle = `rgb(${col})`; ctx.lineWidth = 1.1; ctx.beginPath();
-      for (let k = 0; k < 3; k += 1) { const a = f.ph * 0.3 + k * 1.047, cx = Math.cos(a) * f.r * 1.9, cy = Math.sin(a) * f.r * 1.9; ctx.moveTo(x - cx, f.y - cy); ctx.lineTo(x + cx, f.y + cy); }
-      ctx.stroke();
-    } else { ctx.fillStyle = `rgb(${col})`; ctx.beginPath(); ctx.arc(x, f.y, f.r, 0, 6.2832); ctx.fill(); }
+    f.ph += f.sp * dt; f.y += f.vy * dt; f.cx = f.x + Math.sin(f.ph) * f.sw;
+    if (f.y > H + 10) { seed(f, true); f.cx = f.x; }
+  }
+  // снежинки одной прозрачности рисуются одним заходом: 3 заливки на кадр вместо отдельной на каждую снежинку
+  for (let b = 0; b < 3; b += 1) {
+    ctx.globalAlpha = 0.42 + b * 0.22;
+    let dots = false, stars = false;
+    ctx.beginPath();
+    for (const f of flakes) { if (f.b === b && !f.star) { ctx.moveTo(f.cx + f.r, f.y); ctx.arc(f.cx, f.y, f.r, 0, 6.2832); dots = true; } }
+    if (dots) ctx.fill();
+    ctx.beginPath();
+    for (const f of flakes) {
+      if (f.b !== b || !f.star) continue;                       // крупная снежинка — шесть лучей
+      for (let k = 0; k < 3; k += 1) { const a = f.ph * 0.3 + k * 1.047, cx = Math.cos(a) * f.r * 1.9, cy = Math.sin(a) * f.r * 1.9; ctx.moveTo(f.cx - cx, f.y - cy); ctx.lineTo(f.cx + cx, f.y + cy); }
+      stars = true;
+    }
+    if (stars) ctx.stroke();
   }
   ctx.globalAlpha = 1;
 }
+let timer = 0;
 function tick(t) {
-  raf = requestAnimationFrame(tick);
+  // телефон: 30 кадров в секунду на любом экране (и на 120 Гц). Следующий кадр заказываем таймером, а не на каждом
+  // обновлении экрана — между кадрами страница по-настоящему спит, и процессор не просыпается 60–120 раз в секунду
+  if (W < 700) { raf = 0; timer = setTimeout(() => { timer = 0; raf = requestAnimationFrame(tick); }, 24); }
+  else raf = requestAnimationFrame(tick);
   // пока листают или переключают вкладки — снег замирает на долю секунды, телефон занят только прокруткой
   if (t < pauseUntil) { last = t; return; }
-  // телефон и слабые устройства: 30 кадров в секунду на любом экране (и на 120 Гц) — снег так же плавный, а батарея и скорость целее
-  if ((lowPower() || W < 700) && t - last < 30) return;
   const dt = Math.min(0.07, (t - last) / 1000 || 0.016); last = t;
   draw(dt);
 }
 let pauseUntil = 0;
 const rest = (ms) => { pauseUntil = Math.max(pauseUntil, performance.now() + ms); };
 const covered = () => root.classList.contains('fp-cover');
-function run() { cancelAnimationFrame(raf); raf = 0; if (cvs && !document.hidden && !calm() && !covered()) { last = performance.now(); raf = requestAnimationFrame(tick); } }
+// Снег идёт, только пока приложением пользуются: свернули или 20 секунд не трогали экран — цикл останавливается совсем
+// (холст при этом плавно гаснет, см. v34.css), и телефон в покое ничего не рисует.
+let lastQ = -1;
+function run() {
+  cancelAnimationFrame(raf); raf = 0; clearTimeout(timer); timer = 0;
+  if (!cvs) return;
+  const q = quality();
+  if (q !== lastQ) { lastQ = q; size(); if (q <= 1 && ctx) ctx.clearRect(0, 0, W, H); }
+  if (q >= 2 && awake() && !calm() && !covered()) { last = performance.now(); raf = requestAnimationFrame(tick); }
+}
 
 // новогодняя нижняя панель: заснеженные домики с окошками
 function navScene() {
@@ -86,7 +108,7 @@ function mount() {
   dark = isDark(); flakes = []; size(); run();
 }
 function unmount() {
-  cancelAnimationFrame(raf); raf = 0;
+  cancelAnimationFrame(raf); raf = 0; clearTimeout(timer); timer = 0;
   ['winter-sky', 'winter-snow'].forEach((id) => { const e = document.getElementById(id); if (e) e.remove(); });
   document.querySelectorAll('.winter-nav, .winter-hello').forEach((e) => e.remove());
   cvs = null; ctx = null; flakes = [];

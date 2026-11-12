@@ -52,7 +52,10 @@ if(/iPhone|iPad|iPod/.test(u)||(navigator.platform==='MacIntel'&&navigator.maxTo
 if(matchMedia('(display-mode: standalone)').matches||navigator.standalone)c.push('pwa');
 if(matchMedia('(pointer: coarse)').matches)c.push('touch-dev');
 var mem=navigator.deviceMemory||8,cpu=navigator.hardwareConcurrency||8;
-if(mem<=2||cpu<=4&&/Android/.test(u)){c.push('weak');try{if(localStorage.getItem('mkw.lowpower')===null)localStorage.setItem('mkw.lowpower','1')}catch(e){}}
+/* качество графики: последний подобранный уровень включаем сразу, чтобы экран не мигал (дальше им управляет js/quality.js) */
+var q=null;try{q=localStorage.getItem('mkw.q.mode');if(q===null||q==='auto')q=localStorage.getItem('mkw.q.last')}catch(e){}
+if(q===null){var dv=window.__MKW_APP&&window.__MKW_APP.dev;q=dv&&typeof dv.tier==='number'?dv.tier+1:matchMedia('(pointer: coarse)').matches?(mem<=2||cpu<=4?1:mem<=4||cpu<=6?2:3):3}
+q=+q;c.push(q>=3?'q3':q===2?'q2':q===1?'q1':'lowpower');if(q<=1)c.push('lite');if(mem<=2||cpu<=4&&/Android/.test(u))c.push('weak');
 if(!CSS.supports('backdrop-filter','blur(1px)')&&!CSS.supports('-webkit-backdrop-filter','blur(1px)'))c.push('no-blur');
 d.className+=' '+c.join(' ');})();
 </script>
@@ -80,6 +83,7 @@ d.className+=' '+c.join(' ');})();
 <link rel="stylesheet" href="css/v31.css?v=0.13.0">
 <link rel="stylesheet" href="css/v32.css?v=0.13.0">
 <link rel="stylesheet" href="css/v33.css?v=0.13.0">
+<link rel="stylesheet" href="css/v34.css?v=0.13.0">
 <link rel="stylesheet" href="css/player2.css?v=0.13.0">
 <link rel="stylesheet" href="css/winter.css?v=0.13.0">
 </head>

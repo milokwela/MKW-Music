@@ -5,5 +5,7 @@
         <item name="android:statusBarColor">@color/mkw_bg</item>
         <item name="android:navigationBarColor">@color/mkw_bg</item>
         <item name="android:colorBackground">@color/mkw_bg</item>
+        <!-- оболочки с «принудительной тёмной темой» не перекрашивают приложение: оно и так тёмное -->
+        <item name="android:forceDarkAllowed">false</item>
     </style>
 </resources>
