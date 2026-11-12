@@ -231,6 +231,7 @@ function styleLines(nodes, i) {
 function frame() {
   raf = 0;
   if (!open || inBg()) return;
+  if (document.getElementById('full-player').classList.contains('dragging')) { raf = -1; setTimeout(() => { if (raf === -1) raf = requestAnimationFrame(frame); }, 150); return; }
   if (lines.length && mode === 'sync') {
     const sc = box(), nodes = sc.children;
     // смещение > 0 — текст идёт позже (если раньше спешил)
