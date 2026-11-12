@@ -338,7 +338,7 @@ function pushCard(full) {
         nick: curNick, status: c.status, banner: c.banner, bannerImg: c.bannerImg, frame: c.frame, badges: c.badges,
         avatar: await imageTo(av, 360, 360, 0.8), favArtists: c.favArtists, favTracks: c.favTracks.map(pickTrack),
         bio: c.bio, nickStyle: c.nickStyle, shape: c.shape, effect: c.effect, now: nowPlaying(),
-        sec: s.sec, plays: s.plays, likes: s.likes, days: s.days, achCount: ACHIEVEMENTS.filter((a) => achDone(a, s)).length, nemo: (store.state.profile || {}).nemo || '', ...marksOut(c),
+        sec: s.sec, plays: s.plays, likes: s.likes, days: s.days, achCount: ACHIEVEMENTS.filter((a) => achDone(a, s)).length, ach: [...ACHIEVEMENTS.filter((a) => achDone(a, s)).map((a) => a.id), ...(c.badges || [])], nemo: (store.state.profile || {}).nemo || '', ...marksOut(c),
       });
     }
   }, 1500);

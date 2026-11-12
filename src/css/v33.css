@@ -1584,3 +1584,18 @@ html.in-app, html.in-app * { scrollbar-width: none !important; }
 .av-card.ok .av-state { color: #4ade80; opacity: 1; }
 .av-card.old .av-state { color: var(--primary); opacity: 1; }
 .av-btn { margin-top: 4px; }
+
+/* ===== 0.44.0: награды человека — списком, с редкостью ===== */
+.achl-wrap { display: grid; gap: 10px; padding-bottom: 6px; }
+.achl { display: grid; gap: 8px; max-height: min(62vh, 560px); overflow-y: auto; overscroll-behavior: contain; padding: 2px; }
+.achl-row { display: flex; align-items: center; gap: 14px; padding: 12px 14px; border-radius: 20px; background: color-mix(in srgb, var(--on-bg, #fff) 6%, transparent); animation: achlIn .3s ease both; }
+.achl-ico { flex: 0 0 48px; width: 48px; height: 48px; border-radius: 16px; display: grid; place-items: center; background: color-mix(in srgb, var(--primary) 18%, transparent); color: var(--primary); }
+.achl-ico .mi { width: 26px; height: 26px; }
+.achl-txt { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.achl-txt b { font-size: 15px; }
+.achl-txt small { font-size: 12.5px; opacity: .6; line-height: 1.3; }
+.achl-pct { flex: 0 0 auto; font-weight: 800; font-size: 15px; font-variant-numeric: tabular-nums; padding: 6px 10px; border-radius: 999px; background: color-mix(in srgb, var(--on-bg, #fff) 8%, transparent); min-width: 54px; text-align: center; }
+.achl-row.rare .achl-pct { background: color-mix(in srgb, #a78bfa 30%, transparent); color: #d8c8ff; }
+.achl-row.epic .achl-pct { background: linear-gradient(90deg, #f59e0b55, #ec489955); color: #ffd9a8; }
+.achl-row.epic .achl-ico { background: linear-gradient(135deg, #f59e0b44, #ec489944); color: #ffd9a8; }
+@keyframes achlIn { from { opacity: 0; transform: translateY(6px); } }

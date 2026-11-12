@@ -5,7 +5,7 @@ import { openTrackMenu } from './menu.js';
 import { getProfile, watchCard } from './leaders.js';
 import { auth } from './firebase.js';
 import { safeUrl, artUrl } from './utils.js';
-import { topListeners, countProfiles } from './leaders.js';
+import { topListeners, countProfiles, countAch } from './leaders.js';
 import { ACH, ACHIEVEMENTS, achDone, viewAch, bannerCss, formatListened } from './profile.js';
 import { artistPic } from './artistpic.js';
 import { openArtist } from './artist.js';
@@ -79,8 +79,11 @@ const statsOf = (u) => ({ sec: Number(u.sec) || 0, plays: Number(u.plays) || 0, 
 const statAch = (a) => a.v && /^(like|h|p|d)\d/.test(a.id);
 function achOf(u) {
   const s = statsOf(u);
-  return [...new Map([...(u.badges || []).filter((id) => ACH[id]).map((id) => [id, ACH[id]]), ...ACHIEVEMENTS.filter((a) => statAch(a) && achDone(a, s)).map((a) => [a.id, a])]).values()];
+  // полный список, который публикует сам человек (ach), + значки + то, что видно по статистике
+  const ids = [...(Array.isArray(u.ach) ? u.ach : []), ...(u.badges || []), ...ACHIEVEMENTS.filter((a) => statAch(a) && achDone(a, s)).map((a) => a.id)];
+  return [...new Map(ids.filter((id) => ACH[id]).map((id) => [id, ACH[id]])).values()];
 }
+export const achTotal = (u) => achOf(u).length;
 // награды за статистику считаем по всем профилям MKW (там есть и дни), значки — по рейтингу.
 // Человек, чей профиль открыт, награду точно имеет — поэтому меньше «у одного» не бывает, никаких 0%
 const pct = (n, all) => Math.max(0.1, Math.round((n / Math.max(1, all)) * 1000) / 10);
@@ -95,6 +98,12 @@ async function rarity(a, list, u) {
     if (c && c.all) return pct(Math.max(1, c.got), c.all);
     if (f === 'days') return null; // в рейтинге дней нет — лучше промолчать, чем показать неправду
   }
+  if (!statAch(a)) {
+    const k = `ach:${a.id}`;
+    if (!rareCache.has(k)) rareCache.set(k, countAch(a.id));
+    const c = await rareCache.get(k);
+    if (c && c.all >= 5) return pct(Math.max(1, c.got), c.all);
+  }
   if (!list.length) return null;
   let n = list.filter((x) => (statAch(a) ? achDone(a, statsOf(x)) : (x.badges || []).includes(a.id))).length;
   const inList = u && list.some((x) => x.uid === u.uid);
@@ -104,26 +113,26 @@ async function rarity(a, list, u) {
 function openAchViewer(u) {
   const got = achOf(u);
   if (!got.length) { toast('Наград пока нет'); return; }
-  const count = h('small', { class: 'achs-n', text: `1 из ${got.length}` });
-  const track = h('div', { class: 'achs-track' }, got.map((a) => {
-    const rare = h('span', { class: 'achs-rare', text: 'Считаю редкость…' });
-    const card = h('div', { class: `achs-card${a.cls ? ` ${a.cls}` : ''}`, 'data-id': a.id },
-      h('div', { class: 'achv-ico' }, h('i', { class: 'achv-glow' }), mi(a.i)),
-      h('b', { class: 'achv-t', text: a.title }), h('p', { class: 'achv-h', text: a.hint }), rare);
-    return card;
-  }));
-  track.addEventListener('scroll', () => { const i = Math.round(track.scrollLeft / Math.max(1, track.clientWidth)); count.textContent = `${Math.min(got.length, i + 1)} из ${got.length}`; }, { passive: true });
-  openSheet(`Награды ${u.nick || ''}`, h('div', { class: 'achs' }, track, count, h('p', { class: 'achs-tip', text: 'Листайте влево и вправо. Смахните вниз, чтобы вернуться в профиль' })));
-  board().then((list) => {
-    track.querySelectorAll('.achs-card').forEach((c) => {
-      const a = ACH[c.dataset.id], el = c.querySelector('.achs-rare');
-      if (!a) { el.textContent = ''; return; }
-      rarity(a, list, u).then((r) => {
-        if (r == null) { el.textContent = ''; return; }
-        el.textContent = `Есть у ${String(r).replace('.', ',')}% слушателей MKW`;
-        el.classList.toggle('rare', r < 10); el.classList.toggle('epic', r < 2);
-      }).catch(() => { el.textContent = ''; });
-    });
+  // список: иконка, название, как получить и у скольких слушателей MKW она есть; самые редкие — наверху
+  const rows = got.map((a) => {
+    const rare = h('span', { class: 'achl-pct', text: '…' });
+    const row = h('div', { class: `achl-row${a.cls ? ` ${a.cls}` : ''}`, 'data-id': a.id },
+      h('div', { class: 'achl-ico' }, mi(a.i)),
+      h('div', { class: 'achl-txt' }, h('b', { text: a.title }), h('small', { text: a.hint })),
+      rare);
+    row._a = a; row._r = 101;
+    return row;
+  });
+  const list = h('div', { class: 'achl' }, rows);
+  openSheet(`Награды ${u.nick || ''} · ${got.length}`, h('div', { class: 'achl-wrap' }, list, h('p', { class: 'achs-tip', text: 'Процент — у скольких слушателей MKW есть эта награда' })));
+  board().then((top) => Promise.all(rows.map((row) => rarity(row._a, top, u).then((r) => {
+    const el = row.querySelector('.achl-pct');
+    if (r == null) { el.textContent = ''; return; }
+    row._r = r;
+    el.textContent = `${String(r).replace('.', ',')}%`;
+    row.classList.toggle('rare', r < 10); row.classList.toggle('epic', r < 2);
+  }).catch(() => { row.querySelector('.achl-pct').textContent = ''; })))).then(() => {
+    [...rows].sort((x, y) => x._r - y._r).forEach((r) => list.appendChild(r));
   });
 }
 
@@ -186,7 +195,7 @@ function render(u, isMe) {
     !isMe && u.uid && friendState(u.uid) === 'friend' ? chatActions(u.uid, u) : null,
     h('div', { class: 'up-stats' },
       stat('timer', t.value, t.unit), stat('play-circle', u.plays || 0, 'треков'), stat('heart', u.likes || 0, 'лайков'),
-      u.achCount != null ? (() => { const b = stat('medal', u.achCount, 'наград'); b.classList.add('up-stat-btn'); b.setAttribute('role', 'button'); b.tabIndex = 0; b.addEventListener('click', () => openAchViewer(u)); return b; })() : null),
+      u.achCount != null ? (() => { const b = stat('medal', achTotal(u), 'наград'); b.classList.add('up-stat-btn'); b.setAttribute('role', 'button'); b.tabIndex = 0; b.addEventListener('click', () => openAchViewer(u)); return b; })() : null),
   ];
   if ((u.favArtists || []).length) kids.push(h('div', { class: 'section-title', text: 'Любимые исполнители' }), favArtistsRow(u.favArtists));
   if ((u.favTracks || []).length) {
