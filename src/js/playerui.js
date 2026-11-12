@@ -46,7 +46,11 @@ function initDrag() {
     const pt = e.touches[0]; sy = pt.clientY; sx0 = pt.clientX; dy = 0; dx = 0; hs = false; t0 = Date.now(); mode = m; on = true;
     // готовим заранее, пока палец ещё не сдвинулся: плеер (или приложение под ним) уже нарисован к началу жеста
     if (m === 'open' && !full.classList.contains('open')) { full.style.transform = `translateY(${H()}px)`; full.classList.add('warm'); }
-    if (m === 'close') document.documentElement.classList.remove('fp-cover');
+  };
+  let pY = 0, pK = 0, pRaf = 0;
+  const place = (y, k) => {
+    pY = y; pK = k;
+    if (!pRaf) pRaf = requestAnimationFrame(() => { pRaf = 0; if (full.classList.contains('dragging')) { full.style.transform = `translateY(${pY}px)`; dim(pK, true); } });
   };
   const move = (e) => {
     if (!on) return;
@@ -66,21 +70,20 @@ function initDrag() {
     if (mode === 'open') {
       if (dy > 0) dy = 0;
       if (dy < -8) { const was = full.classList.contains('dragging'); full.classList.add('dragging'); if (!was) renderTime(); if (e.cancelable) e.preventDefault(); }
-      if (full.classList.contains('dragging')) { full.style.transform = `translateY(${Math.max(0, H() + dy)}px)`; dim(-dy / H(), true); }
+      if (full.classList.contains('dragging')) place(Math.max(0, H() + dy), -dy / H());
     } else {
       if (dy < 0) dy = 0;
       if (dy > 8) { full.classList.add('dragging'); if (e.cancelable) e.preventDefault(); }
-      if (full.classList.contains('dragging')) { full.style.transform = `translateY(${dy}px)`; dim(1 - dy / H(), true); }
+      if (full.classList.contains('dragging')) place(dy, 1 - dy / H());
     }
   };
   const unwarm = () => {
     full.classList.remove('warm');
     if (!full.classList.contains('open') && !full.classList.contains('dragging')) full.style.transform = '';
-    // нажали на открытый плеер, но не потянули — снова «замораживаем» приложение под ним
-    if (full.classList.contains('open') && !full.classList.contains('dragging')) setTimeout(() => { if (full.classList.contains('open') && !full.classList.contains('dragging')) document.documentElement.classList.add('fp-cover'); }, 300);
   };
   const end = () => {
     if (!on) return; on = false;
+    if (pRaf) { cancelAnimationFrame(pRaf); pRaf = 0; }
     setTimeout(unwarm, 0);
     if (hs) {
       hs = false;

@@ -171,7 +171,9 @@
 }
 
 /* 0.37.5: плавность плеера — под открытым плеером ничего не рисуется, лишних анимаций нет */
-html.fp-cover #app, html.fp-cover #dock, html.fp-cover #winter-sky, html.fp-cover #winter-snow, html.fp-cover #user-page, html.fp-cover #artist-page { visibility: hidden !important; }
+/* 0.49.3: под открытым плеером приложение остаётся нарисованным, но замирает: шторку можно тянуть сразу, без дорисовки */
+html.fp-cover #winter-snow { visibility: hidden !important; }
+html.fp-cover #app *, html.fp-cover #dock *, html.fp-cover #user-page *, html.fp-cover #artist-page * { animation-play-state: paused !important; }
 html.fp-cover #winter-sky i { animation-play-state: paused !important; }
 #full-player.fp2 .fp-play, #full-player.fp2.playing .fp-play { animation: none !important; }
 #full-player.fp2 .fp-controls .icon-btn, #full-player.fp2 .fp-extra button { transition: transform .12s ease, background-color .2s ease !important; box-shadow: none !important; }

@@ -58,6 +58,7 @@ const visible = () => player2On() && !inBg() && $('#full-player').classList.cont
 function tick(t) {
   raf = 0;
   if (!visible()) return;
+  if (fpEl().classList.contains('dragging')) { raf = -1; setTimeout(() => { raf = requestAnimationFrame(tick); }, 120); return; } // тянут шторку — не рисуем
   const dt = Math.min(0.08, (t - last) / 1000 || 0.016); last = t;
   const target = st.playing ? 1 : 0;
   amp += (target - amp) * Math.min(1, dt * 6);
@@ -264,10 +265,13 @@ export function initPlayer2() {
   // плеер открыт целиком — всё, что под ним, не рисуется (приложение, снег, сияние). Нажатия в плеере становятся мгновенными
   let coverT = 0;
   new MutationObserver(() => {
-    const fp = fpEl(), on = fp.classList.contains('open') && !fp.classList.contains('dragging');
+    // замирание снимаем, только когда плеер закрыт совсем (не в начале жеста — иначе оживление всей страницы даёт рывок)
+    // пока шторку тянут — ничего не меняем (любая смена посреди жеста даёт рывок)
+    const fp = fpEl(), open = fp.classList.contains('open'), drag = fp.classList.contains('dragging');
     clearTimeout(coverT);
-    if (on) coverT = setTimeout(() => document.documentElement.classList.add('fp-cover'), 470);
-    else document.documentElement.classList.remove('fp-cover');
+    if (drag) return;
+    if (open) coverT = setTimeout(() => document.documentElement.classList.add('fp-cover'), 470);
+    else coverT = setTimeout(() => document.documentElement.classList.remove('fp-cover'), 450); // после того как плеер уехал
   }).observe(fpEl(), { attributes: true, attributeFilter: ['class'] });
   // открытие плеера и возвращение на вкладку — перерисовать и запустить волну
   new MutationObserver(() => { if (player2On()) { draw(); kick(); } }).observe($('#full-player'), { attributes: true, attributeFilter: ['class'] });

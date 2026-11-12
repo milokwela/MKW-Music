@@ -64,11 +64,12 @@ html.app-idle #mini-progress { transition: none !important; }
 .ch-msg { touch-action: pan-y; }
 /* ---------- шторка большого плеера: тянется пальцем на полной частоте экрана ----------
    Плеер и мини-плеер — отдельные слои видеокарты: при перетаскивании они только сдвигаются, без перерисовки.
-   Приложение под открытым плеером больше не прячется: раньше при сворачивании его приходилось заново рисовать
-   на первом кадре жеста — отсюда рывок. Украшения под плеером при этом спят (см. boost.js, winter.js). */
-#full-player, #mini-player { will-change: transform; }
+   Приложение под открытым плеером не рисуется; при касании шторки оно показывается сразу, ещё до движения пальца.
+   Пока шторку тянут, внутри плеера ничего не перерисовывается (волна, текст, время стоят) — видеокарта только сдвигает слой. */
+#full-player.dragging *, #full-player.dragging *::before, #full-player.dragging *::after { animation-play-state: paused !important; transition: none !important; }
+#full-player { will-change: transform; }
+#mini-player.hswipe { will-change: translate, rotate, opacity; }
 #full-player.warm { visibility: visible !important; }
-html.fp-cover #app { visibility: visible !important; } /* приложение под плеером остаётся нарисованным: свернуть плеер можно сразу, без рывка */
 
 /* ---------- текст песни: размытие соседних строк — только на максимальном уровне ---------- */
 html .ly-line { filter: none !important; transition: opacity .45s, transform .45s cubic-bezier(.2,.8,.2,1), color .4s !important; will-change: auto !important; }

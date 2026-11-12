@@ -1,10 +1,10 @@
 // История версий. Новые записи добавляйте сверху.
-export const VERSION = '0.49.2';
+export const VERSION = '0.49.3';
 export const STAGE = 'beta';
 
 export const CHANGELOG = [
   {
-    version: '0.49.2',
+    version: '0.49.3',
     date: '13 ноября 2026',
     text: 'Плавная шторка плеера.',
     fixed: [
