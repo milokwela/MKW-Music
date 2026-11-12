@@ -75,6 +75,7 @@ function paintTrack() {
 function paintRate() { const b = $('#fp-speed'); if (b) { b.textContent = rateText(player.getRate()); b.classList.toggle('on', player.getRate() !== 1); } }
 
 // ---------- «сцена» (телефон и компьютер): обложка, текст и очередь живут в одном месте, название и кнопки не двигаются ----------
+let qDirty = true;
 let stage = null, qBox = null, qFind = null, oBox = null, anim = null, collapsed = false;
 const calmUI = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 const fpEl = () => $('#full-player');
@@ -114,8 +115,14 @@ function moveArt(toMini, instant) {
   const end = toMini ? `translate(${t.x}px, ${t.y}px) scale(${t.s})` : 'translate(0px, 0px) scale(1)';
   const endRad = toMini ? `${12 / t.s}px` : '28px';
   if (anim) anim.cancel();
-  anim = art.animate([{ transform: cur === 'none' ? 'translate(0px, 0px) scale(1)' : cur, borderRadius: rad }, { transform: end, borderRadius: endRad }],
-    { duration: instant || calmUI() ? 0 : 560, easing: 'cubic-bezier(.22,.8,.18,1)', fill: 'forwards' });
+  void rad;
+  // анимируем только transform — его ведёт видеокарта, без перерисовки картинки на каждом кадре
+  // (раньше вместе с ним менялось скругление, и обложка перерисовывалась 60–120 раз в секунду)
+  art.style.borderRadius = toMini ? art.style.borderRadius || '28px' : '28px';
+  anim = art.animate([{ transform: cur === 'none' ? 'translate(0px, 0px) scale(1)' : cur }, { transform: end }],
+    { duration: instant || calmUI() ? 0 : 420, easing: 'cubic-bezier(.22,.8,.18,1)', fill: 'forwards' });
+  const a = anim;
+  a.onfinish = () => { if (anim === a) art.style.borderRadius = endRad; };
   fpEl().classList.toggle('art-mini', toMini);
 }
 function syncStage(instant) {
@@ -147,7 +154,8 @@ function toggleQueue() {
   if (on && fp.classList.contains('lyrics-on')) $('#fp-lyrics-btn').click();
   fp.classList.toggle('queue-on', on);
   $('#fp-queue').classList.toggle('on', on);
-  if (on) { if (qFind) qFind.value = ''; drawQueue(); }
+  // очередь перерисовываем, только если она изменилась с прошлого раза — иначе открытие мгновенное
+  if (on) { const had = qFind && qFind.value; if (qFind) qFind.value = ''; if (qDirty || had) { drawQueue(); qDirty = false; } }
 }
 
 // ---------- «Подключить устройство» на месте обложки (только в Android-приложении, см. output.js) ----------
@@ -248,7 +256,7 @@ export function initPlayer2() {
   player.onPlayer((ev) => {
     if (ev === 'rate') paintRate();
     if (ev === 'track') paintTrack();
-    if (ev === 'track' || ev === 'queue') { paintHead(); if (fpEl().classList.contains('queue-on')) drawQueue(); }
+    if (ev === 'track' || ev === 'queue') { paintHead(); if (fpEl().classList.contains('queue-on')) drawQueue(); else qDirty = true; }
     if (ev === 'track') paintPlays();
     if (!player2On()) return;
     if (ev === 'time') { if (!raf) draw(); } else if (ev === 'state' || ev === 'track') kick();

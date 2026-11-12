@@ -11,6 +11,8 @@ const MKEY = 'mkw.lyrics.mode';
 const cache = new Map();
 let open = false, lines = [], rawPlain = '', approx = false, source = '', active = -2, token = 0, raf = 0, userScrollUntil = 0;
 let stamp = { t: 0, at: 0 };
+// для какого трека текст уже собран: повторное открытие показывает готовое, без поиска и пересборки строк
+let shownFor = '';
 let mode = (() => { try { return localStorage.getItem(MKEY) === 'static' ? 'static' : 'sync'; } catch { return 'sync'; } })();
 
 const clean = (s) => String(s || '').replace(/\s*[(\[][^)\]]*(feat|ft\.|remaster|live|version|prod|из|from|official|video|audio|lyric)[^)\]]*[)\]]/gi, '').replace(/\s*[-–—]\s*(remaster(ed)?|single|radio edit|official.*)$/i, '').trim();
@@ -175,11 +177,13 @@ async function refresh() {
   const t = player.queue.current;
   if (!open) return;
   const my = ++token;
-  if (!t) { message('Включите песню, чтобы увидеть текст'); return; }
+  if (!t) { message('Включите песню, чтобы увидеть текст'); shownFor = ''; return; }
+  if (shownFor === t.id) { active = -2; return; } // этот трек уже показан — ничего не перестраиваем
   message('Ищу текст…');
   const data = await load(t, player.st.duration);
   if (my !== token) return;
   render(data);
+  shownFor = t.id;
 }
 
 // текущее время песни: между обновлениями плеера (раз в 0,5 с) досчитываем сами, но не дальше 0,6 с вперёд
@@ -205,7 +209,8 @@ function paintOffset() {
 
 function styleLines(nodes, i) {
   const base = Math.max(i, -1);
-  const blurOk = quality() >= 3; // размытие соседних строк — только на максимальном уровне графики
+  // размытие соседних строк выключено везде: при каждой смене строки их перерисовка давала рывки даже на мощных телефонах
+  const blurOk = false && quality() >= 3;
   for (let k = 0; k < nodes.length; k++) {
     const n = nodes[k];
     if (!n.classList.contains('ly-line')) continue;
@@ -262,7 +267,8 @@ function setOpen(v) {
   $('#fp-lyrics-btn').classList.toggle('on', v);
   if (v) {
     const t = player.queue.current;
-    $('#fp-lyrics').style.setProperty('--ly-art', t && safeUrl(t.artwork) ? `url("${safeUrl(t.artwork)}")` : 'none');
+    const art = t && safeUrl(t.artwork) ? `url("${safeUrl(t.artwork)}")` : 'none';
+    if ($('#fp-lyrics').style.getPropertyValue('--ly-art') !== art) $('#fp-lyrics').style.setProperty('--ly-art', art);
     refresh(); if (!raf) raf = requestAnimationFrame(frame);
   } else { token += 1; cancelAnimationFrame(raf); raf = 0; }
 }
@@ -289,6 +295,7 @@ export function initLyrics() {
   $('#fp-lyrics-btn').addEventListener('click', () => { if (!player.queue.current) { toast('Сначала включите песню'); return; } setOpen(!open); });
   player.onPlayer((ev) => {
     if (ev === 'time' || ev === 'state') { stamp = { t: player.st.time, at: performance.now() }; if (open && !raf) raf = requestAnimationFrame(frame); }
+    if (ev === 'track') shownFor = '';
     if (ev === 'track' && open) {
       if (!player.queue.current) { setOpen(false); return; }
       root.style.setProperty('--ly-art', safeUrl(player.queue.current.artwork) ? `url("${safeUrl(player.queue.current.artwork)}")` : 'none');
