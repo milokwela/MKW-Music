@@ -319,6 +319,14 @@ public class MainActivity extends Activity {
         // как в обычном приложении: без полос прокрутки сбоку
         view.setVerticalScrollBarEnabled(false);
         view.setHorizontalScrollBarEnabled(false);
+        // без «резинки» по краям: на странице свои плавные списки, а растягивание всего окна — лишняя работа для видеокарты
+        view.setOverScrollMode(View.OVER_SCROLL_NEVER);
+        // оболочки (MIUI, HiOS, ColorOS…) не должны сами «перекрашивать» страницу в тёмную тему — цвета у сайта свои
+        try {
+            if (WebViewFeature.isFeatureSupported(WebViewFeature.ALGORITHMIC_DARKENING)) {
+                androidx.webkit.WebSettingsCompat.setAlgorithmicDarkeningAllowed(s, false);
+            }
+        } catch (Throwable ignored) { /* старый WebView — настройки нет */ }
         // Рендерер страницы остаётся «важным» и в фоне — иначе Android усыпляет музыку при выключенном экране
         if (Build.VERSION.SDK_INT >= 26) view.setRendererPriorityPolicy(WebView.RENDERER_PRIORITY_IMPORTANT, false);
 
@@ -647,6 +655,7 @@ public class MainActivity extends Activity {
             JSONObject init = new JSONObject();
             init.put("v", versionName());
             init.put("perm", notifState());
+            init.put("dev", DeviceProfile.read(this));
             return shimTemplate.replace("__MKW_INIT__", init.toString());
         } catch (Exception e) {
             Log.w(TAG, "shim source", e);
@@ -686,6 +695,9 @@ public class MainActivity extends Activity {
             case "btpair":
                 if (!bt().pair(o.optString("a", ""))) runJs("window.__mkwBtFail&&window.__mkwBtFail()");
                 bt().push();
+                break;
+            case "hz":
+                if (o.optBoolean("max", true) != hzMax) preferDisplay(o.optBoolean("max", true));
                 break;
             case "outswitch":
                 openOutputSwitcher();
@@ -993,12 +1005,15 @@ public class MainActivity extends Activity {
         super.onStart();
         visible = true;
         runJs("window.__mkwFg=true;window.dispatchEvent(new Event('mkw-fg'))");
+        watchPerf();
+        pushPerf();
     }
 
     @Override
     protected void onStop() {
         super.onStop();
         visible = false;
+        unwatchPerf();
         prefetchSite();
         runJs("window.__mkwFg=false;window.dispatchEvent(new Event('mkw-fg'))");
         // после звонка приложение не должно оставаться поверх экрана блокировки
@@ -1103,19 +1118,79 @@ public class MainActivity extends Activity {
     }
 
     /** Экран 120 Гц: просим самый плавный режим, который умеет дисплей (иначе WebView может остаться на 60). */
-    private void preferSmoothDisplay() {
+    private void preferSmoothDisplay() { preferDisplay(true); }
+
+    private boolean hzMax = true;
+
+    /**
+     * max = true — самый плавный режим экрана (90/120/144 Гц). max = false — спокойные 60 Гц:
+     * так страница просит, когда телефон греется или включено энергосбережение (вдвое меньше кадров — меньше тепла).
+     */
+    private void preferDisplay(boolean max) {
         try {
             android.view.Display d = getWindowManager().getDefaultDisplay();
             android.view.Display.Mode cur = d.getMode(), best = cur;
             for (android.view.Display.Mode m : d.getSupportedModes()) {
-                if (m.getPhysicalWidth() == cur.getPhysicalWidth() && m.getPhysicalHeight() == cur.getPhysicalHeight()
-                        && m.getRefreshRate() > best.getRefreshRate()) best = m;
+                if (m.getPhysicalWidth() != cur.getPhysicalWidth() || m.getPhysicalHeight() != cur.getPhysicalHeight()) continue;
+                float r = m.getRefreshRate(), b = best.getRefreshRate();
+                if (max ? r > b : (Math.abs(r - 60f) < Math.abs(b - 60f))) best = m;
             }
             android.view.WindowManager.LayoutParams lp = getWindow().getAttributes();
             lp.preferredDisplayModeId = best.getModeId();
+            lp.preferredRefreshRate = best.getRefreshRate(); // часть оболочек смотрит только на это поле
             getWindow().setAttributes(lp);
+            hzMax = max;
         } catch (Exception ignored) {
             // не получилось — остаётся режим по умолчанию
+        }
+    }
+
+    // ---------- нагрев, энергосбережение, память: страница сама убавляет эффекты ----------
+
+    private Object thermalListener;
+    private android.content.BroadcastReceiver saverReceiver;
+
+    private void pushPerf() {
+        runJs("window.__mkwPerf&&window.__mkwPerf({thermal:" + DeviceProfile.thermal(this) + ",saver:" + DeviceProfile.powerSave(this) + "})");
+    }
+
+    private void watchPerf() {
+        try {
+            PowerManager pm = (PowerManager) getSystemService(POWER_SERVICE);
+            if (Build.VERSION.SDK_INT >= 29 && pm != null && thermalListener == null) {
+                PowerManager.OnThermalStatusChangedListener l = (status) -> pushPerf();
+                pm.addThermalStatusListener(getMainExecutor(), l);
+                thermalListener = l;
+            }
+            if (saverReceiver == null) {
+                saverReceiver = new android.content.BroadcastReceiver() {
+                    @Override
+                    public void onReceive(android.content.Context c, Intent i) { pushPerf(); }
+                };
+                registerReceiver(saverReceiver, new android.content.IntentFilter(PowerManager.ACTION_POWER_SAVE_MODE_CHANGED));
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "perf watch", e);
+        }
+    }
+
+    private void unwatchPerf() {
+        try {
+            PowerManager pm = (PowerManager) getSystemService(POWER_SERVICE);
+            if (Build.VERSION.SDK_INT >= 29 && pm != null && thermalListener != null) {
+                pm.removeThermalStatusListener((PowerManager.OnThermalStatusChangedListener) thermalListener);
+            }
+            thermalListener = null;
+            if (saverReceiver != null) { unregisterReceiver(saverReceiver); saverReceiver = null; }
+        } catch (Exception ignored) { /* уже снято */ }
+    }
+
+    /** Android просит освободить память — страница сбрасывает кэши и убирает с экрана то, что не видно. */
+    @Override
+    public void onTrimMemory(int level) {
+        super.onTrimMemory(level);
+        if (level == TRIM_MEMORY_UI_HIDDEN || level >= TRIM_MEMORY_RUNNING_LOW) {
+            runJs("window.__mkwPerf&&window.__mkwPerf({mem:" + level + "})");
         }
     }
 
