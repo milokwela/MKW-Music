@@ -91,6 +91,14 @@ export async function countProfiles(field, min) {
     return { all: all.data().count, got: got ? got.data().count : 0 };
   } catch (e) { console.warn('count', e); return null; }
 }
+// у скольких открытых профилей есть награда (из опубликованного списка ach)
+export async function countAch(id) {
+  try {
+    const col = collection(db, 'profiles');
+    const [all, got] = await Promise.all([getCountFromServer(query(col, where('ach', '!=', null))), getCountFromServer(query(col, where('ach', 'array-contains', id)))]);
+    return { all: all.data().count, got: got.data().count };
+  } catch (e) { console.warn('countAch', e); return null; }
+}
 export const myUid = () => (auth.currentUser && auth.currentUser.uid) || '';
 
 // Публичная страница профиля profiles/{uid}: баннер, фото, любимые исполнители и треки. Отдельно от рейтинга, чтобы список грузился быстро.
@@ -118,8 +126,11 @@ export async function publishProfile(p) {
     fan: Math.max(0, Math.floor(Number(p.fan) || 0)), devOff: Boolean(p.devOff),
   };
   const nemo = String(p.nemo || '').slice(0, 4);
-  const sig = JSON.stringify(data) + nemo;
+  const ach = (p.ach || []).slice(0, 100).map((x) => String(x).slice(0, 24));
+  const sig = JSON.stringify(data) + nemo + ach.join(',');
   if (sig === lastPub) return;
+  // список наград целиком — чтобы в чужом профиле было видно все награды (нужны новые правила Firestore)
+  try { await setDoc(doc(db, 'profiles', uid), { ...data, ach, nemo, seen: onlineStamp(), updatedAt: srvNow() }); lastPub = sig; return; } catch { /* старые правила */ }
   try { await setDoc(doc(db, 'profiles', uid), { ...data, nemo, seen: onlineStamp(), updatedAt: srvNow() }); lastPub = sig; return; } catch { /* правила без эмодзи у ника */ }
   try { await setDoc(doc(db, 'profiles', uid), { ...data, seen: onlineStamp(), updatedAt: srvNow() }); lastPub = sig; }
   catch (e) {

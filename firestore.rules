@@ -59,7 +59,8 @@ service cloud.firestore {
       allow read: if request.auth != null;
       allow delete: if request.auth != null && request.auth.uid == uid;
       allow create, update: if request.auth != null && request.auth.uid == uid
-        && request.resource.data.keys().hasOnly(['nick', 'status', 'banner', 'bannerImg', 'avatar', 'frame', 'badges', 'bio', 'nickStyle', 'shape', 'effect', 'now', 'seen', 'favArtists', 'favTracks', 'sec', 'plays', 'likes', 'days', 'achCount', 'fan', 'devOff', 'nemo', 'updatedAt'])
+        && request.resource.data.keys().hasOnly(['nick', 'status', 'banner', 'bannerImg', 'avatar', 'frame', 'badges', 'bio', 'nickStyle', 'shape', 'effect', 'now', 'seen', 'favArtists', 'favTracks', 'sec', 'plays', 'likes', 'days', 'achCount', 'ach', 'fan', 'devOff', 'nemo', 'updatedAt'])
+        && (!('ach' in request.resource.data) || (request.resource.data.ach is list && request.resource.data.ach.size() <= 100))
         && (!('nemo' in request.resource.data) || (request.resource.data.nemo is string && request.resource.data.nemo.size() <= 4))
         && request.resource.data.nick is string && request.resource.data.nick.size() <= 32
         && nickFree(request.resource.data)
