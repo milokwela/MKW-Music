@@ -44,6 +44,9 @@ function initDrag() {
     // очередь и текст листаются сами — шторку плеера они не сворачивают
     if (m === 'close' && e.target.closest('#fp-q2, #fp-lyrics, .p2q-list, #fp-out2')) return;
     const pt = e.touches[0]; sy = pt.clientY; sx0 = pt.clientX; dy = 0; dx = 0; hs = false; t0 = Date.now(); mode = m; on = true;
+    // готовим заранее, пока палец ещё не сдвинулся: плеер (или приложение под ним) уже нарисован к началу жеста
+    if (m === 'open' && !full.classList.contains('open')) { full.style.transform = `translateY(${H()}px)`; full.classList.add('warm'); }
+    if (m === 'close') document.documentElement.classList.remove('fp-cover');
   };
   const move = (e) => {
     if (!on) return;
@@ -70,8 +73,15 @@ function initDrag() {
       if (full.classList.contains('dragging')) { full.style.transform = `translateY(${dy}px)`; dim(1 - dy / H(), true); }
     }
   };
+  const unwarm = () => {
+    full.classList.remove('warm');
+    if (!full.classList.contains('open') && !full.classList.contains('dragging')) full.style.transform = '';
+    // нажали на открытый плеер, но не потянули — снова «замораживаем» приложение под ним
+    if (full.classList.contains('open') && !full.classList.contains('dragging')) setTimeout(() => { if (full.classList.contains('open') && !full.classList.contains('dragging')) document.documentElement.classList.add('fp-cover'); }, 300);
+  };
   const end = () => {
     if (!on) return; on = false;
+    setTimeout(unwarm, 0);
     if (hs) {
       hs = false;
       const w = mini.offsetWidth || 360;
