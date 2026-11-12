@@ -108,13 +108,16 @@ function summarize(phases, meta) {
       cpuT: avg('cpu') !== null && avg('cpu') > 0 ? r1(avg('cpu') / 10) : null, cpuMax: s.reduce((m, x) => Math.max(m, x.cpu || 0), 0) / 10 || null,
       battRise: rise(p, 'batt') !== null ? r1(rise(p, 'batt')) : null, cpuRise: rise(p, 'cpu') !== null ? r1(rise(p, 'cpu')) : null,
       fps: avg('fps') !== null ? Math.round(avg('fps')) : null, score: avg('score'), freq: avg('freq') !== null ? Math.round(avg('freq')) : null, cap: avg('cap') !== null ? Math.round(avg('cap')) : null,
-      freezes: p.freezes, maxGap: Math.round(p.maxGap), longMs: Math.round(p.longMs), free: avg('free') !== null ? Math.round(avg('free')) : null,
+      freezes: p.freezes, maxGap: Math.round(p.maxGap), paused: Math.round((p.paused || 0) / 1000), longMs: Math.round(p.longMs), free: avg('free') !== null ? Math.round(avg('free')) : null,
     };
   });
   const base = stat[0].score || 1;
   stat.forEach((x) => { x.power = x.score ? Math.round((x.score / base) * 100) : null; delete x.score; });
   const by = Object.fromEntries(stat.map((x) => [x.id, x]));
-  const R = (x) => (x && x.battRise !== null ? x.battRise : null);
+  const battFlat = stat.every((x) => !x.batt0 || (x.batt0 === stat[0].batt0 && x.batt1 === stat[0].batt0));
+  const useCpu = battFlat && stat.some((x) => x.cpuMax);
+  const K = useCpu ? 3 : 1;
+  const R = (x) => (useCpu ? (x && x.cpuRise !== null ? r1(x.cpuRise / K) : null) : (x && x.battRise !== null ? x.battRise : null));
   const hasTemp = stat.some((x) => x.batt0);
   const verdict = [];
   let tip = null;
@@ -125,13 +128,19 @@ function summarize(phases, meta) {
     const n0 = verdict.length + 1;
     const maxT = Math.max(...stat.map((x) => Math.max(x.batt1 || 0, x.batt0 || 0)));
     verdict.push(`Батарея: от ${stat[0].batt0 ?? '?'} до ${maxT} °C${stat.some((x) => x.cpuMax) ? `, процессор до ${Math.max(...stat.map((x) => x.cpuMax || 0))} °C` : ''}.`);
+    if (useCpu) verdict.push('Датчик батареи на этом телефоне не меняется — нагрев оцениваю по процессору.');
+    // телефон был горячим ещё до проверки и остывал, пока работал MKW
+    const c0 = stat[0].cpuT, cN = stat[stat.length - 1].cpuT;
+    if (c0 && cN && c0 >= 65 && c0 - cN >= 5) verdict.push(`Телефон был горячим ещё до начала (процессор ${c0} °C) и за время проверки остыл до ${cN} °C, хотя MKW всё это время работал и играл музыку. Значит, в таком режиме MKW телефон не греет — нагрев был от того, что работало до проверки (игры, зарядка, другие приложения или MKW с более тяжёлой графикой).`);
     if (idle !== null && idle >= 0.8) verdict.push(`Телефон греется даже в покое (+${idle} °C/мин): нагрузку даёт не музыка, а сам MKW на экране или что-то в фоне.`);
     if (music !== null && idle !== null && music - idle >= 0.5) verdict.push(`Включение музыки добавляет нагрев (+${r1(music - idle)} °C/мин к покою) — греет воспроизведение.`);
     if (music !== null && lite !== null && music - lite >= 0.4) { verdict.push(`С лёгкой графикой нагрев заметно меньше (${lite} против ${music} °C/мин) — греют эффекты интерфейса.`); tip = 'lite'; }
     if (scroll !== null && music !== null && scroll - music >= 0.6) verdict.push(`Прокрутка сильно греет (+${scroll} °C/мин) — тяжело рисуются списки.`);
     if (cool !== null && cool > 0.3) verdict.push('Даже без музыки и эффектов телефон продолжал нагреваться — возможно, греет не MKW (зарядка, сеть, другие приложения).');
-    if (verdict.length === n0) verdict.push('Сильного нагрева от MKW проверка не заметила.');
+    if (verdict.length === n0 + (useCpu ? 1 : 0)) verdict.push('Сильного нагрева от MKW проверка не заметила.');
   }
+  const pausedS = stat.reduce((s, x) => s + (x.paused || 0), 0);
+  if (pausedS >= 10) verdict.push(`Во время проверки MKW сворачивали или гас экран (${pausedS} с) — эти паузы в фризы не засчитаны.`);
   const fr = stat.reduce((s, x) => s + x.freezes, 0);
   if (fr >= 3) {
     const worst = stat.slice().sort((a, b) => b.freezes - a.freezes)[0];
@@ -180,6 +189,8 @@ async function run() {
   const beat = setInterval(() => {
     const now = performance.now(), gap = now - lastBeat - 250; lastBeat = now;
     const p = phases[cur];
+    // приложение свернули или погас экран — это не фриз, а пауза системы
+    if (document.hidden || window.__mkwFg === false || gap > 15000) { p.paused = (p.paused || 0) + Math.max(0, gap); return; }
     if (gap > 700) { p.freezes += 1; }
     p.maxGap = Math.max(p.maxGap, gap);
   }, 250);
