@@ -89,10 +89,34 @@ async function ensureYT() {
   return yt;
 }
 
+let ytBegan = 0; // для какого запуска видео уже заиграло
+
+// ---------- умное подключение ----------
+// Для каждой сети (Wi-Fi / мобильная) помним, за сколько реально стартует трек видео-плеером и звуком.
+// Если в этой сети видео стабильно медленное (замедление YouTube, слабый сигнал), сначала коротко ждём звук
+// и не грузим видео параллельно — оно только отнимает канал. В быстрой сети всё стартует сразу, как раньше.
+const NETK = 'mkw.net.speed';
+const netKey = () => { try { const c = navigator.connection; return (c && (c.type || c.effectiveType)) || 'net'; } catch { return 'net'; } };
+const netStat = (() => { try { return JSON.parse(localStorage.getItem(NETK) || '{}') || {}; } catch { return {}; } })();
+let startT0 = 0, startMeasured = 0;
+function noteStart(kind) {
+  if (startMeasured === loadId || !startT0) return;
+  startMeasured = loadId;
+  const ms = Math.min(20000, performance.now() - startT0);
+  const k = netKey(); const x = netStat[k] || (netStat[k] = {});
+  x[kind] = x[kind] ? Math.round(x[kind] * 0.6 + ms * 0.4) : Math.round(ms);
+  x[`${kind}N`] = (x[`${kind}N`] || 0) + 1;
+  try { localStorage.setItem(NETK, JSON.stringify(netStat)); } catch { /* ignore */ }
+}
+// в этой сети видео стартует заметно дольше звука — сначала ждём звук
+function preferStream() {
+  const x = netStat[netKey()];
+  return Boolean(x && x.ytN >= 2 && x.yt > 3200 && (!x.st || x.st < x.yt - 800));
+}
 function onYtState(e) {
   if (st.mode !== 'yt') return;
   const s = e.data;
-  if (s === 1) { st.playing = true; st.loading = false; st.message = ''; clearTimeout(watchdog); failChain = 0; if (rate !== 1) applyRate(); }
+  if (s === 1) { ytBegan = loadId; noteStart('yt'); st.playing = true; st.loading = false; st.message = ''; clearTimeout(watchdog); failChain = 0; if (rate !== 1) applyRate(); }
   else if (s === 2) {
     st.playing = false;
     // Телефон/YouTube поставили на паузу в фоне, а пользователь паузу не нажимал: пробуем продолжить.
@@ -158,6 +182,7 @@ function stopAll() {
 async function startCurrent() {
   const track = queue.current;
   const id = ++loadId;
+  startT0 = performance.now();
   userPaused = false;
   stopAll();
   keepOff();
@@ -194,10 +219,20 @@ async function startCurrent() {
       let urls = peekStream(vid);
       // экран выключен: ждём звук недолго — если не успел, сразу включаем готовый трек из лайков, чтобы не было тишины
       if (!urls && hiddenNow()) urls = await Promise.race([resolveStream(vid, track), waitMs(spareReady() ? 8000 : 20000)]);
+      // приложение: экран выключен или оно свёрнуто — видео там стартует через раз, поэтому сначала коротко ждём звук
+      // (обычно он находится за 1–3 секунды). Не дождались — запускаем как раньше, хуже не станет.
+      else if (!urls && bgNow()) urls = await Promise.race([resolveStream(vid, track), waitMs(5000)]);
+      // медленная для видео сеть: даём звуку 2,5 секунды форы
+      else if (!urls && preferStream()) urls = await Promise.race([resolveStream(vid, track), waitMs(2500)]);
       if (id !== loadId) return;
       if (!(urls && urls.length) && hiddenNow() && playSpare(track, id)) return;
       if (urls && urls.length) { startStream(track, vid, urls, id, 0); return; }
-      resolveStream(vid, track); // ищем звук, пока играет видео: пригодится, когда выключите экран
+      // Наперегонки: видео уже запускается, а звук ищется рядом. Если звук нашёлся раньше, чем видео заиграло
+      // (медленный интернет, блокировки), — сразу играем звуком: он стартует быстрее и не боится выключенного экрана.
+      resolveStream(vid, track).then((u) => {
+        if (id !== loadId || !u || !u.length || userPaused) return;
+        if (st.mode === 'yt' && !st.playing && ytBegan !== id) startStream(track, vid, u, id, 0, true);
+      });
     }
     // 2) приложение свёрнуто, а звук по видео не нашёлся — видео в фоне не заиграет: ищем звук по названию, иначе фрагмент
     if (hiddenNow() && streamsOn()) {
@@ -267,7 +302,7 @@ function armSilent() {
 
 // Полный трек через <audio>. При ошибке пробуем следующую ссылку, потом видеоплеер.
 let streamUrls = [];
-function startStream(track, vid, urls, id, at) {
+function startStream(track, vid, urls, id, at, noLog) {
   if (id !== loadId) return;
   if (yt) { try { yt.stopVideo(); } catch { /* ignore */ } }
   keepOff();
@@ -278,7 +313,7 @@ function startStream(track, vid, urls, id, at) {
   audio.src = url;
   const go = () => {
     if (at > 0) { try { audio.currentTime = at; } catch { /* ignore */ } }
-    audio.play().then(() => { if (!at) { logPlay(track); prefetchNext(); } }).catch((e) => {
+    audio.play().then(() => { if (!at && !noLog) { logPlay(track); prefetchNext(); } }).catch((e) => {
       if (id !== loadId) return;
       st.loading = false; st.playing = false;
       if (e && e.name === 'NotAllowedError') { st.message = 'Нажмите ▶, браузер не дал включить звук сам'; emit('state'); }
@@ -286,10 +321,10 @@ function startStream(track, vid, urls, id, at) {
   };
   if (at > 0) audio.addEventListener('loadedmetadata', go, { once: true }); else go();
   clearTimeout(watchdog);
-  // зеркало молчит дольше 9 секунд — берём следующее
+  // зеркало молчит дольше 7 секунд — берём следующее
   watchdog = setTimeout(() => {
     if (id === loadId && st.mode === 'preview' && st.full && !st.playing && !userPaused && !st.message && audio.readyState < 3) streamFailed(id);
-  }, 9000);
+  }, 7000);
   emit('track');
 }
 function streamFailed(id) {
@@ -458,6 +493,7 @@ function restart() {
 // ---------- события аудио (превью) ----------
 audio.addEventListener('playing', () => {
   if (st.mode !== 'preview') return;
+  if (st.full) noteStart('st');
   st.playing = true; st.loading = false; failChain = 0;
   emit('state'); syncSession();
 });
@@ -740,26 +776,17 @@ export function resumeSession() {
 }
 
 // ---------- быстрый старт ----------
-// Пока человек смотрит на список, заранее ищем звук для первых видимых треков: нажал — и музыка начинается сразу,
-// без ожидания поиска. Не больше 3 треков за раз и не чаще раза в 20 секунд, чтобы не нагружать сеть и сервер.
-let pfAt = 0;
-const pfDone = new Set();
-export function prefetchVisible() {
-  if (!youtubeEnabled() || hiddenNow() || Date.now() - pfAt < 20000) return;
-  pfAt = Date.now();
-  const H = window.innerHeight;
-  const rows = [...document.querySelectorAll('.track-row')].filter((r) => {
-    if (!r._track || pfDone.has(r._track.id)) return false;
-    const b = r.getBoundingClientRect();
-    return b.height > 0 && b.top >= 0 && b.bottom <= H;
-  }).slice(0, 3);
-  for (const r of rows) {
-    const t = r._track; pfDone.add(t.id);
-    const known = t.ytId || peekYouTubeId(t);
-    const go = (v) => { if (v && streamsOn()) resolveStream(v, t); };
-    if (known) go(known); else findYouTubeId(t).then(go).catch(() => {});
-  }
-}
+// Палец коснулся трека — ещё до отпускания начинаем искать его видео и звук. К моменту нажатия часть работы уже сделана.
+let touchPf = '';
+document.addEventListener('pointerdown', (e) => {
+  const row = e.target && e.target.closest && e.target.closest('.track-row');
+  const t = row && row._track;
+  if (!t || t.auId || touchPf === t.id || offlineSrc(t)) return;
+  touchPf = t.id;
+  const known = t.ytId || peekYouTubeId(t);
+  const go = (v) => { if (v) resolveStream(v, t); };
+  if (known) go(known); else findYouTubeId(t).then(go).catch(() => {});
+}, { capture: true, passive: true });
 
 // ---------- экран выключен: следующий трек должен начаться сразу и полностью ----------
 // 1) За 45 секунд до конца трека ещё раз проверяем, что звук следующего найден (ссылки могли не успеть найтись или устареть).
