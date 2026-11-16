@@ -19,7 +19,9 @@ let lastOk = (() => { try { return localStorage.getItem(GKEY) || ''; } catch { r
 
 // На телефоне «Слушать в фоне» включено по умолчанию (выключить можно в Настройках), на компьютере — по желанию
 const touch = () => { try { return matchMedia('(pointer: coarse)').matches; } catch { return false; } };
-export const streamsOn = () => { try { const v = localStorage.getItem(KEY); if (v === '1') return true; if (v === '0') return false; } catch { /* ignore */ } return touch(); };
+const inApp = /MKWApp\//.test((typeof navigator !== 'undefined' && navigator.userAgent) || '');
+// только в приложении: в браузере фоновый звук работал нестабильно, там музыка играет обычным плеером
+export const streamsOn = () => { if (!inApp) return false; try { const v = localStorage.getItem(KEY); if (v === '1') return true; if (v === '0') return false; } catch { /* ignore */ } return touch(); };
 export function setStreams(v) { try { localStorage.setItem(KEY, v ? '1' : '0'); } catch { /* ignore */ } }
 export const peekStream = (vid) => done.get(vid) || null;
 

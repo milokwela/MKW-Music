@@ -7,8 +7,8 @@ import { chatList, isUnread, onChats, openChat, otherOf, clearedAt, blockedByMe,
 import { me, friendIds, friendCards, loadFriends, friendsLoaded, onFriends, requestIds } from './friends.js';
 import { avSrc } from './avatar.js';
 import { nickMarks } from './dev.js';
-import { seenText, isOnline } from './userpage.js';
-import { pickAndCall } from './call.js';
+import { seenText, isOnline, openUserPage } from './userpage.js';
+import { pickAndCall, startCall } from './call.js';
 import { streakAny, fireIcon } from './streak.js';
 import { setNotify } from './notify.js';
 
@@ -30,9 +30,9 @@ function row(u, c, i) {
   const preview = blocked ? 'Заблокирован(а)' : cleared ? 'Нет сообщений' : c && c.last ? `${mine ? 'Вы: ' : ''}${c.last.text}` : isOnline(u.seen) && u.now ? `Слушает: ${u.now}` : seenText(u.seen) || 'Напишите первым';
   const cidOf = chatId(me(), u.uid);
   return h('button', { type: 'button', 'data-uid': u.uid, 'data-cid': cidOf, class: `cl-row${unread && !cleared ? ' unread' : ''}${blocked ? ' blocked' : ''}${openCid() === cidOf ? ' on' : ''}`, style: `animation-delay:${Math.min(i, 10) * 30}ms`, onclick: () => openChat(u.uid, u) },
-    h('span', { class: 'cl-av' }, h('img', { src: avSrc(u.avatar), alt: '', loading: 'lazy' }), isOnline(u.seen) ? h('i', { class: 'online-dot' }) : null),
+    h('span', { class: 'cl-av tap', title: 'Открыть профиль', onclick: (e) => { e.stopPropagation(); e.preventDefault(); openUserPage(u.uid, u); } }, h('img', { src: avSrc(u.avatar), alt: '', loading: 'lazy' }), isOnline(u.seen) ? h('i', { class: 'online-dot' }) : null),
     h('span', { class: 'cl-body' },
-      h('span', { class: 'cl-top' }, h('b', { text: u.nick || 'друг' }), ...nickMarks(u), ...(() => { const st = streakAny(c, me(), u.uid); return st.state === 'lit' || st.state === 'grey' ? [fireIcon(st)] : []; })(), c ? h('time', { text: when(c.at) }) : null),
+      h('span', { class: 'cl-top' }, h('b', { text: u.nick || 'друг' }), ...nickMarks(u).filter((n) => !(n.classList && n.classList.contains('contrib-badge'))), ...(() => { const st = streakAny(c, me(), u.uid); return st.state === 'lit' || st.state === 'grey' ? [fireIcon(st)] : []; })(), c ? h('time', { text: when(c.at) }) : null),
       h('span', { class: 'cl-prev' }, h('span', { text: preview }), ...flags(cidOf), unread && !cleared ? h('i', { class: `cl-dot${isMuted(cidOf) ? ' muted' : ''}` }) : null)));
 }
 // значки «закреплён» и «без уведомлений»
@@ -45,25 +45,34 @@ function hideChat(cid) { const m = hiddenMap(); m[cid] = Date.now(); try { local
 const isHidden = (c) => { const t = hiddenMap()[c.id]; return Boolean(t) && (Number(c.at) || 0) <= t; };
 
 // удержание (или правая кнопка мыши) на человеке — меню: закрепить, без уведомлений, заблокировать
-function rowMenu(cid, title, uid, hasChat) {
-  const btn = (ic, text, fn, danger) => h('button', { type: 'button', class: `ch-sm${danger ? ' danger' : ''}`, onclick: async () => { closeSheet(); try { await fn(); } catch { toast('Не получилось'); } renderChats(); } }, mi(ic), h('span', { text }));
+function rowMenu(cid, title, uid, hasChat, u) {
+  const run = (fn) => async () => { closeSheet(); try { await fn(); } catch { toast('Не получилось'); } renderChats(); };
+  const btn = (ic, text, fn, danger) => h('button', { type: 'button', class: `clm-it${danger ? ' danger' : ''}`, onclick: run(fn) }, h('i', {}, mi(ic)), h('span', { text }));
+  const quick = (ic, text, fn) => h('button', { type: 'button', class: 'clm-q', onclick: run(fn) }, h('i', {}, mi(ic)), h('span', { text }));
   const H = 3600000;
   const muted = isMuted(cid);
-  const items = [
+  const blocked = uid && blockedByMe(uid);
+  const head = h('div', { class: 'clm-head' },
+    u ? h('img', { src: avSrc(u.avatar), alt: '' }) : h('span', { class: 'clm-g' }, mi('group')),
+    h('div', {}, h('b', { text: title }), h('small', { text: u ? (isOnline(u.seen) ? 'в сети' : seenText(u.seen) || 'друг') : 'группа' })));
+  const quicks = uid ? h('div', { class: 'clm-quick' },
+    blocked ? null : quick('phone', 'Позвонить', () => startCall([uid])),
+    quick('person', 'Профиль', () => openUserPage(uid, u)),
+    blocked ? null : quick('group', 'В группу', () => createGroupSheet([uid]))) : null;
+  const group1 = h('div', { class: 'clm-box' },
     btn('pin', isPinned(cid) ? 'Открепить' : 'Закрепить сверху', async () => { const on = await togglePin(cid); toast(on ? 'Чат закреплён сверху' : 'Чат откреплён'); }),
     muted
       ? btn('bell', `Включить уведомления (${muteLabel(cid).toLowerCase()})`, async () => { await setMute(cid, 0); toast('Уведомления включены'); })
-      : h('div', { class: 'cl-mute' }, h('small', { text: 'Без уведомлений' }), h('div', { class: 'cl-mute-row' },
-        ...[['1 час', H], ['8 часов', 8 * H], ['1 день', 24 * H], ['Неделю', 7 * 24 * H], ['Навсегда', Infinity]].map(([t, ms]) => h('button', { type: 'button', class: 'chip', onclick: async () => {
-          closeSheet(); try { await setMute(cid, ms); toast(ms === Infinity ? 'Уведомления выключены' : `Без уведомлений на ${t.toLowerCase()}`); } catch { toast('Не получилось'); } renderChats();
-        } }, t)))),
-    uid ? (blockedByMe(uid)
+      : h('div', { class: 'clm-mute' }, h('div', { class: 'clm-it static' }, h('i', {}, mi('bell-off')), h('span', { text: 'Без уведомлений' })), h('div', { class: 'clm-chips' },
+        ...[['1 час', H], ['8 часов', 8 * H], ['1 день', 24 * H], ['Неделю', 7 * 24 * H], ['Навсегда', Infinity]].map(([t, ms]) => h('button', { type: 'button', onclick: run(async () => { await setMute(cid, ms); toast(ms === Infinity ? 'Уведомления выключены' : `Без уведомлений на ${t.toLowerCase()}`); }) }, t)))));
+  const dangers = [
+    uid ? (blocked
       ? btn('block', 'Разблокировать', async () => { await setBlocked(uid, false); toast('Разблокирован(а)'); })
       : btn('block', 'Заблокировать', async () => { await setBlocked(uid, true); toast('Заблокирован(а): сообщения и звонки от него(неё) не придут'); }, true)) : null,
     hasChat ? btn('trash', 'Удалить из чатов', async () => { hideChat(cid); toast('Чат убран из списка. Напишут снова — появится'); }, true) : null,
   ].filter(Boolean);
   if (navigator.vibrate) navigator.vibrate(12);
-  openSheet(title, h('div', { class: 'cl-menu' }, ...items));
+  openSheet('', h('div', { class: 'cl-menu clm' }, head, quicks, group1, dangers.length ? h('div', { class: 'clm-box' }, ...dangers) : null));
 }
 // жест на строке: долгое нажатие на телефоне, правая кнопка на компьютере
 function holdable(el, open) {
@@ -178,8 +187,8 @@ export async function renderChats() {
     } else {
       let i = 0;
       setKids(list, [
-        ...talks.map((x) => (x.u ? holdable(row(x.u, x.c, i++), () => rowMenu(chatId(me(), x.u.uid), x.u.nick || 'Друг', x.u.uid, Boolean(x.c))) : holdable(groupRow(x.c, byId, i++), () => rowMenu(x.c.id, x.c.name || 'Группа', '', true)))),
-        ...(rest.length ? [h('div', { class: 'section-title', text: talks.length ? 'Друзья' : 'Начните переписку' }), ...rest.map((u) => holdable(row(u, null, i++), () => rowMenu(chatId(me(), u.uid), u.nick || 'Друг', u.uid)))] : [])]);
+        ...talks.map((x) => (x.u ? holdable(row(x.u, x.c, i++), () => rowMenu(chatId(me(), x.u.uid), x.u.nick || 'Друг', x.u.uid, Boolean(x.c), x.u)) : holdable(groupRow(x.c, byId, i++), () => rowMenu(x.c.id, x.c.name || 'Группа', '', true)))),
+        ...(rest.length ? [h('div', { class: 'section-title', text: talks.length ? 'Друзья' : 'Начните переписку' }), ...rest.map((u) => holdable(row(u, null, i++), () => rowMenu(chatId(me(), u.uid), u.nick || 'Друг', u.uid, false, u)))] : [])]);
     }
   } finally { busy = false; if (again) { again = false; renderChats(); } }
 }

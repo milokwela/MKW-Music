@@ -1503,7 +1503,7 @@ html.fp-cover #fp-scrim:not(.live) { display: none; }
 /* свайп вправо по сообщению собеседника — ответить: значок появляется слева */
 .ch-msg:not(.me).swipe-ok::after { right: auto; left: -40px; }
 /* чат: сообщения за экраном не рисуются, пока до них не долистали */
-#chat-page .ch-msg, #chat-page .ch-day { content-visibility: auto; contain-intrinsic-size: auto 64px; }
+/* (1.6) content-visibility убран: высота сообщений за экраном считалась «примерно», и лента со стикерами дрожала при прокрутке */
 
 #fp-plays { display: block; margin-top: 3px; font-size: 12px; opacity: .6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 #fp-plays[hidden] { display: none; }

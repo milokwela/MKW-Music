@@ -153,7 +153,7 @@ async function run(term, explicit = false) {
   // При явном поиске (Enter) сразу ищем и на YouTube: у этих треков видео уже известно, они стартуют мгновенно.
   const mode = getSourceMode();
   const useItunes = mode === 'all' || mode === 'itunes';
-  const useAudius = mode === 'all' || mode === 'audius';
+  const useAudius = false; // Audius убран из поиска (1.6): им почти не пользовались
   const wantYt = youtubeEnabled() && (mode === 'youtube' ? true : (mode === 'all' && explicit && autoYouTube()));
   if (mode === 'youtube' && !explicit) { status.replaceChildren(); results = []; renderResults(); status.textContent = 'Нажмите Enter, чтобы искать на YouTube'; return; }
   let ytError = '';

@@ -23,6 +23,7 @@ export const LEVELS = [
   { from: 30, l: 6, name: 'Чёрное пламя', hint: 'месяц и больше' },
 ];
 const levelOf = (n) => [...LEVELS].reverse().find((x) => n >= x.from) || LEVELS[0];
+const levelOfN = (n) => levelOf(Math.max(1, Number(n) || 1)).l;
 
 // состояние огонька по документу чата
 export function streakOf(chat, me, other) {
@@ -89,24 +90,24 @@ export async function startStreak(cid, me, group) {
   else await setDoc(doc(db, 'chats', cid), { members: cid.split('_'), read: { gs: t, gx: 0, [`g_${me}`]: t } }, { merge: true });
 }
 
-// восстановить погасший огонёк: 3 раза в месяц
+// восстановить погасший огонёк: 5 раз в месяц
+export const RESTORE_MAX = 5;
 const RKEY = () => `mkw.fire.restore.${new Date().toISOString().slice(0, 7)}`;
-export const restoresLeft = () => { try { return Math.max(0, 3 - Number(localStorage.getItem(RKEY()) || 0)); } catch { return 0; } };
+export const restoresLeft = () => { try { return Math.max(0, RESTORE_MAX - Number(localStorage.getItem(RKEY()) || 0)); } catch { return 0; } };
 async function restore(cid, chat, me, other) {
   if (restoresLeft() <= 0) { toast('В этом месяце восстановления закончились'); return false; }
   const r = chat.read || {};
   const y = today() - 1;
-  // день разрыва считаем пройденным: оба «написали» вчера, начало огонька сохраняется
-  const fs = Number(r.gs) || y;
-  if (chat.group) {
-    await setDoc(doc(db, 'chats', cid), { read: { gd: Math.max(Number(r.gd) || 0, y), gs: Math.min(fs, y), gx: 0 } }, { merge: true });
-    try { localStorage.setItem(RKEY(), String(3 - restoresLeft() + 1)); } catch { /* ignore */ }
-    toast('Огонёк группы восстановлен! Напишите сегодня');
-    return true;
-  }
-  await setDoc(doc(db, 'chats', cid), { read: { [`g_${me}`]: Math.max(Number(r[`g_${me}`]) || 0, y), [`g_${other}`]: Math.max(Number(r[`g_${other}`]) || 0, y), gs: Math.min(fs, y), gx: 0 } }, { merge: true });
-  try { localStorage.setItem(RKEY(), String(3 - restoresLeft() + 1)); } catch { /* ignore */ }
-  toast('Огонёк восстановлен! Напишите друг другу сегодня');
+  // счёт дней остаётся ровно тем, что был до разрыва: начало огонька сдвигаем так, чтобы вчера был «последний день»
+  const was = streakAny(chat, me, other);
+  const keep = Math.max(1, Number(was.lost || was.n) || 1);
+  const gs = y - keep + 1;
+  const used = () => { try { localStorage.setItem(RKEY(), String(RESTORE_MAX - restoresLeft() + 1)); } catch { /* ignore */ } };
+  if (chat.group) await setDoc(doc(db, 'chats', cid), { read: { gd: y, gs, gx: 0 } }, { merge: true });
+  else await setDoc(doc(db, 'chats', cid), { read: { [`g_${me}`]: Math.max(Number(r[`g_${me}`]) || 0, y), [`g_${other}`]: Math.max(Number(r[`g_${other}`]) || 0, y), gs, gx: 0 } }, { merge: true });
+  used();
+  try { localStorage.setItem(`mkw.fire.anim.${cid}`, JSON.stringify({ gs, lvl: 0, started: 1, restored: 1 })); } catch { /* ignore */ }
+  toast(chat.group ? `Огонёк группы восстановлен: ${keep} дн. Напишите сегодня` : `Огонёк восстановлен: ${keep} дн. Напишите друг другу сегодня`);
   return true;
 }
 async function stop(cid, n) {
@@ -123,17 +124,18 @@ export function openStreak(cid, chat, me, other, nick) {
     : st.state === 'grey' ? (grp ? `Сегодня написали ${st.wrote} из ${st.need} нужных` : st.mineToday ? `Ждём ответ от ${nick}` : 'Огонёк гаснет — напишите сегодня')
     : 'Сегодня огонёк горит';
   const sub = st.state === 'none' ? `Заведите огонёк с ${nick} и общайтесь каждый день — он будет расти и менять цвет`
-    : st.state === 'lost' ? `Было дней: ${st.lost || st.n || 0}. Можно восстановить (осталось ${restoresLeft()} из 3 в этом месяце) или завести заново`
+    : st.state === 'lost' ? `Было дней: ${st.lost || st.n || 0}. Его можно вернуть — счёт дней сохранится — или завести заново с нуля`
     : `${lvl.name} · дней подряд: ${st.n}. ${grp ? 'День засчитывается, когда за день пишет хотя бы половина группы' : 'День засчитывается, когда пишете оба'}`;
   const btns = [];
   if (st.state === 'none' || st.state === 'lost') btns.push(h('button', { class: 'btn', type: 'button', onclick: async () => { await startStreak(cid, me, grp); closeSheet(); } }, st.state === 'lost' ? 'Завести заново' : 'Завести MKW огонёк'));
-  if (st.state === 'lost' && (st.lost || st.n)) btns.push(h('button', { class: 'btn', type: 'button', onclick: async () => { if (await restore(cid, chat, me, other)) closeSheet(); } }, `Восстановить (${restoresLeft()} из 3)`));
+  if (st.state === 'lost' && (st.lost || st.n)) btns.push(h('button', { class: 'btn', type: 'button', onclick: async () => { if (await restore(cid, chat, me, other)) closeSheet(); } }, restoresLeft() ? 'Восстановить огонёк' : 'Восстановления закончились'));
   if (st.state === 'lit' || st.state === 'grey') btns.push(h('button', { class: 'btn tonal', type: 'button', onclick: async () => { if (!confirmStop.dataset.ok) { confirmStop.dataset.ok = '1'; confirmStop.textContent = 'Точно потушить? Нажмите ещё раз'; return; } await stop(cid, st.n); closeSheet(); } }, 'Потушить огонёк'));
   const confirmStop = btns[btns.length - 1] || h('i');
   const big = fireIcon(st.state === 'none' ? { state: 'grey' } : st, true);
   openSheet('MKW Огонёк', h('div', { class: 'fs-sheet' },
     h('div', { class: 'fs-big', style: `--fc:${getComputedStyle(document.body).getPropertyValue('--primary')}` }, big, st.n ? h('b', { text: String(st.n) }) : null, h('div', { text: head, style: 'font-weight:800' }), h('small', { text: sub })),
     h('div', { class: 'fs-lvls' }, ...LEVELS.map((x) => h('div', { class: `fs-lvl${st.n >= x.from && (st.level || {}).l === x.l ? ' on' : ''}` }, fireIcon({ state: 'lit', level: x }, true), h('span', { text: x.name }), h('small', { text: `с ${x.from} ${x.from === 1 ? 'дня' : 'дней'}` })))),
+    st.state === 'lost' && (st.lost || st.n) ? h('div', { class: 'fs-rest' }, h('span', { text: 'Восстановлений в этом месяце' }), h('div', { class: 'fs-dots' }, ...Array.from({ length: RESTORE_MAX }, (_, i) => h('i', { class: i < restoresLeft() ? 'on' : '' }))), h('b', { text: `${restoresLeft()} из ${RESTORE_MAX}` })) : null,
     h('div', { class: 'fs-btns' }, ...btns)));
 }
 
@@ -157,21 +159,34 @@ export function fireEventKey(st, chat) {
   const gs = Number(((chat && chat.read) || {}).gs) || 0;
   return `${gs}:${st.state === 'lit' ? (st.level || LEVELS[0]).l : 0}`;
 }
+// Анимацию показываем только по настоящему поводу и один раз: огонёк завели, он впервые загорелся, вырос уровень
+// или его восстановили. Раньше она повторялась каждый день (огонёк утром серый, вечером горит — «новое событие»).
 export function playFire(host, cid, st, chat, nick) {
-  const key = fireEventKey(st, chat); if (!key || !host) return;
+  if (!host || !st || (st.state !== 'lit' && st.state !== 'grey')) return;
+  const gs = Number(((chat && chat.read) || {}).gs) || 0;
   const k = `mkw.fire.anim.${cid}`;
-  try { if (localStorage.getItem(k) === key) return; localStorage.setItem(k, key); } catch { return; }
+  let mem = null;
+  try { const raw = localStorage.getItem(k) || ''; mem = raw.startsWith('{') ? JSON.parse(raw) : null; if (!mem && raw) { const [g, l] = raw.split(':').map(Number); mem = { gs: g, lvl: l || 0, started: 1 }; } } catch { return; }
+  if (!mem || mem.gs !== gs) mem = { gs, lvl: 0, started: 0 };
   const lit = st.state === 'lit';
   const lvl = st.level || LEVELS[0];
-  const first = !lit || (lvl.l === 1 && st.n <= 1);
-  const title = !lit ? 'MKW огонёк заведён!' : first ? 'Огонёк зажёгся!' : `Новый уровень: ${lvl.name}`;
-  const sub = !lit ? `Напишите друг другу сегодня — и он загорится` : first ? `Вы с ${nick} общались весь день` : `${st.n} ${st.n % 10 === 1 && st.n % 100 !== 11 ? 'день' : st.n % 10 >= 2 && st.n % 10 <= 4 && (st.n % 100 < 10 || st.n % 100 >= 20) ? 'дня' : 'дней'} подряд с ${nick}`;
-  const ic = fireIcon(lit ? st : { state: 'lit', level: LEVELS[0] }, true);
-  const box = h('div', { class: `fire-pop l${lit ? lvl.l : 1}${lit ? '' : ' start'}`, role: 'status' },
+  let kind = '';
+  if (mem.restored) { kind = 'restored'; mem.restored = 0; mem.lvl = Math.max(mem.lvl, lit ? lvl.l : levelOfN(st.n)); }
+  else if (!mem.started && !lit && st.n <= 0) kind = 'start';
+  else if (lit && lvl.l > mem.lvl) kind = mem.lvl === 0 && st.n <= 1 ? 'first' : (mem.lvl === 0 ? '' : 'level');
+  mem.started = 1; if (lit) mem.lvl = Math.max(mem.lvl, lvl.l);
+  try { localStorage.setItem(k, JSON.stringify(mem)); } catch { return; }
+  if (!kind || host.querySelector('.fire-pop')) return;
+  const days = `${st.n} ${st.n % 10 === 1 && st.n % 100 !== 11 ? 'день' : st.n % 10 >= 2 && st.n % 10 <= 4 && (st.n % 100 < 10 || st.n % 100 >= 20) ? 'дня' : 'дней'}`;
+  const title = kind === 'start' ? 'MKW огонёк заведён!' : kind === 'first' ? 'Огонёк зажёгся!' : kind === 'restored' ? 'Огонёк вернулся!' : `Новый уровень: ${lvl.name}`;
+  const sub = kind === 'start' ? 'Напишите друг другу сегодня — и он загорится' : kind === 'first' ? `Вы с ${nick} общались весь день` : kind === 'restored' ? `${days} снова с вами. Напишите сегодня` : `${days} подряд с ${nick}`;
+  const showLvl = kind === 'start' ? LEVELS[0] : (st.level || LEVELS[0]);
+  const ic = fireIcon({ state: 'lit', level: showLvl }, true);
+  const box = h('div', { class: `fire-pop l${showLvl.l}${kind === 'start' ? ' start' : ''}`, role: 'status' },
     h('div', { class: 'fp-glow' }), h('div', { class: 'fp-sparks' }, ...Array.from({ length: 12 }, (_, i) => h('i', { style: `--a:${i * 30}deg;--d:${(i % 3) * 0.06}s` }))),
     h('div', { class: 'fp-ic' }, ic), h('b', { text: title }), h('small', { text: sub }));
   host.appendChild(box);
-  const end = () => { box.classList.add('out'); setTimeout(() => box.remove(), 500); };
+  const end = () => { if (box.classList.contains('out')) return; box.classList.add('out'); setTimeout(() => box.remove(), 500); };
   box.addEventListener('click', end);
   setTimeout(end, 2600);
 }

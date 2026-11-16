@@ -1,8 +1,9 @@
 // «О MKW»: обращение к слушателям (бета) и опрос «какое обновление следующее».
 // Голос хранится в polls/{id}/votes/{uid} — один голос на человека, можно передумать.
 import { db } from './firebase.js';
-import { getDocs, collection, doc, setDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
-import { h, toast, openSheet, closeSheet, isSheetOpen } from './ui.js';
+import { getDocs, collection } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+import { h, openSheet, closeSheet, isSheetOpen } from './ui.js';
+import { countryCode } from './geo.js';
 import { mi } from './icons2.js';
 import * as store from './store.js';
 import { stSrc } from './stickers.js';
@@ -25,7 +26,8 @@ export function betaCard() {
 // один раз после обновления — обращение со стикером
 // голосование завершено (10 ноября 2026): напоминаний больше нет, в «О MKW» остаются итоги
 // с 13 ноября 2026 — один раз предлагаем выбрать логотип MKW
-export function maybeShowBetaNote() { showLogoPoll(); }
+// опрос про логотип завершён (17 ноября 2026): победил «Цветок», он теперь на иконке
+export function maybeShowBetaNote() { showVpnNote(); }
 
 let cache = null, localVote = -1;
 async function loadVotes() {
@@ -67,89 +69,22 @@ export function pollCard() {
     body, foot);
 }
 
-// ---------- Опрос «Какой логотип подходит MKW» (ноябрь 2026) ----------
-// Голос: polls/logo-2026-11/votes/{uid} = { o, at } — один на человека, можно передумать.
-export const LOGO_POLL = 'logo-2026-11';
-const LOGOS = [
-  { t: 'Нынешний', s: 'Стеклянный, сейчас на иконке', img: 'assets/ic5-512.png' },
-  { t: 'Звезда', s: 'Мягкая, бело-сиреневая', img: 'assets/mkw-logo-a.webp' },
-  { t: 'Цветок', s: 'Объёмный, белый', img: 'assets/mkw-logo-b.webp' },
-];
-const LSEEN = 'mkw.logopoll.seen';
-const lget = (k) => { try { return localStorage.getItem(k); } catch { return null; } };
-const lput = (k, v) => { try { localStorage.setItem(k, v); } catch { /* ignore */ } };
-let lcache = null, lmine = -1;
-const lempty = () => ({ counts: LOGOS.map(() => 0), mine: Number(lget('mkw.logovote') ?? -1) });
-async function loadLogo() {
-  try {
-    const sn = await getDocs(collection(db, 'polls', LOGO_POLL, 'votes'));
-    const counts = LOGOS.map(() => 0); let mine = -1;
-    sn.docs.forEach((d) => { const o = Number(d.data().o); if (o >= 0 && o < LOGOS.length) { counts[o] += 1; if (d.id === store.state.uid) mine = o; } });
-    if (lmine >= 0 && mine !== lmine) { if (mine >= 0) counts[mine] -= 1; counts[lmine] += 1; mine = lmine; }
-    lcache = { counts, mine };
-    if (mine >= 0) lput('mkw.logovote', String(mine));
-  } catch { lcache = lcache || { ...lempty(), err: true }; }
-  return lcache;
-}
-async function voteLogo(i) {
-  const uid = store.state.uid;
-  if (!uid) { toast('Войдите, чтобы проголосовать'); return false; }
-  const prev = lcache || lempty();
-  lmine = i; lput('mkw.logovote', String(i));
-  try { await setDoc(doc(db, 'polls', LOGO_POLL, 'votes', uid), { o: i, at: Date.now() }); return true; }
-  catch { lmine = prev.mine; toast('Не получилось отправить голос, попробуйте ещё раз'); return false; }
-}
-
-export function logoPollCard(onVoted) {
-  const grid = h('div', { class: 'lp-grid' });
-  const foot = h('small', { class: 'poll-foot' });
-  const paint = (d) => {
-    const total = d.counts.reduce((a, b) => a + b, 0);
-    const voted = d.mine >= 0;
-    grid.replaceChildren(...LOGOS.map((o, i) => {
-      const pct = total ? Math.round((d.counts[i] / total) * 100) : 0;
-      return h('button', {
-        class: `lp-opt${d.mine === i ? ' mine' : ''}${voted ? ' voted' : ''}`, type: 'button', style: `--w:${voted ? pct : 0}%`,
-        onclick: async () => {
-          if (d.mine === i) return;
-          const optimistic = { counts: [...d.counts], mine: i };
-          if (d.mine >= 0) optimistic.counts[d.mine] -= 1;
-          optimistic.counts[i] += 1;
-          paint(optimistic);
-          if (await voteLogo(i)) { loadLogo().then(paint); if (onVoted) onVoted(i); } else paint(d);
-        },
-      },
-      h('img', { src: o.img, alt: o.t, loading: 'lazy', decoding: 'async' }),
-      h('b', { text: o.t }),
-      h('small', { text: o.s }),
-      voted ? h('span', { class: 'lp-pct', text: `${pct}%` }) : null,
-      d.mine === i ? h('i', { class: 'poll-ck' }, mi('check')) : null);
-    }));
-    foot.textContent = d.err ? 'Результаты появятся, когда будет связь с сервером.'
-      : voted ? `${total} ${plural(total, 'голос', 'голоса', 'голосов')} · передумали — нажмите на другой вариант`
-        : 'Нажмите на логотип, который нравится больше. Результаты увидите сразу после голоса.';
-  };
-  paint(lcache || lempty());
-  loadLogo().then(paint);
-  return h('div', { class: 'poll-card lp-card' },
-    h('div', { class: 'poll-head' }, h('b', { text: 'Какой логотип подходит MKW?' }), h('span', { class: 'poll-tag', text: 'Опрос' })),
-    h('p', { class: 'lp-sub', text: 'Выбираем новую иконку приложения и логотип. Победитель появится на иконке и на сайте.' }),
-    grid, foot);
-}
-
-function showLogoPoll() {
-  if (lget(LSEEN) || lget('mkw.logovote') !== null) return;
+// ---------- Подсказка про VPN для слушателей из России (1.6) ----------
+// Показываем один раз и только если подключение идёт из России без VPN. Остальным ничего не мешает.
+const VPN_SEEN = 'mkw.vpnnote';
+async function showVpnNote() {
+  try { if (localStorage.getItem(VPN_SEEN)) return; } catch { return; }
+  const code = await countryCode();
+  if (code !== 'RU') return;
   let tries = 0;
   const show = () => {
-    if (!store.state.uid || isSheetOpen() || document.hidden || document.querySelector('.app-gate, .beta-pop, .nw, .inc, .rc')) {
-      if (++tries < 40) setTimeout(show, 4000);
-      return;
-    }
-    lput(LSEEN, '1');
-    openSheet('Выберите логотип MKW', h('div', { class: 'fbi-box' },
-      logoPollCard(() => setTimeout(closeSheet, 1400)),
-      h('p', { class: 'fb-note', text: 'Опрос всегда есть в Профиль → меню → О MKW.' }),
-      h('button', { class: 'btn tonal block', type: 'button', text: 'Позже', onclick: closeSheet })));
+    if (!store.state.uid || isSheetOpen() || document.hidden || document.querySelector('.app-gate, .beta-pop, .nw, .inc, .rc')) { if (++tries < 30) setTimeout(show, 5000); return; }
+    try { localStorage.setItem(VPN_SEEN, '1'); } catch { /* ignore */ }
+    openSheet('Вы в России? Включите VPN', h('div', { class: 'fbi-box vpn-pop' },
+      h('div', { class: 'vpn-pop-ic' }, mi('shield')),
+      h('p', { text: 'В России провайдеры замедляют и блокируют часть музыкальных серверов. Без VPN песни могут долго включаться, не играть в фоне или пропадают обложки.' }),
+      h('p', { text: 'С VPN всё работает быстро и полностью. В других странах MKW доступен без ограничений — ничего включать не нужно.' }),
+      h('button', { class: 'btn block', type: 'button', text: 'Понятно', onclick: closeSheet })));
   };
   show();
 }
