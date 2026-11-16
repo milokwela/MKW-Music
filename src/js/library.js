@@ -1,4 +1,5 @@
 // Экран «Библиотека»: лайки, плейлисты, история.
+import { openImport } from './import.js';
 import { $, $$, h, icon, trackRow, emptyState, askText, toast, openSheet, closeSheet, sheetItem, animateIn, setKids } from './ui.js';
 import * as store from './store.js';
 import * as player from './player.js';
@@ -60,14 +61,15 @@ function renderPlaylists(box) {
     if (!name) return;
     try { await store.createPlaylist(name); toast('Плейлист создан'); } catch (e) { console.error(e); toast('Не получилось создать'); }
   } }, icon('plus'), 'Новый плейлист');
+  const imp = h('button', { class: 'btn tonal', type: 'button', onclick: openImport }, icon('music'), 'Импорт');
   watchShared();
   const sh = sharedList();
   const shared = sh.length ? [h('div', { class: 'section-title', text: 'Общие с друзьями' }), ...sh.map((pl) => h('button', { class: 'pl-card shared', type: 'button', onclick: () => openSharedSheet(pl.id) },
     cover({ tracks: pl.tracks || [] }),
     h('div', { class: 'track-info' }, h('div', { class: 'track-title', text: pl.name || 'Общий плейлист' }), h('div', { class: 'track-sub', text: `${tracksWord((pl.tracks || []).length)} · ${(pl.members || []).length} ${plural((pl.members || []).length, 'участник', 'участника', 'участников')}` }))))] : [];
-  if (!pls.length) { box.replaceChildren(h('div', { class: 'lib-actions' }, create), emptyState('library', 'Плейлистов нет'), ...shared); return; }
+  if (!pls.length) { box.replaceChildren(h('div', { class: 'lib-actions' }, create, imp), emptyState('library', 'Плейлистов нет'), ...shared); return; }
   box.replaceChildren(
-    h('div', { class: 'lib-actions' }, create),
+    h('div', { class: 'lib-actions' }, create, imp),
     ...pls.map((pl) => h('button', { class: 'pl-card', type: 'button', onclick: () => { openPid = pl.pid; render(); } },
       cover(pl),
       h('div', { class: 'track-info' }, h('div', { class: 'track-title', text: pl.name }), h('div', { class: 'track-sub', text: tracksWord(pl.tracks.length) })))),

@@ -70,6 +70,27 @@ export async function createPlaylist(name, firstTrack) {
   return ref.id;
 }
 
+// импорт (1.6): плейлист сразу со списком треков — одной записью
+export async function createPlaylistWith(name, tracks) {
+  const uid = need();
+  const seen = new Set();
+  const list = tracks.map(pickTrack).filter((t) => t.id && !seen.has(t.id) && seen.add(t.id)).slice(0, MAX_PLAYLIST);
+  const ref = await addDoc(collection(db, 'users', uid, 'playlists'), { name: String(name).trim().slice(0, 60) || 'Плейлист', tracks: list, createdAt: Date.now() });
+  return ref.id;
+}
+// импорт (1.6): много лайков подряд; порядок сохраняется (первый в списке — самый свежий)
+export async function likeMany(tracks) {
+  const uid = need();
+  const now = Date.now(); let n = 0;
+  for (let i = 0; i < tracks.length; i++) {
+    const t = pickTrack(tracks[i]);
+    if (!t.id || isLiked(t.id)) continue;
+    await setDoc(doc(db, 'users', uid, 'likes', t.id), { ...t, likedAt: now - i });
+    n += 1;
+  }
+  return n;
+}
+
 export function renamePlaylist(pid, name) {
   return updateDoc(doc(db, 'users', need(), 'playlists', pid), { name: String(name).trim().slice(0, 60) || 'Плейлист' });
 }

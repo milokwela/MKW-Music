@@ -872,16 +872,43 @@ function openWidgets() {
       h('span', { class: 'wp-in sq' }, h('small', { text: 'MKW' }), h('span', { class: 'wp-sqt' }, h('b', { text: t }), h('em', { text: a })), h('b', { class: 'wp-play' })))));
 }
 
+// Меню профиля — шторка справа (1.6): открывается кнопкой с тремя точками, закрывается свайпом вправо,
+// нажатием мимо или системным «назад».
+let pmClose = null;
 function openProfileMenu() {
+  if (pmClose) { pmClose(); return; }
   const req = requestIds().length, fr = friendIds().length;
-  const item = (id, ic, title, desc, badge) => h('button', { type: 'button', class: `pm-item${refs.tab === id ? ' on' : ''}`, onclick: () => { closeSheet(); setTab(id); } },
+  const close = () => {
+    if (!pmClose) return; pmClose = null;
+    wrap.classList.remove('open'); setTimeout(() => wrap.remove(), 320);
+    const st = window.__mkwStep; if (st) st.close('pm-drawer');
+  };
+  const item = (id, ic, title, desc, badge) => h('button', { type: 'button', class: `pm-item${refs.tab === id ? ' on' : ''}`, onclick: () => { close(); setTimeout(() => setTab(id), 60); } },
     h('span', { class: 'pm-ic' }, mi(ic)), h('span', { class: 'pm-txt' }, h('b', { text: title }), h('small', { text: desc })), badge ? h('em', { class: 'pm-badge', text: badge }) : h('span', { class: 'chev', text: '›' }));
-  openSheet('Меню', h('div', { class: 'pm-menu' },
-    item('main', 'person', 'Мой профиль', 'Статистика, задания и награды'),
-    item('friends', 'group', 'Друзья', fr ? `${fr} ${plural(fr, 'друг', 'друга', 'друзей')}${req ? ' · есть заявки' : ''}` : 'Найдите друзей по нику', req ? String(req) : ''),
-    item('board', 'trophy', 'Топ слушателей', myRank ? `Ваше место: ${myRank}` : 'Кто слушает больше всех'),
-    item('set', 'palette', 'Настройки', 'Тема, звук, уведомления, приложение'),
-    item('about', 'note', 'О MKW', 'Что нового и приложение для Android', aboutNew() ? 'новое' : '')));
+  const panel = h('aside', { class: 'pmd-panel', role: 'dialog', 'aria-label': 'Меню профиля' },
+    h('div', { class: 'pmd-head' }, h('img', { src: 'assets/mkw-flower.webp', alt: '' }), h('div', {}, h('b', { text: 'Меню' }), h('small', { text: curNick || 'MKW Music' })), h('button', { class: 'icon-btn', type: 'button', 'aria-label': 'Закрыть', onclick: close }, mi('close'))),
+    h('div', { class: 'pm-menu' },
+      item('main', 'person', 'Мой профиль', 'Статистика, задания и награды'),
+      item('friends', 'group', 'Друзья', fr ? `${fr} ${plural(fr, 'друг', 'друга', 'друзей')}${req ? ' · есть заявки' : ''}` : 'Найдите друзей по нику', req ? String(req) : ''),
+      item('board', 'trophy', 'Топ слушателей', myRank ? `Ваше место: ${myRank}` : 'Кто слушает больше всех'),
+      item('set', 'palette', 'Настройки', 'Тема, звук, уведомления, приложение'),
+      item('about', 'note', 'О MKW', 'Что нового и приложение для Android', aboutNew() ? 'новое' : '')),
+    h('small', { class: 'pmd-foot', text: `MKW Music · v${VERSION}` }));
+  const wrap = h('div', { class: 'pmd' }, h('div', { class: 'pmd-bg', onclick: close }), panel);
+  document.body.appendChild(wrap);
+  // свайп вправо по шторке — закрыть (шторка едет за пальцем)
+  let x0 = 0, y0 = 0, dx = 0, drag = false, dec = false;
+  panel.addEventListener('touchstart', (e) => { const t = e.touches[0]; x0 = t.clientX; y0 = t.clientY; dx = 0; drag = true; dec = false; }, { passive: true });
+  panel.addEventListener('touchmove', (e) => {
+    if (!drag) return; const t = e.touches[0]; const mx = t.clientX - x0, my = t.clientY - y0;
+    if (!dec) { if (Math.abs(mx) < 8 && Math.abs(my) < 8) return; dec = true; if (Math.abs(my) > Math.abs(mx) || mx < 0) { drag = false; return; } panel.style.transition = 'none'; }
+    dx = Math.max(0, mx); panel.style.transform = `translate3d(${dx}px,0,0)`;
+  }, { passive: true });
+  const up = () => { if (!drag) return; drag = false; panel.style.transition = ''; panel.style.transform = ''; if (dec && dx > 70) close(); };
+  panel.addEventListener('touchend', up, { passive: true }); panel.addEventListener('touchcancel', up, { passive: true });
+  pmClose = close;
+  requestAnimationFrame(() => wrap.classList.add('open'));
+  const st = window.__mkwStep; if (st) st.open('pm-drawer', close);
 }
 // быстрые переходы под шапкой профиля
 function paintQuick() {
@@ -1098,6 +1125,9 @@ export function buildProfile(nick) {
         row('Новый вид плеера', 'Крупная обложка, волнистая полоса и скорость воспроизведения. Обычный плеер вернётся, если выключить', refs.player2, null, 'play-circle'),
         row('Живой фон плеера', 'Цвета обложки двигаются в такт', refs.livebg, null, 'sparkle')),
       group('Музыка',
+        h('div', { class: 'set-block' }, h('b', { text: 'Плавный переход между треками' }),
+          h('small', { class: 'src-note', text: 'Следующий трек вступает, пока текущий затихает. Работает в приложении, когда звук следующего трека уже найден.' }),
+          h('div', { class: 'src-row xf-row' }, [[0, 'Выкл'], [3, '3 с'], [5, '5 с'], [8, '8 с']].map(([n, t]) => h('button', { class: `chip xf-chip${player.getXfade() === n ? ' active' : ''}`, type: 'button', onclick: (e) => { player.setXfade(n); $$('.xf-chip').forEach((c) => c.classList.remove('active')); e.currentTarget.classList.add('active'); toast(n ? `Плавный переход: ${n} секунд` : 'Плавный переход выключен'); } }, t)))),
         row('Страна подключения', 'С VPN покажет страну VPN', refs.country = h('span', { class: 'conn-country', text: '…' }), null, 'globe'),
         h('div', { class: 'vpn-note' }, h('span', { class: 'set-ic' }, mi('shield')), h('div', {}, h('b', { text: 'Нет звука или обложек из России?' }), h('small', { text: 'Провайдеры блокируют часть музыкальных серверов. Включите любой VPN, и всё заработает.' })))),
       group('Устройство',

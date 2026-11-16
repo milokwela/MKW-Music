@@ -82,3 +82,49 @@ button.clm-it:active { background: color-mix(in srgb, var(--on-bg) 8%, transpare
 }
 .call-ui.mini .call-top b { white-space: nowrap; }
 .call-ui.mini .call-status { white-space: nowrap; }
+
+/* ---------- 1.6: меню профиля — шторка справа ---------- */
+.pmd { position: fixed; inset: 0; z-index: 80; pointer-events: none; }
+.pmd.open { pointer-events: auto; }
+.pmd-bg { position: absolute; inset: 0; background: var(--scrim, rgba(0,0,0,.55)); opacity: 0; transition: opacity .3s; }
+.pmd.open .pmd-bg { opacity: 1; }
+.pmd-panel { position: absolute; top: 0; right: 0; bottom: 0; width: min(88vw, 380px); display: flex; flex-direction: column; gap: 14px; padding: calc(14px + env(safe-area-inset-top)) 14px calc(16px + env(safe-area-inset-bottom)); background: var(--surface, #17141c); border-radius: 28px 0 0 28px; box-shadow: -18px 0 50px rgba(0,0,0,.45); transform: translate3d(104%,0,0); transition: transform .34s cubic-bezier(.2,.85,.25,1); overflow-y: auto; will-change: transform; }
+.pmd.open .pmd-panel { transform: none; }
+.pmd-head { display: flex; align-items: center; gap: 12px; padding: 4px 2px 2px 6px; }
+.pmd-head img { width: 40px; height: 40px; border-radius: 12px; background: #000; padding: 5px; box-sizing: border-box; flex: none; }
+.pmd-head div { flex: 1; min-width: 0; display: grid; }
+.pmd-head b { font-size: 21px; }
+.pmd-head small { font-size: 13px; color: var(--on-surface-var); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pmd .pm-item { opacity: 0; transform: translateX(18px); transition: opacity .3s, transform .35s cubic-bezier(.2,.85,.25,1), background .2s; }
+.pmd.open .pm-item { opacity: 1; transform: none; }
+.pmd.open .pm-item:nth-child(1) { transition-delay: .05s; } .pmd.open .pm-item:nth-child(2) { transition-delay: .09s; } .pmd.open .pm-item:nth-child(3) { transition-delay: .13s; } .pmd.open .pm-item:nth-child(4) { transition-delay: .17s; } .pmd.open .pm-item:nth-child(5) { transition-delay: .21s; }
+.pmd-foot { margin-top: auto; text-align: center; color: var(--on-surface-var); opacity: .6; font-size: 12px; }
+@media (prefers-reduced-motion: reduce) { .pmd-panel, .pmd .pm-item { transition-duration: .01s; } }
+
+/* ---------- 1.6: импорт музыки ---------- */
+.imp { display: grid; gap: 12px; }
+.imp-note { margin: 0; font-size: 14.5px; line-height: 1.45; color: var(--on-surface-var); }
+.imp-how { border-radius: 16px; background: color-mix(in srgb, var(--on-bg) 6%, transparent); padding: 10px 14px; font-size: 13.5px; }
+.imp-how summary, .imp-miss summary { font-weight: 700; cursor: pointer; }
+.imp-how ul, .imp-miss ul { margin: 8px 0 2px; padding-left: 18px; display: grid; gap: 6px; color: var(--on-surface-var); line-height: 1.4; }
+.imp-area { width: 100%; min-height: 130px; resize: vertical; font: 14px/1.45 var(--font, inherit); padding: 12px 14px; border-radius: 16px; box-sizing: border-box; }
+.imp-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.imp-row .btn { display: inline-flex; align-items: center; gap: 8px; }
+.imp-row .btn .mi { width: 18px; height: 18px; }
+.imp-count, .imp-status { color: var(--on-surface-var); font-size: 13px; }
+.imp-status { min-height: 18px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.imp-tgts { display: grid; gap: 8px; }
+.imp-tgts > small { color: var(--on-surface-var); font-weight: 600; }
+.imp-tgts > div { display: flex; gap: 8px; flex-wrap: wrap; }
+.imp-tgt { display: inline-flex; align-items: center; gap: 8px; padding: 10px 14px; }
+.imp-tgt .mi { width: 18px; height: 18px; }
+.imp-bar { height: 6px; border-radius: 6px; background: color-mix(in srgb, var(--on-bg) 10%, transparent); overflow: hidden; }
+.imp-bar[hidden] { display: none; }
+.imp-bar i { display: block; height: 100%; width: 0; border-radius: 6px; background: var(--primary); transition: width .25s; }
+.imp-done { display: grid; justify-items: center; gap: 6px; padding: 14px 0 4px; text-align: center; }
+.imp-done i { width: 60px; height: 60px; border-radius: 50%; display: grid; place-items: center; background: color-mix(in srgb, #3ddc84 20%, transparent); color: #3ddc84; }
+.imp-done i .mi { width: 30px; height: 30px; }
+.imp-done b { font-size: 20px; }
+.imp-done small { color: var(--on-surface-var); }
+.imp-miss { border-radius: 16px; background: color-mix(in srgb, var(--on-bg) 6%, transparent); padding: 10px 14px; font-size: 13.5px; max-height: 30vh; overflow: auto; }
+.xf-row { margin-top: 8px; }

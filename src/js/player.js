@@ -31,7 +31,12 @@ export const st = {
   vid: '',     // id видео YouTube текущего трека
 };
 
-const audio = document.getElementById('preview-player');
+// Два одинаковых плеера (1.6): один играет, второй заранее готовит следующий трек — на этом построен плавный переход.
+// `audio` — тот, что играет сейчас; события второго не учитываются.
+const elA = document.getElementById('preview-player');
+const elB = (() => { const a = document.createElement('audio'); a.preload = 'none'; a.id = 'preview-player-2'; a.style.display = 'none'; (document.body || document.documentElement).appendChild(a); return a; })();
+let audio = elA;
+const onAudio = (ev, fn) => [elA, elB].forEach((el) => el.addEventListener(ev, (e) => { if (el === audio) fn(e); }));
 const subs = new Set();
 let yt = null;
 let ytPromise = null;
@@ -166,13 +171,14 @@ function prefetchNext() {
   for (const nxt of queue.items.slice(queue.index + 1, queue.index + (streamsOn() ? 3 : 2))) {
     const known = nxt.ytId || peekYouTubeId(nxt);
     if (known) { resolveStream(known, nxt); continue; }
-    findYouTubeId(nxt).then((v) => { if (v) resolveStream(v, nxt); }).catch(() => {});
+    findYouTubeId(nxt).then((v) => { resolveStream(v || `sc:${nxt.id}`, nxt); }).catch(() => {});
   }
 }
 function findYouTube(t) { findYouTubeId(t).catch(() => {}); }
 
 // ---------- запуск трека ----------
 function stopAll() {
+  xfCancel();
   clearTimeout(watchdog);
   try { audio.pause(); } catch { /* ignore */ }
   if (yt) { try { yt.stopVideo(); } catch { /* ignore */ } }
@@ -491,20 +497,20 @@ function restart() {
 }
 
 // ---------- события аудио (превью) ----------
-audio.addEventListener('playing', () => {
+onAudio('playing', () => {
   if (st.mode !== 'preview') return;
   if (st.full) noteStart('st');
   st.playing = true; st.loading = false; failChain = 0;
   emit('state'); syncSession();
 });
-audio.addEventListener('pause', () => {
+onAudio('pause', () => {
   if (st.mode !== 'preview' || audio.ended) return;
   st.playing = false; emit('state'); syncSession();
 });
-audio.addEventListener('waiting', () => { if (st.mode === 'preview') { st.loading = true; emit('state'); } });
-audio.addEventListener('ended', () => { if (st.mode === 'preview') handleEnded(); });
-audio.addEventListener('error', () => { if (st.mode !== 'preview' || !audio.src || audio.src.startsWith('blob:')) return; if (st.full) streamFailed(loadId); else unavailable(loadId); });
-audio.addEventListener('loadedmetadata', () => {
+onAudio('waiting', () => { if (st.mode === 'preview') { st.loading = true; emit('state'); } });
+onAudio('ended', () => { if (st.mode === 'preview') handleEnded(); });
+onAudio('error', () => { if (st.mode !== 'preview' || !audio.src || audio.src.startsWith('blob:')) return; if (st.full) streamFailed(loadId); else unavailable(loadId); });
+onAudio('loadedmetadata', () => {
   if (st.mode === 'preview' && Number.isFinite(audio.duration)) { st.duration = audio.duration; emit('time'); }
 });
 
@@ -529,9 +535,96 @@ setInterval(() => {
     st.time = audio.currentTime || 0;
   }
   const cid = queue.current ? queue.current.id : '';
-  if (cid !== volFor) { volFor = cid; applyVolume(); }
+  if (cid !== volFor) { volFor = cid; if (!xf) applyVolume(); }
   emit('time');
+  xfCheck();
 }, 500);
+
+// ---------- плавный переход между треками (кроссфейд) ----------
+// За несколько секунд до конца следующий трек начинает играть на втором плеере и плавно набирает громкость,
+// а текущий так же плавно затихает. Работает, когда звук следующего трека уже найден (или трек скачан);
+// если не найден — обычный переход, как раньше. Длину выбирают в Настройках (0 — выключено).
+const XKEY = 'mkw.xfade';
+export const getXfade = () => { try { const v = localStorage.getItem(XKEY); if (v === null) return 5; const n = Number(v); return [0, 3, 5, 8].includes(n) ? n : 5; } catch { return 5; } };
+export function setXfade(n) { try { localStorage.setItem(XKEY, String(n)); } catch { /* ignore */ } }
+let xf = null;      // идущий переход: { old, oldYt, silent, t } или { pending, el }
+let xfPre = '', xfBad = '';
+const freeEl = (el) => { try { el.pause(); el.loop = false; el.removeAttribute('src'); el.load(); el.volume = 1; } catch { /* ignore */ } };
+function xfSrc(t) {
+  const off = offlineSrc(t);
+  if (off) return { key: `off:${t.id}`, urls: [off] };
+  const k = t.ytId || peekYouTubeId(t);
+  const u = k && peekStream(k);
+  if (u && u.length) return { key: k, urls: u };
+  const sc = peekStream(`sc:${t.id}`); // трека нет на YouTube — звук найден по названию
+  return sc && sc.length ? { key: `sc:${t.id}`, urls: sc } : null;
+}
+// переход закончен (или его надо закончить немедленно): старый звук — стоп, новый — на полной громкости
+function xfDone() {
+  const o = xf; if (!o) return;
+  xf = null; clearInterval(o.t);
+  if (o.pending) { if (o.el) freeEl(o.el); return; }
+  if (o.old) freeEl(o.old);
+  if (o.silent) freeEl(o.silent);
+  if (o.oldYt && yt) { try { yt.stopVideo(); yt.setVolume(Math.round(vol * 100)); } catch { /* ignore */ } }
+  try { audio.volume = vol; } catch { /* ignore */ }
+}
+function xfCancel() { xfDone(); xfPre = ''; }
+function xfCheck() {
+  const X = getXfade();
+  if (!X || xf || !st.playing || userPaused || queue.repeat === 'one') return;
+  const fromYt = st.mode === 'yt';
+  if (!fromYt && !(st.mode === 'preview' && st.full)) return;
+  const d = st.duration, left = (d - st.time) / (rate || 1);
+  if (!(d > 40) || left > X + 12 || left < 1.5) return;
+  const nxt = queue.items[queue.index + 1];
+  if (!nxt || nxt.auId || nxt.id === xfBad || (queue.current && nxt.id === queue.current.id)) return;
+  const src = xfSrc(nxt);
+  if (!src) return;
+  const other = audio === elA ? elB : elA;
+  if (left > X) {
+    // заранее подгружаем начало следующего трека, чтобы он вступил без задержки
+    if (xfPre !== nxt.id) { xfPre = nxt.id; try { other.loop = false; other.preload = 'auto'; other.volume = 0; other.src = src.urls[0]; other.load(); } catch { /* ignore */ } }
+    return;
+  }
+  xfStart(nxt, src, other, Math.max(1, Math.min(X, left - 0.4)), fromYt);
+}
+function xfStart(nxt, src, other, dur, fromYt) {
+  const id0 = loadId, old = audio;
+  xf = { pending: true, el: other };
+  try {
+    if (xfPre !== nxt.id || !other.src) { other.loop = false; other.preload = 'auto'; other.src = src.urls[0]; }
+    other.volume = 0; other.defaultPlaybackRate = rate; other.playbackRate = rate;
+  } catch { /* ignore */ }
+  const fail = () => { if (xf && xf.pending) { xf = null; freeEl(other); } xfBad = nxt.id; xfPre = ''; };
+  const slow = setTimeout(fail, 2500); // не вступил вовремя — обычный переход
+  other.play().then(() => {
+    clearTimeout(slow);
+    if (!xf || !xf.pending || xf.el !== other) { if (!xf) freeEl(other); return; }
+    if (id0 !== loadId || userPaused || queue.items[queue.index + 1] !== nxt) { fail(); xfBad = ''; return; }
+    // с этого момента «текущий» — следующий трек: очередь, обложка, экран блокировки переключаются сразу
+    st.last = { track: queue.current, time: st.time, duration: st.duration };
+    emit('done');
+    if (queue.next(true) !== nxt) { xf = null; freeEl(other); if (queue.current) startCurrent(); return; }
+    ++loadId; clearTimeout(watchdog);
+    audio = other; volFor = nxt.id; xfPre = '';
+    st.mode = 'preview'; st.full = true; st.vid = src.key; st.loading = false; st.playing = true;
+    st.time = 0; st.duration = nxt.duration || 0; st.message = '';
+    streamUrls = [...src.urls]; startT0 = 0;
+    emit('track'); setSession(nxt); logPlay(nxt); prefetchNext(); emit('state'); syncSession();
+    const t0 = performance.now();
+    const step = () => {
+      const k = Math.min(1, (performance.now() - t0) / (dur * 1000));
+      const up = Math.sin(k * Math.PI / 2), down = Math.cos(k * Math.PI / 2);
+      try { audio.volume = Math.min(1, vol * up); } catch { /* ignore */ }
+      if (fromYt) { try { if (yt) yt.setVolume(Math.round(vol * 100 * down)); } catch { /* ignore */ } }
+      else { try { old.volume = Math.max(0, vol * down); } catch { /* ignore */ } }
+      if (k >= 1) xfDone();
+    };
+    xf = { old: fromYt ? null : old, oldYt: fromYt, silent: fromYt ? old : null, t: setInterval(step, 50) };
+    step();
+  }).catch(() => { clearTimeout(slow); fail(); });
+}
 
 // ---------- управление ----------
 // ---------- громкость ----------
@@ -550,8 +643,8 @@ function applyRate() {
   try { if (yt && yt.setPlaybackRate && st.mode === 'yt') yt.setPlaybackRate(rate); } catch { /* ignore */ }
 }
 export function setRate(r) { rate = Math.max(0.5, Math.min(2, Number(r) || 1)); applyRate(); emit('rate'); syncSession(); }
-audio.addEventListener('loadedmetadata', applyRate);
-audio.addEventListener('play', applyRate);
+onAudio('loadedmetadata', applyRate);
+onAudio('play', applyRate);
 export const getVolume = () => vol;
 export function setVolume(v) {
   vol = Math.min(1, Math.max(0, v));
@@ -600,6 +693,7 @@ export function previousTrack() {
 
 export function toggle() {
   if (!queue.current) return;
+  xfDone();
   if (!st.mode) { if (!st.loading) startCurrent(); return; }
   if (st.mode === 'yt' && yt) {
     if (st.playing) { userPaused = true; keepOff(); yt.pauseVideo(); try { audio.pause(); } catch { /* ignore */ } } else { userPaused = false; if (streamsOn()) armSilent(); else keepOn(); yt.playVideo(); }
@@ -613,6 +707,7 @@ export function toggle() {
 }
 
 export function pause() {
+  xfDone();
   userPaused = true;
   keepOff();
   if (st.mode === 'yt' && yt) { try { yt.pauseVideo(); } catch { /* ignore */ } try { audio.pause(); } catch { /* ignore */ } }
