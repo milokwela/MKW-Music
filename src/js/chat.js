@@ -15,7 +15,7 @@ import { searchTracks } from './catalog.js';
 import { me, isFriend, cardOf, friendIds, friendCards, loadFriends, friendsLoaded } from './friends.js';
 import { avSrc } from './avatar.js';
 import { seenText, isOnline, openUserPage, closeUserPage } from './userpage.js';
-import { startCall, warmCalls } from './call.js';
+import { startCall, warmCalls, liveCallFor, joinLive, onLiveCalls } from './call.js';
 import { streakAny, streakPatch, groupPatch, fireIcon, openStreak, startStreak, playFire } from './streak.js';
 import { pushTo, myNick } from './push.js';
 import { srvNow, realSeen } from './clock.js';
@@ -943,6 +943,25 @@ async function openConv(cv) {
   const avBtn = h('button', { type: 'button', class: 'ch-av', 'aria-label': cv.group ? 'Участники' : 'Профиль', onclick: openProfile },
     cv.group ? groupAvatar({ members: cv.members }, cv.cards) : h('img', { src: avSrc(u.avatar), alt: '' }));
   const whoName = h('span', { text: cv.title });
+  // плашка «Звонок идёт»: вышли из общего звонка или пропустили его — можно присоединиться, пока он идёт
+  const callBar = h('button', { class: 'ch-callbar', type: 'button', hidden: '' });
+  let callId = '';
+  callBar.addEventListener('click', () => { if (callId) joinLive(callId); });
+  const paintCall = () => {
+    const lc = liveCallFor(cv.group ? cv.members.filter((x) => x !== me()) : [uid], Boolean(cv.group));
+    if (!lc || lc.count < 1) { callBar.hidden = true; callId = ''; return; }
+    callId = lc.id;
+    const sec = Math.max(0, Math.floor((srvNow() - lc.at) / 1000));
+    const tm = `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
+    const waiting = lc.mine && lc.count <= 1;
+    const key = `${lc.id}:${lc.mine}:${lc.count}`;
+    if (callBar.dataset.k !== key) {
+      callBar.dataset.k = key; callBar.hidden = false;
+      callBar.className = `ch-callbar${lc.mine ? ' mine' : ''}`;
+      callBar.replaceChildren(h('i', {}, mi('phone')), h('span', {}, h('b', { text: waiting ? 'Звоним…' : lc.mine ? 'Вы в звонке' : 'Звонок идёт' }), h('small', { class: 'ch-callbar-t' })), h('em', { text: lc.mine ? 'Открыть' : 'Присоединиться' }));
+    }
+    callBar.querySelector('.ch-callbar-t').textContent = `${tm} · ${lc.count === 1 ? '1 человек' : `в звонке: ${lc.count}`}`;
+  };
   const whoSmall = h('small');
   p.replaceChildren(
     h('header', { class: 'ch-head' },
@@ -955,6 +974,7 @@ async function openConv(cv) {
         startCall([uid]);
       } }, mi('phone')),
       h('button', { class: 'icon-btn ch-morebtn', type: 'button', 'aria-label': 'Ещё', title: 'Слушать вместе, общий плейлист, огонёк, фон', onclick: () => convMenu(cv, list) }, mi('more'))),
+    callBar,
     h('div', { class: 'ch-tg' }),
     pinBar,
     list,
@@ -1003,7 +1023,8 @@ async function openConv(cv) {
   let unsubPeer = () => {};
   if (!cv.group) { try { unsubPeer = onSnapshot(doc(db, 'profiles', uid), (d) => { const x = d.exists() ? d.data() : {}; if (x.seen != null) peerSeen = x.seen; if (x.now != null) peerNow = x.now; paintStatus(); }, () => {}); } catch { /* ignore */ } }
   const peerT = setInterval(paintStatus, 2000);
-  offPeer = () => { try { unsubPeer(); } catch { /* ignore */ } clearInterval(peerT); offPeer = null; };
+  const offLive = onLiveCalls(paintCall); const callT = setInterval(paintCall, 1000); paintCall();
+  offPeer = () => { try { unsubPeer(); } catch { /* ignore */ } clearInterval(peerT); clearInterval(callT); offLive(); offPeer = null; };
 
   // блокировка: плашка вместо поля ввода
   const paintBlock = () => {
