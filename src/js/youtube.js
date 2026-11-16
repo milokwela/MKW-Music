@@ -95,18 +95,26 @@ export async function findYouTubeId(track) {
   if (ck && m[ck]) return m[ck];
   if (m[track.id] && !ck) return m[track.id];
 
-  // 1) общий выбор по ключу песни, 2) старый кэш по id трека
-  if (ck) { const id = await cacheGet(ck); if (id) { m[ck] = id; m[track.id] = id; saveMemo(); return id; } }
+  // Общий кэш (выбор, одинаковый у всех) и поиск идут одновременно: раньше два чтения базы и поиск стояли в очереди,
+  // и новый трек «думал» лишние 1–2 секунды. Кэш важнее: если он ответил — берём его, поиск просто не пригодится.
   if (m[track.id]) { if (ck) { m[ck] = m[track.id]; saveMemo(); cachePut(ck, m[track.id]); } return m[track.id]; }
-  { const id = await cacheGet(track.id); if (id) { m[track.id] = id; if (ck) { m[ck] = await cachePut(ck, id); } saveMemo(); return m[ck] || id; } }
-
   const q = `${track.artist} - ${track.title}`;
+  const cached = Promise.all([ck ? cacheGet(ck) : null, cacheGet(track.id)]).then(([a, b]) => a || b || null).catch(() => null);
+  // поиск стартует с форой 250 мс: если кэш успел — лишнего запроса к серверу нет
+  let searchP = null;
+  const search = () => (searchP || (searchP = searchFree(q).catch(() => [])));
+  const fast = await Promise.race([cached, new Promise((r) => setTimeout(() => r(undefined), 250))]);
+  let hit = fast;
+  if (fast === undefined) { search(); hit = await Promise.race([cached, new Promise((r) => setTimeout(() => r(null), 2500))]); }
+  if (hit) { m[track.id] = hit; if (ck) { m[ck] = hit; cachePut(ck, hit); } saveMemo(); return hit; }
   // 1) без ключа и без лимита: сервер MKW или зеркала
   try {
-    const items = await searchFree(q);
+    const items = await search();
     if (items.length) {
       let id = pickFree(items, track);
-      if (ck) id = await cachePut(ck, id);
+      // кэш мог ответить, пока шёл поиск — тогда берём общий выбор
+      const late = await Promise.race([cached, new Promise((r) => setTimeout(() => r(null), 0))]);
+      if (late) id = late; else if (ck) id = await Promise.race([cachePut(ck, id), new Promise((r) => setTimeout(() => r(id), 1200))]);
       m[track.id] = id; if (ck) m[ck] = id; saveMemo();
       setDoc(doc(db, 'trackCache', track.id), { youtubeId: id, cachedAt: Date.now() }).catch(() => {});
       return id;

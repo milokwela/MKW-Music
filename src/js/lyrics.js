@@ -9,6 +9,7 @@ import { RECOGNIZE_URL } from './shazam-config.js';
 const API = 'https://lrclib.net/api';
 const MKEY = 'mkw.lyrics.mode';
 const cache = new Map();
+let preT = 0;
 let open = false, lines = [], rawPlain = '', approx = false, source = '', active = -2, token = 0, raf = 0, userScrollUntil = 0;
 let stamp = { t: 0, at: 0 };
 // для какого трека текст уже собран: повторное открытие показывает готовое, без поиска и пересборки строк
@@ -52,25 +53,28 @@ async function getJson(url) {
   try { const r = await fetch(url, { signal: ctl.signal }); if (!r.ok) return null; return await r.json(); } catch { return null; } finally { clearTimeout(to); }
 }
 
-async function lrclib(track, dur) {
+// точное совпадение (быстрый запрос): оба варианта названия спрашиваем сразу, а не по очереди
+async function lrclibGet(track, dur) {
   const T = clean(track.title), B = bare(track.title), A = firstArtist(track.artist);
   const gets = [[T, A]];
   if (B && B !== T) gets.push([B, A]);
-  for (const [t, a] of gets) {
+  const out = await Promise.all(gets.map(([t, a]) => {
     const q = new URLSearchParams({ track_name: t, artist_name: a });
     if (dur > 0) q.set('duration', String(Math.round(dur)));
-    const r = await getJson(`${API}/get?${q}`);
-    if (r && (r.syncedLyrics || r.plainLyrics)) return r;
-  }
+    return getJson(`${API}/get?${q}`);
+  }));
+  return out.find((r) => r && r.syncedLyrics) || out.find((r) => r && r.plainLyrics) || null;
+}
+// поиск по названию: все варианты запроса одновременно, берём самый похожий
+async function lrclibSearch(track, dur) {
+  const T = clean(track.title), B = bare(track.title), A = firstArtist(track.artist);
   const tries = [{ track_name: B || T, artist_name: A }, { q: `${A} ${B || T}` }, { q: `${translit(A)} ${translit(B || T)}` }, { track_name: B || T }];
-  let best = null, bs = -1;
   const seen = new Set();
-  for (const params of tries) {
-    const k = JSON.stringify(params); if (seen.has(k)) continue; seen.add(k);
-    const list = await getJson(`${API}/search?${new URLSearchParams(params)}`);
+  const lists = await Promise.all(tries.filter((p) => { const k = JSON.stringify(p); if (seen.has(k)) return false; seen.add(k); return true; }).map((p) => getJson(`${API}/search?${new URLSearchParams(p)}`)));
+  let best = null, bs = -1;
+  for (const list of lists) {
     if (!Array.isArray(list)) continue;
     for (const x of list) { if (!x.syncedLyrics && !x.plainLyrics) continue; const sc = score(x, track.title, track.artist, dur); if (sc > bs) { bs = sc; best = x; } }
-    if (best && best.syncedLyrics && bs >= 7) break;
   }
   return best;
 }
@@ -83,17 +87,35 @@ async function viaWorker(track, dur) {
   return getJson(`${RECOGNIZE_URL.replace(/\/$/, '')}/lyrics?${q}`);
 }
 
-async function load(track, dur) {
+// один поиск на трек: повторные вызовы (предзагрузка + открытие текста) ждут тот же ответ
+const inflight = new Map();
+function load(track, dur) {
   const key = track.id;
-  if (cache.has(key)) return cache.get(key);
+  if (cache.has(key)) return Promise.resolve(cache.get(key));
+  if (inflight.has(key)) return inflight.get(key);
+  const p = loadNow(track, dur).finally(() => inflight.delete(key));
+  inflight.set(key, p);
+  return p;
+}
+async function loadNow(track, dur) {
+  const key = track.id;
   let val = null;
-  const res = await lrclib(track, dur);
-  if (res && res.syncedLyrics) val = { synced: parseLrc(res.syncedLyrics), plain: res.plainLyrics || '', src: 'LRCLIB', dur: Number(res.duration) || 0 };
+  // LRCLIB и сервер MKW спрашиваем одновременно — раньше шли по очереди, и текст появлялся через несколько секунд
+  const wP = viaWorker(track, dur);
+  let res = await lrclibGet(track, dur);
+  const asVal = (r) => ({ synced: parseLrc(r.syncedLyrics), plain: r.plainLyrics || '', src: 'LRCLIB', dur: Number(r.duration) || 0 });
+  if (res && res.syncedLyrics) val = asVal(res);
   let plainFallback = res && res.plainLyrics ? { plain: res.plainLyrics, approx: true, src: 'LRCLIB' } : null;
   if (!val) {
-    const w = await viaWorker(track, dur);
+    const sP = lrclibSearch(track, dur);
+    const w = await wP;
     if (w && w.synced) val = { synced: parseLrc(w.synced), plain: w.plain || '', src: w.source || 'MKW', dur: Number(w.dur) || 0 };
-    else if (w && w.plain && !plainFallback) plainFallback = { plain: w.plain, approx: true, src: w.source || 'MKW' };
+    else {
+      res = await sP;
+      if (res && res.syncedLyrics) val = asVal(res);
+      else if (res && res.plainLyrics && !plainFallback) plainFallback = { plain: res.plainLyrics, approx: true, src: 'LRCLIB' };
+      if (!val && w && w.plain && !plainFallback) plainFallback = { plain: w.plain, approx: true, src: w.source || 'MKW' };
+    }
   }
   if (!val && !plainFallback) {
     const A = firstArtist(track.artist), T = bare(track.title) || clean(track.title);
@@ -297,6 +319,8 @@ export function initLyrics() {
   player.onPlayer((ev) => {
     if (ev === 'time' || ev === 'state') { stamp = { t: player.st.time, at: performance.now() }; if (open && !raf) raf = requestAnimationFrame(frame); }
     if (ev === 'track') shownFor = '';
+    // текст ищем заранее, как только включился трек: откроете — он уже готов
+    if (ev === 'track') { clearTimeout(preT); const t0 = player.queue.current; if (t0 && !open) preT = setTimeout(() => { if (player.queue.current === t0 && !inBg()) load(t0, player.st.duration).catch(() => {}); }, 1500); }
     if (ev === 'track' && open) {
       if (!player.queue.current) { setOpen(false); return; }
       root.style.setProperty('--ly-art', safeUrl(player.queue.current.artwork) ? `url("${safeUrl(player.queue.current.artwork)}")` : 'none');

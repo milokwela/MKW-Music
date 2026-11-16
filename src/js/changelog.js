@@ -1,8 +1,13 @@
 // История версий. Новые записи добавляйте сверху.
-export const VERSION = '0.50.0';
+export const VERSION = '0.50.1';
 export const STAGE = 'beta';
 
 export const CHANGELOG = [
+  {
+    version: '0.50.1',
+    date: '17 ноября 2026',
+    text: 'Исправили кучу багов и недоработок. Очень старались!',
+  },
   {
     version: '0.50.0',
     date: '17 ноября 2026',
