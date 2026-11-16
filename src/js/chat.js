@@ -1182,8 +1182,10 @@ async function openConv(cv) {
     p.appendChild(wrap);
     el.classList.add('picked');
     const r = el.getBoundingClientRect(), pr = p.getBoundingClientRect();
-    const ph = 300, below = r.bottom + ph < pr.bottom - 8;
-    panel.style.top = `${Math.max(8, Math.min(pr.height - ph - 8, (below ? r.bottom + 8 : r.top - ph - 8) - pr.top))}px`;
+    // меню встаёт вплотную к сообщению: под ним, если помещается, иначе над ним (высоту берём настоящую, а не «с запасом»)
+    const ph = panel.offsetHeight || 300, below = r.bottom + ph + 8 < pr.bottom - 8;
+    const want = below ? r.bottom + 8 : (r.top - ph - 8 >= pr.top + 8 ? r.top - ph - 8 : Math.min(r.bottom + 8, pr.bottom - ph - 8));
+    panel.style.top = `${Math.max(8, Math.min(pr.height - ph - 8, want - pr.top))}px`;
     const left = el.classList.contains('me') && !fine ? r.right - pr.left - 312 : r.left - pr.left;
     panel.style.left = `${Math.max(8, Math.min(pr.width - 320, left))}px`;
     requestAnimationFrame(() => wrap.classList.add('show'));

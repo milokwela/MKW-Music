@@ -1,0 +1,41 @@
+/* 1.6 — чаты: меню по удержанию, аватар ведёт в профиль, подсказка про VPN */
+.cl-av.tap { cursor: pointer; border-radius: 50%; transition: transform .15s; }
+.cl-av.tap:active { transform: scale(.92); }
+.clm { gap: 12px; padding-bottom: 6px; }
+.clm-head { display: flex; align-items: center; gap: 14px; padding: 2px 4px 4px; }
+.clm-head img, .clm-g { width: 56px; height: 56px; border-radius: 50%; object-fit: cover; flex: none; }
+.clm-g { display: grid; place-items: center; background: color-mix(in srgb, var(--primary) 18%, transparent); color: var(--primary); }
+.clm-g .mi { width: 26px; height: 26px; }
+.clm-head div { min-width: 0; display: grid; gap: 2px; }
+.clm-head b { font-size: 19px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.clm-head small { color: var(--on-surface-var); font-size: 13px; }
+.clm-quick { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 8px; }
+.clm-q { display: grid; justify-items: center; gap: 6px; padding: 12px 6px 10px; border: 0; border-radius: 18px; background: color-mix(in srgb, var(--on-bg) 7%, transparent); color: inherit; font: 600 12.5px var(--font, inherit); cursor: pointer; transition: transform .15s, background .15s; }
+.clm-q i { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; background: color-mix(in srgb, var(--primary) 20%, transparent); color: var(--primary); }
+.clm-q .mi { width: 22px; height: 22px; }
+.clm-q:active { transform: scale(.95); background: color-mix(in srgb, var(--on-bg) 12%, transparent); }
+.clm-box { display: grid; border-radius: 18px; overflow: hidden; background: color-mix(in srgb, var(--on-bg) 7%, transparent); }
+.clm-it { display: flex; align-items: center; gap: 14px; width: 100%; min-height: 52px; padding: 10px 14px; border: 0; background: none; color: inherit; font: 600 15.5px var(--font, inherit); text-align: left; cursor: pointer; }
+.clm-box > * + * { border-top: 1px solid color-mix(in srgb, var(--on-bg) 7%, transparent); }
+.clm-it i { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 10px; background: color-mix(in srgb, var(--on-bg) 8%, transparent); flex: none; }
+.clm-it .mi { width: 20px; height: 20px; }
+.clm-it.danger { color: #ff5a74; }
+.clm-it.danger i { background: color-mix(in srgb, #ff5a74 16%, transparent); }
+.clm-it.static { cursor: default; padding-bottom: 4px; min-height: 44px; }
+button.clm-it:active { background: color-mix(in srgb, var(--on-bg) 8%, transparent); }
+.clm-chips { display: flex; flex-wrap: wrap; gap: 6px; padding: 4px 14px 14px 60px; }
+.clm-chips button { padding: 8px 13px; border: 0; border-radius: 999px; background: color-mix(in srgb, var(--on-bg) 10%, transparent); color: inherit; font: 600 13px var(--font, inherit); cursor: pointer; }
+.clm-chips button:active { background: var(--primary); color: var(--on-primary, #111); }
+.vpn-pop { display: grid; gap: 10px; }
+.vpn-pop p { margin: 0; line-height: 1.45; color: var(--on-surface-var); font-size: 14.5px; }
+.vpn-pop-ic { width: 56px; height: 56px; border-radius: 18px; display: grid; place-items: center; background: color-mix(in srgb, var(--primary) 18%, transparent); color: var(--primary); }
+.vpn-pop-ic .mi { width: 28px; height: 28px; }
+/* стикеры: «выпрыгивают» только новые, а не весь чат при открытии */
+.ch-sticker { animation: none; }
+/* огонёк: счётчик восстановлений */
+.fs-rest { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 16px; background: color-mix(in srgb, var(--on-bg) 6%, transparent); font-size: 13.5px; color: var(--on-surface-var); }
+.fs-rest span { flex: 1; }
+.fs-rest b { color: var(--on-bg); font-variant-numeric: tabular-nums; }
+.fs-dots { display: flex; gap: 5px; }
+.fs-dots i { width: 9px; height: 9px; border-radius: 50%; background: color-mix(in srgb, var(--on-bg) 16%, transparent); }
+.fs-dots i.on { background: #ff7a1a; box-shadow: 0 0 6px #ff7a1a; }

@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="ru">
 <head>
-<script>if(/MKWApp\//.test(navigator.userAgent)){document.write('<style>#splash{display:none!important}</style>');document.documentElement.classList.add('in-app')}</script>
+<script>if(/MKWApp\//.test(navigator.userAgent)){document.write('<style>#splash,#mkw-splash{display:none!important}</style>');document.documentElement.classList.add('in-app')}</script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
 <script>if(/MKWApp\//.test(navigator.userAgent)){var vm=document.querySelector('meta[name=viewport]');if(vm)vm.content+=', maximum-scale=1, user-scalable=no'}</script>
@@ -33,7 +33,7 @@
 <link rel="icon" type="image/png" sizes="144x144" href="fav-144.png?v=7">
 <link rel="apple-touch-icon" href="ic5-180.png">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="preload" as="image" href="mkw-star6.webp">
+<link rel="preload" as="image" href="mkw-flower.webp">
 <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
 <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js" crossorigin>
 <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js" crossorigin>
@@ -59,35 +59,36 @@ q=+q;c.push(q>=3?'q3':q===2?'q2':q===1?'q1':'lowpower');if(q<=1)c.push('lite');i
 if(!CSS.supports('backdrop-filter','blur(1px)')&&!CSS.supports('-webkit-backdrop-filter','blur(1px)'))c.push('no-blur');
 d.className+=' '+c.join(' ');})();
 </script>
-<link rel="stylesheet" href="app.css?v=0.49.8">
+<link rel="stylesheet" href="app.css?v=0.50.0">
 </head>
 <body>
+<style>
+/* Одна заставка для всех (1.6): логотип и название. Пропустить нельзя — за это время приложение успевает загрузиться. */
+#mkw-splash{position:fixed;inset:0;z-index:200;display:flex!important;flex-direction:column;align-items:center;justify-content:center;gap:22px;background:#000;transition:opacity .45s ease;transform:none}
+.in-app #mkw-splash{display:none!important}
+#mkw-splash.out{opacity:0;pointer-events:none;transform:none}
+.sp7-glow{position:absolute;width:74vmin;height:74vmin;max-width:520px;max-height:520px;border-radius:50%;background:radial-gradient(closest-side,rgba(190,172,255,.22),rgba(255,255,255,.06) 55%,transparent);opacity:0;animation:sp7f 1.4s ease-out .1s forwards}
+.sp7-logo{position:relative;width:42vmin;max-width:210px;aspect-ratio:1;opacity:0;transform:scale(.86) rotate(-18deg);animation:sp7l .95s cubic-bezier(.2,.8,.2,1) .05s forwards;will-change:transform,opacity}
+.sp7-name{position:relative;font:800 26px/1 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;letter-spacing:.3em;padding-left:.3em;color:#fff;opacity:0;transform:translateY(8px);animation:sp7t .7s ease-out .4s forwards}
+.sp7-bar{position:relative;width:120px;height:3px;border-radius:3px;background:rgba(255,255,255,.12);overflow:hidden;opacity:0;animation:sp7f .5s ease-out .9s forwards}
+.sp7-bar i{position:absolute;inset:0 60% 0 0;border-radius:3px;background:#fff;animation:sp7b 1.1s ease-in-out infinite alternate}
+.sp7-by{position:absolute;bottom:calc(36px + env(safe-area-inset-bottom,0px));left:0;right:0;text-align:center;font:500 12px/1.5 system-ui,Roboto,sans-serif;letter-spacing:.2em;color:rgba(255,255,255,.5);opacity:0;animation:sp7f .7s ease-out .8s forwards}
+@keyframes sp7l{to{opacity:1;transform:none}}
+@keyframes sp7f{to{opacity:1}}
+@keyframes sp7t{to{opacity:1;transform:none}}
+@keyframes sp7b{from{transform:translateX(0)}to{transform:translateX(150%)}}
+@media (prefers-reduced-motion:reduce){.sp7-logo,.sp7-name,.sp7-by,.sp7-glow,.sp7-bar{animation-duration:.01s}.sp7-bar i{animation:none}}
+</style>
 <script>
-/* Страховка: заставка гарантированно исчезает, даже если скрипты приложения загрузились поздно или упали (бывает в Яндекс Браузере) */
-(function(){var s=function(){return document.getElementById('splash')};
-// время суток по Новосибирску (UTC+7), чтобы у всех была одна заставка
-var tod=function(){var hr=(new Date().getUTCHours()+7)%24;return hr>=22||hr<6?'night':hr<12?'morning':hr<17?'day':'evening';};
-setTimeout(function(){var e=s();if(e){e.setAttribute('data-tod',tod());e.classList.add('go');}},30);
-setTimeout(function(){var e=s();if(e)e.classList.add('out')},2900);
-setTimeout(function(){var e=s();if(e&&e.parentNode)e.parentNode.removeChild(e)},3600);
-document.addEventListener('click',function(){var e=s();if(e&&e.parentNode)e.parentNode.removeChild(e)});})();
+/* Страховка: если скрипты приложения так и не загрузились, заставка сама уйдёт через 9 секунд */
+setTimeout(function(){var e=document.getElementById('mkw-splash');if(e){e.classList.add('out');setTimeout(function(){if(e.parentNode)e.parentNode.removeChild(e)},500)}},9000);
 </script>
-<div id="splash" aria-hidden="true">
-  <div class="sp6-flare"></div>
-  <div class="sp6-halo"></div>
-  <div class="sp6-wave"></div>
-  <div class="sp6-wave w2"></div>
-  <div class="sp6-sparks"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
-  <div class="sp6-star"><img src="mkw-star6.webp" alt=""><span class="sp6-shine"></span></div>
-  <div class="sp6-trio"><b class="sp6-tglow"></b><b class="sp6-tbeam"></b><b class="sp6-tring"></b><b class="sp6-tring r2"></b><b class="sp6-tring r3"></b><b class="sp6-tfloor"></b><div class="sp6-tc l"><img src="mkw-st1.webp" alt=""><i class="sp6-note">♪</i><i class="sp6-note n2">♫</i></div><div class="sp6-tc r"><img src="mkw-cat5.webp" alt=""><span class="sp6-glint"><i></i></span></div><div class="sp6-tc c"><img src="mkw-st2.webp" alt=""><span class="sp6-tshine"></span></div><span class="sp6-conf"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span></div>
-  <div class="sp6-solo sp6-night"><b class="sp6-moon"></b><img src="mkw-st26.webp" alt=""><i class="sp6-z">z</i><i class="sp6-z z2">z</i><i class="sp6-z z3">Z</i></div>
-  <div class="sp6-solo sp6-morning"><b class="sp6-sun"></b><img src="mkw-cat3.webp" alt=""><i class="sp6-note">♪</i><i class="sp6-note n2">♫</i><i class="sp6-note n3">♪</i></div>
-  <div class="sp6-solo sp6-day"><b class="sp6-rays"></b><b class="sp6-vinyl"><i></i></b><img src="mkw-st31.webp" alt=""><i class="sp6-note">♪</i><i class="sp6-note n2">♫</i><i class="sp6-note n3">♬</i></div>
-  <div class="sp6-solo sp6-eve"><b class="sp6-sun"></b><img src="mkw-cat2.webp" alt=""><span class="sp6-hearts"><i>♥</i><i>♥</i><i>♥</i><i>♥</i><i>♥</i><i>♥</i></span></div>
-  <div class="sp6-eqb"><u></u><u></u><u></u><u></u><u></u><u></u><u></u><u></u><u></u><u></u><u></u><u></u><u></u><u></u><u></u><u></u><u></u><u></u><u></u><u></u><u></u><u></u><u></u><u></u></div>
-  <div class="sp6-title"><span>M</span><span>K</span><span>W</span></div>
-  <div class="sp6-sub">MUSIC</div>
-  <div class="sp6-by">by MiloKwel</div>
+<div id="mkw-splash" aria-hidden="true">
+  <div class="sp7-glow"></div>
+  <img class="sp7-logo" src="mkw-flower.webp" alt="">
+  <div class="sp7-name">MKW MUSIC</div>
+  <div class="sp7-bar"><i></i></div>
+  <div class="sp7-by">by MiloKwel</div>
 </div>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -303,6 +304,6 @@ document.getElementById('bf-re').onclick=function(){location.reload()};
 document.getElementById('bf-clr').onclick=function(){var go=function(){location.reload()};try{caches.keys().then(function(k){return Promise.all(k.map(function(x){return caches.delete(x)}))}).then(go,go)}catch(e){go()}};
 try{if(window.MKWNative&&window.MKWNative.ready)window.MKWNative.ready()}catch(e){}},15000)})();
 </script>
-<script type="module" src="app.js?v=0.49.8"></script>
+<script type="module" src="app.js?v=0.50.0"></script>
 </body>
 </html>

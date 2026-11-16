@@ -12,6 +12,14 @@ async function getJson(url) {
   try { const r = await fetch(url, { signal: ctl.signal }); return r.ok ? await r.json() : null; } catch { return null; } finally { clearTimeout(to); }
 }
 
+/** Двухбуквенный код страны подключения ('RU', 'DE'…) или ''. */
+export async function countryCode() {
+  let code = '';
+  if (RECOGNIZE_URL) { const j = await getJson(`${RECOGNIZE_URL.replace(/\/$/, '')}/geo`); code = j && j.country; }
+  if (!code) { const j = await getJson('https://api.country.is/'); code = j && j.country; }
+  return code && /^[A-Za-z]{2}$/.test(code) ? code.toUpperCase() : '';
+}
+
 export async function connectionCountry() {
   let code = '';
   if (RECOGNIZE_URL) { const j = await getJson(`${RECOGNIZE_URL.replace(/\/$/, '')}/geo`); code = j && j.country; }

@@ -146,4 +146,12 @@ export function watchPresence() {
     } catch { /* ignore */ }
   }
 }
+// «в сети» считается по времени: если друг пропал без прощания (закрыли приложение, пропала сеть), статус должен
+// погаснуть сам — раз в 20 секунд сверяем, не изменилось ли у кого-то «в сети», и только тогда перерисовываем
+let presOn = '';
+setInterval(() => {
+  if (!presUnsub.length || document.hidden) return;
+  const sig = friendIds().filter((id) => { const c = cache.get(id); return c && seenOnline(c.v.seen); }).join(',');
+  if (sig !== presOn) { presOn = sig; emit(); }
+}, 20000);
 export function stopPresence() { presSig = ''; presUnsub.forEach((f) => f()); presUnsub = []; }

@@ -1,7 +1,7 @@
 // Экран «Профиль»: карточка с баннером, витрина (любимые исполнители и треки), вкладки Обзор / Слушатели / Настройки / О MKW.
 import { seenOnline, realSeen } from './clock.js';
 import { nickEmo, richText, plainRich, emojiPicker, catSrc } from './stickers.js';
-import { betaCard, logoPollCard } from './poll.js';
+import { betaCard } from './poll.js';
 import { apkCard, checkAppUpdate, appVersion, appVersionCard } from './apk.js';
 import { $, $$, h, icon, openSheet, closeSheet, toast, sheetItem, trackRow } from './ui.js';
 import * as store from './store.js';
@@ -1076,9 +1076,6 @@ export function buildProfile(nick) {
       refs.myRank, refs.boardList,
       h('div', { class: 'set-card', style: 'margin-top:14px' }, row('Показывать меня в рейтинге', 'Ник, фото, баннер, статус, значки, витрина и часы видят другие слушатели', refs.board, null, 'group'))),
     h('div', { class: 'ppane', 'data-pane': 'set', hidden: '' },
-      inApp ? null : h('div', { class: 'set-group bg-beta' }, h('div', { class: 'set-card' },
-        row('Слушать в фоне с выключенным экраном', 'Бета: работает не у всех и не со всеми треками. Полный трек переключается на звук, когда вы гасите экран. Из России — с VPN', refs.bgplay, null, 'moon'),
-        row('Проверить фон', 'Покажет, что работает на вашем телефоне и в вашей сети', h('span', { class: 'chev', text: '›' }), runBgCheck, 'shield'))),
       inApp ? group('Приложение',
         window.MKWNative && window.MKWNative.pinWidget ? row('Виджеты на рабочий стол', 'Мини-плеер, плеер с перемоткой, MKW Волна и обложка — выберите и добавьте', chev(), openWidgets, 'library') : null,
         window.MKWNative && window.MKWNative.fullScreenCalls ? (() => {
@@ -1101,9 +1098,6 @@ export function buildProfile(nick) {
         row('Новый вид плеера', 'Крупная обложка, волнистая полоса и скорость воспроизведения. Обычный плеер вернётся, если выключить', refs.player2, null, 'play-circle'),
         row('Живой фон плеера', 'Цвета обложки двигаются в такт', refs.livebg, null, 'sparkle')),
       group('Музыка',
-        h('div', { class: 'set-block' }, h('b', { text: 'Где искать музыку' }),
-          h('div', { class: 'src-row' }, SOURCE_MODES.map((m) => h('button', { class: 'chip src-chip', type: 'button', 'data-id': m.id, onclick: () => { setSourceMode(m.id); syncControls(); } }, m.name))),
-          refs.srcnote),
         row('Страна подключения', 'С VPN покажет страну VPN', refs.country = h('span', { class: 'conn-country', text: '…' }), null, 'globe'),
         h('div', { class: 'vpn-note' }, h('span', { class: 'set-ic' }, mi('shield')), h('div', {}, h('b', { text: 'Нет звука или обложек из России?' }), h('small', { text: 'Провайдеры блокируют часть музыкальных серверов. Включите любой VPN, и всё заработает.' })))),
       group('Устройство',
@@ -1135,7 +1129,6 @@ export function buildProfile(nick) {
       /MKWApp\//.test(navigator.userAgent) ? h('div', { class: 'about-card' },
         h('div', { class: 'about-top' }, h('img', { src: 'assets/mkw-logo.png', alt: '', class: 'about-logo' }), h('div', {}, h('b', { text: 'MKW Music' }), h('span', { class: 'beta-badge', text: `приложение · v${appVersion() || '—'}` }))),
         appVersionCard(),
-        logoPollCard(),
         feedbackCard(),
         refs.listeners,
         h('p', { class: 'profile-note', text: 'MKW Music — название сервиса. MiloKwel — его создатель: он делает все обновления и разработку.' }),
@@ -1144,7 +1137,6 @@ export function buildProfile(nick) {
         h('div', { class: 'about-top' }, h('img', { src: 'assets/mkw-logo.png', alt: '', class: 'about-logo' }), h('div', {}, h('b', { text: 'MKW Music' }), h('span', { class: 'beta-badge', text: `${STAGE} · v${VERSION}` }))),
         betaCard(),
         apkCard(),
-        logoPollCard(),
         feedbackCard(),
         refs.listeners,
         h('p', { class: 'profile-note', text: 'MKW Music — название сервиса. MiloKwel — его создатель: он делает все обновления и разработку. Бета-версия: что-то может ломаться, всё чиним.' }),
@@ -1171,10 +1163,16 @@ export function buildProfile(nick) {
   setTimeout(() => pushCard(true), 5000);
   if (!refs.presence) {
     // раз в 2 минуты «я в сети» (и в фоне, если играет музыка); ушли из приложения без музыки — сразу «не в сети»
-    refs.presence = setInterval(() => { if (!document.hidden || player.st.playing) ping(nowPlaying()); }, 90000);
+    // в приложении страница при выключенном экране остаётся «видимой» — настоящее состояние сообщает оно само (__mkwFg)
+    const away0 = () => document.hidden || window.__mkwFg === false;
+    refs.presence = setInterval(() => { if (!away0() || player.st.playing) ping(nowPlaying()); }, 90000);
     let offT = 0;
-    const away = () => { clearTimeout(offT); offT = setTimeout(() => { if (document.hidden && !player.st.playing) goOffline(); }, 8000); };
-    document.addEventListener('visibilitychange', () => { if (document.hidden) away(); else { clearTimeout(offT); ping(nowPlaying(), true); } });
+    const away = () => { clearTimeout(offT); offT = setTimeout(() => { if (away0() && !player.st.playing) goOffline(); }, 5000); };
+    const vis = () => { if (away0()) away(); else { clearTimeout(offT); ping(nowPlaying(), true); } };
+    document.addEventListener('visibilitychange', vis);
+    window.addEventListener('mkw-fg', vis);
+    // музыку поставили на паузу при выключенном экране — тоже «не в сети», а не «слушает»
+    player.onPlayer((ev) => { if (ev === 'state' && !player.st.playing && away0()) away(); });
     window.addEventListener('pagehide', () => { if (!player.st.playing) goOffline(); });
     let lastNow = '';
     // «Слушает»: друзья видят новый трек почти сразу (через 3 секунды после смены — чтобы не писать на каждое переключение)

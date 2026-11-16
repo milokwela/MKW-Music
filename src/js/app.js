@@ -203,17 +203,15 @@ const SPLASH_T0 = performance.now();
 let splashOut = false;
 function endSplash() {
   if (splashOut) return; splashOut = true;
-  const sp = document.getElementById('splash');
+  const sp = document.getElementById('mkw-splash');
   if (!sp) return;
-  const wait = Math.max(0, 1400 - (performance.now() - SPLASH_T0));
-  setTimeout(() => { sp.classList.add('out'); setTimeout(() => sp.remove(), 650); }, wait);
+  // заставку нельзя пропустить: она держится минимум 1,3 с и уходит, когда приложение уже готово
+  const wait = Math.max(0, 1300 - (performance.now() - SPLASH_T0));
+  setTimeout(() => { sp.classList.add('out'); setTimeout(() => sp.remove(), 500); }, wait);
 }
 function runSplash() {
-  const sp = document.getElementById('splash');
-  if (!sp) return;
-  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) { sp.remove(); return; }
-  sp.classList.add('go');
-  setTimeout(endSplash, 2900);   // страховка: вход так и не ответил
+  if (!document.getElementById('mkw-splash')) return;
+  setTimeout(endSplash, 6000);   // страховка: вход так и не ответил
 }
 
 function boot() {
