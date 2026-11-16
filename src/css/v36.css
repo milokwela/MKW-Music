@@ -39,3 +39,46 @@ button.clm-it:active { background: color-mix(in srgb, var(--on-bg) 8%, transpare
 .fs-dots { display: flex; gap: 5px; }
 .fs-dots i { width: 9px; height: 9px; border-radius: 50%; background: color-mix(in srgb, var(--on-bg) 16%, transparent); }
 .fs-dots i.on { background: #ff7a1a; box-shadow: 0 0 6px #ff7a1a; }
+
+/* ---------- 1.6: звонки ---------- */
+/* плашка «Звонок идёт» в чате */
+.ch-callbar { display: flex; align-items: center; gap: 12px; width: calc(100% - 20px); margin: 8px 10px 0; padding: 9px 10px 9px 12px; border: 0; border-radius: 18px; background: color-mix(in srgb, #3ddc84 16%, var(--surface, #1a1820)); color: inherit; font: inherit; text-align: left; cursor: pointer; flex: none; box-shadow: inset 0 0 0 1px color-mix(in srgb, #3ddc84 35%, transparent); }
+.ch-callbar[hidden] { display: none; }
+.ch-callbar i { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%; background: #3ddc84; color: #06240f; flex: none; animation: callPulse 1.6s ease-in-out infinite; }
+.ch-callbar i .mi { width: 19px; height: 19px; }
+.ch-callbar span { flex: 1; min-width: 0; display: grid; }
+.ch-callbar b { font-size: 14.5px; }
+.ch-callbar small { font-size: 12px; color: var(--on-surface-var); font-variant-numeric: tabular-nums; }
+.ch-callbar em { font-style: normal; font-weight: 700; font-size: 13px; padding: 8px 13px; border-radius: 999px; background: #3ddc84; color: #06240f; flex: none; }
+.ch-callbar.mine { background: color-mix(in srgb, var(--primary) 14%, var(--surface, #1a1820)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--primary) 30%, transparent); }
+.ch-callbar.mine i, .ch-callbar.mine em { background: var(--primary); color: var(--on-primary, #111); }
+
+/* окно звонка на телефоне: компактное, без размытия фона (оно и тормозило) */
+@media (max-width: 700px) {
+  .call-ui { gap: 10px; padding: 10px 12px 12px; border-radius: 26px; width: min(400px, calc(100vw - 16px));
+    background: linear-gradient(180deg, color-mix(in srgb, var(--primary) 20%, #121018), #121018 70%);
+    backdrop-filter: none; -webkit-backdrop-filter: none;
+    transition: transform .32s cubic-bezier(.2,.9,.3,1), opacity .25s; will-change: transform; }
+  .call-top b { font-size: 14px; }
+  .call-grip { display: none; }
+  .call-tiles { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; }
+  .call-tiles::-webkit-scrollbar { display: none; }
+  .cl-tile { flex: 1 1 0; min-width: 76px; padding: 10px 6px 8px; border-radius: 18px; gap: 3px; }
+  .cl-tav { width: 46px; height: 46px; }
+  .cl-tav::after { inset: -4px; box-shadow: 0 0 0 2.5px var(--primary); }
+  .cl-tile b { font-size: 12.5px; }
+  .cl-tile small { font-size: 10.5px; line-height: 1.2; }
+  .cl-tile.muted .cl-tav::before { width: 18px; height: 18px; background-size: 11px; }
+  .cl-act { padding: 4px 8px; font-size: 11px; }
+  .call-bar { gap: 6px !important; justify-content: space-between; padding: 0 2px; }
+  .call-btn { flex: 1; font-size: 10.5px; gap: 4px; }
+  .call-btn .mi { width: 46px; height: 46px; padding: 12px; }
+  .call-btn.end .mi { box-shadow: none; }
+  .call-sec { display: none; }
+  /* свёрнутый звонок — маленькая «таблетка» сверху */
+  .call-ui.mini { width: auto; min-width: 188px; max-width: calc(100vw - 32px); padding: 6px 6px 6px 12px; }
+  .call-ui.mini .call-top b { font-size: 13px; }
+  .call-ui.mini .call-min { width: 30px; height: 30px; }
+}
+.call-ui.mini .call-top b { white-space: nowrap; }
+.call-ui.mini .call-status { white-space: nowrap; }

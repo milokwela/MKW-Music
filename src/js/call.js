@@ -420,7 +420,8 @@ function tick() {
     });
     if ((cur.data.in || []).length > 1) cur.ui.status.textContent = timer();
   }
-  loop = requestAnimationFrame(tick);
+  // 7 раз в секунду хватает для обводки «говорит», а телефон не греется (раньше — каждый кадр)
+  loop = setTimeout(tick, 140);
 }
 
 async function toggleMute() {
@@ -498,8 +499,8 @@ function attach(id) {
     // по порядку: сначала старые предложения, потом новые
     fresh.sort((a, b) => (a.at || 0) - (b.at || 0)).forEach((m) => { cur.sigQ = cur.sigQ.then(() => onSig(m)); });
   }, () => { /* ignore */ });
-  // «я ещё тут» раз в 20 секунд — по этому видно, что звонок живой
-  cur.alive = setInterval(() => { updateDoc(doc(db, 'calls', id), { [`ping.${me()}`]: srvNow() }).catch(() => {}); }, 20000);
+  // «я ещё тут» раз в 12 секунд — по этому видно, что звонок живой
+  cur.alive = setInterval(() => { updateDoc(doc(db, 'calls', id), { [`ping.${me()}`]: srvNow() }).catch(() => {}); }, 12000);
 }
 
 async function begin(id, data) {
@@ -518,9 +519,14 @@ async function begin(id, data) {
 }
 
 // Позвонить одному другу (или нескольким — до 4 вместе с вами)
+let starting = false, lastEnd = 0;
 export async function startCall(uids) {
   uids = [...new Set(uids)].filter((x) => x && x !== me()).slice(0, MAX - 1);
-  if (cur) { toast('Вы уже в звонке'); cur.ui && cur.ui.box.classList.remove('mini'); return; }
+  if (cur) { toast((cur.data.in || []).length > 1 ? 'Вы уже в звонке' : 'Вы уже звоните'); cur.ui && cur.ui.box.classList.remove('mini'); return; }
+  if (starting) { toast('Вы уже звоните'); return; }
+  if (ringing) { toast('Вам сейчас звонят — сначала ответьте или отклоните'); return; }
+  // защита от «спама звонками»: между звонками — небольшая пауза
+  if (Date.now() - lastEnd < 3000) { toast('Подождите пару секунд перед новым звонком'); return; }
   if (!uids.length || !uids.every(isFriend)) { toast('Звонить можно только друзьям'); return; }
   if (uids.length === 1 && isBlocked(uids[0])) { toast('Звонки с этим человеком ограничены'); return; }
   if (!window.RTCPeerConnection || !navigator.mediaDevices) { toast('Этот браузер не умеет звонить'); return; }
@@ -528,11 +534,14 @@ export async function startCall(uids) {
   unlockAudio();
   const id = `${me()}_${srvNow().toString(36)}`;
   const data = { host: me(), members: [me(), ...uids], in: [me()], muted: {}, ping: { [me()]: srvNow() }, declined: [], at: srvNow() };
-  try { await setDoc(doc(db, 'calls', id), data); }
-  catch { toast('Звонок не начался. Админу нужно обновить правила Firestore'); return; }
-  // пуш на телефон и компьютер — даже если у друга MKW закрыт
-  uids.forEach((u) => pushTo(u, 'call', uids.length > 1 ? 'Общий звонок MKW' : 'Звонок MKW', `${myNick()} звонит вам`, `call-${id}`, `./#call=${id}`));
-  if (!(await begin(id, data))) return;
+  starting = true;
+  try {
+    try { await setDoc(doc(db, 'calls', id), data); }
+    catch { toast('Звонок не начался. Админу нужно обновить правила Firestore'); return; }
+    // пуш на телефон и компьютер — даже если у друга MKW закрыт
+    uids.forEach((u) => pushTo(u, 'call', uids.length > 1 ? 'Общий звонок MKW' : 'Звонок MKW', `${myNick()} звонит вам`, `call-${id}`, `./#call=${id}`));
+    if (!(await begin(id, data))) { deleteDoc(doc(db, 'calls', id)).catch(() => {}); return; }
+  } finally { starting = false; }
   cur.joined = true;
   paint();
   // никто не взял трубку за 45 секунд — заканчиваем
@@ -542,7 +551,7 @@ export async function startCall(uids) {
 async function join(id, data) {
   unlockAudio();
   if (!(await begin(id, data))) return;
-  try { await updateDoc(doc(db, 'calls', id), { in: arrayUnion(me()), [`ping.${me()}`]: srvNow() }); cur.joined = true; }
+  try { await updateDoc(doc(db, 'calls', id), { in: arrayUnion(me()), declined: arrayRemove(me()), [`ping.${me()}`]: srvNow() }); cur.joined = true; }
   catch { finish('Не получилось подключиться'); return; }
   paint();
 }
@@ -576,8 +585,8 @@ export async function leave(reason) {
 
 function finish(text) {
   if (!cur) return;
-  const c = cur; cur = null;
-  cancelAnimationFrame(loop); clearInterval(c.alive); clearTimeout(c.noAnswer); ringback(false);
+  const c = cur; cur = null; lastEnd = Date.now();
+  clearTimeout(loop); clearInterval(c.alive); clearTimeout(c.noAnswer); ringback(false);
   try { c.unsubDoc && c.unsubDoc(); c.unsubSig && c.unsubSig(); } catch { /* ignore */ }
   c.pcs.forEach((e) => { clearTimeout(e.lost); try { e.pc.close(); } catch { /* ignore */ } if (e.audio) e.audio.remove(); });
   if (c.local) c.local.getTracks().forEach((t) => t.stop());
@@ -586,35 +595,78 @@ function finish(text) {
   setInCall(false);
   if (text) toast(text);
   if (c.resume) player.toggle();
+  setTimeout(evalCalls, 0);
 }
 
 // ---------- входящие звонки ----------
 let unsubIn = null, ringing = null;
-const quiet = new Map(); // звонки, которые уже прозвенели и их не взяли: id → сколько раз звали (по declined)
+// звонки, которые уже прозвенели и их не взяли: снова звонят, только если позовут заново. Помним и после перезапуска.
+const QK = 'mkw.calls.quiet';
+const quiet = new Map((() => { try { return Object.entries(JSON.parse(localStorage.getItem(QK) || '{}')).filter(([, t]) => Date.now() - t < 3600000); } catch { return []; } })());
+const setQuiet = (id) => { quiet.set(id, Date.now()); try { localStorage.setItem(QK, JSON.stringify(Object.fromEntries([...quiet].slice(-30)))); } catch { /* ignore */ } };
+// Звонок «живой», если кто-то из тех, кто в нём, недавно подавал сигнал. Иначе это повисший звонок:
+// человек закрыл приложение или пропала сеть — такой звонок не должен звонить снова и снова.
+const FRESH = 40000;
+const lastPing = (c) => Math.max(Number(c.at) || 0, ...(c.in || []).filter((x) => x !== me()).map((x) => Number((c.ping || {})[x]) || 0));
+const liveCalls = new Map(); // id → данные идущего звонка, в котором я участник
+const liveSubs = new Set();
+let liveSig = '', lastDocs = [], onRingCb = null, liveT = 0;
+export function onLiveCalls(cb) { liveSubs.add(cb); return () => liveSubs.delete(cb); }
+/** Идущий звонок для чата: вдвоём — с этим человеком, группа — общий звонок её участников. */
+export function liveCallFor(uids, group) {
+  const set = new Set(uids);
+  for (const [id, c] of liveCalls) {
+    const others = (c.members || []).filter((x) => x !== me());
+    const ok = group ? (others.length > 1 && others.every((x) => set.has(x))) : (others.length === 1 && set.has(others[0]));
+    if (ok) return { id, data: c, mine: Boolean(cur && cur.id === id), count: (c.in || []).length, at: Number(c.at) || 0 };
+  }
+  return null;
+}
+/** Вернуться в идущий звонок (вышли сами или вас позвали снова). */
+export function joinLive(id) {
+  if (cur) { if (cur.id === id) cur.ui && cur.ui.box.classList.remove('mini'); else toast('Сначала завершите текущий звонок'); return; }
+  const c = liveCalls.get(id);
+  if (!c) { toast('Звонок уже завершён'); return; }
+  if (ringing && ringing.id === id) stopRing();
+  join(id, c);
+}
+function evalCalls() {
+  const now = srvNow();
+  const seen = new Set();
+  lastDocs.forEach((d) => {
+    const c = d.data();
+    const inn = c.in || [];
+    const last = lastPing(c);
+    if (last < now - 600000) { deleteDoc(d.ref).catch(() => {}); return; } // давно повисший — убираем
+    const mineNow = cur && cur.id === d.id;
+    const fresh = mineNow || (inn.some((x) => x !== me()) && last > now - FRESH);
+    if (!fresh) { if (ringing && ringing.id === d.id) { stopRing(); setQuiet(d.id); } return; }
+    seen.add(d.id); liveCalls.set(d.id, c);
+    if (mineNow) return;
+    if (inn.includes(me()) || (c.declined || []).includes(me())) return;
+    // звонок только от друзей (или от друга в общем звонке)
+    if (!isFriend(c.host) && !inn.some((x) => x !== me() && isFriend(x))) return;
+    if ((c.members || []).length === 2 && (isBlocked(c.host) || !inn.includes(c.host))) { if (ringing && ringing.id === d.id) stopRing('Звонок завершён'); return; }
+    if (cur) { decline(d.id); return; } // уже в другом звонке — «занято»
+    if (ringing && ringing.id === d.id) return;
+    if (quiet.has(d.id)) return; // уже звонил и его не взяли — снова только если позовут заново
+    ring(d.id, c, onRingCb);
+  });
+  for (const id of [...liveCalls.keys()]) if (!seen.has(id)) liveCalls.delete(id);
+  if (ringing && !seen.has(ringing.id)) stopRing('Звонок завершён');
+  const sig = [...liveCalls].map(([id, c]) => `${id}:${(c.in || []).join(',')}:${cur && cur.id === id ? 1 : 0}`).join('|');
+  if (sig !== liveSig) { liveSig = sig; liveSubs.forEach((f) => { try { f(); } catch { /* ignore */ } }); }
+}
 export function watchCalls(onRing) {
   if (unsubIn || !me()) return;
+  onRingCb = onRing;
   try {
-    unsubIn = onSnapshot(query(collection(db, 'calls'), where('members', 'array-contains', me()), limit(20)), (s) => {
-      s.docs.forEach((d) => {
-        const c = d.data();
-        if (cur && cur.id === d.id) return;
-        if ((c.in || []).includes(me()) || (c.declined || []).includes(me())) return;
-        const last = Math.max(Number(c.at) || 0, ...Object.values(c.ping || {}).map(Number));
-        if (last < srvNow() - 150000) { if (last < srvNow() - 600000) deleteDoc(d.ref).catch(() => {}); return; } // старый «повисший» звонок убираем
-        if (!(c.in || []).length) return;
-        // звонок только от друзей (или от друга в общем звонке)
-        if (!isFriend(c.host) && !(c.in || []).some((x) => x !== me() && isFriend(x))) return;
-        if ((c.members || []).length === 2 && isBlocked(c.host)) return; // заблокирован — звонок не показываем
-        if (cur) { decline(d.id); return; } // уже в другом звонке — «занято»
-        if (ringing && ringing.id === d.id) return;
-        if (quiet.has(d.id)) return; // уже звонил и его не взяли — снова только если позовут заново
-        ring(d.id, c, onRing);
-      });
-      if (ringing && !s.docs.some((d) => d.id === ringing.id)) stopRing('Звонок завершён');
-    }, () => { /* старые правила */ });
+    unsubIn = onSnapshot(query(collection(db, 'calls'), where('members', 'array-contains', me()), limit(20)), (s) => { lastDocs = s.docs; evalCalls(); }, () => { /* старые правила */ });
+    // «живость» звонка зависит от времени — сверяем раз в 5 секунд, даже если база молчит
+    clearInterval(liveT); liveT = setInterval(() => { if (lastDocs.length || liveCalls.size) evalCalls(); }, 5000);
   } catch { /* ignore */ }
 }
-export function stopCalls() { if (unsubIn) { unsubIn(); unsubIn = null; } stopRing(); if (cur) leave(); }
+export function stopCalls() { if (unsubIn) { unsubIn(); unsubIn = null; } clearInterval(liveT); lastDocs = []; liveCalls.clear(); stopRing(); if (cur) leave(); }
 
 // мелодия звонка без файлов: два коротких гудка каждые 2 секунды
 let ringTimer = 0;
@@ -661,7 +713,7 @@ async function ring(id, c, onRing) {
   ringing.t = setTimeout(() => {
     stopRing();
     // не взяли трубку: в общем звонке помечаем «не взял(а)», чтобы не звонил по кругу, — позвать снова можно кнопкой
-    if ((c.members || []).length > 2) decline(id); else quiet.set(id, 1);
+    if ((c.members || []).length > 2) decline(id); else setQuiet(id);
   }, 45000);
   ringtone(true);
   if (onRing) onRing(host.nick || 'Друг', many, id);
