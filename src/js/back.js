@@ -64,48 +64,62 @@ window.__mkwStep = { open: stepOpen, close: stepClose };
 export const backDepth = () => stack.length;
 export function goBack() { if (stack.length) history.back(); }
 
-// ---------- свайп от левого края (iPhone, приложение на домашнем экране) ----------
+// ---------- свайп вправо — «назад» ----------
+// iPhone: от левого края (там нет системного жеста у приложения на домашнем экране).
+// Android и остальные сенсорные (1.6): свайп вправо из левой половины экрана закрывает верхний экран — чат, профиль друга,
+// исполнителя, раздел профиля. Самый край оставляем системному жесту, а там, где свайп уже занят
+// (горизонтальные ленты, ответ на сообщение, ползунки, поля ввода), жест не включается.
+function busyTarget(node) {
+  for (let n = node; n && n !== document.body; n = n.parentElement) {
+    if (n.matches && n.matches('input, textarea, select, [contenteditable], .ch-msg, .ch-call, [data-noswipe], .emo-pick, .lp-grid, canvas, video')) return true;
+    if (n.scrollWidth > n.clientWidth + 8) { const ox = getComputedStyle(n).overflowX; if (ox === 'auto' || ox === 'scroll') return true; }
+  }
+  return false;
+}
 function edgeSwipe() {
   const ios = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-  if (!ios) return;
+  if (!('ontouchstart' in window)) return;
   let el = null, x0 = 0, y0 = 0, dx = 0, t0 = 0, active = false, decided = false;
   const SWIPEABLE = ['user-page', 'chat-page', 'artist-page'];
+  const NEVER = ['sheet', 'full-player', 'pm-drawer'];
   document.addEventListener('touchstart', (e) => {
     if (e.touches.length !== 1) return;
     const t = e.touches[0];
-    if (t.clientX > 26) return;
-    const top = [...stack].reverse().find((id) => SWIPEABLE.includes(id) || id === 'sheet');
-    if (!top || !SWIPEABLE.includes(top)) return;
-    el = document.getElementById(top); if (!el) return;
+    if (ios ? t.clientX > 26 : (t.clientX < 22 || t.clientX > Math.min(window.innerWidth * 0.5, 240))) return;
+    const top = stack[stack.length - 1];
+    if (!top || NEVER.includes(top)) return;
+    if (!ios && busyTarget(e.target)) return;
+    el = SWIPEABLE.includes(top) ? document.getElementById(top) : null;
+    if (SWIPEABLE.includes(top) && !el) return;
     x0 = t.clientX; y0 = t.clientY; dx = 0; t0 = Date.now(); active = true; decided = false;
   }, { passive: true });
   document.addEventListener('touchmove', (e) => {
-    if (!active || !el) return;
+    if (!active) return;
     const t = e.touches[0]; const mx = t.clientX - x0, my = t.clientY - y0;
     if (!decided) {
-      if (Math.abs(mx) < 8 && Math.abs(my) < 8) return;
+      if (Math.abs(mx) < 10 && Math.abs(my) < 10) return;
       decided = true;
-      if (Math.abs(my) > Math.abs(mx) || mx < 0) { active = false; return; }
-      el.style.transition = 'none';
+      if (Math.abs(my) * 1.3 > Math.abs(mx) || mx < 0) { active = false; return; }
+      if (el) el.style.transition = 'none';
     }
     dx = Math.max(0, mx);
-    el.style.transform = `translate3d(${dx}px,0,0)`;
-    e.preventDefault();
+    if (el) { el.style.transform = `translate3d(${dx}px,0,0)`; if (e.cancelable) e.preventDefault(); }
   }, { passive: false });
   const end = () => {
-    if (!active || !el) return;
+    if (!active) return;
     active = false;
     const w = window.innerWidth, v = dx / Math.max(1, Date.now() - t0);
-    const target = el;
+    const go = decided && (dx > w * 0.33 || (v > 0.6 && dx > 40));
+    const target = el; el = null;
+    if (!target) { if (go) history.back(); return; } // раздел без своего окна (настройки, «О MKW») — просто «назад»
     target.style.transition = 'transform .26s cubic-bezier(.2,.8,.2,1)';
-    if (decided && (dx > w * 0.33 || v > 0.6)) {
+    if (go) {
       target.style.transform = `translate3d(${w}px,0,0)`;
       setTimeout(() => { target.style.transition = ''; target.style.transform = ''; history.back(); }, 240);
     } else {
       target.style.transform = '';
       setTimeout(() => { target.style.transition = ''; }, 280);
     }
-    el = null;
   };
   document.addEventListener('touchend', end, { passive: true });
   document.addEventListener('touchcancel', end, { passive: true });
