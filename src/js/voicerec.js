@@ -5,7 +5,6 @@ import { VERSION } from './changelog.js';
 
 const AC = () => window.AudioContext || window.webkitAudioContext;
 const OUT_RATE = 22050; // звук чище, а минута голосового всё ещё помещается в одно сообщение
-const KBPS = 36;
 
 let lameP = null;
 export function loadLame() {
@@ -81,21 +80,66 @@ function resample(f32, rate) {
   return out;
 }
 
+// Качество под длину записи (1.6). Голосовое хранится прямо в сообщении, и на него есть жёсткий потолок по размеру.
+// Раньше всё писалось в 36 кбит/с и звучало «как из трубы». Теперь короткие записи (а их большинство) идут
+// в 96 кбит/с и 44,1 кГц, и только совсем длинные опускаются ниже.
+const BUDGET = 286000; // байт MP3 (после упаковки в сообщение — до 395 000 символов)
+function quality(sec) {
+  const tiers = [[96, 44100], [80, 44100], [64, 44100], [56, 32000], [48, 32000], [40, 24000], [32, 22050]];
+  return tiers.find(([k]) => (k * 1000 / 8) * (sec + 0.3) <= BUDGET) || tiers[tiers.length - 1];
+}
+// чистая обработка голоса: убираем гул ниже 80 Гц, слегка выравниваем громкость (тихое — громче, громкое — без хрипа)
+// и переводим в нужную частоту качественным фильтром браузера, а не усреднением
+async function master(f32, rate, outRate) {
+  const OC = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+  if (!OC) return null;
+  try {
+    const n = Math.max(1, Math.ceil(f32.length * outRate / rate));
+    const oc = new OC(1, n, outRate);
+    const buf = oc.createBuffer(1, f32.length, rate);
+    buf.getChannelData(0).set(f32);
+    const src = oc.createBufferSource(); src.buffer = buf;
+    const hp = oc.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 80; hp.Q.value = 0.7;
+    const cmp = oc.createDynamicsCompressor();
+    cmp.threshold.value = -22; cmp.knee.value = 12; cmp.ratio.value = 3; cmp.attack.value = 0.004; cmp.release.value = 0.18;
+    src.connect(hp); hp.connect(cmp); cmp.connect(oc.destination);
+    src.start(0);
+    const out = await oc.startRendering();
+    return out.getChannelData(0);
+  } catch { return null; }
+}
+function resampleTo(f32, rate, outRate) {
+  if (Math.abs(rate - outRate) < 1) return f32;
+  const ratio = rate / outRate;
+  const n = Math.floor(f32.length / ratio);
+  const out = new Float32Array(n);
+  for (let i = 0; i < n; i += 1) {
+    const a = Math.floor(i * ratio), b = Math.min(f32.length, Math.floor((i + 1) * ratio));
+    let sum = 0;
+    for (let j = a; j < b; j += 1) sum += f32[j];
+    out[i] = b > a ? sum / (b - a) : (f32[a] || 0);
+  }
+  return out;
+}
+
 // звук → MP3. null — если записалась тишина (значит, захват не сработал)
 export async function encodeMp3(f32, rate) {
   if (!f32 || !f32.length) return null;
-  const pcm = resample(f32, rate);
+  const [KB, RATE] = quality(f32.length / rate);
+  let pcm = await master(f32, rate, RATE);
+  if (!pcm) pcm = resampleTo(f32, rate, RATE);
+  else pcm = new Float32Array(pcm);
   // срезаем щелчок в начале и конце
-  const edge = Math.min(Math.floor(OUT_RATE * 0.04), Math.floor(pcm.length / 10));
+  const edge = Math.min(Math.floor(RATE * 0.04), Math.floor(pcm.length / 10));
   for (let i = 0; i < edge; i += 1) { const k = i / edge; pcm[i] *= k; pcm[pcm.length - 1 - i] *= k; }
   let peak = 0;
   for (let i = 0; i < pcm.length; i += 1) { const v = Math.abs(pcm[i]); if (v > peak) peak = v; }
   if (peak < 0.003) return null;
-  const g = Math.max(1, Math.min(3, 0.85 / peak)); // тихую запись делаем громче
+  const g = Math.max(0.5, Math.min(6, 0.9 / peak)); // тихую запись делаем громче, слишком громкую — тише
   const s16 = new Int16Array(pcm.length);
   for (let i = 0; i < pcm.length; i += 1) s16[i] = Math.max(-32767, Math.min(32767, Math.round(pcm[i] * g * 32767)));
   const lame = await loadLame();
-  const enc = new lame.Mp3Encoder(1, OUT_RATE, KBPS);
+  const enc = new lame.Mp3Encoder(1, RATE, KB);
   const parts = [];
   const STEP = 1152;
   for (let i = 0; i < s16.length; i += STEP * 40) {
@@ -105,7 +149,7 @@ export async function encodeMp3(f32, rate) {
   }
   const f = enc.flush();
   if (f.length) parts.push(new Uint8Array(f));
-  return { blob: new Blob(parts, { type: 'audio/mpeg' }), dur: pcm.length / OUT_RATE };
+  return { blob: new Blob(parts, { type: 'audio/mpeg' }), dur: pcm.length / RATE };
 }
 
 // старое голосовое, которое этот телефон не открывает: раскодировать и переложить в WAV
