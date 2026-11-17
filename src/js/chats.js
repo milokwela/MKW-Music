@@ -186,6 +186,8 @@ export async function renderChats() {
         h('small', { text: filter ? 'Попробуйте другой ник' : 'Добавьте друзей в Профиль → Друзья. Когда друг примет заявку, здесь можно будет переписываться и отправлять песни.' })));
     } else {
       let i = 0;
+      // строки «выезжают» только при первом показе; при новом сообщении список обновляется без вспышки
+      requestAnimationFrame(() => setTimeout(() => list.classList.add('drawn'), 600));
       setKids(list, [
         ...talks.map((x) => (x.u ? holdable(row(x.u, x.c, i++), () => rowMenu(chatId(me(), x.u.uid), x.u.nick || 'Друг', x.u.uid, Boolean(x.c), x.u)) : holdable(groupRow(x.c, byId, i++), () => rowMenu(x.c.id, x.c.name || 'Группа', '', true)))),
         ...(rest.length ? [h('div', { class: 'section-title', text: talks.length ? 'Друзья' : 'Начните переписку' }), ...rest.map((u) => holdable(row(u, null, i++), () => rowMenu(chatId(me(), u.uid), u.nick || 'Друг', u.uid, false, u)))] : [])]);

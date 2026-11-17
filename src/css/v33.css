@@ -567,7 +567,7 @@ body:has(#artist-page.open) #dock, body:has(#user-page.open) #dock { z-index: 48
 /* ---------- фото перед отправкой: обрезка, рисование, несколько сразу ---------- */
 .phx { position: fixed; inset: 0; z-index: 430; display: grid; grid-template-rows: auto minmax(0, 1fr) auto auto auto; background: #050505; color: #fff; opacity: 0; transition: opacity .22s; padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom); touch-action: none; }
 .phx.show { opacity: 1; }
-.phx.busy { pointer-events: none; }
+.phx.busy .pe2-send, .phx.busy button { pointer-events: none; } /* (1.6) окно остаётся «стеной»: нажатия больше не проваливаются на микрофон чата */
 .phx.busy .pe2-send { opacity: .6; }
 .pe2-head { display: flex; align-items: center; gap: 10px; padding: 10px 12px; }
 .pe2-x { width: 42px; height: 42px; border: 0; border-radius: 50%; display: grid; place-items: center; background: rgba(255,255,255,.12); color: #fff; cursor: pointer; }

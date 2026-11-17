@@ -485,7 +485,7 @@ function attach(id) {
     (cur.data.declined || []).forEach((x) => { if (!inn.includes(x) && cur.pcs.has(x)) dropPeer(x); });
     // если все, кому звонили, отклонили — завершаем
     const others = (cur.data.members || []).filter((x) => x !== me());
-    if (inn.length <= 1 && others.length && others.every((x) => (cur.data.declined || []).includes(x))) { setTimeout(() => leave('Не отвечает'), 1500); }
+    if (inn.length <= 1 && others.length && others.every((x) => (cur.data.declined || []).includes(x))) { if (!cur.noAnsT) { const cid0 = cur.id; cur.noAnsT = setTimeout(() => { if (cur && cur.id === cid0) leave('Не отвечает'); }, 1500); } }
     paint();
   }, () => finish('Звонок завершён'));
   cur.unsubSig = onSnapshot(query(collection(db, 'calls', id, 'sig'), where('to', '==', me()), limit(60)), (s) => {
@@ -508,9 +508,13 @@ async function begin(id, data) {
   setInCall(true);
   cur.ui = buildUi();
   iceServers().catch(() => {});
-  try { cur.local = await getMic(); }
-  catch { finish('Нет доступа к микрофону. Разрешите его в настройках браузера'); return false; }
-  if (!cur) return false;
+  const c0 = cur;
+  let mic;
+  try { mic = await getMic(); }
+  catch { if (cur === c0) finish('Нет доступа к микрофону. Разрешите его в настройках браузера'); return false; }
+  // звонок закончился, пока спрашивали разрешение, — микрофон сразу выключаем
+  if (cur !== c0) { mic.getTracks().forEach((t) => t.stop()); return false; }
+  cur.local = mic;
   cur.myAn = levelMeter(cur.local);
   if (player.st.playing) { cur.resume = true; player.pause(); }
   attach(id);
@@ -528,6 +532,9 @@ export async function startCall(uids) {
   // защита от «спама звонками»: между звонками — небольшая пауза
   if (Date.now() - lastEnd < 3000) { toast('Подождите пару секунд перед новым звонком'); return; }
   if (!uids.length || !uids.every(isFriend)) { toast('Звонить можно только друзьям'); return; }
+  // с этими людьми звонок уже идёт (вы вышли или пропустили) — возвращаемся в него, а не создаём второй
+  const live = liveCallFor(uids, uids.length > 1);
+  if (live && live.count > 0) { joinLive(live.id); return; }
   if (uids.length === 1 && isBlocked(uids[0])) { toast('Звонки с этим человеком ограничены'); return; }
   if (!window.RTCPeerConnection || !navigator.mediaDevices) { toast('Этот браузер не умеет звонить'); return; }
   askNotify();
@@ -550,14 +557,15 @@ export async function startCall(uids) {
 
 async function join(id, data) {
   unlockAudio();
-  if (!(await begin(id, data))) return;
+  // не получилось ответить (нет микрофона, нет сети) — этот звонок больше не звонит по кругу
+  if (!(await begin(id, data))) { setQuiet(id); return; }
   try { await updateDoc(doc(db, 'calls', id), { in: arrayUnion(me()), declined: arrayRemove(me()), [`ping.${me()}`]: srvNow() }); cur.joined = true; }
-  catch { finish('Не получилось подключиться'); return; }
+  catch { setQuiet(id); finish('Не получилось подключиться'); return; }
   paint();
 }
 
 export async function leave(reason) {
-  if (!cur) return;
+  if (!cur || cur.leaving) return; // двойное нажатие «Завершить» — не дублируем событие в чате и пуш
   const c = cur, id = c.id, last = (c.data.in || []).filter((x) => x !== me()).length === 0;
   c.leaving = true;
   // кто так и не взял трубку — получит «пропущенный звонок»
@@ -650,6 +658,7 @@ function evalCalls() {
     if (cur) { decline(d.id); return; } // уже в другом звонке — «занято»
     if (ringing && ringing.id === d.id) return;
     if (quiet.has(d.id)) return; // уже звонил и его не взяли — снова только если позовут заново
+    if (ringing && ringing.id !== d.id) { decline(d.id); return; } // уже звонит другой — второму «занято»
     ring(d.id, c, onRingCb);
   });
   for (const id of [...liveCalls.keys()]) if (!seen.has(id)) liveCalls.delete(id);

@@ -447,7 +447,7 @@ function fitKeyboard(p, list) {
 
 // ---------- окно переписки ----------
 let page = null, openId = '', unsubMsgs = null, offTicks = null;
-let offKb = null, offPeer = null, offTg = null, meCard = null, cvCur = null, closeMenu = null;
+let offKb = null, offPeer = null, offTg = null, meCard = null, cvCur = null, closeMenu = null, abortRec = null;
 function ensurePage() {
   if (page) return page;
   page = h('section', { id: 'chat-page', 'aria-label': 'Чат' });
@@ -462,6 +462,8 @@ function cleanup() {
   if (offKb) { offKb(); offKb = null; }
   if (offTicks) { offTicks(); offTicks = null; }
   if (closeMenu) closeMenu();
+  // запись голосового не должна жить после закрытия чата (раньше через минуту она сама отправлялась в старый чат)
+  if (abortRec) { abortRec(); abortRec = null; }
   typingOff(openId);
 }
 export function closeChat() {
@@ -757,7 +759,8 @@ async function openConv(cv) {
     endRec(); typingOff(cid);
     if (r) await stopCapture(r);
     if (navigator.vibrate) navigator.vibrate(8);
-  };
+  };  abortRec = () => { if (rec) cancelRec(); else endRec(); };
+
   const finishSend = async () => {
     const r = rec; rec = null;
     if (!r) return;
@@ -876,7 +879,7 @@ async function openConv(cv) {
     if (mode === 'hold') paintHold(r); else paintLocked(r);
     r.timer = setInterval(() => { if (r.tm) r.tm.textContent = mmss((Date.now() - r.t0) / 1000); }, 250);
     r.typ = setInterval(() => typing(cid, 'voice'), 3600);
-    r.cap = setTimeout(() => { if (rec === r) finishSend(); }, VOICE_MAX * 1000);
+    r.cap = setTimeout(() => { if (rec === r) toPreview(); }, VOICE_MAX * 1000); // минута вышла — показываем запись, отправляете вы сами
     return r;
   };
   if (holdMode) {

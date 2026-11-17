@@ -137,3 +137,10 @@ button.clm-it:active { background: color-mix(in srgb, var(--on-bg) 8%, transpare
 .ai-opt:active { transform: scale(.96); }
 /* микрофон: «взвод» перед записью — кнопка слегка растёт, пока держите */
 .ch-mic.arming, .arming { transform: scale(1.12); transition: transform .18s ease-out; }
+
+/* ---------- слабые телефоны (Android 11 и старше, мало памяти) ---------- */
+/* экран не трогают 20 секунд — все анимации на паузе: телефон не рисует кадры впустую, пока играет музыка */
+html.app-idle *, html.app-idle *::before, html.app-idle *::after { animation-play-state: paused !important; }
+/* «Лёгкая» графика: полоска мини-плеера шагает раз в полсекунды, а не плавно едет (плавность заставляла перерисовывать экран постоянно) */
+.lite #mini-progress, .lowpower #mini-progress { transition: none !important; }
+.cl-list.drawn .cl-row { animation: none !important; }

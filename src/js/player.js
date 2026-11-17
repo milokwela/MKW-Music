@@ -115,6 +115,8 @@ function noteStart(kind) {
 }
 // в этой сети видео стартует заметно дольше звука — сначала ждём звук
 function preferStream() {
+  // слабый телефон: невидимое видео грузит процессор сильнее, чем просто звук, — звуку даём фору всегда
+  if (document.documentElement.classList.contains('lite') || document.documentElement.classList.contains('lowpower')) return true;
   const x = netStat[netKey()];
   return Boolean(x && x.ytN >= 2 && x.yt > 3200 && (!x.st || x.st < x.yt - 800));
 }
@@ -231,7 +233,8 @@ async function startCurrent() {
       // медленная для видео сеть: даём звуку 2,5 секунды форы
       else if (!urls && preferStream()) urls = await Promise.race([resolveStream(vid, track), waitMs(2500)]);
       if (id !== loadId) return;
-      if (!(urls && urls.length) && hiddenNow() && playSpare(track, id)) return;
+      // экран выключен (в приложении это bgNow) и звук не нашёлся — сразу готовый трек из лайков, а не полминуты тишины
+      if (!(urls && urls.length) && bgNow() && playSpare(track, id)) return;
       if (urls && urls.length) { startStream(track, vid, urls, id, 0); return; }
       // Наперегонки: видео уже запускается, а звук ищется рядом. Если звук нашёлся раньше, чем видео заиграло
       // (медленный интернет, блокировки), — сразу играем звуком: он стартует быстрее и не боится выключенного экрана.
@@ -274,16 +277,20 @@ async function startYT(track, vid, id, at = 0) {
   try {
     const p = yt || await ensureYT();
     if (id !== loadId) return true;
+    xfDone();
+    // пока грузился плеер YouTube, звук уже нашёлся — играем звуком
+    const ready = !at && streamsOn() && peekStream(vid);
+    if (ready && ready.length) { startStream(track, vid, ready, id, 0); return true; }
     st.mode = 'yt'; st.full = true;
     if (streamsOn()) armSilent(); else keepOn();
     if (at > 0) p.loadVideoById(vid, at); else p.loadVideoById(vid);
     // Не заиграло само (iPhone просит нажать): не прыгаем на фрагмент, а просим нажать ▶.
     watchdog = setTimeout(() => {
-      if (id !== loadId || st.mode !== 'yt' || st.playing) return;
+      if (id !== loadId || st.mode !== 'yt' || st.playing || userPaused) return;
       st.loading = false;
       st.message = 'Нажмите ▶, чтобы включить полный трек';
       emit('state');
-      watchdog = setTimeout(() => { if (id === loadId && st.mode === 'yt' && !st.playing) fallbackToPreview(); }, 25000);
+      watchdog = setTimeout(() => { if (id === loadId && st.mode === 'yt' && !st.playing && !userPaused) fallbackToPreview(); }, 25000);
     }, 3500);
     if (!at) { logPlay(track); prefetchNext(); }
     emit('state');
@@ -317,7 +324,9 @@ function startStream(track, vid, urls, id, at, noLog) {
   audio.loop = false;
   const url = streamUrls[0];
   audio.src = url;
+  const el = audio;
   const go = () => {
+    if (id !== loadId || audio !== el) return; // уже другой трек — старая перемотка не должна его сдвинуть
     if (at > 0) { try { audio.currentTime = at; } catch { /* ignore */ } }
     audio.play().then(() => { if (!at && !noLog) { logPlay(track); prefetchNext(); } }).catch((e) => {
       if (id !== loadId) return;
@@ -335,6 +344,7 @@ function startStream(track, vid, urls, id, at, noLog) {
 }
 function streamFailed(id) {
   if (id !== loadId) return;
+  xfDone();
   const track = queue.current;
   const bad = streamUrls.shift();
   if (st.vid && bad) dropStream(st.vid, bad);
@@ -367,6 +377,7 @@ export function currentStreamInfo() {
 // «Не та песня»: отклоняем эту запись и берём следующую; если вариантов нет — видеоплеер
 export function wrongVersion() {
   if (!(st.mode === 'preview' && st.full)) return false;
+  xfDone();
   const track = queue.current, id = loadId;
   const rest = markWrong(track && track.id, st.vid, streamUrls[0]);
   if (rest.length) { startStream(track, st.vid, rest, id, 0); return true; }
@@ -479,6 +490,7 @@ function unavailable(id) {
   }
   failChain = 0;
   emit('state');
+  syncSession();
 }
 
 function handleEnded() {
@@ -488,7 +500,7 @@ function handleEnded() {
   emit('done');
   const t = queue.next(true);
   if (t) startCurrent();
-  else { st.time = 0; keepOff(); emit('state'); }
+  else { st.time = 0; keepOff(); if (audio.loop) { try { audio.pause(); } catch { /* ignore */ } } emit('state'); syncSession(); }
 }
 
 function restart() {
@@ -569,7 +581,11 @@ function xfDone() {
   if (o.oldYt && yt) { try { yt.stopVideo(); yt.setVolume(Math.round(vol * 100)); } catch { /* ignore */ } }
   try { audio.volume = vol; } catch { /* ignore */ }
 }
-function xfCancel() { xfDone(); xfPre = ''; }
+function xfCancel() {
+  xfDone();
+  if (xfPre) { const other = audio === elA ? elB : elA; freeEl(other); }
+  xfPre = ''; xfBad = '';
+}
 function xfCheck() {
   const X = getXfade();
   if (!X || xf || !st.playing || userPaused || queue.repeat === 'one') return;
@@ -611,6 +627,7 @@ function xfStart(nxt, src, other, dur, fromYt) {
     st.mode = 'preview'; st.full = true; st.vid = src.key; st.loading = false; st.playing = true;
     st.time = 0; st.duration = nxt.duration || 0; st.message = '';
     streamUrls = [...src.urls]; startT0 = 0;
+    if (Number.isFinite(other.duration) && other.duration > 0) st.duration = other.duration;
     emit('track'); setSession(nxt); logPlay(nxt); prefetchNext(); emit('state'); syncSession();
     const t0 = performance.now();
     const step = () => {
@@ -712,6 +729,11 @@ export function pause() {
   keepOff();
   if (st.mode === 'yt' && yt) { try { yt.pauseVideo(); } catch { /* ignore */ } try { audio.pause(); } catch { /* ignore */ } }
   else if (st.mode === 'preview') audio.pause();
+  else if (st.loading) {
+    // пауза, пока следующий трек ещё ищется (таймер сна, отключили наушники) — отменяем запуск, иначе он заиграет сам
+    ++loadId; clearTimeout(watchdog); st.loading = false; st.playing = false; emit('state');
+  }
+  syncSession();
 }
 
 export function next() {
@@ -776,10 +798,12 @@ export function removeFromQueue(i) {
 
 export function stop() {
   keepOff();
+  try { audio.pause(); } catch { /* ignore */ }
   queue.clear();
   setSleep(0);
   startCurrent();
   emit('queue');
+  syncSession();
 }
 
 export function toggleShuffle() { queue.setShuffle(!queue.shuffle); emit('queue'); }
@@ -847,23 +871,41 @@ function saveSession(force) {
     localStorage.setItem(SESS, JSON.stringify({ items, index: queue.index - from, time: st.time || 0, playing: st.playing, at: now }));
   } catch { /* переполнено — не страшно */ }
 }
+// Всю очередь (до 100 треков) пишем только при смене трека или очереди. Позицию — отдельным крошечным ключом
+// раз в 15 секунд: на слабых телефонах запись большой строки каждые 5 секунд давала подёргивания.
+const SESS_T = 'mkw.session.t';
+let sessPos = 0;
+function savePos(force) {
+  const now = Date.now();
+  if (!force && now - sessPos < 15000) return;
+  sessPos = now;
+  try { localStorage.setItem(SESS_T, JSON.stringify({ id: queue.current ? queue.current.id : '', time: st.time || 0, playing: st.playing, at: now })); } catch { /* ignore */ }
+}
 onPlayer((ev) => {
-  if (ev === 'track' || ev === 'queue') saveSession(true);
-  else if (ev === 'time' || ev === 'state') saveSession(ev === 'state');
+  if (ev === 'track' || ev === 'queue') { saveSession(true); savePos(true); }
+  else if (ev === 'state') savePos(true);
+  else if (ev === 'time') savePos(false);
 });
 
 /** Продолжить с того места, где оборвалось (не старше 15 минут). */
 export function resumeSession() {
   let s = null;
   try { s = JSON.parse(localStorage.getItem(SESS) || 'null'); } catch { s = null; }
+  // позиция и «играет / пауза» лежат отдельным маленьким ключом — он свежее
+  try {
+    const p = JSON.parse(localStorage.getItem(SESS_T) || 'null');
+    const curIt = s && Array.isArray(s.items) ? s.items[Math.min(s.items.length - 1, Math.max(0, s.index || 0))] : null;
+    if (p && curIt && p.id === curIt.id) { s.time = p.time; s.playing = p.playing; s.at = Math.max(s.at || 0, p.at || 0); }
+  } catch { /* ignore */ }
   if (!s || !Array.isArray(s.items) || !s.items.length || !s.playing || Date.now() - (s.at || 0) > 15 * 60000) return false;
   if (queue.current) return false; // уже что-то играет
   const at = Math.max(0, (s.time || 0) - 1);
   playTracks(s.items, Math.min(s.items.length - 1, Math.max(0, s.index || 0)));
   if (at > 3) {
+    const cur = queue.current;
     const off = onPlayer((ev) => {
+      if (queue.current !== cur) { off(); return; } // переключили трек — позиция уже не нужна
       if (ev === 'state' && st.playing && st.duration > at) { off(); try { seek(at); } catch { /* ignore */ } }
-      if (ev === 'track') off();
     });
     setTimeout(off, 30000);
   }
