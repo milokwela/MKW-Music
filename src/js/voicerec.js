@@ -4,7 +4,9 @@
 import { VERSION } from './changelog.js';
 
 const AC = () => window.AudioContext || window.webkitAudioContext;
-const OUT_RATE = 22050; // звук чище, а минута голосового всё ещё помещается в одно сообщение
+const OUT_RATE = 44100; // частота для прослушивания записи перед отправкой (WAV)
+export const VOICE_BUDGET = 390000;      // байт MP3: под новые правила (до 560 000 символов в сообщении)
+export const VOICE_BUDGET_SAFE = 286000; // байт MP3: старые правила (до 400 000 символов) — запасной вариант
 
 let lameP = null;
 export function loadLame() {
@@ -22,33 +24,91 @@ export function loadLame() {
   return lameP;
 }
 
-// Захват звука с микрофона. AudioContext создаём прямо в нажатии на кнопку — иначе iPhone его не запустит.
-export function pcmCapture() {
+// Один AudioContext на устройство. Его нужно создать/разбудить прямо в касании кнопки,
+// иначе iPhone и часть Android-браузеров оставляют его «спящим», и звук вообще не записывается.
+let primed = null;
+export function primeAudio() {
   const C = AC();
   if (!C) return null;
-  let ac;
-  try { ac = new C(); } catch { return null; }
+  try {
+    if (!primed || primed.state === 'closed') primed = new C();
+  } catch { return null; }
+  try { primed.resume(); } catch { /* ignore */ }
+  return primed;
+}
+
+// Захват звука с микрофона. AudioWorklet не роняет кадры и не «булькает», как старый ScriptProcessor.
+// Если Worklet недоступен — остаётся ScriptProcessor. В обоих случаях пишем сырой звук, без «телефонной» обработки.
+const workletMod = new WeakMap(); // AudioContext → промис загрузки модуля: регистрировать «mkw-rec» дважды нельзя
+export function pcmCapture(acIn) {
+  const C = AC();
+  if (!C) return null;
+  let ac = acIn && acIn.state !== 'closed' ? acIn : null;
+  if (!ac) {
+    try { ac = new C(); } catch { return null; }
+  }
   try { ac.resume(); } catch { /* ignore */ }
-  const cap = { ac, chunks: [], len: 0, rate: ac.sampleRate, ok: false };
+  const cap = { ac, chunks: [], len: 0, rate: ac.sampleRate, ok: false, own: !acIn, dead: false };
+  const push = (d) => {
+    if (cap.dead || !d || !d.length) return;
+    cap.chunks.push(new Float32Array(d)); cap.len += d.length;
+  };
   cap.attach = (stream) => {
-    try {
-      const src = ac.createMediaStreamSource(stream);
-      const node = ac.createScriptProcessor(4096, 1, 1);
-      const mute = ac.createGain(); mute.gain.value = 0;
-      node.onaudioprocess = (e) => {
-        const d = e.inputBuffer.getChannelData(0);
-        cap.chunks.push(new Float32Array(d)); cap.len += d.length;
-        try { e.outputBuffer.getChannelData(0).fill(0); } catch { /* ignore */ }
-      };
-      src.connect(node); node.connect(mute); mute.connect(ac.destination);
-      cap.src = src; cap.node = node; cap.mute = mute; cap.ok = true;
-      if (ac.state === 'suspended') ac.resume().catch(() => {});
-      return true;
-    } catch { return false; }
+    let src;
+    try { src = ac.createMediaStreamSource(stream); } catch { return Promise.resolve(false); }
+    cap.src = src;
+    const mute = ac.createGain(); mute.gain.value = 0;
+    cap.mute = mute;
+    const script = () => {
+      try {
+        const node = ac.createScriptProcessor(4096, 1, 1);
+        node.onaudioprocess = (e) => {
+          push(e.inputBuffer.getChannelData(0));
+          try { e.outputBuffer.getChannelData(0).fill(0); } catch { /* ignore */ }
+        };
+        src.connect(node); node.connect(mute); mute.connect(ac.destination);
+        cap.node = node; cap.ok = true;
+        return true;
+      } catch { return false; }
+    };
+    const ready = (async () => {
+      try {
+        if (ac.audioWorklet && window.AudioWorkletNode) {
+          // копим звук небольшими порциями (1024 сэмпла): меньше сообщений между потоками — меньше нагрузки на телефон.
+          // Модуль грузим один раз на AudioContext: повторная регистрация имени роняла бы захват в ScriptProcessor.
+          let mod = workletMod.get(ac);
+          if (!mod) {
+            const code = "class MkwRec extends AudioWorkletProcessor{constructor(){super();this.b=new Float32Array(1024);this.n=0}process(i){const c=i[0];if(c&&c[0]){const d=c[0];let o=0;while(o<d.length){const k=Math.min(d.length-o,1024-this.n);this.b.set(d.subarray(o,o+k),this.n);this.n+=k;o+=k;if(this.n===1024){this.port.postMessage(this.b);this.b=new Float32Array(1024);this.n=0}}}return true}}registerProcessor('mkw-rec',MkwRec);";
+            const url = URL.createObjectURL(new Blob([code], { type: 'text/javascript' }));
+            mod = ac.audioWorklet.addModule(url).finally(() => { try { URL.revokeObjectURL(url); } catch { /* ignore */ } });
+            workletMod.set(ac, mod);
+          }
+          await mod;
+          const node = new AudioWorkletNode(ac, 'mkw-rec');
+          node.port.onmessage = (e) => push(e.data);
+          src.connect(node); node.connect(mute); mute.connect(ac.destination);
+          cap.node = node; cap.port = node.port; cap.ok = true;
+          if (ac.state === 'suspended') ac.resume().catch(() => {});
+          return true;
+        }
+      } catch { /* ниже — запасной захват */ }
+      return script();
+    })();
+    cap.ready = ready;
+    return ready;
   };
   cap.stop = () => {
-    try { if (cap.src) cap.src.disconnect(); if (cap.node) { cap.node.onaudioprocess = null; cap.node.disconnect(); } if (cap.mute) cap.mute.disconnect(); } catch { /* ignore */ }
-    try { ac.close(); } catch { /* ignore */ }
+    cap.dead = true;
+    try {
+      if (cap.src) cap.src.disconnect();
+      if (cap.node) {
+        if ('onaudioprocess' in cap.node) cap.node.onaudioprocess = null;
+        cap.node.disconnect();
+      }
+      if (cap.port) cap.port.close();
+      if (cap.mute) cap.mute.disconnect();
+    } catch { /* ignore */ }
+    if (cap.own) { try { ac.close(); } catch { /* ignore */ } }
   };
   cap.samples = () => { const out = new Float32Array(cap.len); let o = 0; for (const c of cap.chunks) { out.set(c, o); o += c.length; } return out; };
   return cap;
@@ -80,16 +140,14 @@ function resample(f32, rate) {
   return out;
 }
 
-// Качество под длину записи (1.6). Голосовое хранится прямо в сообщении, и на него есть жёсткий потолок по размеру.
-// Раньше всё писалось в 36 кбит/с и звучало «как из трубы». Теперь короткие записи (а их большинство) идут
-// в 96 кбит/с и 44,1 кГц, и только совсем длинные опускаются ниже.
-const BUDGET = 286000; // байт MP3 (после упаковки в сообщение — до 395 000 символов)
-function quality(sec) {
-  const tiers = [[96, 44100], [80, 44100], [64, 44100], [56, 32000], [48, 32000], [40, 24000], [32, 22050]];
-  return tiers.find(([k]) => (k * 1000 / 8) * (sec + 0.3) <= BUDGET) || tiers[tiers.length - 1];
+// Качество под длину записи. Короткие голосовые — 112 кбит/с и 44,1 кГц, дальше плавно снижаем,
+// но даже длинные записи не проваливаются в «телефонную трубу» 22 кГц без нужды.
+function quality(sec, budget) {
+  const tiers = [[112, 44100], [96, 44100], [80, 44100], [64, 44100], [56, 32000], [48, 32000], [40, 24000], [32, 22050]];
+  return tiers.find(([k]) => (k * 1000 / 8) * (sec + 0.25) <= budget) || tiers[tiers.length - 1];
 }
-// чистая обработка голоса: убираем гул ниже 80 Гц, слегка выравниваем громкость (тихое — громче, громкое — без хрипа)
-// и переводим в нужную частоту качественным фильтром браузера, а не усреднением
+// чистая обработка голоса: убираем гул ниже 70 Гц, чуть поднимаем разборчивость на 3 кГц,
+// выравниваем громкость компрессором и мягким лимитером, а не грубым умножением на 6.
 async function master(f32, rate, outRate) {
   const OC = window.OfflineAudioContext || window.webkitOfflineAudioContext;
   if (!OC) return null;
@@ -99,10 +157,13 @@ async function master(f32, rate, outRate) {
     const buf = oc.createBuffer(1, f32.length, rate);
     buf.getChannelData(0).set(f32);
     const src = oc.createBufferSource(); src.buffer = buf;
-    const hp = oc.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 80; hp.Q.value = 0.7;
+    const hp = oc.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 70; hp.Q.value = 0.7;
+    const eq = oc.createBiquadFilter(); eq.type = 'peaking'; eq.frequency.value = 3200; eq.Q.value = 0.9; eq.gain.value = 2.4;
     const cmp = oc.createDynamicsCompressor();
-    cmp.threshold.value = -22; cmp.knee.value = 12; cmp.ratio.value = 3; cmp.attack.value = 0.004; cmp.release.value = 0.18;
-    src.connect(hp); hp.connect(cmp); cmp.connect(oc.destination);
+    cmp.threshold.value = -20; cmp.knee.value = 10; cmp.ratio.value = 3; cmp.attack.value = 0.004; cmp.release.value = 0.18;
+    const lim = oc.createDynamicsCompressor();
+    lim.threshold.value = -2; lim.knee.value = 0; lim.ratio.value = 20; lim.attack.value = 0.001; lim.release.value = 0.06;
+    src.connect(hp); hp.connect(eq); eq.connect(cmp); cmp.connect(lim); lim.connect(oc.destination);
     src.start(0);
     const out = await oc.startRendering();
     return out.getChannelData(0);
@@ -123,19 +184,31 @@ function resampleTo(f32, rate, outRate) {
 }
 
 // звук → MP3. null — если записалась тишина (значит, захват не сработал)
-export async function encodeMp3(f32, rate) {
+export async function encodeMp3(f32, rate, budget = VOICE_BUDGET) {
   if (!f32 || !f32.length) return null;
-  const [KB, RATE] = quality(f32.length / rate);
+  const [KB, RATE] = quality(f32.length / rate, budget);
   let pcm = await master(f32, rate, RATE);
   if (!pcm) pcm = resampleTo(f32, rate, RATE);
   else pcm = new Float32Array(pcm);
+  // срезаем тишину в начале и конце, оставляя 60 мс воздуха — голос начинается сразу, без «мёртвой» секунды
+  const th = 0.008;
+  let a = 0, b = pcm.length - 1;
+  while (a < pcm.length && Math.abs(pcm[a]) < th) a += 1;
+  while (b > a && Math.abs(pcm[b]) < th) b -= 1;
+  if (b - a > RATE * 0.4) {
+    const pad = Math.floor(RATE * 0.06);
+    a = Math.max(0, a - pad); b = Math.min(pcm.length - 1, b + pad);
+    pcm = pcm.subarray(a, b + 1);
+  }
   // срезаем щелчок в начале и конце
-  const edge = Math.min(Math.floor(RATE * 0.04), Math.floor(pcm.length / 10));
+  const edge = Math.min(Math.floor(RATE * 0.025), Math.floor(pcm.length / 10));
   for (let i = 0; i < edge; i += 1) { const k = i / edge; pcm[i] *= k; pcm[pcm.length - 1 - i] *= k; }
-  let peak = 0;
-  for (let i = 0; i < pcm.length; i += 1) { const v = Math.abs(pcm[i]); if (v > peak) peak = v; }
+  let peak = 0, sum = 0;
+  for (let i = 0; i < pcm.length; i += 1) { const v = Math.abs(pcm[i]); if (v > peak) peak = v; sum += v * v; }
   if (peak < 0.003) return null;
-  const g = Math.max(0.5, Math.min(6, 0.9 / peak)); // тихую запись делаем громче, слишком громкую — тише
+  // выравниваем по средней громкости, но не даём пикам захрипеть и не раздуваем шум в тишине
+  const rms = Math.sqrt(sum / pcm.length) || 0.0001;
+  const g = Math.min(8, 0.14 / rms, 0.97 / peak);
   const s16 = new Int16Array(pcm.length);
   for (let i = 0; i < pcm.length; i += 1) s16[i] = Math.max(-32767, Math.min(32767, Math.round(pcm[i] * g * 32767)));
   const lame = await loadLame();
@@ -144,7 +217,7 @@ export async function encodeMp3(f32, rate) {
   const STEP = 1152;
   for (let i = 0; i < s16.length; i += STEP * 40) {
     const end = Math.min(s16.length, i + STEP * 40);
-    for (let k = i; k < end; k += STEP) { const b = enc.encodeBuffer(s16.subarray(k, Math.min(end, k + STEP))); if (b.length) parts.push(new Uint8Array(b)); }
+    for (let k = i; k < end; k += STEP) { const b2 = enc.encodeBuffer(s16.subarray(k, Math.min(end, k + STEP))); if (b2.length) parts.push(new Uint8Array(b2)); }
     await new Promise((r) => setTimeout(r, 0)); // не подвешиваем экран
   }
   const f = enc.flush();

@@ -24,7 +24,8 @@ import { ensureShared } from './shared.js';
 import { STICKER_TXT, stickerOf, nickEmo, catOf, catName, rxNode, emojiPicker, QUICK_RX } from './stickers.js';
 import { markDaily } from './daily.js';
 import { openPhotoEditor } from './photoedit.js';
-import { pcmCapture, loadLame, encodeMp3, decodeBlob, blobToDataUrl, toWavUrl, wavUrl } from './voicerec.js';
+import { pcmCapture, primeAudio, loadLame, encodeMp3, decodeBlob, blobToDataUrl, toWavUrl, wavUrl, VOICE_BUDGET_SAFE } from './voicerec.js';
+import { CIRCLE_TXT, CIRCLE_CHUNK, canCircle, isCircle, circleBubble, openCircleRecorder, closeCircleRecorder } from './circle.js';
 import { openSharedSheet } from './sharedui.js';
 
 export const chatId = (a, b) => [a, b].sort().join('_');
@@ -164,7 +165,24 @@ function typers(c) {
 
 // ---------- отправка ----------
 const VOICE_TXT = '🎤 Голосовое сообщение';
-const quoteText = (m) => (stickerOf(m.img) ? STICKER_TXT : m.voice || (typeof m.img === 'string' && m.img.startsWith('data:audio/')) ? '🎤 Голосовое' : m.img && !m.text ? '📷 Фото' : m.track && !m.text ? `♪ ${m.track.artist} — ${m.track.title}` : String(m.text || '')).slice(0, 120);
+const quoteText = (m) => (isCircle(m) ? CIRCLE_TXT : stickerOf(m.img) ? STICKER_TXT : m.voice || (typeof m.img === 'string' && m.img.startsWith('data:audio/')) ? '🎤 Голосовое' : m.img && !m.text ? '📷 Фото' : m.track && !m.text ? `♪ ${m.track.artist} — ${m.track.title}` : String(m.text || '')).slice(0, 120);
+// последнее сообщение в списке чатов, «печатает…» и пуш. Вынесено отдельно: кружок пишется в базу
+// в два шага (сообщение → части видео), а сообщение в списке должно появиться один раз и уже готовым.
+async function announce(cv, from, at, preview) {
+  const cid = cv.cid;
+  typingSent = { cid: '', kind: '', at: 0 };
+  if (cv.group) {
+    const c = chatById(cid);
+    await setDoc(doc(db, 'chats', cid), { last: { from, text: preview, at, nick: myNick() }, at, read: { [from]: at, [`t_${from}`]: 0, ...groupPatch(c || { members: cv.members, read: {} }, from) } }, { merge: true });
+    (cv.members || []).filter((x) => x !== from).slice(0, 9).forEach((to) => pushTo(to, 'msg', cv.title || 'Группа', `${myNick()}: ${preview}`, `chat-${cid}`, `./#group=${cid}`));
+    return;
+  }
+  const to = cid.split('_').find((x) => x !== from);
+  await setDoc(doc(db, 'chats', cid), { members: cid.split('_'), last: { from, text: preview, at }, at, read: { [from]: at, [`t_${from}`]: 0, ...streakPatch(chatWith(to), from, to) } }, { merge: true });
+  // пуш другу — придёт, даже если у него MKW закрыт (тот же тег, что и у уведомления внутри приложения, — без повторов)
+  if (to) pushTo(to, 'msg', myNick(), preview, `chat-${cid}`, `./#chat=${from}`);
+}
+
 async function send(cv, text, track, img, voice, re) {
   const cid = cv.cid;
   const at = srvNow(), from = me();
@@ -186,17 +204,55 @@ async function send(cv, text, track, img, voice, re) {
   }
   try { markDaily('msg'); if (track) markDaily('share'); if (voice) markDaily('voice'); if (stickerOf(img)) markDaily('sticker'); } catch { /* ignore */ }
   const preview = (voice ? VOICE_TXT : img && !msg.text ? 'Фото' : track && !msg.text ? `♪ ${msg.track.artist} — ${msg.track.title}` : msg.text).slice(0, 140);
-  typingSent = { cid: '', kind: '', at: 0 };
-  if (cv.group) {
-    const c = chatById(cid);
-    await setDoc(doc(db, 'chats', cid), { last: { from, text: preview, at, nick: myNick() }, at, read: { [from]: at, [`t_${from}`]: 0, ...groupPatch(c || { members: cv.members, read: {} }, from) } }, { merge: true });
-    (cv.members || []).filter((x) => x !== from).slice(0, 9).forEach((to) => pushTo(to, 'msg', cv.title || 'Группа', `${myNick()}: ${preview}`, `chat-${cid}`, `./#group=${cid}`));
-    return;
+  await announce(cv, from, at, preview);
+}
+
+// кружок: сообщение-«конверт» с размерами и постером, а само видео — частями в подколлекции msgs/{id}/v.
+// Пока части загружаются, vid.ready = false (у всех видна загрузка). Старые версии видят текст «🎥 Видеосообщение».
+const CIRCLE_VER = 1;
+const CIRCLE_MAX_PARTS = 40;
+async function sendCircle(cv, circ, re, progress) {
+  const cid = cv.cid;
+  const at = srvNow(), from = me();
+  const dataUrl = await blobToDataUrl(circ.blob);
+  const b64 = String(dataUrl || '').split(',')[1] || '';
+  if (!b64) throw new Error('video');
+  const n = Math.max(1, Math.ceil(b64.length / CIRCLE_CHUNK));
+  if (n > CIRCLE_MAX_PARTS) throw new Error('too big');
+  const vid = {
+    v: CIRCLE_VER,
+    dur: Math.round((Number(circ.dur) || 0) * 10) / 10,
+    n,
+    mt: String(circ.mime || 'video/webm').split(';')[0].slice(0, 40) || 'video/webm',
+    front: Boolean(circ.front),
+    ready: false,
+    w: Math.round(Number(circ.w) || 0),
+    h: Math.round(Number(circ.h) || 0),
+    p: String(circ.poster || '').slice(0, 150000),
+  };
+  const msg = { from, text: CIRCLE_TXT, at, vid };
+  if (re && re.id) msg.re = { id: String(re.id), from: String(re.from || ''), text: String(re.text || '').slice(0, 120) };
+  let ref;
+  try { ref = await addDoc(collection(db, 'chats', cid, 'msgs'), msg); }
+  catch {
+    // правила базы ещё не обновлены — без них части видео записать некуда
+    toast('Кружки заработают после обновления правил базы');
+    throw new Error('rules');
   }
-  const to = cid.split('_').find((x) => x !== from);
-  await setDoc(doc(db, 'chats', cid), { members: cid.split('_'), last: { from, text: preview, at }, at, read: { [from]: at, [`t_${from}`]: 0, ...streakPatch(chatWith(to), from, to) } }, { merge: true });
-  // пуш другу — придёт, даже если у него MKW закрыт (тот же тег, что и у уведомления внутри приложения, — без повторов)
-  if (to) pushTo(to, 'msg', myNick(), preview, `chat-${cid}`, `./#chat=${from}`);
+  try {
+    for (let i = 0; i < n; i += 1) {
+      const part = b64.slice(i * CIRCLE_CHUNK, (i + 1) * CIRCLE_CHUNK);
+      await setDoc(doc(db, 'chats', cid, 'msgs', ref.id, 'v', String(i)), { d: part });
+      if (progress) { try { progress(i + 1, n); } catch { /* ignore */ } }
+    }
+    await updateDoc(ref, { 'vid.ready': true });
+  } catch (e) {
+    try { await updateDoc(ref, { 'vid.err': true }); } catch { /* ignore */ }
+    throw e;
+  }
+  try { markDaily('msg'); } catch { /* ignore */ }
+  await announce(cv, from, at, CIRCLE_TXT);
+  return true;
 }
 
 // закреп: хранится в чате как read.pin = { id, t (текст), f (кто написал), by, at }
@@ -209,6 +265,8 @@ const pinOf = (c) => { const x = rd(c).pin; return x && typeof x === 'object' &&
 // правка, удаление, реакции
 async function editMsg(cid, id, text) { await updateDoc(doc(db, 'chats', cid, 'msgs', id), { text: String(text).slice(0, 500), ed: srvNow() }); }
 async function deleteMsg(cid, id) {
+  // у кружка сначала убираем части видео (правила разрешают их удалить, пока само сообщение на месте)
+  try { const s = await getDocs(collection(db, 'chats', cid, 'msgs', id, 'v')); await Promise.all(s.docs.map((d) => deleteDoc(d.ref))); } catch { /* ignore */ }
   await deleteDoc(doc(db, 'chats', cid, 'msgs', id));
   if ((pinOf(chatById(cid)) || {}).id === id) unpinMsg(cid).catch(() => {});
 }
@@ -464,6 +522,7 @@ function cleanup() {
   if (closeMenu) closeMenu();
   // запись голосового не должна жить после закрытия чата (раньше через минуту она сама отправлялась в старый чат)
   if (abortRec) { abortRec(); abortRec = null; }
+  closeCircleRecorder();
   typingOff(openId);
 }
 export function closeChat() {
@@ -579,6 +638,7 @@ async function openConv(cv) {
   const input = h('textarea', { class: 'ch-input', rows: '1', placeholder: fine ? `Написать ${cv.group ? `в «${cv.title}»` : `@${u.nick || 'другу'}`}` : 'Сообщение', maxlength: '500', enterkeyhint: 'send' });
   const sendBtn = h('button', { class: 'ch-send', type: 'button', 'aria-label': 'Отправить' }, mi('send'));
   const micBtn = h('button', { class: 'ch-send ch-mic', type: 'button', 'aria-label': 'Записать голосовое', title: 'Голосовое сообщение' }, mi('mic'));
+  const circBtn = canCircle() ? h('button', { class: 'ch-share ch-circbtn', type: 'button', title: 'Видеосообщение (кружок)', 'aria-label': 'Записать видеосообщение', onclick: () => openCircle() }, mi('video')) : null;
   const shareBtn = h('button', { class: 'ch-share', type: 'button', title: 'Отправить трек, который играет', 'aria-label': 'Отправить текущий трек' }, mi('note'));
   const photoIn = h('input', { type: 'file', accept: 'image/*', hidden: '' });
   const photoBtn = h('button', { class: 'ch-share', type: 'button', title: 'Отправить фото', 'aria-label': 'Отправить фото', onclick: () => photoIn.click() }, mi('image'));
@@ -587,7 +647,7 @@ async function openConv(cv) {
   const emoBox = h('div', { class: 'ch-emo', hidden: '' });
   const stBtn = h('button', { class: 'ch-share ch-stbtn', type: 'button', title: 'Стикеры MKW', 'aria-label': 'Стикеры' }, mi('sticker'));
   const field = h('div', { class: 'ch-field' }, input, emoBtn);
-  const bar = h('div', { class: 'ch-bar' }, photoIn, photoBtn, shareBtn, stBtn, field, sendBtn, canVoice() ? micBtn : null);
+  const bar = h('div', { class: 'ch-bar' }, photoIn, photoBtn, circBtn, shareBtn, stBtn, field, sendBtn, canVoice() ? micBtn : null);
   const paintBar = () => { bar.classList.toggle('typing', Boolean(input.value.trim()) || !canVoice() || Boolean(editing)); bar.classList.toggle('has-text', Boolean(input.value.trim())); };
 
   // ответ и правка: плашка над полем ввода
@@ -621,6 +681,7 @@ async function openConv(cv) {
     emoBox.replaceChildren(kind === 'stickers' ? emojiPicker({ onSticker: (n) => sendSticker(`st:${n}`), only: 'stickers' }) : emojiPicker({
       tab: (() => { try { return localStorage.getItem('mkw.emo.tab3') || 'cats'; } catch { return 'cats'; } })(),
       onCat: (n) => sendSticker(`mkw:${n}`),
+      onSticker: (n) => sendSticker(`st:${n}`),
       onEmoji: (e) => {
         const a = input.selectionStart ?? input.value.length, b = input.selectionEnd ?? a;
         input.value = `${input.value.slice(0, a)}${e}${input.value.slice(b)}`.slice(0, 500);
@@ -672,6 +733,20 @@ async function openConv(cv) {
   sendBtn.addEventListener('mousedown', (e) => { keepFocus = document.activeElement === input; e.preventDefault(); });
   sendBtn.addEventListener('pointerdown', (e) => { keepFocus = document.activeElement === input; if (e.pointerType === 'mouse') e.preventDefault(); });
   const blockedNow = () => (!cv.group && (blockedByMe(uid) || blockedMe(uid)));
+  // кружок: камера, удержание, переворот и подсветка — в отдельном окне записи
+  const openCircle = () => {
+    if (blockedNow()) { toast(blockedByMe(uid) ? 'Сначала разблокируйте собеседника' : `${u.nick || 'Собеседник'} ограничил(а) сообщения`); return; }
+    closeEmo();
+    stopVoice();
+    const re = replyTo;
+    openCircleRecorder({
+      onSend: async (circ, progress) => {
+        await sendCircle(cv, circ, re, progress);
+        if (replyTo && re && replyTo.id === re.id) { replyTo = null; paintReply(); }
+        return true;
+      },
+    });
+  };
   const doSend = async (track) => {
     const text = input.value.trim();
     if (editing) {
@@ -742,17 +817,30 @@ async function openConv(cv) {
   };
   const sendRec = async (r, pcm, a = 0, b = 1) => {
     endRec();
-    let data = '', dur = r.sec;
+    let data = '', dur = r.sec, pcmPart = null;
     if (pcm) {
       const from = Math.floor(pcm.f32.length * a), to = Math.ceil(pcm.f32.length * b);
       if ((to - from) / pcm.rate < 0.5) { toast('Слишком коротко'); typingOff(cid); return; }
-      try { const out = await encodeMp3(pcm.f32.subarray(from, to), pcm.rate); if (out) { data = await blobToDataUrl(out.blob); dur = out.dur; } } catch { data = ''; }
+      pcmPart = pcm.f32.subarray(from, to);
+      try { const out = await encodeMp3(pcmPart, pcm.rate); if (out) { data = await blobToDataUrl(out.blob); dur = out.dur; } } catch { data = ''; }
     }
     if (!data && r.blob && a === 0 && b === 1) data = await blobToDataUrl(r.blob);
     if (!data) { toast('Не получилось записать голосовое. Проверьте микрофон'); typingOff(cid); return; }
-    if (data.length > 395000) { toast('Слишком длинное голосовое'); typingOff(cid); return; }
+    if (data.length > 555000) { toast('Слишком длинное голосовое'); typingOff(cid); return; }
     if (r.re && r.re === replyTo) { replyTo = null; paintReply(); }
-    try { await send(cv, '', null, null, { data, dur }, r.re); } catch { toast('Голосовое не отправилось. Попробуйте ещё раз'); }
+    try { await send(cv, '', null, null, { data, dur }, r.re); return; }
+    catch { /* ниже — запасной вариант для старых правил базы */ }
+    // правила ещё ограничивают голосовое 400 000 символами — перекодируем компактнее и пробуем ещё раз
+    if (pcmPart) {
+      try {
+        const out = await encodeMp3(pcmPart, pcm.rate, VOICE_BUDGET_SAFE);
+        if (out) {
+          const d2 = await blobToDataUrl(out.blob);
+          if (d2 && d2.length <= 395000) { await send(cv, '', null, null, { data: d2, dur: out.dur }, r.re); return; }
+        }
+      } catch { /* ignore */ }
+    }
+    toast('Голосовое не отправилось. Попробуйте ещё раз');
   };
   const cancelRec = async () => {
     const r = rec; rec = null;
@@ -854,7 +942,7 @@ async function openConv(cv) {
   const startRec = async (mode) => {
     if (rec) return null;
     if (blockedNow()) { toast('Переписка ограничена'); return null; }
-    const pc = pcmCapture(); // AudioContext — прямо в нажатии, иначе iPhone его не запустит
+    const pc = pcmCapture(primeAudio()); // AudioContext — прямо в нажатии, иначе iPhone его не запустит
     loadLame().catch(() => {});
     const r = { mode, pc, chunks: [], t0: 0, re: replyTo, stopped: false, ready: false };
     rec = r;
@@ -866,11 +954,13 @@ async function openConv(cv) {
     catch { if (pc) pc.stop(); if (rec === r) rec = null; toast('Нет доступа к микрофону. Разрешите его в настройках браузера'); return null; }
     if (rec !== r) { stream.getTracks().forEach((t) => t.stop()); if (pc) pc.stop(); return null; }
     r.stream = stream;
-    if (pc) pc.attach(stream);
+    const capReady = pc ? pc.attach(stream) : Promise.resolve(false);
     r.mime = voiceMime();
-    try { r.mr = new MediaRecorder(stream, { ...(r.mime ? { mimeType: r.mime } : {}), audioBitsPerSecond: 40000 }); }
+    try { r.mr = new MediaRecorder(stream, { ...(r.mime ? { mimeType: r.mime } : {}), audioBitsPerSecond: 128000 }); }
     catch { try { r.mr = new MediaRecorder(stream); } catch { r.mr = null; } }
-    if (!r.mr && !(pc && pc.ok)) { stream.getTracks().forEach((t) => t.stop()); if (pc) pc.stop(); rec = null; toast('Этот браузер не умеет записывать голос'); return null; }
+    const capOk = await Promise.race([capReady, new Promise((res) => setTimeout(() => res(Boolean(pc && pc.ok)), 1500))]);
+    if (rec !== r) { try { if (r.mr && r.mr.state !== 'inactive') r.mr.stop(); } catch { /* ignore */ } return null; }
+    if (!r.mr && !capOk) { stream.getTracks().forEach((t) => t.stop()); if (pc) pc.stop(); rec = null; toast('Этот браузер не умеет записывать голос'); return null; }
     if (r.mr) { r.mr.ondataavailable = (e) => { if (e.data && e.data.size) r.chunks.push(e.data); }; try { r.mr.start(250); } catch { r.mr = null; } }
     r.t0 = Date.now();
     r.ready = true;
@@ -894,6 +984,8 @@ async function openConv(cv) {
       if (rec || g) return;
       if (e.pointerType === 'mouse' && e.button !== 0) return;
       e.preventDefault();
+      // AudioContext обязан «проснуться» прямо в касании: через 180 мс браузер уже не считает это жестом пользователя
+      primeAudio(); loadLame().catch(() => {});
       try { micBtn.setPointerCapture(e.pointerId); } catch { /* ignore */ }
       const gg = { x: e.clientX, y: e.clientY, id: e.pointerId, up: false, locked: false, t0: Date.now(), wait: 0 };
       g = gg;
@@ -1090,7 +1182,7 @@ async function openConv(cv) {
     ticks.forEach(({ at, el }) => { const r = readAt >= at; if (el.dataset.r !== String(r)) { el.dataset.r = String(r); el.classList.toggle('read', r); el.title = r ? 'Прочитано' : 'Доставлено'; } });
   };
   const keyOf = () => { const c = chatById(cid); return `${clearedAt(c)}|${cv.group ? '' : blockedByMe(uid)}`; };
-  const sigOf = (m) => `${m.text}|${m.ed || 0}|${JSON.stringify(m.rx || {})}|${(m.re && m.re.id) || ''}`;
+  const sigOf = (m) => `${m.text}|${m.ed || 0}|${JSON.stringify(m.rx || {})}|${(m.re && m.re.id) || ''}|${m.vid ? `${m.vid.ready ? 1 : 0}${m.vid.err ? 1 : 0}` : ''}`;
   const rxRow = (id, m) => {
     const rx = m.rx || {}; const groups = {};
     Object.entries(rx).forEach(([who, e]) => { if (e) (groups[e] = groups[e] || []).push(who); });
@@ -1114,11 +1206,12 @@ async function openConv(cv) {
     }
     const mineMsg = m.from === me();
     const voiceSrc = typeof m.voice === 'string' && m.voice.startsWith('data:audio/') ? m.voice : typeof m.img === 'string' && m.img.startsWith('data:audio/') ? m.img : '';
+    const circ = isCircle(m) ? circleBubble(cid, id, m.vid) : null;
     const cat = stickerOf(m.img);
     const photoOnly = m.img && !voiceSrc && !cat && !m.text && !m.track && !m.re;
     const img = !voiceSrc && m.img && safeUrl(m.img).startsWith('data:image/') ? h('img', { class: 'ch-img', src: m.img, alt: 'Фото', decoding: 'async', onclick: () => openImage(m.img, '') }) : null;
     if (img) img.addEventListener('load', () => { if (stick && !userBusy()) list.scrollTop = list.scrollHeight; }, { once: true });
-    const text = (voiceSrc && m.text === VOICE_TXT) || (cat && m.text === STICKER_TXT) ? '' : m.text;
+    const text = circ ? '' : (voiceSrc && m.text === VOICE_TXT) || (cat && m.text === STICKER_TXT) ? '' : m.text;
     const sticker = cat ? h('img', { class: `ch-sticker${cat.big ? ' big' : ''}`, src: cat.src, alt: cat.name, title: cat.name, draggable: 'false' }) : null;
     const meta = h('div', { class: 'ch-meta' }, h('img', { src: avSrc(avOf(m.from)), alt: '', loading: 'lazy' }), h('b', { text: nickOf(m.from) }), h('span', { text: `${dayOf(m.at)}, ${timeOf(m.at)}` }));
     const quote = m.re && m.re.id ? h('button', { type: 'button', class: 'ch-quote', onclick: (e) => { e.stopPropagation(); flash(m.re.id); } }, h('b', { text: nickOf(m.re.from) }), h('span', { text: m.re.text || '…' })) : null;
@@ -1129,11 +1222,12 @@ async function openConv(cv) {
       h('button', { type: 'button', title: 'Ответить', 'data-act': 'reply' }, mi('reply')),
       mineMsg && text && !voiceSrc && !cat ? h('button', { type: 'button', title: 'Изменить', 'data-act': 'edit' }, mi('edit')) : null,
       h('button', { type: 'button', title: 'Ещё', 'data-act': 'menu' }, mi('more'))) : null;
-    return h('div', { class: `ch-msg${mineMsg ? ' me' : ''}${img ? ' has-img' : ''}${photoOnly ? ' photo' : ''}${voiceSrc ? ' voice' : ''}${cat ? ' sticker' : ''}${first ? '' : ' new'}`, 'data-id': id },
+    return h('div', { class: `ch-msg${mineMsg ? ' me' : ''}${img ? ' has-img' : ''}${photoOnly ? ' photo' : ''}${circ ? ' circle' : ''}${voiceSrc ? ' voice' : ''}${cat ? ' sticker' : ''}${first ? '' : ' new'}`, 'data-id': id },
       meta,
       cv.group && !mineMsg ? h('div', { class: 'ch-from', text: nickOf(m.from) }) : null,
       quote,
       m.track ? h('button', { class: 'ch-track', type: 'button', onclick: () => playTrack(m.track) }, mi('play-circle'), h('span', {}, h('b', { text: m.track.title }), h('small', { text: m.track.artist }))) : null,
+      circ,
       img,
       sticker,
       voiceSrc ? voiceBubble(voiceSrc, Number(m.vdur) || 0) : null,
@@ -1192,7 +1286,7 @@ async function openConv(cv) {
     if (closeMenu) closeMenu();
     const mine = m.from === me();
     const myR = (m.rx || {})[me()];
-    const isVoice = Boolean(m.voice || (typeof m.img === 'string' && m.img.startsWith('data:audio/')));
+    const isVoice = Boolean(m.voice || (typeof m.img === 'string' && m.img.startsWith('data:audio/')) || isCircle(m));
     const close = () => { wrap.classList.remove('show'); el.classList.remove('picked'); setTimeout(() => wrap.remove(), 180); closeMenu = null; };
     const item = (ic, label, fn, danger) => h('button', { type: 'button', class: `ch-mi${danger ? ' danger' : ''}`, onclick: () => { close(); fn(); } }, mi(ic), h('span', { text: label }));
     const isCat = Boolean(stickerOf(m.img));
@@ -1240,7 +1334,7 @@ async function openConv(cv) {
     if (act === 'reply') setReply(id, m); else if (act === 'edit') setEdit(id, m); else openMenu(el);
   });
   list.addEventListener('dblclick', (e) => {
-    const el = e.target.closest('.ch-msg'); if (!el || e.target.closest('button, img, .ch-voice')) return;
+    const el = e.target.closest('.ch-msg'); if (!el || e.target.closest('button, img, .ch-voice, .ch-cmain')) return;
     const id = el.dataset.id, m = byId.get(id); if (!m) return;
     react(cid, id, '❤️', (m.rx || {})[me()]).catch(() => {});
   });
@@ -1248,7 +1342,7 @@ async function openConv(cv) {
   let g = null, lastTap = { id: '', t: 0 };
   list.addEventListener('touchstart', (e) => {
     const el = e.target.closest('.ch-msg');
-    if (!el || e.touches.length !== 1 || e.target.closest('.ch-vbars, .ch-vplay')) { g = null; return; }
+    if (!el || e.touches.length !== 1 || e.target.closest('.ch-vbars, .ch-vplay, .ch-cmain')) { g = null; return; }
     const t = e.touches[0];
     g = { el, x: t.clientX, y: t.clientY, dx: 0, mode: '', timer: 0 };
     g.timer = setTimeout(() => { if (g && !g.mode) { g.mode = 'long'; if (navigator.vibrate) navigator.vibrate(12); openMenu(el); } }, 430);

@@ -116,6 +116,20 @@ service cloud.firestore {
         && (isOwner() || exists(/databases/$(database)/documents/chats/$(cid)));
     }
     function inChat(cid) { return request.auth.uid in cid.split('_') || (isGroupId(cid) && request.auth.uid in chatMembers(cid)); }
+    // кружок: сообщение-«конверт» (размеры, длительность, постер), само видео — частями в msgs/{id}/v
+    function vidOk(v) {
+      return v is map
+        && v.keys().hasOnly(['v', 'dur', 'n', 'mt', 'front', 'ready', 'w', 'h', 'p', 'err'])
+        && v.v == 1
+        && v.dur is number && v.dur > 0 && v.dur <= 60
+        && v.n is int && v.n >= 1 && v.n <= 40
+        && v.mt is string && v.mt.size() <= 40
+        && v.front is bool
+        && v.ready == false
+        && (!('w' in v) || (v.w is int && v.w >= 0 && v.w <= 10000))
+        && (!('h' in v) || (v.h is int && v.h >= 0 && v.h <= 10000))
+        && (!('p' in v) || (v.p is string && v.p.size() <= 160000));
+    }
     match /chats/{cid} {
       allow get: if request.auth != null && (request.auth.uid in cid.split('_') || request.auth.uid in resource.data.members);
       allow list: if request.auth != null && request.auth.uid in resource.data.members;
@@ -155,10 +169,11 @@ service cloud.firestore {
         allow read: if request.auth != null && inChat(cid);
         allow create: if request.auth != null && inChat(cid)
           && request.resource.data.from == request.auth.uid
-          && request.resource.data.keys().hasOnly(['from', 'text', 'at', 'track', 'img', 'voice', 'vdur', 're'])
+          && request.resource.data.keys().hasOnly(['from', 'text', 'at', 'track', 'img', 'voice', 'vdur', 're', 'vid'])
           && request.resource.data.text is string && request.resource.data.text.size() <= 500
-          && (!('img' in request.resource.data) || (request.resource.data.img is string && request.resource.data.img.size() <= 400000))
-          && (!('voice' in request.resource.data) || (request.resource.data.voice is string && request.resource.data.voice.size() <= 400000))
+          && (!('img' in request.resource.data) || (request.resource.data.img is string && request.resource.data.img.size() <= 560000))
+          && (!('voice' in request.resource.data) || (request.resource.data.voice is string && request.resource.data.voice.size() <= 560000))
+          && (!('vid' in request.resource.data) || vidOk(request.resource.data.vid))
           && request.resource.data.at is number
           && (isGroupId(cid) || ((mutual(cid.split('_')[0], cid.split('_')[1]) || ownerChat(cid)) && notBlocked(cid)));
         // свои сообщения можно изменить (только текст) — реакции ставит любой участник, только свою
@@ -166,11 +181,30 @@ service cloud.firestore {
           && ((resource.data.from == request.auth.uid
                 && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['text', 'ed'])
                 && request.resource.data.text is string && request.resource.data.text.size() <= 500)
+            || (resource.data.from == request.auth.uid
+                && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['vid'])
+                && resource.data.vid is map && request.resource.data.vid is map
+                && request.resource.data.vid.diff(resource.data.vid).affectedKeys().hasOnly(['ready', 'err'])
+                && request.resource.data.vid.ready is bool
+                && (!('err' in request.resource.data.vid) || request.resource.data.vid.err is bool))
             || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['rx'])
                 && request.resource.data.get('rx', {}).diff(resource.data.get('rx', {})).affectedKeys().hasOnly([request.auth.uid])));
         // удалить своё сообщение; «удалить чат у всех» — любой из двоих в переписке
         allow delete: if request.auth != null && inChat(cid)
           && (resource.data.from == request.auth.uid || !isGroupId(cid));
+        // части видео кружка: читают участники, пишет только автор сообщения
+        match /v/{part} {
+          allow read: if request.auth != null && inChat(cid);
+          allow create: if request.auth != null && inChat(cid)
+            && exists(/databases/$(database)/documents/chats/$(cid)/msgs/$(mid))
+            && get(/databases/$(database)/documents/chats/$(cid)/msgs/$(mid)).data.from == request.auth.uid
+            && request.resource.data.keys().hasOnly(['d'])
+            && request.resource.data.d is string && request.resource.data.d.size() <= 400000;
+          allow delete: if request.auth != null && inChat(cid)
+            && exists(/databases/$(database)/documents/chats/$(cid)/msgs/$(mid))
+            && get(/databases/$(database)/documents/chats/$(cid)/msgs/$(mid)).data.from == request.auth.uid;
+          allow update: if false;
+        }
       }
     }
     // «Слушать вместе»: состояние плеера переписки (что играет, с какой секунды)
