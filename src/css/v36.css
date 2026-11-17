@@ -135,3 +135,5 @@ button.clm-it:active { background: color-mix(in srgb, var(--on-bg) 8%, transpare
 .ai-opt img { width: 64px; height: 64px; border-radius: 16px; }
 .ai-opt.on { box-shadow: inset 0 0 0 2px var(--primary); }
 .ai-opt:active { transform: scale(.96); }
+/* микрофон: «взвод» перед записью — кнопка слегка растёт, пока держите */
+.ch-mic.arming, .arming { transform: scale(1.12); transition: transform .18s ease-out; }

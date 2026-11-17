@@ -856,13 +856,16 @@ async function openConv(cv) {
     const r = { mode, pc, chunks: [], t0: 0, re: replyTo, stopped: false, ready: false };
     rec = r;
     let stream;
-    try { stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } }); }
+    // Чистый звук с микрофона (1.6): «телефонная» обработка (эхоподавление, шумодав, автоусиление) включала на Android
+    // режим звонка — узкая полоса и «булькающий» голос даже с хорошим микрофоном. Громкость и гул выравниваем сами при кодировании.
+    const RAW = { echoCancellation: false, noiseSuppression: false, autoGainControl: false, channelCount: 1 };
+    try { stream = await navigator.mediaDevices.getUserMedia({ audio: RAW }).catch(() => navigator.mediaDevices.getUserMedia({ audio: true })); }
     catch { if (pc) pc.stop(); if (rec === r) rec = null; toast('Нет доступа к микрофону. Разрешите его в настройках браузера'); return null; }
     if (rec !== r) { stream.getTracks().forEach((t) => t.stop()); if (pc) pc.stop(); return null; }
     r.stream = stream;
     if (pc) pc.attach(stream);
     r.mime = voiceMime();
-    try { r.mr = new MediaRecorder(stream, { ...(r.mime ? { mimeType: r.mime } : {}), audioBitsPerSecond: 32000 }); }
+    try { r.mr = new MediaRecorder(stream, { ...(r.mime ? { mimeType: r.mime } : {}), audioBitsPerSecond: 40000 }); }
     catch { try { r.mr = new MediaRecorder(stream); } catch { r.mr = null; } }
     if (!r.mr && !(pc && pc.ok)) { stream.getTracks().forEach((t) => t.stop()); if (pc) pc.stop(); rec = null; toast('Этот браузер не умеет записывать голос'); return null; }
     if (r.mr) { r.mr.ondataavailable = (e) => { if (e.data && e.data.size) r.chunks.push(e.data); }; try { r.mr.start(250); } catch { r.mr = null; } }
@@ -880,20 +883,28 @@ async function openConv(cv) {
     // держим микрофон пальцем
     let g = null;
     micBtn.addEventListener('contextmenu', (e) => e.preventDefault());
-    micBtn.addEventListener('pointerdown', async (e) => {
-      if (rec) return;
+    // Запись начинается только после удержания (0,18 с), как в Telegram: случайное касание — например, сразу после
+    // отправки фото, когда кнопка микрофона оказывается под пальцем, — больше ничего не записывает.
+    const HOLD = 180;
+    const hint = () => toast('Удерживайте микрофон, чтобы записать. Потяните вверх — запись без рук');
+    micBtn.addEventListener('pointerdown', (e) => {
+      if (rec || g) return;
+      if (e.pointerType === 'mouse' && e.button !== 0) return;
       e.preventDefault();
       try { micBtn.setPointerCapture(e.pointerId); } catch { /* ignore */ }
-      if (e.pointerType === 'mouse' && e.button !== 0) return;
-      const gg = { x: e.clientX, y: e.clientY, id: e.pointerId, up: false, locked: false, t0: Date.now() };
+      const gg = { x: e.clientX, y: e.clientY, id: e.pointerId, up: false, locked: false, t0: Date.now(), wait: 0 };
       g = gg;
-      if (navigator.vibrate) navigator.vibrate(10);
-      const r = await startRec('hold');
-      if (!r) { if (g === gg) g = null; return; }
-      if (gg.up) {
-        // отпустили, пока включался микрофон (или просто коротко нажали) — запись продолжается «с замком»
-        r.mode = 'locked'; paintLocked(r);
-      }
+      micBtn.classList.add('arming');
+      gg.wait = setTimeout(async () => {
+        gg.wait = 0;
+        if (g !== gg || gg.up) return;
+        if (navigator.vibrate) navigator.vibrate(12);
+        const r = await startRec('hold');
+        micBtn.classList.remove('arming');
+        if (!r) { if (g === gg) g = null; return; }
+        // отпустили, пока включался микрофон, — ничего не записываем
+        if (gg.up || g !== gg) { if (rec === r) cancelRec(); if (g === gg) g = null; hint(); }
+      }, HOLD);
     });
     micBtn.addEventListener('pointermove', (e) => {
       if (!g || e.pointerId !== g.id || !rec || !rec.ready || rec.mode !== 'hold' || g.locked) return;
@@ -904,17 +915,22 @@ async function openConv(cv) {
       if (dy < -70) { g.locked = true; rec.mode = 'locked'; paintLocked(rec); if (navigator.vibrate) navigator.vibrate(15); }
     });
     const up = (e, cancel) => {
-      if (!g || e.pointerId !== g.id) return;
-      g.up = true;
-      const locked = g.locked, quick = Date.now() - g.t0 < 400; g = null;
-      if (!rec || !rec.ready || locked || rec.mode !== 'hold') return;
+      if (!g || (e && e.pointerId !== g.id)) return;
+      const gg = g; gg.up = true; g = null;
+      micBtn.classList.remove('arming');
+      if (gg.wait) { clearTimeout(gg.wait); gg.wait = 0; if (!cancel) hint(); return; } // короткое касание
+      if (!rec || !rec.ready) return; // микрофон ещё включается — отменит сам запуск (см. выше)
+      if (gg.locked || rec.mode !== 'hold') return;
       if (cancel) { cancelRec(); return; }
-      // коротко нажали — не отправляем пустое, а пишем дальше с замком (кнопки «стоп» и «отправить»)
-      if (quick) { rec.mode = 'locked'; paintLocked(rec); return; }
-      finishSend();
+      finishSend(); // слишком короткую запись finishSend не отправит, а подскажет «удерживайте»
     };
     micBtn.addEventListener('pointerup', (e) => up(e, false));
     micBtn.addEventListener('pointercancel', (e) => up(e, true));
+    // палец «потерялся» (открылась галерея, всплыло окно, свернули приложение) — запись с удержанием не должна идти сама
+    micBtn.addEventListener('lostpointercapture', (e) => { if (g && e.pointerId === g.id && !g.locked) up(e, true); });
+    const dropHold = () => { if (g && !g.locked) up(null, true); else if (rec && rec.mode === 'hold') cancelRec(); };
+    window.addEventListener('blur', dropHold);
+    document.addEventListener('visibilitychange', () => { if (document.hidden) dropHold(); });
   } else {
     micBtn.addEventListener('click', () => startRec('click'));
   }
