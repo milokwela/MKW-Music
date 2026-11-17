@@ -143,3 +143,4 @@ button.clm-it:active { background: color-mix(in srgb, var(--on-bg) 8%, transpare
 html.app-idle *, html.app-idle *::before, html.app-idle *::after { animation-play-state: paused !important; }
 /* «Лёгкая» графика: полоска мини-плеера шагает раз в полсекунды, а не плавно едет (плавность заставляла перерисовывать экран постоянно) */
 .lite #mini-progress, .lowpower #mini-progress { transition: none !important; }
+.cl-list.drawn .cl-row { animation: none !important; }

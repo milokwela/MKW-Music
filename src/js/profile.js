@@ -1215,7 +1215,7 @@ export function buildProfile(nick) {
     window.addEventListener('mkw-fg', vis);
     // музыку поставили на паузу при выключенном экране — тоже «не в сети», а не «слушает»
     player.onPlayer((ev) => { if (ev === 'state' && !player.st.playing && away0()) away(); });
-    window.addEventListener('pagehide', () => { if (!player.st.playing) goOffline(); });
+    window.addEventListener('pagehide', () => goOffline()); // закрыли вкладку или приложение — «не в сети» сразу, даже если играла музыка
     let lastNow = '';
     // «Слушает»: друзья видят новый трек почти сразу (через 3 секунды после смены — чтобы не писать на каждое переключение)
     let nowT = 0;
