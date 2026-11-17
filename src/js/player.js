@@ -115,6 +115,8 @@ function noteStart(kind) {
 }
 // в этой сети видео стартует заметно дольше звука — сначала ждём звук
 function preferStream() {
+  // слабый телефон: невидимое видео грузит процессор сильнее, чем просто звук, — звуку даём фору всегда
+  if (document.documentElement.classList.contains('lite') || document.documentElement.classList.contains('lowpower')) return true;
   const x = netStat[netKey()];
   return Boolean(x && x.ytN >= 2 && x.yt > 3200 && (!x.st || x.st < x.yt - 800));
 }
@@ -847,15 +849,32 @@ function saveSession(force) {
     localStorage.setItem(SESS, JSON.stringify({ items, index: queue.index - from, time: st.time || 0, playing: st.playing, at: now }));
   } catch { /* переполнено — не страшно */ }
 }
+// Всю очередь (до 100 треков) пишем только при смене трека или очереди. Позицию — отдельным крошечным ключом
+// раз в 15 секунд: на слабых телефонах запись большой строки каждые 5 секунд давала подёргивания.
+const SESS_T = 'mkw.session.t';
+let sessPos = 0;
+function savePos(force) {
+  const now = Date.now();
+  if (!force && now - sessPos < 15000) return;
+  sessPos = now;
+  try { localStorage.setItem(SESS_T, JSON.stringify({ id: queue.current ? queue.current.id : '', time: st.time || 0, playing: st.playing, at: now })); } catch { /* ignore */ }
+}
 onPlayer((ev) => {
-  if (ev === 'track' || ev === 'queue') saveSession(true);
-  else if (ev === 'time' || ev === 'state') saveSession(ev === 'state');
+  if (ev === 'track' || ev === 'queue') { saveSession(true); savePos(true); }
+  else if (ev === 'state') savePos(true);
+  else if (ev === 'time') savePos(false);
 });
 
 /** Продолжить с того места, где оборвалось (не старше 15 минут). */
 export function resumeSession() {
   let s = null;
   try { s = JSON.parse(localStorage.getItem(SESS) || 'null'); } catch { s = null; }
+  // позиция и «играет / пауза» лежат отдельным маленьким ключом — он свежее
+  try {
+    const p = JSON.parse(localStorage.getItem(SESS_T) || 'null');
+    const curIt = s && Array.isArray(s.items) ? s.items[Math.min(s.items.length - 1, Math.max(0, s.index || 0))] : null;
+    if (p && curIt && p.id === curIt.id) { s.time = p.time; s.playing = p.playing; s.at = Math.max(s.at || 0, p.at || 0); }
+  } catch { /* ignore */ }
   if (!s || !Array.isArray(s.items) || !s.items.length || !s.playing || Date.now() - (s.at || 0) > 15 * 60000) return false;
   if (queue.current) return false; // уже что-то играет
   const at = Math.max(0, (s.time || 0) - 1);

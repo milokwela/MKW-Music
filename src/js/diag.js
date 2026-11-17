@@ -50,7 +50,12 @@ function cpuScore() {
 function fps() {
   return new Promise((res) => {
     let f = 0; const t0 = performance.now();
-    const step = (t) => { f++; if (t - t0 < 1000) requestAnimationFrame(step); else res(Math.round((f * 1000) / (t - t0))); };
+    // Проба должна что-то рисовать: на неподвижной странице браузер сам урезает «пустые» кадры,
+    // и счётчик показывал 1–2 кадра в секунду там, где экран на самом деле не тормозил.
+    const dot = document.createElement('i');
+    dot.style.cssText = 'position:fixed;left:0;top:0;width:2px;height:2px;background:#fff;opacity:.02;pointer-events:none;z-index:2147483647;will-change:transform';
+    document.body.appendChild(dot);
+    const step = (t) => { f++; dot.style.transform = `translate3d(${f % 2}px,0,0)`; if (t - t0 < 1000) requestAnimationFrame(step); else { dot.remove(); res(Math.round((f * 1000) / (t - t0))); } };
     requestAnimationFrame(step);
   });
 }
