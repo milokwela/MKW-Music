@@ -602,6 +602,7 @@ export function openCircleRecorder({ onSend, onClose } = {}) {
     sendBusy = true;
     setMode('sending');
     let ok = false;
+    let err = null;
     try {
       ok = await onSend && await onSend(
         { blob, dur, front, mime: (mime || 'video/webm').split(';')[0], poster, w: live.videoWidth || pv.videoWidth || 0, h: live.videoHeight || pv.videoHeight || 0 },
@@ -612,13 +613,15 @@ export function openCircleRecorder({ onSend, onClose } = {}) {
           if (b) b.textContent = `Отправляем… ${Math.round(f * 100)}%`;
         },
       );
-    } catch { ok = false; }
+    } catch (e) { err = e; ok = false; }
     sendBusy = false;
     if (closed) return;
     if (ok) { close(); return; }
     setMode('preview');
     setProgress(1);
-    toast('Кружок не отправился. Попробуйте ещё раз');
+    // про правила и слишком большой файл уже сказали свои подсказки — не перебиваем их общим «не отправился»
+    const why = String((err && err.message) || '');
+    if (why !== 'rules' && why !== 'too big') toast('Кружок не отправился. Попробуйте ещё раз');
   }
 
   async function close() {

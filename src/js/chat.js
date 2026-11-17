@@ -218,7 +218,7 @@ async function sendCircle(cv, circ, re, progress) {
   const b64 = String(dataUrl || '').split(',')[1] || '';
   if (!b64) throw new Error('video');
   const n = Math.max(1, Math.ceil(b64.length / CIRCLE_CHUNK));
-  if (n > CIRCLE_MAX_PARTS) throw new Error('too big');
+  if (n > CIRCLE_MAX_PARTS) { toast('Кружок слишком большой — запишите покороче'); throw new Error('too big'); }
   const vid = {
     v: CIRCLE_VER,
     dur: Math.round((Number(circ.dur) || 0) * 10) / 10,
