@@ -168,7 +168,7 @@ final class WidgetKit {
     }
 
     static PendingIntent openApp(Context c, boolean wave) {
-        Intent i = new Intent(c, MainActivity.class)
+        Intent i = new Intent(c, AppActivity.class)
                 .addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_CLEAR_TOP);
         if (wave) i.putExtra("widget_wave", true);
         return PendingIntent.getActivity(c, wave ? 31 : 30, i, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);

@@ -46,15 +46,11 @@
         <meta-data android:name="firebase_analytics_collection_enabled" android:value="false" />
 
         <activity
-            android:name=".MainActivity"
+            android:name=".AppActivity"
             android:exported="true"
             android:launchMode="singleTask"
             android:windowSoftInputMode="adjustResize"
             android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|keyboard|keyboardHidden|uiMode|density">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
             <!-- «Продолжить с сайта»: страница mkwmusic.ru в браузере возвращает вход сюда.
                  Принимается только с одноразовым кодом, который приложение само выдало (см. MainActivity). -->
             <intent-filter>
@@ -64,6 +60,45 @@
                 <data android:scheme="mkwmusic" android:host="handoff" />
             </intent-filter>
         </activity>
+
+        <!-- Значок приложения на выбор (1.6). Каждый значок — отдельный «ярлык» того же экрана; включён всегда один.
+             Ярлык по умолчанию носит прежнее имя .MainActivity, чтобы значок на рабочем столе у тех, кто обновился, остался на месте. -->
+        <activity-alias
+            android:name=".MainActivity"
+            android:targetActivity=".AppActivity"
+            android:enabled="true"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher"
+            android:label="@string/app_name">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+        <activity-alias
+            android:name=".IconClassic"
+            android:targetActivity=".AppActivity"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/ic_classic"
+            android:label="@string/app_name">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+        <activity-alias
+            android:name=".IconStar"
+            android:targetActivity=".AppActivity"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/ic_star"
+            android:label="@string/app_name">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
 
         <service
             android:name=".PushService"

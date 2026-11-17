@@ -126,6 +126,7 @@
     setVolume: function (v, ui) { send({ t: 'vol', v: Math.max(0, Math.min(1, Number(v) || 0)), ui: !!ui }); },
     stepVolume: function (dir) { send({ t: 'vol', step: dir > 0 ? 1 : -1, ui: true }); },
     bluetooth: function () { send({ t: 'bt' }); },
+    setIcon: function (id) { send({ t: 'icon', id: String(id || '') }); },
     btScan: function () { send({ t: 'btscan' }); },
     btStop: function () { send({ t: 'btstop' }); },
     btState: function () { send({ t: 'btstate' }); },

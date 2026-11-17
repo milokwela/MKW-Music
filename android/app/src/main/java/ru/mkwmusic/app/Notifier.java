@@ -47,7 +47,7 @@ final class Notifier {
     }
 
     static PendingIntent open(Context c) {
-        Intent i = new Intent(c, MainActivity.class)
+        Intent i = new Intent(c, AppActivity.class)
                 .addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_CLEAR_TOP);
         return PendingIntent.getActivity(c, 0, i, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
     }
@@ -77,7 +77,7 @@ final class Notifier {
         NotificationManager nm = c.getSystemService(NotificationManager.class);
         if (nm == null || !nm.areNotificationsEnabled()) return;
         ensureChannels(c);
-        Intent i = new Intent(c, MainActivity.class).putExtra("call", true)
+        Intent i = new Intent(c, AppActivity.class).putExtra("call", true)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_CLEAR_TOP);
         PendingIntent pi = PendingIntent.getActivity(c, 5, i, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
         Notification.Builder b = builder(c, CH_CALL)
