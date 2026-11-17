@@ -97,7 +97,7 @@ public class PlaybackService extends Service {
     public void onCreate() {
         super.onCreate();
         instance = this;
-        MainActivity.holdVisible(true);
+        AppActivity.holdVisible(true);
         Notifier.ensureChannels(this);
         session = new MediaSession(this, "MKW Music");
         session.setCallback(new MediaSession.Callback() {
@@ -174,7 +174,7 @@ public class PlaybackService extends Service {
         positionAt = android.os.SystemClock.elapsedRealtime();
         updateState();
         WidgetKit.position(this, durationMs, positionMs, positionAt, rate);
-        MainActivity m = MainActivity.current;
+        AppActivity m = AppActivity.current;
         if (m != null) m.runJs("window.__mkwAct&&window.__mkwAct('seekto',{seekTime:" + (pos / 1000.0) + "})");
     }
 
@@ -280,7 +280,7 @@ public class PlaybackService extends Service {
 
     /** Кнопки шторки и гарнитуры → сайт (те же обработчики, что у системных кнопок браузера). */
     private void dispatch(String act) {
-        MainActivity m = MainActivity.current;
+        AppActivity m = AppActivity.current;
         if (m != null) m.runJs("window.__mkwAct&&window.__mkwAct(" + JSONObject.quote(act) + ")");
     }
 
@@ -363,7 +363,7 @@ public class PlaybackService extends Service {
         if (instance == this) instance = null;
         handler.removeCallbacks(widgetTick);
         WidgetKit.push(this, title, artist, cover, false, false, wave, durationMs, livePos(), 0, rate);
-        MainActivity.holdVisible(false);
+        AppActivity.holdVisible(false);
         super.onDestroy();
     }
 

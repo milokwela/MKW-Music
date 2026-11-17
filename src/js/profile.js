@@ -1104,6 +1104,18 @@ export function buildProfile(nick) {
       h('div', { class: 'set-card', style: 'margin-top:14px' }, row('Показывать меня в рейтинге', 'Ник, фото, баннер, статус, значки, витрина и часы видят другие слушатели', refs.board, null, 'group'))),
     h('div', { class: 'ppane', 'data-pane': 'set', hidden: '' },
       inApp ? group('Приложение',
+        window.MKWNative && window.MKWNative.setIcon ? (() => {
+          // значок приложения на выбор (1.6): «Цветок» по умолчанию, прежний и «Звезда»
+          let cur = 'flower'; try { cur = localStorage.getItem('mkw.appicon') || 'flower'; } catch { /* ignore */ }
+          const pick = (id, img, name) => h('button', { type: 'button', class: `ai-opt${cur === id ? ' on' : ''}`, onclick: (e) => {
+            if (cur === id) return; cur = id;
+            try { localStorage.setItem('mkw.appicon', id); } catch { /* ignore */ }
+            window.MKWNative.setIcon(id);
+            $$('.ai-opt').forEach((b) => b.classList.toggle('on', b === e.currentTarget));
+            toast('Значок сменится через пару секунд. Если на рабочем столе он пропал — добавьте заново из списка приложений');
+          } }, h('img', { src: `assets/appicon-${img}.webp`, alt: '' }), h('span', { text: name }));
+          return h('div', { class: 'set-block' }, h('b', { text: 'Значок приложения' }), h('div', { class: 'ai-row' }, pick('flower', 'launcher', 'Цветок'), pick('classic', 'classic', 'Прежний'), pick('star', 'star', 'Звезда')));
+        })() : null,
         window.MKWNative && window.MKWNative.pinWidget ? row('Виджеты на рабочий стол', 'Мини-плеер, плеер с перемоткой, MKW Волна и обложка — выберите и добавьте', chev(), openWidgets, 'library') : null,
         window.MKWNative && window.MKWNative.fullScreenCalls ? (() => {
           const r = row('Звонки на весь экран', window.__mkwFsi === false ? 'Выключено: звонок придёт простым уведомлением. Нажмите, чтобы включить' : 'Входящий звонок открывается на весь экран, даже на заблокированном телефоне', chev(), () => window.MKWNative.fullScreenCalls(true), 'bell');

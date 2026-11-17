@@ -58,7 +58,7 @@ public class PushService extends FirebaseMessagingService {
         Map<String, String> d = msg.getData();
         if (d == null || d.isEmpty()) return;
         String kind = val(d, "kind"), title = val(d, "title"), body = val(d, "body"), tag = val(d, "tag");
-        if (MainActivity.visible) return; // приложение на экране — страница покажет сама
+        if (AppActivity.visible) return; // приложение на экране — страница покажет сама
         switch (kind) {
             case "call":
                 Notifier.call(this, title, body, tag.startsWith("call-") ? tag : "call-" + tag);

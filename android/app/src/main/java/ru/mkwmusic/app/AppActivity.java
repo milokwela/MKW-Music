@@ -64,7 +64,7 @@ import java.util.regex.Pattern;
  * (уведомления, музыка в фоне, вход через сайт), камера/микрофон по запросу сайта, выбор файлов, проверка обновлений.
  * Страницы других сайтов открываются в браузере.
  */
-public class MainActivity extends Activity {
+public class AppActivity extends Activity {
     private static final String HOME = "https://mkwmusic.ru/";
     private static final String TAG = "MKWApp";
     private static final int BG = 0xFF0D0A0B;
@@ -75,7 +75,7 @@ public class MainActivity extends Activity {
     private static final Pattern LOCAL_IMG = Pattern.compile("/mkw-[a-z0-9-]+\\.webp");
 
     /** Нужна службе музыки, чтобы передать кнопки шторки обратно на страницу. */
-    static volatile MainActivity current;
+    static volatile AppActivity current;
 
     private FrameLayout root;
     private WebView web;
@@ -170,7 +170,7 @@ public class MainActivity extends Activity {
         splash.setHorizontalScrollBarEnabled(false);
         splash.addJavascriptInterface(new Object() {
             @android.webkit.JavascriptInterface
-            public void skip() { splashHandler.post(MainActivity.this::hideSplash); }
+            public void skip() { splashHandler.post(AppActivity.this::hideSplash); }
         }, "MKWSplash");
         splash.setWebViewClient(new WebViewClient() {
             @Override
@@ -293,7 +293,7 @@ public class MainActivity extends Activity {
 
     /** Пока работает служба музыки, страница не узнаёт, что приложение свёрнуто (см. BgWebView). */
     static void holdVisible(final boolean on) {
-        final MainActivity m = current;
+        final AppActivity m = current;
         if (m == null) return;
         m.runOnUiThread(() -> {
             if (m.web instanceof BgWebView) ((BgWebView) m.web).setHold(on);
@@ -352,9 +352,9 @@ public class MainActivity extends Activity {
             public void onPageFinished(WebView v, String url) {
                 pageReady = isOurs(url == null ? null : Uri.parse(url));
                 if (pageReady && !offlineShown && offline().online()) shell().saveIndex(SITE_ROOT);
-                if (pageReady) v.postDelayed(MainActivity.this::prefetchSite, 20000);
+                if (pageReady) v.postDelayed(AppActivity.this::prefetchSite, 20000);
                 // токен уведомлений устройства — страница сохранит его в аккаунте, и звонки дойдут даже до закрытого MKW
-                if (pageReady) PushService.fetch(MainActivity.this, (t) -> runOnUiThread(() -> runJs("window.__mkwFcmTok=" + JSONObject.quote(t)
+                if (pageReady) PushService.fetch(AppActivity.this, (t) -> runOnUiThread(() -> runJs("window.__mkwFcmTok=" + JSONObject.quote(t)
                         + ";window.__mkwFcm&&window.__mkwFcm(window.__mkwFcmTok)")));
                 if (pageReady && splash != null) {
                     v.evaluateJavascript("(function(){var e=document.getElementById('splash');if(e)e.remove();})()", null);
@@ -666,6 +666,25 @@ public class MainActivity extends Activity {
         }
     }
 
+    /** Значок приложения: включаем выбранный ярлык и выключаем остальные. Приложение при этом не закрывается. */
+    private void setIcon(String id) {
+        String want = "classic".equals(id) ? ".IconClassic" : "star".equals(id) ? ".IconStar" : ".MainActivity";
+        String[] all = {".MainActivity", ".IconClassic", ".IconStar"};
+        try {
+            PackageManager pm = getPackageManager();
+            // сначала включаем новый, потом выключаем старые — значок не пропадает даже на мгновение
+            pm.setComponentEnabledSetting(new android.content.ComponentName(getPackageName(), "ru.mkwmusic.app" + want),
+                    PackageManager.COMPONENT_ENABLED_STATE_ENABLED, PackageManager.DONT_KILL_APP);
+            for (String n : all) {
+                if (n.equals(want)) continue;
+                pm.setComponentEnabledSetting(new android.content.ComponentName(getPackageName(), "ru.mkwmusic.app" + n),
+                        PackageManager.COMPONENT_ENABLED_STATE_DISABLED, PackageManager.DONT_KILL_APP);
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "icon", e);
+        }
+    }
+
     private void handleMessage(JSONObject o) {
         String type = o.optString("t", "");
         switch (type) {
@@ -698,6 +717,9 @@ public class MainActivity extends Activity {
             case "btpair":
                 if (!bt().pair(o.optString("a", ""))) runJs("window.__mkwBtFail&&window.__mkwBtFail()");
                 bt().push();
+                break;
+            case "icon":
+                setIcon(o.optString("id", ""));
                 break;
             case "diag":
                 runJs("window.__mkwDiag&&window.__mkwDiag(" + DeviceProfile.diag(this) + ")");
@@ -1113,7 +1135,7 @@ public class MainActivity extends Activity {
             public void onNewer(String version, int build, boolean forced) {
                 runOnUiThread(() -> {
                     if (isFinishing()) return;
-                    new AlertDialog.Builder(MainActivity.this)
+                    new AlertDialog.Builder(AppActivity.this)
                             .setTitle("Вышла новая версия " + version)
                             .setMessage("У вас " + current + ". Скачайте новую и откройте файл — она встанет поверх, вход и данные сохранятся.")
                             .setPositiveButton("Обновить", (d, w) -> updater().start(version, false, forced))
@@ -1126,7 +1148,7 @@ public class MainActivity extends Activity {
             public void onNone(boolean error) {
                 runOnUiThread(() -> {
                     if (isFinishing()) return;
-                    android.widget.Toast.makeText(MainActivity.this,
+                    android.widget.Toast.makeText(AppActivity.this,
                             error ? "Не получилось проверить. Проверьте интернет и попробуйте ещё раз"
                                     : "У вас последняя версия — " + current,
                             android.widget.Toast.LENGTH_LONG).show();
@@ -1199,7 +1221,7 @@ public class MainActivity extends Activity {
         @Override
         public void run() {
             if (!visible || root == null) return;
-            int key = DeviceProfile.thermal(MainActivity.this) * 2 + (DeviceProfile.powerSave(MainActivity.this) ? 1 : 0);
+            int key = DeviceProfile.thermal(AppActivity.this) * 2 + (DeviceProfile.powerSave(AppActivity.this) ? 1 : 0);
             if (key != lastPerf) pushPerf();
             root.postDelayed(this, 30000);
         }

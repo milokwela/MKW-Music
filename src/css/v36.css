@@ -128,3 +128,10 @@ button.clm-it:active { background: color-mix(in srgb, var(--on-bg) 8%, transpare
 .imp-done small { color: var(--on-surface-var); }
 .imp-miss { border-radius: 16px; background: color-mix(in srgb, var(--on-bg) 6%, transparent); padding: 10px 14px; font-size: 13.5px; max-height: 30vh; overflow: auto; }
 .xf-row { margin-top: 8px; }
+
+/* ---------- 1.6: выбор значка приложения ---------- */
+.ai-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 10px; }
+.ai-opt { display: grid; justify-items: center; gap: 8px; padding: 12px 6px 10px; border: 0; border-radius: 18px; background: color-mix(in srgb, var(--on-bg) 6%, transparent); color: inherit; font: 600 13px var(--font, inherit); cursor: pointer; box-shadow: inset 0 0 0 2px transparent; transition: box-shadow .2s, transform .15s; }
+.ai-opt img { width: 64px; height: 64px; border-radius: 16px; }
+.ai-opt.on { box-shadow: inset 0 0 0 2px var(--primary); }
+.ai-opt:active { transform: scale(.96); }
