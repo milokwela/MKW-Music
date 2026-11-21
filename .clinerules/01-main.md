@@ -50,3 +50,6 @@ Cloudflare Worker находится в `docs/recognize-worker.js`.
     "User"
 )
 ```
+
+## 11. Сборка проекта
+Перед каждым `git commit` и `git push` необходимо запускать `bash scripts/build.sh` (с указанием новой версии) и переносить собранные `app.js` и `app.css` в корень, иначе сайт зациклит окно обновления.
