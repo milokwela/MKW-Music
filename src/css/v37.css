@@ -40,7 +40,7 @@ body.on-chats #chat-page .ch-msg.circle time { display: none; }
 .ch-circ {
   --p: 0;
   position: relative;
-  width: clamp(188px, 58vw, 252px);
+  width: clamp(150px, 45vw, 200px);
   aspect-ratio: 1;
   margin: 1px 0 2px;
   border-radius: 50%;
@@ -260,7 +260,7 @@ body.circ-open { overflow: hidden; }
 }
 .crc-circle {
   position: relative;
-  width: min(78vw, 52vh, 360px);
+  width: min(70vw, 45vh, 300px);
   aspect-ratio: 1;
   border-radius: 50%;
   overflow: hidden;

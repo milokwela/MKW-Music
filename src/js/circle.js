@@ -10,7 +10,7 @@ import { collection, getDocs } from 'https://www.gstatic.com/firebasejs/10.7.1/f
 import * as player from './player.js';
 
 export const CIRCLE_TXT = '🎥 Видеосообщение';
-export const CIRCLE_MAX = 30;          // секунд: столько же, сколько примерно в Telegram
+export const CIRCLE_MAX = 60;          // секунд: столько же, сколько примерно в Telegram (увеличен до 1 минуты)
 export const CIRCLE_CHUNK = 360000;    // символов base64 в одном документе (с запасом до 1 МБ)
 
 const RAW = { echoCancellation: false, noiseSuppression: false, autoGainControl: false, channelCount: 1, sampleRate: { ideal: 48000 } };

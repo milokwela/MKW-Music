@@ -1,0 +1,3 @@
+# Ignore the backup folder
+\.claude-backup/
+memory-bank/
