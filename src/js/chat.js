@@ -637,8 +637,13 @@ async function openConv(cv) {
   const list = h('div', { class: 'ch-list' });
   const input = h('textarea', { class: 'ch-input', rows: '1', placeholder: fine ? `Написать ${cv.group ? `в «${cv.title}»` : `@${u.nick || 'другу'}`}` : 'Сообщение', maxlength: '500', enterkeyhint: 'send' });
   const sendBtn = h('button', { class: 'ch-send', type: 'button', 'aria-label': 'Отправить' }, mi('send'));
-  const micBtn = h('button', { class: 'ch-send ch-mic', type: 'button', 'aria-label': 'Записать голосовое', title: 'Голосовое сообщение' }, mi('mic'));
-  const circBtn = canCircle() ? h('button', { class: 'ch-share ch-circbtn', type: 'button', title: 'Видеосообщение (кружок)', 'aria-label': 'Записать видеосообщение', onclick: () => openCircle() }, mi('video')) : null;
+  const micCircBtn = h('button', { class: 'ch-send ch-mic', type: 'button', 'aria-label': 'Записать голосовое', title: 'Голосовое сообщение' }, mi('mic'));
+  let circMode = false;
+  const setMicIcon = () => {
+    micCircBtn.replaceChildren(mi(circMode ? 'video' : 'mic'));
+    micCircBtn.title = circMode ? 'Видеосообщение (кружок)' : 'Голосовое сообщение';
+    micCircBtn.setAttribute('aria-label', circMode ? 'Записать видеосообщение' : 'Записать голосовое');
+  };
   const shareBtn = h('button', { class: 'ch-share', type: 'button', title: 'Отправить трек, который играет', 'aria-label': 'Отправить текущий трек' }, mi('note'));
   const photoIn = h('input', { type: 'file', accept: 'image/*', hidden: '' });
   const photoBtn = h('button', { class: 'ch-share', type: 'button', title: 'Отправить фото', 'aria-label': 'Отправить фото', onclick: () => photoIn.click() }, mi('image'));
@@ -647,7 +652,7 @@ async function openConv(cv) {
   const emoBox = h('div', { class: 'ch-emo', hidden: '' });
   const stBtn = h('button', { class: 'ch-share ch-stbtn', type: 'button', title: 'Стикеры MKW', 'aria-label': 'Стикеры' }, mi('sticker'));
   const field = h('div', { class: 'ch-field' }, input, emoBtn);
-  const bar = h('div', { class: 'ch-bar' }, photoIn, photoBtn, circBtn, shareBtn, stBtn, field, sendBtn, canVoice() ? micBtn : null);
+  const bar = h('div', { class: 'ch-bar' }, photoIn, photoBtn, (canVoice() || canCircle()) ? micCircBtn : null, shareBtn, stBtn, field, sendBtn);
   const paintBar = () => { bar.classList.toggle('typing', Boolean(input.value.trim()) || !canVoice() || Boolean(editing)); bar.classList.toggle('has-text', Boolean(input.value.trim())); };
 
   // ответ и правка: плашка над полем ввода
@@ -733,20 +738,6 @@ async function openConv(cv) {
   sendBtn.addEventListener('mousedown', (e) => { keepFocus = document.activeElement === input; e.preventDefault(); });
   sendBtn.addEventListener('pointerdown', (e) => { keepFocus = document.activeElement === input; if (e.pointerType === 'mouse') e.preventDefault(); });
   const blockedNow = () => (!cv.group && (blockedByMe(uid) || blockedMe(uid)));
-  // кружок: камера, удержание, переворот и подсветка — в отдельном окне записи
-  const openCircle = () => {
-    if (blockedNow()) { toast(blockedByMe(uid) ? 'Сначала разблокируйте собеседника' : `${u.nick || 'Собеседник'} ограничил(а) сообщения`); return; }
-    closeEmo();
-    stopVoice();
-    const re = replyTo;
-    openCircleRecorder({
-      onSend: async (circ, progress) => {
-        await sendCircle(cv, circ, re, progress);
-        if (replyTo && re && replyTo.id === re.id) { replyTo = null; paintReply(); }
-        return true;
-      },
-    });
-  };
   const doSend = async (track) => {
     const text = input.value.trim();
     if (editing) {
@@ -973,35 +964,51 @@ async function openConv(cv) {
     return r;
   };
   if (holdMode) {
-    // держим микрофон пальцем
+    // одна кнопка «микрофон ↔ кружок», как в Telegram:
+    // короткий тап переключает иконку, удержание записывает (голосовое или кружок),
+    // потянуть вверх — защёлкнуть запись без рук, влево — отменить.
     let g = null;
-    micBtn.addEventListener('contextmenu', (e) => e.preventDefault());
-    // Запись начинается только после удержания (0,18 с), как в Telegram: случайное касание — например, сразу после
-    // отправки фото, когда кнопка микрофона оказывается под пальцем, — больше ничего не записывает.
+    micCircBtn.addEventListener('contextmenu', (e) => e.preventDefault());
     const HOLD = 180;
-    const hint = () => toast('Удерживайте микрофон, чтобы записать. Потяните вверх — запись без рук');
-    micBtn.addEventListener('pointerdown', (e) => {
+    const hint = () => toast('Удерживайте, чтобы записать. Потяните вверх — запись без рук');
+    micCircBtn.addEventListener('pointerdown', (e) => {
       if (rec || g) return;
       if (e.pointerType === 'mouse' && e.button !== 0) return;
       e.preventDefault();
       // AudioContext обязан «проснуться» прямо в касании: через 180 мс браузер уже не считает это жестом пользователя
       primeAudio(); loadLame().catch(() => {});
-      try { micBtn.setPointerCapture(e.pointerId); } catch { /* ignore */ }
+      try { micCircBtn.setPointerCapture(e.pointerId); } catch { /* ignore */ }
       const gg = { x: e.clientX, y: e.clientY, id: e.pointerId, up: false, locked: false, t0: Date.now(), wait: 0 };
       g = gg;
-      micBtn.classList.add('arming');
+      micCircBtn.classList.add('arming');
       gg.wait = setTimeout(async () => {
         gg.wait = 0;
         if (g !== gg || gg.up) return;
         if (navigator.vibrate) navigator.vibrate(12);
+        if (circMode) {
+          // удержание иконки кружка — запись видеосообщения
+          micCircBtn.classList.remove('arming');
+          g = null;
+          stopVoice();
+          closeEmo();
+          const re = replyTo;
+          openCircleRecorder({
+            onSend: async (circ, progress) => {
+              await sendCircle(cv, circ, re, progress);
+              if (replyTo && re && replyTo.id === re.id) { replyTo = null; paintReply(); }
+              return true;
+            },
+          });
+          return;
+        }
         const r = await startRec('hold');
-        micBtn.classList.remove('arming');
+        micCircBtn.classList.remove('arming');
         if (!r) { if (g === gg) g = null; return; }
         // отпустили, пока включался микрофон, — ничего не записываем
         if (gg.up || g !== gg) { if (rec === r) cancelRec(); if (g === gg) g = null; hint(); }
       }, HOLD);
     });
-    micBtn.addEventListener('pointermove', (e) => {
+    micCircBtn.addEventListener('pointermove', (e) => {
       if (!g || e.pointerId !== g.id || !rec || !rec.ready || rec.mode !== 'hold' || g.locked) return;
       const dx = e.clientX - g.x, dy = e.clientY - g.y;
       recUi.style.setProperty('--dx', `${Math.max(-130, Math.min(0, dx))}px`);
@@ -1009,25 +1016,30 @@ async function openConv(cv) {
       if (dx < -110) { g = null; cancelRec(); toast('Запись отменена'); return; }
       if (dy < -70) { g.locked = true; rec.mode = 'locked'; paintLocked(rec); if (navigator.vibrate) navigator.vibrate(15); }
     });
-    const up = (e, cancel) => {
+    const micUp = (e, cancel) => {
       if (!g || (e && e.pointerId !== g.id)) return;
       const gg = g; gg.up = true; g = null;
-      micBtn.classList.remove('arming');
-      if (gg.wait) { clearTimeout(gg.wait); gg.wait = 0; if (!cancel) hint(); return; } // короткое касание
+      micCircBtn.classList.remove('arming');
+      if (gg.wait) { clearTimeout(gg.wait); gg.wait = 0;
+        // короткое касание — переключаем голосовое ↔ кружок
+        circMode = !circMode; setMicIcon();
+        if (!cancel) hint();
+        return;
+      }
       if (!rec || !rec.ready) return; // микрофон ещё включается — отменит сам запуск (см. выше)
       if (gg.locked || rec.mode !== 'hold') return;
       if (cancel) { cancelRec(); return; }
       finishSend(); // слишком короткую запись finishSend не отправит, а подскажет «удерживайте»
     };
-    micBtn.addEventListener('pointerup', (e) => up(e, false));
-    micBtn.addEventListener('pointercancel', (e) => up(e, true));
-    // палец «потерялся» (открылась галерея, всплыло окно, свернули приложение) — запись с удержанием не должна идти сама
-    micBtn.addEventListener('lostpointercapture', (e) => { if (g && e.pointerId === g.id && !g.locked) up(e, true); });
-    const dropHold = () => { if (g && !g.locked) up(null, true); else if (rec && rec.mode === 'hold') cancelRec(); };
+    micCircBtn.addEventListener('pointerup', (e) => micUp(e, false));
+    micCircBtn.addEventListener('pointercancel', (e) => micUp(e, true));
+    // палец «потерялся» — запись с удержанием не должна идти сама
+    micCircBtn.addEventListener('lostpointercapture', (e) => { if (g && e.pointerId === g.id && !g.locked) micUp(e, true); });
+    const dropHold = () => { if (g && !g.locked) micUp(null, true); else if (rec && rec.mode === 'hold') cancelRec(); };
     window.addEventListener('blur', dropHold);
     document.addEventListener('visibilitychange', () => { if (document.hidden) dropHold(); });
   } else {
-    micBtn.addEventListener('click', () => startRec('click'));
+    micCircBtn.addEventListener('click', () => startRec('click'));
   }
   bar.appendChild(recUi);
 
