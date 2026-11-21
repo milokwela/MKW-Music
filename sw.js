@@ -1,6 +1,6 @@
 // Service Worker MKW Music: приложение открывается мгновенно и даже без сети.
 // HTML — сначала из сети (чтобы обновления приходили сразу), файлы с ?v= — из кэша (они не меняются).
-const CACHE = 'mkw-v0.52.1';
+const CACHE = 'mkw-v0.53.0';
 self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', (e) => {
   e.waitUntil((async () => {

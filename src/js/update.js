@@ -18,7 +18,12 @@ async function latest() {
 async function reloadNow() {
   try { window.dispatchEvent(new CustomEvent('mkw-before-update')); } catch { /* ignore */ }
   try { const reg = navigator.serviceWorker && await navigator.serviceWorker.getRegistration(); if (reg) await reg.update(); } catch { /* ignore */ }
-  location.reload();
+  
+  // Предохранитель от зацикливания обновлений
+  const ver = await latest();
+  sessionStorage.setItem('mkw_upd_tried', ver);
+  
+  location.reload(true);
 }
 
 export function showUpdating(v, reason) {
