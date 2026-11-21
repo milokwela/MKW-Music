@@ -455,12 +455,13 @@ export function openCircleRecorder({ onSend, onClose } = {}) {
     if (mode === 'preview') { toast('Нажмите «Переснять», чтобы сменить камеру'); return; }
     front = !front;
     const ok = await openCam(true);
+    if (closed) return;
     if (!ok) {
       front = !front;
       const back = await openCam(true);
       if (!back && !closed) toast('Камера недоступна. Попробуйте ещё раз');
     }
-    if (navigator.vibrate) navigator.vibrate(8);
+    if (!closed && navigator.vibrate) navigator.vibrate(8);
   }
 
   function tick() {
@@ -553,6 +554,8 @@ export function openCircleRecorder({ onSend, onClose } = {}) {
     if (wasCancel) {
       chunks = [];
       stopTracks();
+      // свернули приложение — камеру не включаем заново, окно закрываем
+      if (document.hidden) { close(); return; }
       if (!closed) { setMode('camera'); await openCam(); }
       return;
     }
